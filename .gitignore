@@ -1,0 +1,35 @@
+# Rust / Cargo
+/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Bevy / Game assets (originals, not processed)
+*.blend1
+*.blend2
+
+# Build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# Claude Code temporary files
+tmpclaude-*
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
