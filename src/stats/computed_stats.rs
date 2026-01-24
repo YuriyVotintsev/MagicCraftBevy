@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use super::StatId;
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default, Reflect, Clone)]
 pub struct ComputedStats {
     values: HashMap<StatId, f32>,
 }

@@ -1,3 +1,4 @@
+mod abilities;
 mod arena;
 mod bullet;
 mod enemy;
@@ -7,6 +8,7 @@ mod stats;
 use bevy::prelude::*;
 use bevy::window::WindowResolution;
 
+use abilities::AbilityPlugin;
 use arena::{ArenaPlugin, WINDOW_HEIGHT, WINDOW_WIDTH};
 use bullet::BulletPlugin;
 use enemy::EnemyPlugin;
@@ -29,6 +31,7 @@ fn main() {
             EnemyPlugin,
             BulletPlugin,
             StatsPlugin,
+            AbilityPlugin,
         ))
         .run();
 }
