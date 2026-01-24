@@ -1,8 +1,6 @@
-use serde::{Deserialize, Serialize};
-
 use crate::stats::{ComputedStats, StatId};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum StatExpression {
     Constant(f32),
     Stat(StatId),

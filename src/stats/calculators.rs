@@ -1,185 +1,55 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
 
-use super::{ComputedStats, DirtyStats, RawStats, StatId};
+use crate::expression::Expression;
+use super::{ComputedStats, DirtyStats, Modifiers, StatId};
 
-pub type CalculatorFn = fn(&RawStats, &ComputedStats) -> f32;
-
-pub struct StatCalculatorEntry {
-    pub calculate: CalculatorFn,
+#[derive(Clone)]
+pub struct CalculatorEntry {
+    pub formula: Expression,
     pub depends_on: Vec<StatId>,
-    pub invalidated_by: Vec<StatId>,
 }
 
 #[derive(Resource)]
 pub struct StatCalculators {
-    calculators: HashMap<StatId, StatCalculatorEntry>,
+    entries: Vec<Option<CalculatorEntry>>,
     calculation_order: Vec<StatId>,
-    invalidation_map: HashMap<StatId, Vec<StatId>>,
-}
-
-impl Default for StatCalculators {
-    fn default() -> Self {
-        let mut calc = Self {
-            calculators: HashMap::new(),
-            calculation_order: Vec::new(),
-            invalidation_map: HashMap::new(),
-        };
-        calc.register_all();
-        calc.rebuild();
-        calc
-    }
+    reverse_deps: Vec<Vec<StatId>>,
 }
 
 impl StatCalculators {
-    fn register(
-        &mut self,
-        stat: StatId,
-        calculate: CalculatorFn,
-        depends_on: Vec<StatId>,
-        invalidated_by: Vec<StatId>,
-    ) {
-        self.calculators.insert(
-            stat,
-            StatCalculatorEntry {
-                calculate,
-                depends_on,
-                invalidated_by,
-            },
-        );
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            entries: vec![None; capacity],
+            calculation_order: Vec::new(),
+            reverse_deps: vec![Vec::new(); capacity],
+        }
     }
 
-    fn register_all(&mut self) {
-        self.register(
-            StatId::Strength,
-            |raw, _computed| {
-                let base = raw.get(StatId::Strength);
-                let increased = raw.get(StatId::StrengthIncreased);
-                base * (1.0 + increased)
-            },
-            vec![],
-            vec![StatId::Strength, StatId::StrengthIncreased],
-        );
-
-        self.register(
-            StatId::MaxLife,
-            |raw, computed| {
-                let base = raw.get(StatId::MaxLife);
-                let increased = raw.get(StatId::MaxLifeIncreased);
-                let more = raw.get(StatId::MaxLifeMore);
-                let per_str = raw.get(StatId::MaxLifePerStrength);
-                let strength = computed.get(StatId::Strength);
-
-                let more_mult = if more == 0.0 { 1.0 } else { more };
-                (base + strength * per_str) * (1.0 + increased) * more_mult
-            },
-            vec![StatId::Strength],
-            vec![
-                StatId::MaxLife,
-                StatId::MaxLifeIncreased,
-                StatId::MaxLifeMore,
-                StatId::MaxLifePerStrength,
-            ],
-        );
-
-        self.register(
-            StatId::MaxMana,
-            |raw, _computed| {
-                let base = raw.get(StatId::MaxMana);
-                let increased = raw.get(StatId::MaxManaIncreased);
-                base * (1.0 + increased)
-            },
-            vec![],
-            vec![StatId::MaxMana, StatId::MaxManaIncreased],
-        );
-
-        self.register(
-            StatId::PhysicalDamage,
-            |raw, _computed| {
-                let base = raw.get(StatId::PhysicalDamage);
-                let increased = raw.get(StatId::PhysicalDamageIncreased);
-                let more = raw.get(StatId::PhysicalDamageMore);
-
-                let more_mult = if more == 0.0 { 1.0 } else { more };
-                base * (1.0 + increased) * more_mult
-            },
-            vec![],
-            vec![
-                StatId::PhysicalDamage,
-                StatId::PhysicalDamageIncreased,
-                StatId::PhysicalDamageMore,
-            ],
-        );
-
-        self.register(
-            StatId::MovementSpeed,
-            |raw, _computed| {
-                let base = raw.get(StatId::MovementSpeed);
-                let increased = raw.get(StatId::MovementSpeedIncreased);
-                let more = raw.get(StatId::MovementSpeedMore);
-
-                let more_mult = if more == 0.0 { 1.0 } else { more };
-                base * (1.0 + increased) * more_mult
-            },
-            vec![],
-            vec![
-                StatId::MovementSpeed,
-                StatId::MovementSpeedIncreased,
-                StatId::MovementSpeedMore,
-            ],
-        );
-
-        self.register(
-            StatId::ProjectileSpeed,
-            |raw, _computed| {
-                let base = raw.get(StatId::ProjectileSpeed);
-                let increased = raw.get(StatId::ProjectileSpeedIncreased);
-                base * (1.0 + increased)
-            },
-            vec![],
-            vec![StatId::ProjectileSpeed, StatId::ProjectileSpeedIncreased],
-        );
-
-        self.register(
-            StatId::ProjectileCount,
-            |raw, _computed| raw.get(StatId::ProjectileCount).max(1.0),
-            vec![],
-            vec![StatId::ProjectileCount],
-        );
-
-        self.register(
-            StatId::CritChance,
-            |raw, _computed| {
-                let base = raw.get(StatId::CritChance);
-                let increased = raw.get(StatId::CritChanceIncreased);
-                (base * (1.0 + increased)).clamp(0.0, 1.0)
-            },
-            vec![],
-            vec![StatId::CritChance, StatId::CritChanceIncreased],
-        );
-
-        self.register(
-            StatId::CritMultiplier,
-            |raw, _computed| {
-                let base = raw.get(StatId::CritMultiplier);
-                let increased = raw.get(StatId::CritMultiplierIncreased);
-                (base * (1.0 + increased)).max(1.0)
-            },
-            vec![],
-            vec![StatId::CritMultiplier, StatId::CritMultiplierIncreased],
-        );
+    pub fn set(&mut self, stat: StatId, formula: Expression, depends_on: Vec<StatId>) {
+        let idx = stat.0 as usize;
+        if idx >= self.entries.len() {
+            self.entries.resize_with(idx + 1, || None);
+            self.reverse_deps.resize(idx + 1, Vec::new());
+        }
+        self.entries[idx] = Some(CalculatorEntry { formula, depends_on });
     }
 
-    fn rebuild(&mut self) {
+    pub fn rebuild(&mut self) {
         self.calculation_order = self.topological_sort();
 
-        self.invalidation_map.clear();
-        for (&computed_stat, entry) in &self.calculators {
-            for &raw_stat in &entry.invalidated_by {
-                self.invalidation_map
-                    .entry(raw_stat)
-                    .or_default()
-                    .push(computed_stat);
+        for deps in &mut self.reverse_deps {
+            deps.clear();
+        }
+
+        for (stat_idx, entry) in self.entries.iter().enumerate() {
+            if let Some(entry) = entry {
+                for &dep in &entry.depends_on {
+                    let dep_idx = dep.0 as usize;
+                    if dep_idx < self.reverse_deps.len() {
+                        self.reverse_deps[dep_idx].push(StatId(stat_idx as u32));
+                    }
+                }
             }
         }
     }
@@ -188,29 +58,26 @@ impl StatCalculators {
         let mut result = Vec::new();
         let mut visited = HashMap::new();
 
-        for &stat in self.calculators.keys() {
-            self.visit(stat, &mut visited, &mut result);
+        for (idx, entry) in self.entries.iter().enumerate() {
+            if entry.is_some() {
+                self.visit(StatId(idx as u32), &mut visited, &mut result);
+            }
         }
 
         result
     }
 
-    fn visit(
-        &self,
-        stat: StatId,
-        visited: &mut HashMap<StatId, bool>,
-        result: &mut Vec<StatId>,
-    ) {
+    fn visit(&self, stat: StatId, visited: &mut HashMap<StatId, bool>, result: &mut Vec<StatId>) {
         if let Some(&in_progress) = visited.get(&stat) {
             if in_progress {
-                panic!("Circular dependency detected for {:?}", stat);
+                panic!("Circular dependency detected for stat {:?}", stat.0);
             }
             return;
         }
 
         visited.insert(stat, true);
 
-        if let Some(entry) = self.calculators.get(&stat) {
+        if let Some(Some(entry)) = self.entries.get(stat.0 as usize) {
             for &dep in &entry.depends_on {
                 self.visit(dep, visited, result);
             }
@@ -220,26 +87,21 @@ impl StatCalculators {
         result.push(stat);
     }
 
-    pub fn invalidate(&self, raw_stat: StatId, dirty: &mut DirtyStats) {
-        if let Some(computed_stats) = self.invalidation_map.get(&raw_stat) {
-            for &computed_stat in computed_stats {
-                dirty.mark(computed_stat);
-                self.invalidate_dependents(computed_stat, dirty);
+    pub fn invalidate(&self, stat: StatId, dirty: &mut DirtyStats) {
+        dirty.mark(stat);
+        let idx = stat.0 as usize;
+        if idx < self.reverse_deps.len() {
+            for &dependent in &self.reverse_deps[idx] {
+                if !dirty.stats.contains(&dependent) {
+                    self.invalidate(dependent, dirty);
+                }
             }
         }
     }
 
-    fn invalidate_dependents(&self, stat: StatId, dirty: &mut DirtyStats) {
-        for (&other_stat, entry) in &self.calculators {
-            if entry.depends_on.contains(&stat) && dirty.stats.insert(other_stat) {
-                self.invalidate_dependents(other_stat, dirty);
-            }
-        }
-    }
-
-    pub fn calculate(&self, stat: StatId, raw: &RawStats, computed: &ComputedStats) -> f32 {
-        if let Some(entry) = self.calculators.get(&stat) {
-            (entry.calculate)(raw, computed)
+    pub fn calculate(&self, stat: StatId, modifiers: &Modifiers, computed: &ComputedStats) -> f32 {
+        if let Some(Some(entry)) = self.entries.get(stat.0 as usize) {
+            entry.formula.evaluate(modifiers, computed)
         } else {
             0.0
         }

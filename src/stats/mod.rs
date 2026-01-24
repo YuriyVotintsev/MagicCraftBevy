@@ -1,17 +1,17 @@
 mod calculators;
 mod computed_stats;
 mod dirty_stats;
+mod loader;
 mod modifiers;
-mod raw_stats;
 mod stat_id;
 mod systems;
 
 pub use calculators::StatCalculators;
 pub use computed_stats::ComputedStats;
 pub use dirty_stats::DirtyStats;
-pub use modifiers::Modifiers;
-pub use raw_stats::RawStats;
-pub use stat_id::StatId;
+pub use loader::load_stats;
+pub use modifiers::{Modifier, Modifiers};
+pub use stat_id::{AggregationType, StatDef, StatId, StatRegistry};
 
 use bevy::prelude::*;
 
@@ -19,17 +19,20 @@ pub struct StatsPlugin;
 
 impl Plugin for StatsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<StatCalculators>()
-            .register_type::<StatId>()
-            .register_type::<RawStats>()
-            .register_type::<ComputedStats>()
+        let (registry, calculators) = load_stats(
+            "assets/stats/stat_ids.ron",
+            "assets/stats/calculators.ron",
+        );
+
+        app.insert_resource(registry)
+            .insert_resource(calculators)
             .add_systems(PreUpdate, systems::recalculate_stats);
     }
 }
 
 #[derive(Bundle, Default)]
 pub struct StatsBundle {
-    pub raw: RawStats,
+    pub modifiers: Modifiers,
     pub computed: ComputedStats,
     pub dirty: DirtyStats,
 }

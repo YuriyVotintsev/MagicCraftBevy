@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use super::StatId;
 
-#[derive(Component, Default, Reflect)]
+#[derive(Component, Default)]
 pub struct DirtyStats {
     pub stats: HashSet<StatId>,
 }
@@ -11,6 +11,10 @@ pub struct DirtyStats {
 impl DirtyStats {
     pub fn mark(&mut self, stat: StatId) {
         self.stats.insert(stat);
+    }
+
+    pub fn mark_all(&mut self, stats: impl IntoIterator<Item = StatId>) {
+        self.stats.extend(stats);
     }
 
     pub fn is_empty(&self) -> bool {

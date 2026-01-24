@@ -7,7 +7,7 @@ use crate::abilities::{
 };
 use crate::arena::{ARENA_HEIGHT, ARENA_WIDTH};
 use crate::stats::{
-    ComputedStats, DirtyStats, RawStats, StatCalculators, StatId, StatsBundle,
+    ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry,
 };
 
 const PLAYER_SIZE: f32 = 100.0;
@@ -26,25 +26,37 @@ impl Plugin for PlayerPlugin {
 
 fn spawn_player(
     mut commands: Commands,
+    stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
     mut ability_registry: ResMut<AbilityRegistry>,
     activator_registry: Res<ActivatorRegistry>,
     mut effect_registry: ResMut<EffectRegistry>,
 ) {
-    let mut raw = RawStats::default();
+    let mut modifiers = Modifiers::new();
     let mut dirty = DirtyStats::default();
 
-    raw.set(StatId::Strength, 10.0, &mut dirty, &calculators);
-    raw.set(StatId::MaxLife, 100.0, &mut dirty, &calculators);
-    raw.set(StatId::MaxLifePerStrength, 2.0, &mut dirty, &calculators);
-    raw.set(StatId::MovementSpeed, 400.0, &mut dirty, &calculators);
-    raw.set(StatId::PhysicalDamage, 10.0, &mut dirty, &calculators);
-    raw.set(StatId::ProjectileSpeed, 800.0, &mut dirty, &calculators);
-    raw.set(StatId::ProjectileCount, 1.0, &mut dirty, &calculators);
-    raw.set(StatId::CritChance, 0.05, &mut dirty, &calculators);
-    raw.set(StatId::CritMultiplier, 1.5, &mut dirty, &calculators);
+    for i in 0..stat_registry.len() {
+        dirty.mark(StatId(i as u32));
+    }
+
+    let add_base = |modifiers: &mut Modifiers, name: &str, value: f32| {
+        if let Some(stat_id) = stat_registry.get(name) {
+            modifiers.add(stat_id, value, None);
+        }
+    };
+
+    add_base(&mut modifiers, "strength_base", 10.0);
+    add_base(&mut modifiers, "max_life_base", 100.0);
+    add_base(&mut modifiers, "max_life_per_strength", 2.0);
+    add_base(&mut modifiers, "movement_speed_base", 400.0);
+    add_base(&mut modifiers, "physical_damage_base", 10.0);
+    add_base(&mut modifiers, "projectile_speed_base", 800.0);
+    add_base(&mut modifiers, "projectile_count", 1.0);
+    add_base(&mut modifiers, "crit_chance_base", 0.05);
+    add_base(&mut modifiers, "crit_multiplier_base", 1.5);
 
     let fireball_id = create_fireball_ability(
+        &stat_registry,
         &mut ability_registry,
         &activator_registry,
         &mut effect_registry,
@@ -55,11 +67,9 @@ fn spawn_player(
 
     commands.spawn((
         Player,
-        StatsBundle {
-            raw,
-            computed: ComputedStats::default(),
-            dirty,
-        },
+        modifiers,
+        ComputedStats::new(stat_registry.len()),
+        dirty,
         abilities,
         AbilityInput::new(),
         Sprite {
@@ -72,6 +82,7 @@ fn spawn_player(
 }
 
 fn create_fireball_ability(
+    stat_registry: &StatRegistry,
     ability_registry: &mut AbilityRegistry,
     activator_registry: &ActivatorRegistry,
     effect_registry: &mut EffectRegistry,
@@ -86,11 +97,13 @@ fn create_fireball_ability(
     let amount_param = effect_registry.get_or_insert_param_id("amount");
     let on_hit_param = effect_registry.get_or_insert_param_id("on_hit");
 
+    let physical_damage_id = stat_registry.get("physical_damage").unwrap();
+
     let damage_effect = EffectDef {
         effect_type: damage_type,
         params: HashMap::from([(
             amount_param,
-            ParamValue::Stat(StatId::PhysicalDamage),
+            ParamValue::Stat(physical_damage_id),
         )]),
     };
 
@@ -120,6 +133,7 @@ fn create_fireball_ability(
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
+    stat_registry: Res<StatRegistry>,
     mut query: Query<(&mut Transform, &ComputedStats), With<Player>>,
 ) {
     let Ok((mut transform, stats)) = query.single_mut() else {
@@ -143,7 +157,10 @@ fn player_movement(
 
     if direction != Vec2::ZERO {
         direction = direction.normalize();
-        let speed = stats.get(StatId::MovementSpeed);
+        let speed = stat_registry
+            .get("movement_speed")
+            .map(|id| stats.get(id))
+            .unwrap_or(400.0);
         transform.translation.x += direction.x * speed * time.delta_secs();
         transform.translation.y += direction.y * speed * time.delta_secs();
     }

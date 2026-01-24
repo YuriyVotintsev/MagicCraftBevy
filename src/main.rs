@@ -2,6 +2,7 @@ mod abilities;
 mod arena;
 mod bullet;
 mod enemy;
+mod expression;
 mod player;
 mod stats;
 

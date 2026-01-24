@@ -11,8 +11,7 @@ pub enum ParamValueRaw {
     Int(i32),
     Bool(bool),
     String(String),
-    Stat(StatId),
-    Expr(StatExpression),
+    Stat(String),
     Effect(Box<EffectDefRaw>),
     EffectList(Vec<EffectDefRaw>),
 }

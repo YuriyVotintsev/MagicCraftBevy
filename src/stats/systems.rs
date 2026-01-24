@@ -1,12 +1,12 @@
 use bevy::prelude::*;
 
-use super::{ComputedStats, DirtyStats, RawStats, StatCalculators};
+use super::{ComputedStats, DirtyStats, Modifiers, StatCalculators};
 
 pub fn recalculate_stats(
     calculators: Res<StatCalculators>,
-    mut query: Query<(&RawStats, &mut ComputedStats, &mut DirtyStats)>,
+    mut query: Query<(&Modifiers, &mut ComputedStats, &mut DirtyStats)>,
 ) {
-    for (raw, mut computed, mut dirty) in &mut query {
+    for (modifiers, mut computed, mut dirty) in &mut query {
         if dirty.is_empty() {
             continue;
         }
@@ -16,7 +16,7 @@ pub fn recalculate_stats(
                 continue;
             }
 
-            let value = calculators.calculate(stat, raw, &computed);
+            let value = calculators.calculate(stat, modifiers, &computed);
             computed.set(stat, value);
         }
 

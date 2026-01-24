@@ -1,0 +1,45 @@
+[
+    // Strength
+    (name: "strength_base", aggregation: Sum),
+    (name: "strength_increased", aggregation: Sum),
+    (name: "strength_more", aggregation: Product),
+    (name: "strength", aggregation: Custom),
+
+    // Max Life
+    (name: "max_life_base", aggregation: Sum),
+    (name: "max_life_increased", aggregation: Sum),
+    (name: "max_life_more", aggregation: Product),
+    (name: "max_life_per_strength", aggregation: Sum),
+    (name: "max_life", aggregation: Custom),
+
+    // Max Mana
+    (name: "max_mana_base", aggregation: Sum),
+    (name: "max_mana_increased", aggregation: Sum),
+    (name: "max_mana", aggregation: Custom),
+
+    // Physical Damage
+    (name: "physical_damage_base", aggregation: Sum),
+    (name: "physical_damage_increased", aggregation: Sum),
+    (name: "physical_damage_more", aggregation: Product),
+    (name: "physical_damage", aggregation: Custom),
+
+    // Movement Speed
+    (name: "movement_speed_base", aggregation: Sum),
+    (name: "movement_speed_increased", aggregation: Sum),
+    (name: "movement_speed_more", aggregation: Product),
+    (name: "movement_speed", aggregation: Custom),
+
+    // Projectile
+    (name: "projectile_speed_base", aggregation: Sum),
+    (name: "projectile_speed_increased", aggregation: Sum),
+    (name: "projectile_speed", aggregation: Custom),
+    (name: "projectile_count", aggregation: Sum),
+
+    // Crit
+    (name: "crit_chance_base", aggregation: Sum),
+    (name: "crit_chance_increased", aggregation: Sum),
+    (name: "crit_chance", aggregation: Custom),
+    (name: "crit_multiplier_base", aggregation: Sum),
+    (name: "crit_multiplier_increased", aggregation: Sum),
+    (name: "crit_multiplier", aggregation: Custom),
+]

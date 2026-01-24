@@ -4,7 +4,8 @@ use crate::abilities::registry::{EffectExecutor, EffectRegistry};
 use crate::abilities::effect_def::{EffectDef, ParamValue};
 use crate::abilities::context::AbilityContext;
 use crate::abilities::owner::OwnedBy;
-use crate::stats::StatId;
+
+const DEFAULT_PROJECTILE_SPEED: f32 = 800.0;
 
 #[derive(Component)]
 pub struct Projectile {
@@ -27,8 +28,9 @@ impl EffectExecutor for SpawnProjectileEffect {
     ) {
         let speed = match def.get_param("speed", registry) {
             Some(ParamValue::Float(v)) => *v,
+            Some(ParamValue::Stat(stat_id)) => ctx.stats_snapshot.get(*stat_id),
             Some(ParamValue::Expr(expr)) => expr.evaluate(&ctx.stats_snapshot),
-            _ => ctx.stats_snapshot.get(StatId::ProjectileSpeed),
+            _ => DEFAULT_PROJECTILE_SPEED,
         };
 
         let on_hit_effects = match def.get_param("on_hit", registry) {

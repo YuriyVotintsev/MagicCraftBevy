@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use crate::abilities::registry::{EffectExecutor, EffectRegistry};
 use crate::abilities::effect_def::{EffectDef, ParamValue};
 use crate::abilities::context::AbilityContext;
-use crate::stats::StatId;
 
 pub struct DamageEffect;
 
@@ -17,8 +16,9 @@ impl EffectExecutor for DamageEffect {
     ) {
         let amount = match def.get_param("amount", registry) {
             Some(ParamValue::Float(v)) => *v,
+            Some(ParamValue::Stat(stat_id)) => ctx.stats_snapshot.get(*stat_id),
             Some(ParamValue::Expr(expr)) => expr.evaluate(&ctx.stats_snapshot),
-            _ => ctx.stats_snapshot.get(StatId::PhysicalDamage),
+            _ => 0.0,
         };
 
         let target = ctx.get_param_entity("target");

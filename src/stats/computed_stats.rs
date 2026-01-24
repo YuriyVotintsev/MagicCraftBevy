@@ -1,19 +1,34 @@
 use bevy::prelude::*;
-use std::collections::HashMap;
 
 use super::StatId;
 
-#[derive(Component, Default, Reflect, Clone)]
+#[derive(Component, Default, Clone)]
 pub struct ComputedStats {
-    values: HashMap<StatId, f32>,
+    values: Vec<f32>,
 }
 
 impl ComputedStats {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            values: vec![0.0; capacity],
+        }
+    }
+
     pub fn get(&self, stat: StatId) -> f32 {
-        self.values.get(&stat).copied().unwrap_or(0.0)
+        self.values.get(stat.0 as usize).copied().unwrap_or(0.0)
     }
 
     pub fn set(&mut self, stat: StatId, value: f32) {
-        self.values.insert(stat, value);
+        let idx = stat.0 as usize;
+        if idx >= self.values.len() {
+            self.values.resize(idx + 1, 0.0);
+        }
+        self.values[idx] = value;
+    }
+
+    pub fn ensure_capacity(&mut self, capacity: usize) {
+        if self.values.len() < capacity {
+            self.values.resize(capacity, 0.0);
+        }
     }
 }

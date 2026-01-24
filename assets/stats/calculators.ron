@@ -1,0 +1,88 @@
+[
+    (
+        stat: "strength",
+        formula: Mul(
+            Mul(
+                Stat("strength_base"),
+                Add(Constant(1.0), Stat("strength_increased")),
+            ),
+            Stat("strength_more"),
+        ),
+        depends_on: ["strength_base", "strength_increased", "strength_more"],
+    ),
+    (
+        stat: "max_life",
+        formula: Mul(
+            Mul(
+                Add(
+                    Stat("max_life_base"),
+                    Mul(Stat("strength"), Stat("max_life_per_strength")),
+                ),
+                Add(Constant(1.0), Stat("max_life_increased")),
+            ),
+            Stat("max_life_more"),
+        ),
+        depends_on: ["strength", "max_life_base", "max_life_increased", "max_life_more", "max_life_per_strength"],
+    ),
+    (
+        stat: "max_mana",
+        formula: Mul(
+            Stat("max_mana_base"),
+            Add(Constant(1.0), Stat("max_mana_increased")),
+        ),
+        depends_on: ["max_mana_base", "max_mana_increased"],
+    ),
+    (
+        stat: "physical_damage",
+        formula: Mul(
+            Mul(
+                Stat("physical_damage_base"),
+                Add(Constant(1.0), Stat("physical_damage_increased")),
+            ),
+            Stat("physical_damage_more"),
+        ),
+        depends_on: ["physical_damage_base", "physical_damage_increased", "physical_damage_more"],
+    ),
+    (
+        stat: "movement_speed",
+        formula: Mul(
+            Mul(
+                Stat("movement_speed_base"),
+                Add(Constant(1.0), Stat("movement_speed_increased")),
+            ),
+            Stat("movement_speed_more"),
+        ),
+        depends_on: ["movement_speed_base", "movement_speed_increased", "movement_speed_more"],
+    ),
+    (
+        stat: "projectile_speed",
+        formula: Mul(
+            Stat("projectile_speed_base"),
+            Add(Constant(1.0), Stat("projectile_speed_increased")),
+        ),
+        depends_on: ["projectile_speed_base", "projectile_speed_increased"],
+    ),
+    (
+        stat: "crit_chance",
+        formula: Clamp(
+            value: Mul(
+                Stat("crit_chance_base"),
+                Add(Constant(1.0), Stat("crit_chance_increased")),
+            ),
+            min: 0.0,
+            max: 1.0,
+        ),
+        depends_on: ["crit_chance_base", "crit_chance_increased"],
+    ),
+    (
+        stat: "crit_multiplier",
+        formula: Max(
+            Mul(
+                Stat("crit_multiplier_base"),
+                Add(Constant(1.0), Stat("crit_multiplier_increased")),
+            ),
+            Constant(1.0),
+        ),
+        depends_on: ["crit_multiplier_base", "crit_multiplier_increased"],
+    ),
+]
