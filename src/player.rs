@@ -87,30 +87,39 @@ fn player_shooting(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    query: Query<&Transform, With<Player>>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    windows: Query<&Window>,
+    camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+    player_query: Query<&Transform, With<Player>>,
 ) {
-    let Ok(player_transform) = query.single() else {
+    if !mouse.just_pressed(MouseButton::Left) {
+        return;
+    }
+
+    let Ok(player_transform) = player_query.single() else {
         return;
     };
 
-    let mut direction = Vec2::ZERO;
+    let Ok(window) = windows.single() else {
+        return;
+    };
 
-    if keyboard.just_pressed(KeyCode::ArrowUp) {
-        direction.y += 1.0;
-    }
-    if keyboard.just_pressed(KeyCode::ArrowDown) {
-        direction.y -= 1.0;
-    }
-    if keyboard.just_pressed(KeyCode::ArrowLeft) {
-        direction.x -= 1.0;
-    }
-    if keyboard.just_pressed(KeyCode::ArrowRight) {
-        direction.x += 1.0;
-    }
+    let Ok((camera, camera_transform)) = camera_query.single() else {
+        return;
+    };
+
+    let Some(cursor_pos) = window.cursor_position() else {
+        return;
+    };
+
+    let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else {
+        return;
+    };
+
+    let player_pos = player_transform.translation.truncate();
+    let direction = (world_pos - player_pos).normalize_or_zero();
 
     if direction != Vec2::ZERO {
-        direction = direction.normalize();
         spawn_bullet(
             &mut commands,
             &mut meshes,
