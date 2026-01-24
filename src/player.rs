@@ -2,9 +2,11 @@ use bevy::prelude::*;
 
 use crate::arena::{ARENA_HEIGHT, ARENA_WIDTH};
 use crate::bullet::spawn_bullet;
+use crate::stats::{
+    ComputedStats, DirtyStats, RawStats, StatCalculators, StatId, StatsBundle,
+};
 
 const PLAYER_SIZE: f32 = 100.0;
-const PLAYER_SPEED: f32 = 400.0;
 const BULLET_SPEED: f32 = 800.0;
 
 #[derive(Component)]
@@ -19,9 +21,27 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn spawn_player(mut commands: Commands) {
+fn spawn_player(mut commands: Commands, calculators: Res<StatCalculators>) {
+    let mut raw = RawStats::default();
+    let mut dirty = DirtyStats::default();
+
+    raw.set(StatId::Strength, 10.0, &mut dirty, &calculators);
+    raw.set(StatId::MaxLife, 100.0, &mut dirty, &calculators);
+    raw.set(StatId::MaxLifePerStrength, 2.0, &mut dirty, &calculators);
+    raw.set(StatId::MovementSpeed, 400.0, &mut dirty, &calculators);
+    raw.set(StatId::PhysicalDamage, 10.0, &mut dirty, &calculators);
+    raw.set(StatId::ProjectileSpeed, 800.0, &mut dirty, &calculators);
+    raw.set(StatId::ProjectileCount, 1.0, &mut dirty, &calculators);
+    raw.set(StatId::CritChance, 0.05, &mut dirty, &calculators);
+    raw.set(StatId::CritMultiplier, 1.5, &mut dirty, &calculators);
+
     commands.spawn((
         Player,
+        StatsBundle {
+            raw,
+            computed: ComputedStats::default(),
+            dirty,
+        },
         Sprite {
             color: Color::srgb(0.2, 0.6, 1.0),
             custom_size: Some(Vec2::splat(PLAYER_SIZE)),
@@ -34,9 +54,9 @@ fn spawn_player(mut commands: Commands) {
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
-    mut query: Query<&mut Transform, With<Player>>,
+    mut query: Query<(&mut Transform, &ComputedStats), With<Player>>,
 ) {
-    let Ok(mut transform) = query.single_mut() else {
+    let Ok((mut transform, stats)) = query.single_mut() else {
         return;
     };
 
@@ -57,8 +77,9 @@ fn player_movement(
 
     if direction != Vec2::ZERO {
         direction = direction.normalize();
-        transform.translation.x += direction.x * PLAYER_SPEED * time.delta_secs();
-        transform.translation.y += direction.y * PLAYER_SPEED * time.delta_secs();
+        let speed = stats.get(StatId::MovementSpeed);
+        transform.translation.x += direction.x * speed * time.delta_secs();
+        transform.translation.y += direction.y * speed * time.delta_secs();
     }
 }
 

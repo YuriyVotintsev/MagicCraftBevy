@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "WebSearch",
+      "Bash(cargo check:*)",
+      "Bash(cargo expand:*)",
+      "Bash(git add:*)",
+      "WebFetch(domain:www.poewiki.net)",
+      "WebFetch(domain:poedb.tw)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:repoe-fork.github.io)",
+      "WebFetch(domain:pathofexile.fandom.com)",
+      "Skill(commit)"
+    ]
+  }
+}
