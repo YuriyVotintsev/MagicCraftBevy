@@ -3,7 +3,11 @@
     (name: "strength_base", aggregation: Sum),
     (name: "strength_increased", aggregation: Sum),
     (name: "strength_more", aggregation: Product),
-    (name: "strength", aggregation: Custom),
+    (name: "strength", aggregation: Standard(
+        base: "strength_base",
+        increased: "strength_increased",
+        more: "strength_more",
+    )),
 
     // Max Life
     (name: "max_life_base", aggregation: Sum),
@@ -21,13 +25,21 @@
     (name: "physical_damage_base", aggregation: Sum),
     (name: "physical_damage_increased", aggregation: Sum),
     (name: "physical_damage_more", aggregation: Product),
-    (name: "physical_damage", aggregation: Custom),
+    (name: "physical_damage", aggregation: Standard(
+        base: "physical_damage_base",
+        increased: "physical_damage_increased",
+        more: "physical_damage_more",
+    )),
 
     // Movement Speed
     (name: "movement_speed_base", aggregation: Sum),
     (name: "movement_speed_increased", aggregation: Sum),
     (name: "movement_speed_more", aggregation: Product),
-    (name: "movement_speed", aggregation: Custom),
+    (name: "movement_speed", aggregation: Standard(
+        base: "movement_speed_base",
+        increased: "movement_speed_increased",
+        more: "movement_speed_more",
+    )),
 
     // Projectile
     (name: "projectile_speed_base", aggregation: Sum),

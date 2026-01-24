@@ -5,10 +5,15 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
 pub struct StatId(pub u32);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AggregationType {
     Sum,
     Product,
+    Standard {
+        base: String,
+        increased: String,
+        more: String,
+    },
     Custom,
 }
 
@@ -55,8 +60,8 @@ impl StatRegistry {
         self.stats.get(id.0 as usize).map(|d| d.name.as_str())
     }
 
-    pub fn aggregation(&self, id: StatId) -> Option<AggregationType> {
-        self.stats.get(id.0 as usize).map(|d| d.aggregation)
+    pub fn aggregation(&self, id: StatId) -> Option<&AggregationType> {
+        self.stats.get(id.0 as usize).map(|d| &d.aggregation)
     }
 
     pub fn len(&self) -> usize {

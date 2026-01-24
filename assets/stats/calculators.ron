@@ -1,16 +1,5 @@
 [
     (
-        stat: "strength",
-        formula: Mul(
-            Mul(
-                Stat("strength_base"),
-                Add(Constant(1.0), Stat("strength_increased")),
-            ),
-            Stat("strength_more"),
-        ),
-        depends_on: ["strength_base", "strength_increased", "strength_more"],
-    ),
-    (
         stat: "max_life",
         formula: Mul(
             Mul(
@@ -31,28 +20,6 @@
             Add(Constant(1.0), Stat("max_mana_increased")),
         ),
         depends_on: ["max_mana_base", "max_mana_increased"],
-    ),
-    (
-        stat: "physical_damage",
-        formula: Mul(
-            Mul(
-                Stat("physical_damage_base"),
-                Add(Constant(1.0), Stat("physical_damage_increased")),
-            ),
-            Stat("physical_damage_more"),
-        ),
-        depends_on: ["physical_damage_base", "physical_damage_increased", "physical_damage_more"],
-    ),
-    (
-        stat: "movement_speed",
-        formula: Mul(
-            Mul(
-                Stat("movement_speed_base"),
-                Add(Constant(1.0), Stat("movement_speed_increased")),
-            ),
-            Stat("movement_speed_more"),
-        ),
-        depends_on: ["movement_speed_base", "movement_speed_increased", "movement_speed_more"],
     ),
     (
         stat: "projectile_speed",

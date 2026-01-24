@@ -28,19 +28,38 @@ pub fn load_stats(
 
     let mut registry = StatRegistry::new();
     for def in &stat_defs {
-        registry.insert(&def.name, def.aggregation);
+        registry.insert(&def.name, def.aggregation.clone());
     }
 
     let mut calculators = StatCalculators::new(registry.len());
 
     for def in &stat_defs {
         let stat_id = registry.get(&def.name).unwrap();
-        match def.aggregation {
+        match &def.aggregation {
             AggregationType::Sum => {
                 calculators.set(stat_id, Expression::ModifierSum(stat_id), vec![]);
             }
             AggregationType::Product => {
                 calculators.set(stat_id, Expression::ModifierProduct(stat_id), vec![]);
+            }
+            AggregationType::Standard { base, increased, more } => {
+                let base_id = registry.get(base).expect(&format!("Unknown stat: {}", base));
+                let increased_id = registry.get(increased).expect(&format!("Unknown stat: {}", increased));
+                let more_id = registry.get(more).expect(&format!("Unknown stat: {}", more));
+
+                let formula = Expression::Mul(
+                    Box::new(Expression::Mul(
+                        Box::new(Expression::Stat(base_id)),
+                        Box::new(Expression::Add(
+                            Box::new(Expression::Constant(1.0)),
+                            Box::new(Expression::Stat(increased_id)),
+                        )),
+                    )),
+                    Box::new(Expression::Stat(more_id)),
+                );
+
+                let depends_on = vec![base_id, increased_id, more_id];
+                calculators.set(stat_id, formula, depends_on);
             }
             AggregationType::Custom => {}
         }
