@@ -12,7 +12,9 @@ pub use computed_stats::ComputedStats;
 pub use dirty_stats::DirtyStats;
 pub use health::Health;
 pub use loader::load_stats;
+#[allow(unused_imports)]
 pub use modifiers::{Modifier, Modifiers};
+#[allow(unused_imports)]
 pub use stat_id::{AggregationType, StatDef, StatId, StatRegistry};
 
 use bevy::prelude::*;
@@ -37,6 +39,7 @@ impl Plugin for StatsPlugin {
 }
 
 #[derive(Bundle, Default)]
+#[allow(dead_code)]
 pub struct StatsBundle {
     pub modifiers: Modifiers,
     pub computed: ComputedStats,

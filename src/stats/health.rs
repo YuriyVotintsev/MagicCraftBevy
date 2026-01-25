@@ -12,10 +12,12 @@ impl Health {
         Self { current: max }
     }
 
+    #[allow(dead_code)]
     pub fn take_damage(&mut self, amount: f32) {
         self.current = (self.current - amount).max(0.0);
     }
 
+    #[allow(dead_code)]
     pub fn heal(&mut self, amount: f32, max: f32) {
         self.current = (self.current + amount).min(max);
     }

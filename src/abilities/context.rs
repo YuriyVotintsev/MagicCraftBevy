@@ -6,6 +6,7 @@ use crate::stats::ComputedStats;
 use super::ids::{AbilityId, TagId};
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum ContextValue {
     Float(f32),
     Int(i32),
@@ -65,10 +66,12 @@ impl AbilityContext {
         self.params.insert(key.to_string(), value);
     }
 
+    #[allow(dead_code)]
     pub fn get_param(&self, key: &str) -> Option<&ContextValue> {
         self.params.get(key)
     }
 
+    #[allow(dead_code)]
     pub fn get_param_float(&self, key: &str) -> Option<f32> {
         match self.params.get(key) {
             Some(ContextValue::Float(v)) => Some(*v),

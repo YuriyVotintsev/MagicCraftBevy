@@ -26,9 +26,4 @@ impl ComputedStats {
         self.values[idx] = value;
     }
 
-    pub fn ensure_capacity(&mut self, capacity: usize) {
-        if self.values.len() < capacity {
-            self.values.resize(capacity, 0.0);
-        }
-    }
 }

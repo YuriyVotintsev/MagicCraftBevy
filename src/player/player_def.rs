@@ -7,6 +7,7 @@ pub struct PlayerDef {
     pub visual: PlayerVisualDef,
     pub collider_size: f32,
     pub base_stats: HashMap<String, f32>,
+    #[allow(dead_code)]
     pub abilities: Vec<String>,
 }
 

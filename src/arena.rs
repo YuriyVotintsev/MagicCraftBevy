@@ -4,7 +4,9 @@ use rand::Rng;
 use crate::fsm::{spawn_mob, MobRegistry};
 use crate::stats::{StatCalculators, StatRegistry};
 
+#[cfg(not(feature = "headless"))]
 pub const WINDOW_WIDTH: f32 = 1280.0;
+#[cfg(not(feature = "headless"))]
 pub const WINDOW_HEIGHT: f32 = 720.0;
 pub const ARENA_WIDTH: f32 = 1920.0;
 pub const ARENA_HEIGHT: f32 = 1080.0;

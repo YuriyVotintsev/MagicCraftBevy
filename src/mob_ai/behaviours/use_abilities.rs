@@ -19,6 +19,7 @@ impl UseAbilities {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_cooldown(mut self, cooldown: f32) -> Self {
         self.cooldown = cooldown;
         self

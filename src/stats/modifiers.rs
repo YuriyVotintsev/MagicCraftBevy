@@ -7,6 +7,7 @@ use super::StatId;
 pub struct Modifier {
     pub stat: StatId,
     pub value: f32,
+    #[allow(dead_code)]
     pub source: Option<Entity>,
 }
 
@@ -24,6 +25,7 @@ impl Modifiers {
         self.list.push(Modifier { stat, value, source });
     }
 
+    #[allow(dead_code)]
     pub fn remove_by_source(&mut self, source: Entity) -> Vec<StatId> {
         let mut affected = Vec::new();
         self.list.retain(|m| {
@@ -57,10 +59,12 @@ impl Modifiers {
         if found { result } else { 1.0 }
     }
 
+    #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = &Modifier> {
         self.list.iter()
     }
 
+    #[allow(dead_code)]
     pub fn affected_stats(&self) -> impl Iterator<Item = StatId> + '_ {
         let mut seen = HashSet::new();
         self.list.iter().filter_map(move |m| {

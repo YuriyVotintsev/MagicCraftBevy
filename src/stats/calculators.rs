@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use std::collections::HashMap;
 
 use crate::expression::Expression;
 use super::{ComputedStats, DirtyStats, Modifiers, StatId};
@@ -108,6 +107,7 @@ impl StatCalculators {
         result
     }
 
+    #[allow(dead_code)]
     pub fn invalidate(&self, stat: StatId, dirty: &mut DirtyStats) {
         dirty.mark(stat);
         let idx = stat.0 as usize;
@@ -128,6 +128,7 @@ impl StatCalculators {
         }
     }
 
+    #[allow(dead_code)]
     pub fn calculation_order(&self) -> &[StatId] {
         &self.calculation_order
     }

@@ -38,9 +38,7 @@ pub fn spawn_mob(
     let mut dirty = DirtyStats::default();
     let mut computed = ComputedStats::new(stat_registry.len());
 
-    for i in 0..stat_registry.len() {
-        dirty.mark(StatId(i as u32));
-    }
+    dirty.mark_all((0..stat_registry.len() as u32).map(StatId));
 
     for (stat_name, value) in &mob_def.base_stats {
         if let Some(id) = stat_registry.get(stat_name) {

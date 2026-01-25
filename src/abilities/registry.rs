@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use super::ids::{ActivatorTypeId, EffectTypeId, AbilityId, ParamId};
 use super::context::AbilityContext;
 use super::activator_def::{ActivatorState, ActivationResult, ActivatorDef};
-use super::effect_def::{EffectDef, ParamValue};
+use super::effect_def::EffectDef;
 use super::ability_def::AbilityDef;
 use super::components::AbilityInput;
 
@@ -52,6 +52,7 @@ impl ActivatorRegistry {
         self.name_to_id.get(name).copied()
     }
 
+    #[allow(dead_code)]
     pub fn get_name(&self, id: ActivatorTypeId) -> Option<&str> {
         self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
     }
@@ -101,6 +102,7 @@ impl EffectRegistry {
         self.name_to_id.get(name).copied()
     }
 
+    #[allow(dead_code)]
     pub fn get_name(&self, id: EffectTypeId) -> Option<&str> {
         self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
     }
@@ -123,6 +125,7 @@ impl EffectRegistry {
         self.param_name_to_id.get(name).copied()
     }
 
+    #[allow(dead_code)]
     pub fn get_param_name(&self, id: ParamId) -> Option<&str> {
         self.param_id_to_name.get(id.0 as usize).map(|s| s.as_str())
     }
@@ -142,10 +145,6 @@ pub struct AbilityRegistry {
 }
 
 impl AbilityRegistry {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn register(&mut self, def: AbilityDef) -> AbilityId {
         let id = def.id;
         self.abilities.insert(id, def);

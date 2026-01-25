@@ -10,6 +10,7 @@ pub struct MobType(pub String);
 
 #[derive(Component, Clone)]
 pub struct Collider {
+    #[allow(dead_code)]
     pub shape: ColliderShape,
     pub size: f32,
 }

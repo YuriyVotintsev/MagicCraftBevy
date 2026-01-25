@@ -17,7 +17,9 @@
       "WebFetch(domain:docs.rs)",
       "Bash(timeout 5 cargo run:*)",
       "Bash(timeout 8 cargo run:*)",
-      "WebFetch(domain:bevy.org)"
+      "WebFetch(domain:bevy.org)",
+      "Bash(grep:*)",
+      "Bash(RUST_LOG=info cargo run:*)"
     ]
   }
 }

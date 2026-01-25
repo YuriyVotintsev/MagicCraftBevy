@@ -6,6 +6,7 @@ use crate::stats::StatId;
 use super::ids::{EffectTypeId, ParamId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub enum ParamValueRaw {
     Float(f32),
     Int(i32),
@@ -17,6 +18,7 @@ pub enum ParamValueRaw {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct EffectDefRaw {
     pub effect_type: String,
     #[serde(default)]
@@ -24,6 +26,7 @@ pub struct EffectDefRaw {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum ParamValue {
     Float(f32),
     Int(i32),
@@ -48,6 +51,7 @@ impl EffectDef {
     }
 }
 
+#[allow(dead_code)]
 impl ParamValue {
     pub fn as_float(&self) -> Option<f32> {
         match self {

@@ -37,6 +37,7 @@ impl Abilities {
         self.map.insert(ability_id, AbilityInstance::new());
     }
 
+    #[allow(dead_code)]
     pub fn get(&self, ability_id: AbilityId) -> Option<&AbilityInstance> {
         self.map.get(&ability_id)
     }
@@ -45,10 +46,12 @@ impl Abilities {
         self.map.get_mut(&ability_id)
     }
 
+    #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = (AbilityId, &AbilityInstance)> {
         self.map.iter().map(|(&id, inst)| (id, inst))
     }
 
+    #[allow(dead_code)]
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (AbilityId, &mut AbilityInstance)> {
         self.map.iter_mut().map(|(&id, inst)| (id, inst))
     }
@@ -66,20 +69,6 @@ pub struct AbilityInput {
 impl AbilityInput {
     pub fn new() -> Self {
         Self::default()
-    }
-
-    pub fn request_cast(&mut self, ability_id: AbilityId) {
-        self.want_to_cast = Some(ability_id);
-    }
-
-    pub fn with_direction(mut self, direction: Vec3) -> Self {
-        self.target_direction = Some(direction);
-        self
-    }
-
-    pub fn with_point(mut self, point: Vec3) -> Self {
-        self.target_point = Some(point);
-        self
     }
 
     pub fn clear(&mut self) {

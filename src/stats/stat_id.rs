@@ -18,6 +18,7 @@ pub enum AggregationType {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct StatDef {
     pub name: String,
     pub aggregation: AggregationType,
@@ -52,14 +53,17 @@ impl StatRegistry {
         self.name_to_id.get(name).copied()
     }
 
+    #[allow(dead_code)]
     pub fn get_def(&self, id: StatId) -> Option<&StatDef> {
         self.stats.get(id.0 as usize)
     }
 
+    #[allow(dead_code)]
     pub fn name(&self, id: StatId) -> Option<&str> {
         self.stats.get(id.0 as usize).map(|d| d.name.as_str())
     }
 
+    #[allow(dead_code)]
     pub fn aggregation(&self, id: StatId) -> Option<&AggregationType> {
         self.stats.get(id.0 as usize).map(|d| &d.aggregation)
     }
@@ -68,10 +72,12 @@ impl StatRegistry {
         self.stats.len()
     }
 
+    #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
         self.stats.is_empty()
     }
 
+    #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = (StatId, &StatDef)> {
         self.stats
             .iter()

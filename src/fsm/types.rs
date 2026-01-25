@@ -6,6 +6,7 @@ use std::collections::HashMap;
 pub struct MobDef {
     pub name: String,
     #[serde(default)]
+    #[allow(dead_code)]
     pub abilities: Vec<String>,
     pub visual: VisualDef,
     #[serde(default)]

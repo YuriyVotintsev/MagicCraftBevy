@@ -79,6 +79,7 @@ pub enum Expression {
     Min(Box<Self>, Box<Self>),
     Max(Box<Self>, Box<Self>),
     Clamp { value: Box<Self>, min: f32, max: f32 },
+    #[allow(dead_code)]
     PercentOf { stat: StatId, percent: f32 },
 }
 

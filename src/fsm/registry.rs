@@ -21,6 +21,7 @@ impl MobRegistry {
         self.mobs.get(name)
     }
 
+    #[allow(dead_code)]
     pub fn iter(&self) -> impl Iterator<Item = (&String, &MobDef)> {
         self.mobs.iter()
     }

@@ -5,6 +5,7 @@ use super::activator_def::{ActivatorDef, ActivatorDefRaw};
 use super::effect_def::{EffectDef, EffectDefRaw};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AbilityDefRaw {
     pub id: String,
     #[serde(default)]
