@@ -12,7 +12,9 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:repoe-fork.github.io)",
       "WebFetch(domain:pathofexile.fandom.com)",
-      "Skill(commit)"
+      "Skill(commit)",
+      "Bash(wc:*)",
+      "WebFetch(domain:docs.rs)"
     ]
   }
 }

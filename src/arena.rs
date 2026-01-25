@@ -1,5 +1,8 @@
 use bevy::prelude::*;
 
+use crate::fsm::{spawn_mob, MobRegistry};
+use crate::stats::StatRegistry;
+
 pub const WINDOW_WIDTH: f32 = 1280.0;
 pub const WINDOW_HEIGHT: f32 = 720.0;
 pub const ARENA_WIDTH: f32 = 1920.0;
@@ -10,7 +13,7 @@ pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (setup_camera, spawn_arena))
+        app.add_systems(Startup, (setup_camera, spawn_arena, spawn_test_mob))
             .add_systems(PostUpdate, camera_follow);
     }
 }
@@ -98,4 +101,22 @@ fn camera_follow(
 
     camera_transform.translation.x = player_transform.translation.x;
     camera_transform.translation.y = player_transform.translation.y;
+}
+
+fn spawn_test_mob(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mob_registry: Res<MobRegistry>,
+    stat_registry: Res<StatRegistry>,
+) {
+    spawn_mob(
+        &mut commands,
+        &mut meshes,
+        &mut materials,
+        &mob_registry,
+        &stat_registry,
+        "slime",
+        Vec3::new(200.0, 100.0, 1.0),
+    );
 }

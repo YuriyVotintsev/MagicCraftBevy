@@ -3,6 +3,7 @@ mod arena;
 mod bullet;
 mod enemy;
 mod expression;
+mod fsm;
 mod player;
 mod stats;
 
@@ -13,6 +14,7 @@ use abilities::AbilityPlugin;
 use arena::{ArenaPlugin, WINDOW_HEIGHT, WINDOW_WIDTH};
 use bullet::BulletPlugin;
 use enemy::EnemyPlugin;
+use fsm::FsmPlugin;
 use player::PlayerPlugin;
 use stats::StatsPlugin;
 
@@ -33,6 +35,7 @@ fn main() {
             BulletPlugin,
             StatsPlugin,
             AbilityPlugin,
+            FsmPlugin,
         ))
         .run();
 }

@@ -33,3 +33,4 @@ tmpclaude-*
 # Environment
 .env
 .env.local
+.ai-review-comments.json

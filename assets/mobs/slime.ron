@@ -1,0 +1,20 @@
+(
+    name: "slime",
+    abilities: [],
+    visual: (
+        shape: Circle,
+        size: 30.0,
+        color: (0.2, 0.8, 0.2),
+    ),
+    initial_state: "chase",
+    states: {
+        "chase": (
+            behaviour: [MoveTowardPlayer],
+            transitions: [WhenNear([("attack", 50.0)])],
+        ),
+        "attack": (
+            behaviour: [],
+            transitions: [AfterTime("chase", 1.0)],
+        ),
+    }
+)
