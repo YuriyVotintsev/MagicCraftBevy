@@ -3,7 +3,6 @@
         size: 100.0,
         color: (0.2, 0.6, 1.0),
     ),
-    collider_size: 100.0,
     base_stats: {
         "strength_base": 10.0,
         "max_life_base": 100.0,

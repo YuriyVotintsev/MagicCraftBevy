@@ -1,5 +1,6 @@
 mod player_def;
 
+use avian2d::prelude::*;
 use bevy::prelude::*;
 use std::collections::HashMap;
 
@@ -7,8 +8,6 @@ use crate::abilities::{
     Abilities, AbilityDef, AbilityInput, AbilityRegistry, AbilityId,
     ActivatorDef, ActivatorRegistry, EffectDef, EffectRegistry, ParamValue,
 };
-use crate::arena::{ARENA_HEIGHT, ARENA_WIDTH};
-use crate::fsm::{Collider, ColliderShape};
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
@@ -28,7 +27,7 @@ impl Plugin for PlayerPlugin {
         let player_def = load_player_def("assets/player.ron");
         app.insert_resource(PlayerDefResource(player_def))
             .add_systems(Startup, spawn_player)
-            .add_systems(Update, (player_movement, player_shooting, clamp_player));
+            .add_systems(Update, (player_movement, player_shooting));
     }
 }
 
@@ -72,14 +71,12 @@ fn spawn_player(
     let mut abilities = Abilities::new();
     abilities.add(fireball_id);
 
-    let collider = Collider {
-        shape: ColliderShape::Circle,
-        size: player_def.collider_size,
-    };
-
     commands.spawn((
         Player,
-        collider,
+        Collider::rectangle(player_def.visual.size, player_def.visual.size),
+        RigidBody::Dynamic,
+        LockedAxes::ROTATION_LOCKED,
+        LinearVelocity::ZERO,
         modifiers,
         computed,
         dirty,
@@ -150,11 +147,10 @@ fn create_fireball_ability(
 
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
-    time: Res<Time>,
     stat_registry: Res<StatRegistry>,
-    mut query: Query<(&mut Transform, &ComputedStats), With<Player>>,
+    mut query: Query<(&mut LinearVelocity, &ComputedStats), With<Player>>,
 ) {
-    let Ok((mut transform, stats)) = query.single_mut() else {
+    let Ok((mut velocity, stats)) = query.single_mut() else {
         return;
     };
 
@@ -173,15 +169,16 @@ fn player_movement(
         direction.x += 1.0;
     }
 
-    if direction != Vec2::ZERO {
-        direction = direction.normalize();
-        let speed = stat_registry
-            .get("movement_speed")
-            .map(|id| stats.get(id))
-            .unwrap_or(400.0);
-        transform.translation.x += direction.x * speed * time.delta_secs();
-        transform.translation.y += direction.y * speed * time.delta_secs();
-    }
+    let speed = stat_registry
+        .get("movement_speed")
+        .map(|id| stats.get(id))
+        .unwrap_or(400.0);
+
+    velocity.0 = if direction != Vec2::ZERO {
+        direction.normalize() * speed
+    } else {
+        Vec2::ZERO
+    };
 }
 
 fn player_shooting(
@@ -227,16 +224,3 @@ fn player_shooting(
     }
 }
 
-fn clamp_player(
-    player_def_res: Res<PlayerDefResource>,
-    mut query: Query<&mut Transform, With<Player>>,
-) {
-    let player_size = player_def_res.0.visual.size;
-    let half_width = ARENA_WIDTH / 2.0 - player_size / 2.0;
-    let half_height = ARENA_HEIGHT / 2.0 - player_size / 2.0;
-
-    if let Ok(mut transform) = query.single_mut() {
-        transform.translation.x = transform.translation.x.clamp(-half_width, half_width);
-        transform.translation.y = transform.translation.y.clamp(-half_height, half_height);
-    }
-}

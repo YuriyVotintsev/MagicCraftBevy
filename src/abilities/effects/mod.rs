@@ -1,7 +1,7 @@
 mod spawn_projectile;
 mod damage;
 
-pub use spawn_projectile::{SpawnProjectileEffect, Projectile, ProjectileVelocity};
+pub use spawn_projectile::{SpawnProjectileEffect, Projectile};
 pub use damage::DamageEffect;
 
 use super::registry::EffectRegistry;

@@ -6,6 +6,7 @@ mod mob_ai;
 mod player;
 mod stats;
 
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use abilities::AbilityPlugin;
@@ -107,6 +108,7 @@ fn main() {
     }
 
     app.add_plugins((
+        PhysicsPlugins::default().with_length_unit(100.0),
         ArenaPlugin,
         PlayerPlugin,
         StatsPlugin,

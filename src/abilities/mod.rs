@@ -32,7 +32,7 @@ use bevy::prelude::*;
 mod projectile_systems;
 
 #[allow(unused_imports)]
-pub use effects::{Projectile, ProjectileVelocity};
+pub use effects::Projectile;
 
 pub struct AbilityPlugin;
 
@@ -49,7 +49,7 @@ impl Plugin for AbilityPlugin {
             .init_resource::<AbilityRegistry>()
             .add_systems(Update, (
                 dispatcher::ability_dispatcher,
-                projectile_systems::move_projectiles,
+                projectile_systems::despawn_out_of_bounds_projectiles,
                 projectile_systems::projectile_collision,
             ));
     }

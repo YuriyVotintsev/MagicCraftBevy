@@ -1,3 +1,4 @@
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::abilities::registry::{EffectExecutor, EffectRegistry};
@@ -6,15 +7,13 @@ use crate::abilities::context::AbilityContext;
 use crate::abilities::owner::OwnedBy;
 
 const DEFAULT_PROJECTILE_SPEED: f32 = 800.0;
+const DEFAULT_PROJECTILE_SIZE: f32 = 15.0;
 
 #[derive(Component)]
 pub struct Projectile {
     pub on_hit_effects: Vec<EffectDef>,
     pub context: AbilityContext,
 }
-
-#[derive(Component)]
-pub struct ProjectileVelocity(pub Vec2);
 
 pub struct SpawnProjectileEffect;
 
@@ -33,6 +32,11 @@ impl EffectExecutor for SpawnProjectileEffect {
             _ => DEFAULT_PROJECTILE_SPEED,
         };
 
+        let size = match def.get_param("size", registry) {
+            Some(ParamValue::Float(v)) => *v,
+            _ => DEFAULT_PROJECTILE_SIZE,
+        };
+
         let on_hit_effects = match def.get_param("on_hit", registry) {
             Some(ParamValue::EffectList(effects)) => effects.clone(),
             _ => Vec::new(),
@@ -46,11 +50,15 @@ impl EffectExecutor for SpawnProjectileEffect {
                 on_hit_effects,
                 context: ctx.clone(),
             },
-            ProjectileVelocity(velocity),
+            Collider::circle(size / 2.0),
+            Sensor,
+            CollisionEventsEnabled,
+            RigidBody::Kinematic,
+            LinearVelocity(velocity),
             OwnedBy::from_arc(ctx.caster, ctx.stats_snapshot.clone()),
             Sprite {
                 color: Color::srgb(1.0, 0.5, 0.0),
-                custom_size: Some(Vec2::splat(15.0)),
+                custom_size: Some(Vec2::splat(size)),
                 ..default()
             },
             Transform::from_translation(ctx.caster_position),

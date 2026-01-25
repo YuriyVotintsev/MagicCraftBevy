@@ -1,3 +1,4 @@
+use avian2d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
 
@@ -41,65 +42,61 @@ fn spawn_arena(mut commands: Commands) {
     let half_height = ARENA_HEIGHT / 2.0;
     let border_color = Color::srgb(0.8, 0.8, 0.8);
 
-    commands
-        .spawn(Sprite {
+    commands.spawn((
+        Sprite {
             color: border_color,
             custom_size: Some(Vec2::new(
                 ARENA_WIDTH + BORDER_THICKNESS * 2.0,
                 BORDER_THICKNESS,
             )),
             ..default()
-        })
-        .insert(Transform::from_xyz(
-            0.0,
-            half_height + BORDER_THICKNESS / 2.0,
-            0.0,
-        ));
+        },
+        Transform::from_xyz(0.0, half_height + BORDER_THICKNESS / 2.0, 0.0),
+        Collider::rectangle(ARENA_WIDTH + BORDER_THICKNESS * 2.0, BORDER_THICKNESS),
+        RigidBody::Static,
+    ));
 
-    commands
-        .spawn(Sprite {
+    commands.spawn((
+        Sprite {
             color: border_color,
             custom_size: Some(Vec2::new(
                 ARENA_WIDTH + BORDER_THICKNESS * 2.0,
                 BORDER_THICKNESS,
             )),
             ..default()
-        })
-        .insert(Transform::from_xyz(
-            0.0,
-            -half_height - BORDER_THICKNESS / 2.0,
-            0.0,
-        ));
+        },
+        Transform::from_xyz(0.0, -half_height - BORDER_THICKNESS / 2.0, 0.0),
+        Collider::rectangle(ARENA_WIDTH + BORDER_THICKNESS * 2.0, BORDER_THICKNESS),
+        RigidBody::Static,
+    ));
 
-    commands
-        .spawn(Sprite {
+    commands.spawn((
+        Sprite {
             color: border_color,
             custom_size: Some(Vec2::new(
                 BORDER_THICKNESS,
                 ARENA_HEIGHT + BORDER_THICKNESS * 2.0,
             )),
             ..default()
-        })
-        .insert(Transform::from_xyz(
-            -half_width - BORDER_THICKNESS / 2.0,
-            0.0,
-            0.0,
-        ));
+        },
+        Transform::from_xyz(-half_width - BORDER_THICKNESS / 2.0, 0.0, 0.0),
+        Collider::rectangle(BORDER_THICKNESS, ARENA_HEIGHT + BORDER_THICKNESS * 2.0),
+        RigidBody::Static,
+    ));
 
-    commands
-        .spawn(Sprite {
+    commands.spawn((
+        Sprite {
             color: border_color,
             custom_size: Some(Vec2::new(
                 BORDER_THICKNESS,
                 ARENA_HEIGHT + BORDER_THICKNESS * 2.0,
             )),
             ..default()
-        })
-        .insert(Transform::from_xyz(
-            half_width + BORDER_THICKNESS / 2.0,
-            0.0,
-            0.0,
-        ));
+        },
+        Transform::from_xyz(half_width + BORDER_THICKNESS / 2.0, 0.0, 0.0),
+        Collider::rectangle(BORDER_THICKNESS, ARENA_HEIGHT + BORDER_THICKNESS * 2.0),
+        RigidBody::Static,
+    ));
 }
 
 fn camera_follow(

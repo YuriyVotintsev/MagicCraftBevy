@@ -19,7 +19,8 @@
       "Bash(timeout 8 cargo run:*)",
       "WebFetch(domain:bevy.org)",
       "Bash(grep:*)",
-      "Bash(RUST_LOG=info cargo run:*)"
+      "Bash(RUST_LOG=info cargo run:*)",
+      "Bash(cargo run:*)"
     ]
   }
 }

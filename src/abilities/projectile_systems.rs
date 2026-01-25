@@ -1,25 +1,20 @@
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::arena::{ARENA_HEIGHT, ARENA_WIDTH};
-use crate::fsm::{Collider, MobType};
-use super::effects::{Projectile, ProjectileVelocity};
+use crate::fsm::MobType;
+use super::effects::Projectile;
 use super::registry::EffectRegistry;
 use super::context::ContextValue;
 
-const PROJECTILE_SIZE: f32 = 15.0;
-
-pub fn move_projectiles(
+pub fn despawn_out_of_bounds_projectiles(
     mut commands: Commands,
-    time: Res<Time>,
-    mut query: Query<(Entity, &mut Transform, &ProjectileVelocity), With<Projectile>>,
+    query: Query<(Entity, &Transform), With<Projectile>>,
 ) {
     let half_width = ARENA_WIDTH / 2.0;
     let half_height = ARENA_HEIGHT / 2.0;
 
-    for (entity, mut transform, velocity) in &mut query {
-        transform.translation.x += velocity.0.x * time.delta_secs();
-        transform.translation.y += velocity.0.y * time.delta_secs();
-
+    for (entity, transform) in &query {
         if transform.translation.x.abs() > half_width
             || transform.translation.y.abs() > half_height
         {
@@ -30,32 +25,33 @@ pub fn move_projectiles(
 
 pub fn projectile_collision(
     mut commands: Commands,
-    projectile_query: Query<(Entity, &Transform, &Projectile)>,
-    mob_query: Query<(Entity, &Transform, &Collider), With<MobType>>,
+    mut collision_events: MessageReader<CollisionStart>,
+    projectile_query: Query<&Projectile>,
+    mob_query: Query<Entity, With<MobType>>,
     effect_registry: Res<EffectRegistry>,
 ) {
-    for (projectile_entity, projectile_transform, projectile) in &projectile_query {
-        for (mob_entity, mob_transform, mob_collider) in &mob_query {
-            let distance = projectile_transform
-                .translation
-                .truncate()
-                .distance(mob_transform.translation.truncate());
+    for event in collision_events.read() {
+        let entity1 = event.collider1;
+        let entity2 = event.collider2;
 
-            let collision_distance = (PROJECTILE_SIZE + mob_collider.size) / 2.0;
+        let (projectile_entity, mob_entity) =
+            if projectile_query.contains(entity1) && mob_query.contains(entity2) {
+                (entity1, entity2)
+            } else if projectile_query.contains(entity2) && mob_query.contains(entity1) {
+                (entity2, entity1)
+            } else {
+                continue;
+            };
 
-            if distance < collision_distance {
-                let mut ctx = projectile.context.clone();
-                ctx.set_param("target", ContextValue::Entity(mob_entity));
-                ctx.set_param("hit_position", ContextValue::Vec3(projectile_transform.translation));
+        let projectile = projectile_query.get(projectile_entity).unwrap();
 
-                for effect_def in &projectile.on_hit_effects {
-                    effect_registry.execute(effect_def, &ctx, &mut commands);
-                }
+        let mut ctx = projectile.context.clone();
+        ctx.set_param("target", ContextValue::Entity(mob_entity));
 
-                commands.entity(projectile_entity).despawn();
-                commands.entity(mob_entity).despawn();
-                break;
-            }
+        for effect_def in &projectile.on_hit_effects {
+            effect_registry.execute(effect_def, &ctx, &mut commands);
         }
+
+        commands.entity(projectile_entity).despawn();
     }
 }

@@ -4,6 +4,7 @@ mod dirty_stats;
 mod health;
 mod loader;
 mod modifiers;
+mod pending_damage;
 mod stat_id;
 mod systems;
 
@@ -14,6 +15,7 @@ pub use health::Health;
 pub use loader::load_stats;
 #[allow(unused_imports)]
 pub use modifiers::{Modifier, Modifiers};
+pub use pending_damage::PendingDamage;
 #[allow(unused_imports)]
 pub use stat_id::{AggregationType, StatDef, StatId, StatRegistry};
 
@@ -31,10 +33,21 @@ impl Plugin for StatsPlugin {
         app.insert_resource(registry)
             .insert_resource(calculators)
             .add_systems(PreUpdate, systems::recalculate_stats)
+            .add_systems(Update, apply_pending_damage)
             .add_systems(
                 PostUpdate,
                 (health::sync_health_to_max_life, health::death_system).chain(),
             );
+    }
+}
+
+fn apply_pending_damage(
+    mut commands: Commands,
+    mut query: Query<(Entity, &PendingDamage, &mut Health)>,
+) {
+    for (entity, pending, mut health) in &mut query {
+        health.take_damage(pending.0);
+        commands.entity(entity).remove::<PendingDamage>();
     }
 }
 

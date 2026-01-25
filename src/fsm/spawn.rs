@@ -1,13 +1,14 @@
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
 
-use super::components::{Collider, CurrentState, MobType};
+use super::components::{CurrentState, MobType};
 use super::registry::MobRegistry;
 use super::systems::add_state_components;
-use super::types::Shape;
+use super::types::{ColliderShape, Shape};
 
 pub fn spawn_mob(
     commands: &mut Commands,
@@ -53,9 +54,11 @@ pub fn spawn_mob(
         .map(|id| computed.get(id))
         .unwrap_or(100.0);
 
-    let collider = Collider {
-        shape: mob_def.collider.shape,
-        size: mob_def.collider.size,
+    let collider = match mob_def.collider.shape {
+        ColliderShape::Circle => Collider::circle(mob_def.collider.size / 2.0),
+        ColliderShape::Rectangle => {
+            Collider::rectangle(mob_def.collider.size, mob_def.collider.size)
+        }
     };
 
     let entity = commands
@@ -66,6 +69,9 @@ pub fn spawn_mob(
             MobType(mob_name.to_string()),
             CurrentState(mob_def.initial_state.clone()),
             collider,
+            RigidBody::Dynamic,
+            LockedAxes::ROTATION_LOCKED,
+            LinearVelocity::ZERO,
             modifiers,
             computed,
             dirty,
