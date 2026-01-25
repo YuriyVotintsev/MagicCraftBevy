@@ -79,6 +79,7 @@ pub enum Expression {
     Min(Box<Self>, Box<Self>),
     Max(Box<Self>, Box<Self>),
     Clamp { value: Box<Self>, min: f32, max: f32 },
+    PercentOf { stat: StatId, percent: f32 },
 }
 
 impl Expression {
@@ -93,7 +94,7 @@ impl Expression {
             Self::Mul(a, b) => a.evaluate(modifiers, computed) * b.evaluate(modifiers, computed),
             Self::Div(a, b) => {
                 let divisor = b.evaluate(modifiers, computed);
-                if divisor == 0.0 {
+                if divisor.abs() < f32::EPSILON {
                     0.0
                 } else {
                     a.evaluate(modifiers, computed) / divisor
@@ -108,6 +109,12 @@ impl Expression {
                     .max(b.evaluate(modifiers, computed))
             }
             Self::Clamp { value, min, max } => value.evaluate(modifiers, computed).clamp(*min, *max),
+            Self::PercentOf { stat, percent } => computed.get(*stat) * percent,
         }
+    }
+
+    pub fn evaluate_computed(&self, computed: &ComputedStats) -> f32 {
+        let empty_modifiers = Modifiers::new();
+        self.evaluate(&empty_modifiers, computed)
     }
 }

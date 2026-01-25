@@ -1,3 +1,5 @@
+mod player_def;
+
 use bevy::prelude::*;
 use std::collections::HashMap;
 
@@ -6,54 +8,61 @@ use crate::abilities::{
     ActivatorDef, ActivatorRegistry, EffectDef, EffectRegistry, ParamValue,
 };
 use crate::arena::{ARENA_HEIGHT, ARENA_WIDTH};
+use crate::fsm::{Collider, ColliderShape};
 use crate::stats::{
-    ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry,
+    ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
 
-const PLAYER_SIZE: f32 = 100.0;
+use player_def::{load_player_def, PlayerDef};
 
 #[derive(Component)]
 pub struct Player;
+
+#[derive(Resource)]
+pub struct PlayerDefResource(pub PlayerDef);
 
 pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_player)
+        let player_def = load_player_def("assets/player.ron");
+        app.insert_resource(PlayerDefResource(player_def))
+            .add_systems(Startup, spawn_player)
             .add_systems(Update, (player_movement, player_shooting, clamp_player));
     }
 }
 
 fn spawn_player(
     mut commands: Commands,
+    player_def_res: Res<PlayerDefResource>,
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
     mut ability_registry: ResMut<AbilityRegistry>,
     activator_registry: Res<ActivatorRegistry>,
     mut effect_registry: ResMut<EffectRegistry>,
 ) {
+    let player_def = &player_def_res.0;
+
     let mut modifiers = Modifiers::new();
     let mut dirty = DirtyStats::default();
+    let mut computed = ComputedStats::new(stat_registry.len());
 
     for i in 0..stat_registry.len() {
         dirty.mark(StatId(i as u32));
     }
 
-    let add_base = |modifiers: &mut Modifiers, name: &str, value: f32| {
-        if let Some(stat_id) = stat_registry.get(name) {
-            modifiers.add(stat_id, value, None);
+    for (stat_name, value) in &player_def.base_stats {
+        if let Some(stat_id) = stat_registry.get(stat_name) {
+            modifiers.add(stat_id, *value, None);
         }
-    };
+    }
 
-    add_base(&mut modifiers, "strength_base", 10.0);
-    add_base(&mut modifiers, "max_life_base", 100.0);
-    add_base(&mut modifiers, "max_life_per_strength", 2.0);
-    add_base(&mut modifiers, "movement_speed_base", 400.0);
-    add_base(&mut modifiers, "physical_damage_base", 10.0);
-    add_base(&mut modifiers, "projectile_speed_base", 800.0);
-    add_base(&mut modifiers, "projectile_count", 1.0);
-    add_base(&mut modifiers, "crit_chance_base", 0.05);
-    add_base(&mut modifiers, "crit_multiplier_base", 1.5);
+    calculators.recalculate(&modifiers, &mut computed, &mut dirty);
+
+    let max_life = stat_registry
+        .get("max_life")
+        .map(|id| computed.get(id))
+        .unwrap_or(100.0);
 
     let fireball_id = create_fireball_ability(
         &stat_registry,
@@ -65,16 +74,27 @@ fn spawn_player(
     let mut abilities = Abilities::new();
     abilities.add(fireball_id);
 
+    let collider = Collider {
+        shape: ColliderShape::Circle,
+        size: player_def.collider_size,
+    };
+
     commands.spawn((
         Player,
+        collider,
         modifiers,
-        ComputedStats::new(stat_registry.len()),
+        computed,
         dirty,
+        Health::new(max_life),
         abilities,
         AbilityInput::new(),
         Sprite {
-            color: Color::srgb(0.2, 0.6, 1.0),
-            custom_size: Some(Vec2::splat(PLAYER_SIZE)),
+            color: Color::srgb(
+                player_def.visual.color[0],
+                player_def.visual.color[1],
+                player_def.visual.color[2],
+            ),
+            custom_size: Some(Vec2::splat(player_def.visual.size)),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 1.0),
@@ -209,9 +229,13 @@ fn player_shooting(
     }
 }
 
-fn clamp_player(mut query: Query<&mut Transform, With<Player>>) {
-    let half_width = ARENA_WIDTH / 2.0 - PLAYER_SIZE / 2.0;
-    let half_height = ARENA_HEIGHT / 2.0 - PLAYER_SIZE / 2.0;
+fn clamp_player(
+    player_def_res: Res<PlayerDefResource>,
+    mut query: Query<&mut Transform, With<Player>>,
+) {
+    let player_size = player_def_res.0.visual.size;
+    let half_width = ARENA_WIDTH / 2.0 - player_size / 2.0;
+    let half_height = ARENA_HEIGHT / 2.0 - player_size / 2.0;
 
     if let Ok(mut transform) = query.single_mut() {
         transform.translation.x = transform.translation.x.clamp(-half_width, half_width);

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
+use crate::fsm::StateTransition;
 use crate::player::Player;
-use crate::fsm::events::StateTransition;
 
 #[derive(Component)]
 pub struct WhenNear(pub Vec<(String, f32)>);

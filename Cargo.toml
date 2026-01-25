@@ -3,6 +3,10 @@ name = "magic_craft_bevy"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = []
+headless = []
+
 [dependencies]
 bevy = "0.18"
 rand = "0.9"

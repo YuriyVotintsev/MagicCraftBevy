@@ -1,3 +1,4 @@
+use bevy::prelude::*;
 use std::fs;
 use std::path::Path;
 
@@ -9,13 +10,14 @@ pub fn load_mobs(mobs_dir: &str) -> MobRegistry {
 
     let path = Path::new(mobs_dir);
     if !path.exists() {
+        warn!("Mobs directory does not exist: {}", mobs_dir);
         return registry;
     }
 
     let entries = match fs::read_dir(path) {
         Ok(entries) => entries,
         Err(e) => {
-            eprintln!("Failed to read mobs directory: {}", e);
+            error!("Failed to read mobs directory '{}': {}", mobs_dir, e);
             return registry;
         }
     };
@@ -26,15 +28,23 @@ pub fn load_mobs(mobs_dir: &str) -> MobRegistry {
             match fs::read_to_string(&file_path) {
                 Ok(content) => match ron::from_str::<MobDef>(&content) {
                     Ok(mob_def) => {
-                        println!("Loaded mob: {}", mob_def.name);
+                        info!("Loaded mob: {}", mob_def.name);
                         registry.insert(mob_def);
                     }
                     Err(e) => {
-                        eprintln!("Failed to parse mob file {:?}: {}", file_path, e);
+                        error!(
+                            "Failed to parse mob file '{}': {}",
+                            file_path.display(),
+                            e
+                        );
                     }
                 },
                 Err(e) => {
-                    eprintln!("Failed to read mob file {:?}: {}", file_path, e);
+                    error!(
+                        "Failed to read mob file '{}': {}",
+                        file_path.display(),
+                        e
+                    );
                 }
             }
         }

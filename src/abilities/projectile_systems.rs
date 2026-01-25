@@ -1,13 +1,12 @@
 use bevy::prelude::*;
 
 use crate::arena::{ARENA_HEIGHT, ARENA_WIDTH};
-use crate::fsm::MobType;
+use crate::fsm::{Collider, MobType};
 use super::effects::{Projectile, ProjectileVelocity};
 use super::registry::EffectRegistry;
 use super::context::ContextValue;
 
 const PROJECTILE_SIZE: f32 = 15.0;
-const ENEMY_SIZE: f32 = 30.0;
 
 pub fn move_projectiles(
     mut commands: Commands,
@@ -32,17 +31,19 @@ pub fn move_projectiles(
 pub fn projectile_collision(
     mut commands: Commands,
     projectile_query: Query<(Entity, &Transform, &Projectile)>,
-    mob_query: Query<(Entity, &Transform), With<MobType>>,
+    mob_query: Query<(Entity, &Transform, &Collider), With<MobType>>,
     effect_registry: Res<EffectRegistry>,
 ) {
     for (projectile_entity, projectile_transform, projectile) in &projectile_query {
-        for (mob_entity, mob_transform) in &mob_query {
+        for (mob_entity, mob_transform, mob_collider) in &mob_query {
             let distance = projectile_transform
                 .translation
                 .truncate()
                 .distance(mob_transform.translation.truncate());
 
-            if distance < (PROJECTILE_SIZE + ENEMY_SIZE) / 2.0 {
+            let collision_distance = (PROJECTILE_SIZE + mob_collider.size) / 2.0;
+
+            if distance < collision_distance {
                 let mut ctx = projectile.context.clone();
                 ctx.set_param("target", ContextValue::Entity(mob_entity));
                 ctx.set_param("hit_position", ContextValue::Vec3(projectile_transform.translation));

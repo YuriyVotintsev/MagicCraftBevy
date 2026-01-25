@@ -8,6 +8,10 @@ pub struct MobDef {
     #[serde(default)]
     pub abilities: Vec<String>,
     pub visual: VisualDef,
+    #[serde(default)]
+    pub collider: ColliderDef,
+    #[serde(default)]
+    pub base_stats: HashMap<String, f32>,
     pub initial_state: String,
     pub states: HashMap<String, StateDef>,
 }
@@ -17,6 +21,28 @@ pub struct VisualDef {
     pub shape: Shape,
     pub size: f32,
     pub color: [f32; 3],
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ColliderDef {
+    pub shape: ColliderShape,
+    pub size: f32,
+}
+
+impl Default for ColliderDef {
+    fn default() -> Self {
+        Self {
+            shape: ColliderShape::Circle,
+            size: 30.0,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Default)]
+pub enum ColliderShape {
+    #[default]
+    Circle,
+    Rectangle,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]

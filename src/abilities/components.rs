@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use bevy::prelude::*;
 
 use super::ids::AbilityId;
@@ -5,22 +6,26 @@ use super::activator_def::ActivatorState;
 
 #[derive(Debug, Clone)]
 pub struct AbilityInstance {
-    pub def_id: AbilityId,
     pub state: ActivatorState,
 }
 
 impl AbilityInstance {
-    pub fn new(def_id: AbilityId) -> Self {
+    pub fn new() -> Self {
         Self {
-            def_id,
             state: ActivatorState::new(),
         }
     }
 }
 
+impl Default for AbilityInstance {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Component, Default)]
 pub struct Abilities {
-    pub list: Vec<AbilityInstance>,
+    pub map: HashMap<AbilityId, AbilityInstance>,
 }
 
 impl Abilities {
@@ -29,15 +34,23 @@ impl Abilities {
     }
 
     pub fn add(&mut self, ability_id: AbilityId) {
-        self.list.push(AbilityInstance::new(ability_id));
+        self.map.insert(ability_id, AbilityInstance::new());
     }
 
     pub fn get(&self, ability_id: AbilityId) -> Option<&AbilityInstance> {
-        self.list.iter().find(|a| a.def_id == ability_id)
+        self.map.get(&ability_id)
     }
 
     pub fn get_mut(&mut self, ability_id: AbilityId) -> Option<&mut AbilityInstance> {
-        self.list.iter_mut().find(|a| a.def_id == ability_id)
+        self.map.get_mut(&ability_id)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (AbilityId, &AbilityInstance)> {
+        self.map.iter().map(|(&id, inst)| (id, inst))
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = (AbilityId, &mut AbilityInstance)> {
+        self.map.iter_mut().map(|(&id, inst)| (id, inst))
     }
 }
 

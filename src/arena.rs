@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::fsm::{spawn_mob, MobRegistry};
-use crate::stats::StatRegistry;
+use crate::stats::{StatCalculators, StatRegistry};
 
 pub const WINDOW_WIDTH: f32 = 1280.0;
 pub const WINDOW_HEIGHT: f32 = 720.0;
@@ -123,6 +123,7 @@ fn spawn_slimes(
     mut timer: ResMut<SlimeSpawnTimer>,
     mob_registry: Res<MobRegistry>,
     stat_registry: Res<StatRegistry>,
+    calculators: Res<StatCalculators>,
 ) {
     if timer.0.tick(time.delta()).just_finished() {
         let mut rng = rand::rng();
@@ -138,6 +139,7 @@ fn spawn_slimes(
             &mut materials,
             &mob_registry,
             &stat_registry,
+            &calculators,
             "slime",
             Vec3::new(x, y, 1.0),
         );

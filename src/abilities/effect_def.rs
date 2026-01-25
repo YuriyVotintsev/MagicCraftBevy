@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
+use crate::expression::Expression;
 use crate::stats::StatId;
 use super::ids::{EffectTypeId, ParamId};
-use super::expression::StatExpression;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ParamValueRaw {
@@ -30,7 +30,7 @@ pub enum ParamValue {
     Bool(bool),
     String(String),
     Stat(StatId),
-    Expr(StatExpression),
+    Expr(Expression),
     Effect(Box<EffectDef>),
     EffectList(Vec<EffectDef>),
 }
@@ -77,7 +77,7 @@ impl ParamValue {
         }
     }
 
-    pub fn as_expr(&self) -> Option<&StatExpression> {
+    pub fn as_expr(&self) -> Option<&Expression> {
         match self {
             Self::Expr(v) => Some(v),
             _ => None,

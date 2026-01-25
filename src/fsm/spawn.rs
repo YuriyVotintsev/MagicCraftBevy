@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 
-use crate::stats::{ComputedStats, DirtyStats, Modifiers, StatId, StatRegistry};
+use crate::stats::{
+    ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
+};
 
-use super::components::{CurrentState, MobType};
+use super::components::{Collider, CurrentState, MobType};
 use super::registry::MobRegistry;
 use super::systems::add_state_components;
 use super::types::Shape;
@@ -13,6 +15,7 @@ pub fn spawn_mob(
     materials: &mut Assets<ColorMaterial>,
     mob_registry: &MobRegistry,
     stat_registry: &StatRegistry,
+    calculators: &StatCalculators,
     mob_name: &str,
     position: Vec3,
 ) -> Option<Entity> {
@@ -33,17 +36,29 @@ pub fn spawn_mob(
 
     let mut modifiers = Modifiers::new();
     let mut dirty = DirtyStats::default();
+    let mut computed = ComputedStats::new(stat_registry.len());
 
     for i in 0..stat_registry.len() {
         dirty.mark(StatId(i as u32));
     }
 
-    if let Some(id) = stat_registry.get("movement_speed_base") {
-        modifiers.add(id, 100.0, None);
+    for (stat_name, value) in &mob_def.base_stats {
+        if let Some(id) = stat_registry.get(stat_name) {
+            modifiers.add(id, *value, None);
+        }
     }
-    if let Some(id) = stat_registry.get("max_life_base") {
-        modifiers.add(id, 50.0, None);
-    }
+
+    calculators.recalculate(&modifiers, &mut computed, &mut dirty);
+
+    let max_life = stat_registry
+        .get("max_life")
+        .map(|id| computed.get(id))
+        .unwrap_or(100.0);
+
+    let collider = Collider {
+        shape: mob_def.collider.shape,
+        size: mob_def.collider.size,
+    };
 
     let entity = commands
         .spawn((
@@ -52,16 +67,18 @@ pub fn spawn_mob(
             Transform::from_translation(position),
             MobType(mob_name.to_string()),
             CurrentState(mob_def.initial_state.clone()),
+            collider,
             modifiers,
-            ComputedStats::new(stat_registry.len()),
+            computed,
             dirty,
+            Health::new(max_life),
         ))
         .id();
 
     let initial_state = mob_def.states.get(&mob_def.initial_state)?;
     add_state_components(commands, entity, mob_def, initial_state);
 
-    println!("Spawned mob '{}' at {:?}", mob_name, position);
+    info!("Spawned mob '{}' at {:?}", mob_name, position);
 
     Some(entity)
 }

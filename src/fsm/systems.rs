@@ -1,10 +1,9 @@
 use bevy::prelude::*;
 
-use super::behaviour::{MoveTowardPlayer, UseAbilities};
+use crate::mob_ai::{AfterTime, MoveTowardPlayer, UseAbilities, WhenNear};
 use super::components::{CurrentState, MobType};
 use super::events::StateTransition;
 use super::registry::MobRegistry;
-use super::transitions::{AfterTime, WhenNear};
 use super::types::{BehaviourDef, MobDef, TransitionDef};
 
 pub fn fsm_transition_system(
@@ -39,7 +38,7 @@ pub fn fsm_transition_system(
 
         current_state.0 = new_state_name.clone();
 
-        println!(
+        info!(
             "FSM: {} transitioned from '{}' to '{}'",
             mob_def.name, old_state_name, new_state_name
         );

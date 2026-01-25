@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::fsm::events::StateTransition;
+use crate::fsm::StateTransition;
 
 #[derive(Component)]
 pub struct AfterTime {

@@ -21,10 +21,18 @@ pub fn load_stats(
     stat_ids_path: &str,
     calculators_path: &str,
 ) -> (StatRegistry, StatCalculators) {
-    let stat_defs_content = fs::read_to_string(stat_ids_path)
-        .expect(&format!("Failed to read stat_ids file: {}", stat_ids_path));
-    let stat_defs: Vec<StatDefRaw> = ron::from_str(&stat_defs_content)
-        .expect(&format!("Failed to parse stat_ids RON: {}", stat_ids_path));
+    let stat_defs_content = fs::read_to_string(stat_ids_path).unwrap_or_else(|e| {
+        panic!(
+            "Failed to read stat_ids file '{}': {}",
+            stat_ids_path, e
+        )
+    });
+    let stat_defs: Vec<StatDefRaw> = ron::from_str(&stat_defs_content).unwrap_or_else(|e| {
+        panic!(
+            "Failed to parse stat_ids RON '{}': {}\nContent:\n{}",
+            stat_ids_path, e, stat_defs_content
+        )
+    });
 
     let mut registry = StatRegistry::new();
     for def in &stat_defs {
@@ -43,9 +51,24 @@ pub fn load_stats(
                 calculators.set(stat_id, Expression::ModifierProduct(stat_id), vec![]);
             }
             AggregationType::Standard { base, increased, more } => {
-                let base_id = registry.get(base).expect(&format!("Unknown stat: {}", base));
-                let increased_id = registry.get(increased).expect(&format!("Unknown stat: {}", increased));
-                let more_id = registry.get(more).expect(&format!("Unknown stat: {}", more));
+                let base_id = registry.get(base).unwrap_or_else(|| {
+                    panic!(
+                        "Standard aggregation for '{}' references unknown base stat: '{}'",
+                        def.name, base
+                    )
+                });
+                let increased_id = registry.get(increased).unwrap_or_else(|| {
+                    panic!(
+                        "Standard aggregation for '{}' references unknown increased stat: '{}'",
+                        def.name, increased
+                    )
+                });
+                let more_id = registry.get(more).unwrap_or_else(|| {
+                    panic!(
+                        "Standard aggregation for '{}' references unknown more stat: '{}'",
+                        def.name, more
+                    )
+                });
 
                 let formula = Expression::Mul(
                     Box::new(Expression::Mul(
@@ -65,20 +88,38 @@ pub fn load_stats(
         }
     }
 
-    let custom_calcs_content = fs::read_to_string(calculators_path)
-        .expect(&format!("Failed to read calculators file: {}", calculators_path));
-    let custom_calcs: Vec<CalculatorDefRaw> = ron::from_str(&custom_calcs_content)
-        .expect(&format!("Failed to parse calculators RON: {}", calculators_path));
+    let custom_calcs_content = fs::read_to_string(calculators_path).unwrap_or_else(|e| {
+        panic!(
+            "Failed to read calculators file '{}': {}",
+            calculators_path, e
+        )
+    });
+    let custom_calcs: Vec<CalculatorDefRaw> = ron::from_str(&custom_calcs_content).unwrap_or_else(|e| {
+        panic!(
+            "Failed to parse calculators RON '{}': {}\nContent:\n{}",
+            calculators_path, e, custom_calcs_content
+        )
+    });
 
     for calc in custom_calcs {
-        let stat_id = registry
-            .get(&calc.stat)
-            .expect(&format!("Unknown stat in calculator: {}", calc.stat));
+        let stat_id = registry.get(&calc.stat).unwrap_or_else(|| {
+            panic!(
+                "Calculator references unknown stat: '{}' (calculators file: {})",
+                calc.stat, calculators_path
+            )
+        });
         let formula = calc.formula.resolve(&registry);
         let deps: Vec<StatId> = calc
             .depends_on
             .iter()
-            .map(|s| registry.get(s).expect(&format!("Unknown dependency stat: {}", s)))
+            .map(|s| {
+                registry.get(s).unwrap_or_else(|| {
+                    panic!(
+                        "Calculator for '{}' references unknown dependency stat: '{}'",
+                        calc.stat, s
+                    )
+                })
+            })
             .collect();
         calculators.set(stat_id, formula, deps);
     }

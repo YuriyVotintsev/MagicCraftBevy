@@ -14,7 +14,9 @@
       "WebFetch(domain:pathofexile.fandom.com)",
       "Skill(commit)",
       "Bash(wc:*)",
-      "WebFetch(domain:docs.rs)"
+      "WebFetch(domain:docs.rs)",
+      "Bash(timeout 5 cargo run:*)",
+      "Bash(timeout 8 cargo run:*)"
     ]
   }
 }

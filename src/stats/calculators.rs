@@ -55,36 +55,57 @@ impl StatCalculators {
     }
 
     fn topological_sort(&self) -> Vec<StatId> {
-        let mut result = Vec::new();
-        let mut visited = HashMap::new();
+        let n = self.entries.len();
+        let mut in_degree: Vec<usize> = vec![0; n];
+        let mut adjacency: Vec<Vec<StatId>> = vec![Vec::new(); n];
 
         for (idx, entry) in self.entries.iter().enumerate() {
-            if entry.is_some() {
-                self.visit(StatId(idx as u32), &mut visited, &mut result);
+            if let Some(entry) = entry {
+                for &dep in &entry.depends_on {
+                    let dep_idx = dep.0 as usize;
+                    if dep_idx < n {
+                        adjacency[dep_idx].push(StatId(idx as u32));
+                        in_degree[idx] += 1;
+                    }
+                }
             }
+        }
+
+        let mut queue: Vec<StatId> = Vec::new();
+        for (idx, entry) in self.entries.iter().enumerate() {
+            if entry.is_some() && in_degree[idx] == 0 {
+                queue.push(StatId(idx as u32));
+            }
+        }
+
+        let mut result = Vec::new();
+        while let Some(stat) = queue.pop() {
+            result.push(stat);
+            let idx = stat.0 as usize;
+            for &dependent in &adjacency[idx] {
+                let dep_idx = dependent.0 as usize;
+                in_degree[dep_idx] -= 1;
+                if in_degree[dep_idx] == 0 {
+                    queue.push(dependent);
+                }
+            }
+        }
+
+        let expected_count = self.entries.iter().filter(|e| e.is_some()).count();
+        if result.len() != expected_count {
+            let cycle_members: Vec<u32> = in_degree
+                .iter()
+                .enumerate()
+                .filter(|(idx, &deg)| deg > 0 && self.entries[*idx].is_some())
+                .map(|(idx, _)| idx as u32)
+                .collect();
+            panic!(
+                "Circular dependency detected in stats calculation! Stats involved: {:?}",
+                cycle_members
+            );
         }
 
         result
-    }
-
-    fn visit(&self, stat: StatId, visited: &mut HashMap<StatId, bool>, result: &mut Vec<StatId>) {
-        if let Some(&in_progress) = visited.get(&stat) {
-            if in_progress {
-                panic!("Circular dependency detected for stat {:?}", stat.0);
-            }
-            return;
-        }
-
-        visited.insert(stat, true);
-
-        if let Some(Some(entry)) = self.entries.get(stat.0 as usize) {
-            for &dep in &entry.depends_on {
-                self.visit(dep, visited, result);
-            }
-        }
-
-        visited.insert(stat, false);
-        result.push(stat);
     }
 
     pub fn invalidate(&self, stat: StatId, dirty: &mut DirtyStats) {
@@ -109,5 +130,25 @@ impl StatCalculators {
 
     pub fn calculation_order(&self) -> &[StatId] {
         &self.calculation_order
+    }
+
+    pub fn recalculate(
+        &self,
+        modifiers: &Modifiers,
+        computed: &mut ComputedStats,
+        dirty: &mut DirtyStats,
+    ) {
+        if dirty.is_empty() {
+            return;
+        }
+
+        for &stat in &self.calculation_order {
+            if dirty.stats.contains(&stat) {
+                let value = self.calculate(stat, modifiers, computed);
+                computed.set(stat, value);
+            }
+        }
+
+        dirty.clear();
     }
 }

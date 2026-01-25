@@ -7,19 +7,6 @@ pub fn recalculate_stats(
     mut query: Query<(&Modifiers, &mut ComputedStats, &mut DirtyStats)>,
 ) {
     for (modifiers, mut computed, mut dirty) in &mut query {
-        if dirty.is_empty() {
-            continue;
-        }
-
-        for &stat in calculators.calculation_order() {
-            if !dirty.stats.contains(&stat) {
-                continue;
-            }
-
-            let value = calculators.calculate(stat, modifiers, &computed);
-            computed.set(stat, value);
-        }
-
-        dirty.clear();
+        calculators.recalculate(modifiers, &mut computed, &mut dirty);
     }
 }

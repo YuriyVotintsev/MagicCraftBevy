@@ -1,8 +1,6 @@
 mod ids;
-mod string_registry;
 mod context;
 mod owner;
-mod expression;
 mod effect_def;
 mod activator_def;
 mod ability_def;
@@ -14,10 +12,8 @@ pub mod activators;
 pub mod effects;
 
 pub use ids::*;
-pub use string_registry::StringRegistry;
 pub use context::{AbilityContext, ContextValue};
 pub use owner::OwnedBy;
-pub use expression::StatExpression;
 pub use effect_def::{EffectDef, EffectDefRaw, ParamValue, ParamValueRaw};
 pub use activator_def::{ActivatorDef, ActivatorDefRaw, ActivatorState, ActivationResult};
 pub use ability_def::{AbilityDef, AbilityDefRaw};

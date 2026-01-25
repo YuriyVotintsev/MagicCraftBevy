@@ -17,7 +17,7 @@ impl EffectExecutor for DamageEffect {
         let amount = match def.get_param("amount", registry) {
             Some(ParamValue::Float(v)) => *v,
             Some(ParamValue::Stat(stat_id)) => ctx.stats_snapshot.get(*stat_id),
-            Some(ParamValue::Expr(expr)) => expr.evaluate(&ctx.stats_snapshot),
+            Some(ParamValue::Expr(expr)) => expr.evaluate_computed(&ctx.stats_snapshot),
             _ => 0.0,
         };
 

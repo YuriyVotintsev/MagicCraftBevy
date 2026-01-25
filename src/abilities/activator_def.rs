@@ -19,7 +19,7 @@ pub struct ActivatorDef {
 
 #[derive(Debug, Clone, Default)]
 pub struct ActivatorState {
-    pub params: HashMap<String, f32>,
+    pub params: HashMap<ParamId, f32>,
 }
 
 impl ActivatorState {
@@ -27,12 +27,12 @@ impl ActivatorState {
         Self::default()
     }
 
-    pub fn get(&self, key: &str) -> f32 {
-        self.params.get(key).copied().unwrap_or(0.0)
+    pub fn get(&self, key: ParamId) -> f32 {
+        self.params.get(&key).copied().unwrap_or(0.0)
     }
 
-    pub fn set(&mut self, key: &str, value: f32) {
-        self.params.insert(key.to_string(), value);
+    pub fn set(&mut self, key: ParamId, value: f32) {
+        self.params.insert(key, value);
     }
 }
 
