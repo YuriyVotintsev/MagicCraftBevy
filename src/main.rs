@@ -18,29 +18,80 @@ use stats::StatsPlugin;
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
 #[cfg(not(feature = "headless"))]
 use bevy::window::WindowResolution;
+#[cfg(feature = "headless")]
+use bevy::window::ExitCondition;
 
 #[cfg(feature = "headless")]
 use bevy::app::ScheduleRunnerPlugin;
 #[cfg(feature = "headless")]
 use std::time::Duration;
 
+#[cfg(feature = "headless")]
+#[derive(Resource)]
+struct HeadlessTimeout {
+    timer: Timer,
+}
+
+#[cfg(feature = "headless")]
+fn parse_timeout_arg() -> f32 {
+    let args: Vec<String> = std::env::args().collect();
+
+    for i in 0..args.len() {
+        if args[i] == "--timeout" || args[i] == "-t" {
+            if let Some(value) = args.get(i + 1) {
+                return value.parse().unwrap_or_else(|_| {
+                    eprintln!("Error: Invalid timeout value '{}'", value);
+                    std::process::exit(1);
+                });
+            } else {
+                eprintln!("Error: --timeout requires a value in seconds");
+                std::process::exit(1);
+            }
+        }
+    }
+
+    eprintln!("Error: Headless mode requires --timeout <seconds> argument");
+    eprintln!("Usage: cargo run --features headless -- --timeout 10");
+    std::process::exit(1);
+}
+
+#[cfg(feature = "headless")]
+fn headless_timeout_system(
+    time: Res<Time>,
+    mut timeout: ResMut<HeadlessTimeout>,
+    mut exit: MessageWriter<AppExit>,
+) {
+    if timeout.timer.tick(time.delta()).just_finished() {
+        info!("Headless timeout reached, exiting");
+        exit.write(AppExit::Success);
+    }
+}
+
 fn main() {
     let mut app = App::new();
 
     #[cfg(feature = "headless")]
     {
+        let timeout_secs = parse_timeout_arg();
+        info!("Running in headless mode with {}s timeout", timeout_secs);
+
         app.add_plugins(
             DefaultPlugins
                 .build()
                 .disable::<bevy::winit::WinitPlugin>()
                 .set(WindowPlugin {
                     primary_window: None,
+                    exit_condition: ExitCondition::DontExit,
                     ..default()
                 }),
         )
         .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(
             1.0 / 60.0,
-        )));
+        )))
+        .insert_resource(HeadlessTimeout {
+            timer: Timer::from_seconds(timeout_secs, TimerMode::Once),
+        })
+        .add_systems(Update, headless_timeout_system);
     }
 
     #[cfg(not(feature = "headless"))]
