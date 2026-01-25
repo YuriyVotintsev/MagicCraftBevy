@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::Rng;
 
 use crate::fsm::{spawn_mob, MobRegistry};
 use crate::stats::StatRegistry;
@@ -9,12 +10,23 @@ pub const ARENA_WIDTH: f32 = 1920.0;
 pub const ARENA_HEIGHT: f32 = 1080.0;
 pub const BORDER_THICKNESS: f32 = 10.0;
 
+const SLIME_SPAWN_INTERVAL: f32 = 1.5;
+const SLIME_SIZE: f32 = 30.0;
+
+#[derive(Resource)]
+struct SlimeSpawnTimer(Timer);
+
 pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (setup_camera, spawn_arena, spawn_test_mob))
-            .add_systems(PostUpdate, camera_follow);
+        app.insert_resource(SlimeSpawnTimer(Timer::from_seconds(
+            SLIME_SPAWN_INTERVAL,
+            TimerMode::Repeating,
+        )))
+        .add_systems(Startup, (setup_camera, spawn_arena))
+        .add_systems(Update, spawn_slimes)
+        .add_systems(PostUpdate, camera_follow);
     }
 }
 
@@ -103,20 +115,31 @@ fn camera_follow(
     camera_transform.translation.y = player_transform.translation.y;
 }
 
-fn spawn_test_mob(
+fn spawn_slimes(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    time: Res<Time>,
+    mut timer: ResMut<SlimeSpawnTimer>,
     mob_registry: Res<MobRegistry>,
     stat_registry: Res<StatRegistry>,
 ) {
-    spawn_mob(
-        &mut commands,
-        &mut meshes,
-        &mut materials,
-        &mob_registry,
-        &stat_registry,
-        "slime",
-        Vec3::new(200.0, 100.0, 1.0),
-    );
+    if timer.0.tick(time.delta()).just_finished() {
+        let mut rng = rand::rng();
+        let half_width = ARENA_WIDTH / 2.0 - SLIME_SIZE / 2.0;
+        let half_height = ARENA_HEIGHT / 2.0 - SLIME_SIZE / 2.0;
+
+        let x = rng.random_range(-half_width..half_width);
+        let y = rng.random_range(-half_height..half_height);
+
+        spawn_mob(
+            &mut commands,
+            &mut meshes,
+            &mut materials,
+            &mob_registry,
+            &stat_registry,
+            "slime",
+            Vec3::new(x, y, 1.0),
+        );
+    }
 }

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::arena::{ARENA_HEIGHT, ARENA_WIDTH};
-use crate::enemy::Enemy;
+use crate::fsm::MobType;
 use super::effects::{Projectile, ProjectileVelocity};
 use super::registry::EffectRegistry;
 use super::context::ContextValue;
@@ -32,19 +32,19 @@ pub fn move_projectiles(
 pub fn projectile_collision(
     mut commands: Commands,
     projectile_query: Query<(Entity, &Transform, &Projectile)>,
-    enemy_query: Query<(Entity, &Transform), With<Enemy>>,
+    mob_query: Query<(Entity, &Transform), With<MobType>>,
     effect_registry: Res<EffectRegistry>,
 ) {
     for (projectile_entity, projectile_transform, projectile) in &projectile_query {
-        for (enemy_entity, enemy_transform) in &enemy_query {
+        for (mob_entity, mob_transform) in &mob_query {
             let distance = projectile_transform
                 .translation
                 .truncate()
-                .distance(enemy_transform.translation.truncate());
+                .distance(mob_transform.translation.truncate());
 
             if distance < (PROJECTILE_SIZE + ENEMY_SIZE) / 2.0 {
                 let mut ctx = projectile.context.clone();
-                ctx.set_param("target", ContextValue::Entity(enemy_entity));
+                ctx.set_param("target", ContextValue::Entity(mob_entity));
                 ctx.set_param("hit_position", ContextValue::Vec3(projectile_transform.translation));
 
                 for effect_def in &projectile.on_hit_effects {
@@ -52,7 +52,7 @@ pub fn projectile_collision(
                 }
 
                 commands.entity(projectile_entity).despawn();
-                commands.entity(enemy_entity).despawn();
+                commands.entity(mob_entity).despawn();
                 break;
             }
         }

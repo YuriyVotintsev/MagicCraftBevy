@@ -1,7 +1,6 @@
 mod abilities;
 mod arena;
 mod bullet;
-mod enemy;
 mod expression;
 mod fsm;
 mod player;
@@ -13,7 +12,6 @@ use bevy::window::WindowResolution;
 use abilities::AbilityPlugin;
 use arena::{ArenaPlugin, WINDOW_HEIGHT, WINDOW_WIDTH};
 use bullet::BulletPlugin;
-use enemy::EnemyPlugin;
 use fsm::FsmPlugin;
 use player::PlayerPlugin;
 use stats::StatsPlugin;
@@ -31,7 +29,6 @@ fn main() {
         .add_plugins((
             ArenaPlugin,
             PlayerPlugin,
-            EnemyPlugin,
             BulletPlugin,
             StatsPlugin,
             AbilityPlugin,

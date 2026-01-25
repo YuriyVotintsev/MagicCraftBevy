@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
 use crate::arena::{ARENA_HEIGHT, ARENA_WIDTH};
-use crate::enemy::{Enemy, ENEMY_SIZE};
+use crate::fsm::MobType;
+
+const MOB_SIZE: f32 = 30.0;
 
 pub const BULLET_SIZE: f32 = 15.0;
 
@@ -58,18 +60,18 @@ fn move_bullets(
 fn bullet_enemy_collision(
     mut commands: Commands,
     bullet_query: Query<(Entity, &Transform), With<Bullet>>,
-    enemy_query: Query<(Entity, &Transform), With<Enemy>>,
+    mob_query: Query<(Entity, &Transform), With<MobType>>,
 ) {
     for (bullet_entity, bullet_transform) in &bullet_query {
-        for (enemy_entity, enemy_transform) in &enemy_query {
+        for (mob_entity, mob_transform) in &mob_query {
             let distance = bullet_transform
                 .translation
                 .truncate()
-                .distance(enemy_transform.translation.truncate());
+                .distance(mob_transform.translation.truncate());
 
-            if distance < (BULLET_SIZE + ENEMY_SIZE) / 2.0 {
+            if distance < (BULLET_SIZE + MOB_SIZE) / 2.0 {
                 commands.entity(bullet_entity).despawn();
-                commands.entity(enemy_entity).despawn();
+                commands.entity(mob_entity).despawn();
             }
         }
     }
