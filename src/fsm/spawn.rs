@@ -2,6 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::Faction;
+use crate::GameState;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
@@ -74,6 +75,7 @@ pub fn spawn_mob(
     let entity = commands
         .spawn((
             (
+                DespawnOnExit(GameState::Playing),
                 Mesh2d(mesh),
                 MeshMaterial2d(materials.add(color)),
                 Transform::from_translation(position),

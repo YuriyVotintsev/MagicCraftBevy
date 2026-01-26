@@ -2,6 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::GameState;
 use crate::abilities::AbilityRegistry;
 use crate::fsm::{spawn_mob, MobRegistry};
 use crate::stats::{StatCalculators, StatRegistry};
@@ -32,9 +33,20 @@ impl Plugin for ArenaPlugin {
             TimerMode::Repeating,
         )))
         .add_systems(Startup, (setup_camera, spawn_arena))
-        .add_systems(Update, spawn_enemies)
-        .add_systems(PostUpdate, camera_follow);
+        .add_systems(OnEnter(GameState::Playing), reset_spawn_timer)
+        .add_systems(
+            Update,
+            spawn_enemies.run_if(in_state(GameState::Playing)),
+        )
+        .add_systems(
+            PostUpdate,
+            camera_follow.run_if(in_state(GameState::Playing)),
+        );
     }
+}
+
+fn reset_spawn_timer(mut timer: ResMut<SlimeSpawnTimer>) {
+    timer.0.reset();
 }
 
 fn setup_camera(mut commands: Commands) {

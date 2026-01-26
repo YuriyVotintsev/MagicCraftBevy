@@ -23,7 +23,8 @@
       "Bash(cargo run:*)",
       "Bash(claude-code agent start:*)",
       "Bash(ls:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(xargs:*)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"

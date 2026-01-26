@@ -3,11 +3,14 @@ mod arena;
 mod expression;
 mod faction;
 mod fsm;
+mod game_state;
 mod mob_ai;
 mod player;
 mod stats;
+mod ui;
 
 pub use faction::Faction;
+pub use game_state::GameState;
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -17,6 +20,7 @@ use arena::ArenaPlugin;
 use fsm::FsmPlugin;
 use player::PlayerPlugin;
 use stats::StatsPlugin;
+use ui::UiPlugin;
 
 #[cfg(not(feature = "headless"))]
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
@@ -110,13 +114,15 @@ fn main() {
         }));
     }
 
-    app.add_plugins((
-        PhysicsPlugins::default().with_length_unit(100.0),
-        ArenaPlugin,
-        PlayerPlugin,
-        StatsPlugin,
-        AbilityPlugin,
-        FsmPlugin,
-    ))
-    .run();
+    app.init_state::<GameState>()
+        .add_plugins((
+            PhysicsPlugins::default().with_length_unit(100.0),
+            ArenaPlugin,
+            PlayerPlugin,
+            StatsPlugin,
+            AbilityPlugin,
+            FsmPlugin,
+            UiPlugin,
+        ))
+        .run();
 }

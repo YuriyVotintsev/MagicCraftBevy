@@ -1,5 +1,8 @@
 use bevy::prelude::*;
 
+use crate::GameState;
+use crate::player::Player;
+
 use super::{ComputedStats, StatRegistry};
 
 #[derive(Component)]
@@ -44,10 +47,14 @@ pub fn sync_health_to_max_life(
 
 pub fn death_system(
     mut commands: Commands,
-    query: Query<(Entity, &Health), Changed<Health>>,
+    query: Query<(Entity, &Health, Option<&Player>), Changed<Health>>,
+    mut next_state: ResMut<NextState<GameState>>,
 ) {
-    for (entity, health) in &query {
+    for (entity, health, maybe_player) in &query {
         if health.is_dead() {
+            if maybe_player.is_some() {
+                next_state.set(GameState::GameOver);
+            }
             commands.entity(entity).despawn();
         }
     }

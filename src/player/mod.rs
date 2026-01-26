@@ -4,6 +4,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::Faction;
+use crate::GameState;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
@@ -23,8 +24,11 @@ impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         let player_def = load_player_def("assets/player.ron");
         app.insert_resource(PlayerDefResource(player_def))
-            .add_systems(Startup, spawn_player)
-            .add_systems(Update, (player_movement, player_shooting));
+            .add_systems(OnEnter(GameState::Playing), spawn_player)
+            .add_systems(
+                Update,
+                (player_movement, player_shooting).run_if(in_state(GameState::Playing)),
+            );
     }
 }
 
@@ -62,6 +66,7 @@ fn spawn_player(
     }
 
     commands.spawn((
+        DespawnOnExit(GameState::Playing),
         Player,
         Faction::Player,
         Collider::rectangle(player_def.visual.size, player_def.visual.size),
