@@ -14,6 +14,9 @@ pub const ARENA_WIDTH: f32 = 1920.0;
 pub const ARENA_HEIGHT: f32 = 1080.0;
 pub const BORDER_THICKNESS: f32 = 10.0;
 
+#[derive(Component)]
+pub struct Wall;
+
 const SLIME_SPAWN_INTERVAL: f32 = 1.5;
 const SLIME_SIZE: f32 = 30.0;
 
@@ -44,6 +47,7 @@ fn spawn_arena(mut commands: Commands) {
     let border_color = Color::srgb(0.8, 0.8, 0.8);
 
     commands.spawn((
+        Wall,
         Sprite {
             color: border_color,
             custom_size: Some(Vec2::new(
@@ -58,6 +62,7 @@ fn spawn_arena(mut commands: Commands) {
     ));
 
     commands.spawn((
+        Wall,
         Sprite {
             color: border_color,
             custom_size: Some(Vec2::new(
@@ -72,6 +77,7 @@ fn spawn_arena(mut commands: Commands) {
     ));
 
     commands.spawn((
+        Wall,
         Sprite {
             color: border_color,
             custom_size: Some(Vec2::new(
@@ -86,6 +92,7 @@ fn spawn_arena(mut commands: Commands) {
     ));
 
     commands.spawn((
+        Wall,
         Sprite {
             color: border_color,
             custom_size: Some(Vec2::new(

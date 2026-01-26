@@ -32,13 +32,13 @@ pub fn keep_distance_system(
 
     for (transform, mut velocity, stats, keep_dist) in &mut query {
         let speed = speed_id.map(|id| stats.get(id)).unwrap_or(100.0);
-        let to_player = player_pos - transform.translation;
+        let to_player = (player_pos - transform.translation).truncate();
         let distance = to_player.length();
 
         velocity.0 = if distance < keep_dist.min_distance {
-            -to_player.truncate().normalize_or_zero() * speed
+            -to_player.normalize_or_zero() * speed
         } else if distance > keep_dist.max_distance {
-            to_player.truncate().normalize_or_zero() * speed
+            to_player.normalize_or_zero() * speed
         } else {
             Vec2::ZERO
         };

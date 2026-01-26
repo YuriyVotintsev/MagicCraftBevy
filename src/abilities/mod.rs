@@ -51,7 +51,6 @@ impl Plugin for AbilityPlugin {
             .add_systems(PreStartup, init_abilities)
             .add_systems(Update, (
                 dispatcher::ability_dispatcher,
-                projectile_systems::despawn_out_of_bounds_projectiles,
                 projectile_systems::projectile_collision,
             ));
     }

@@ -31,6 +31,8 @@ impl EffectExecutor for DamageEffect {
             amount, ctx.caster, Some(target)
         );
 
-        commands.entity(target).insert(PendingDamage(amount));
+        if let Ok(mut entity_commands) = commands.get_entity(target) {
+            entity_commands.insert(PendingDamage(amount));
+        }
     }
 }
