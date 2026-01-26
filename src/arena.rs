@@ -2,6 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
 
+use crate::abilities::AbilityRegistry;
 use crate::fsm::{spawn_mob, MobRegistry};
 use crate::stats::{StatCalculators, StatRegistry};
 
@@ -28,7 +29,7 @@ impl Plugin for ArenaPlugin {
             TimerMode::Repeating,
         )))
         .add_systems(Startup, (setup_camera, spawn_arena))
-        .add_systems(Update, spawn_slimes)
+        .add_systems(Update, spawn_enemies)
         .add_systems(PostUpdate, camera_follow);
     }
 }
@@ -114,7 +115,7 @@ fn camera_follow(
     camera_transform.translation.y = player_transform.translation.y;
 }
 
-fn spawn_slimes(
+fn spawn_enemies(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
@@ -123,6 +124,7 @@ fn spawn_slimes(
     mob_registry: Res<MobRegistry>,
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
+    ability_registry: Res<AbilityRegistry>,
 ) {
     if timer.0.tick(time.delta()).just_finished() {
         let mut rng = rand::rng();
@@ -132,6 +134,8 @@ fn spawn_slimes(
         let x = rng.random_range(-half_width..half_width);
         let y = rng.random_range(-half_height..half_height);
 
+        let mob_name = if rng.random_bool(0.5) { "slime" } else { "archer" };
+
         spawn_mob(
             &mut commands,
             &mut meshes,
@@ -139,7 +143,8 @@ fn spawn_slimes(
             &mob_registry,
             &stat_registry,
             &calculators,
-            "slime",
+            &ability_registry,
+            mob_name,
             Vec3::new(x, y, 1.0),
         );
     }

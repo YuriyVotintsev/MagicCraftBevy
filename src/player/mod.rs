@@ -2,12 +2,9 @@ mod player_def;
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use std::collections::HashMap;
 
-use crate::abilities::{
-    Abilities, AbilityDef, AbilityInput, AbilityRegistry, AbilityId,
-    ActivatorDef, ActivatorRegistry, EffectDef, EffectRegistry, ParamValue,
-};
+use crate::Faction;
+use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
@@ -36,9 +33,7 @@ fn spawn_player(
     player_def_res: Res<PlayerDefResource>,
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
-    mut ability_registry: ResMut<AbilityRegistry>,
-    activator_registry: Res<ActivatorRegistry>,
-    mut effect_registry: ResMut<EffectRegistry>,
+    ability_registry: Res<AbilityRegistry>,
 ) {
     let player_def = &player_def_res.0;
 
@@ -61,18 +56,14 @@ fn spawn_player(
         .map(|id| computed.get(id))
         .unwrap_or(100.0);
 
-    let fireball_id = create_fireball_ability(
-        &stat_registry,
-        &mut ability_registry,
-        &activator_registry,
-        &mut effect_registry,
-    );
-
     let mut abilities = Abilities::new();
-    abilities.add(fireball_id);
+    if let Some(fireball_id) = ability_registry.get_id("fireball") {
+        abilities.add(fireball_id);
+    }
 
     commands.spawn((
         Player,
+        Faction::Player,
         Collider::rectangle(player_def.visual.size, player_def.visual.size),
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
@@ -94,55 +85,6 @@ fn spawn_player(
         },
         Transform::from_xyz(0.0, 0.0, 1.0),
     ));
-}
-
-fn create_fireball_ability(
-    stat_registry: &StatRegistry,
-    ability_registry: &mut AbilityRegistry,
-    activator_registry: &ActivatorRegistry,
-    effect_registry: &mut EffectRegistry,
-) -> AbilityId {
-    let fireball_id = ability_registry.allocate_id("fireball");
-
-    let activator_type = activator_registry.get_id("on_input").unwrap();
-
-    let spawn_projectile_type = effect_registry.get_id("spawn_projectile").unwrap();
-    let damage_type = effect_registry.get_id("damage").unwrap();
-
-    let amount_param = effect_registry.get_or_insert_param_id("amount");
-    let on_hit_param = effect_registry.get_or_insert_param_id("on_hit");
-
-    let physical_damage_id = stat_registry.get("physical_damage").unwrap();
-
-    let damage_effect = EffectDef {
-        effect_type: damage_type,
-        params: HashMap::from([(
-            amount_param,
-            ParamValue::Stat(physical_damage_id),
-        )]),
-    };
-
-    let spawn_effect = EffectDef {
-        effect_type: spawn_projectile_type,
-        params: HashMap::from([(
-            on_hit_param,
-            ParamValue::EffectList(vec![damage_effect]),
-        )]),
-    };
-
-    let ability_def = AbilityDef {
-        id: fireball_id,
-        tags: Vec::new(),
-        activator: ActivatorDef {
-            activator_type,
-            params: HashMap::new(),
-        },
-        effects: vec![spawn_effect],
-    };
-
-    ability_registry.register(ability_def);
-
-    fireball_id
 }
 
 fn player_movement(

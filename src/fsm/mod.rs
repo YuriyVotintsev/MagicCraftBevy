@@ -17,7 +17,7 @@ pub use types::{BehaviourDef, ColliderShape, MobDef, Shape, StateDef, Transition
 use bevy::prelude::*;
 
 use crate::mob_ai::{
-    after_time_system, move_toward_player_system, use_abilities_system, when_near_system,
+    after_time_system, keep_distance_system, move_toward_player_system, use_abilities_system, when_near_system,
 };
 use loader::load_mobs;
 use systems::fsm_transition_system;
@@ -34,6 +34,7 @@ impl Plugin for FsmPlugin {
                 Update,
                 (
                     move_toward_player_system,
+                    keep_distance_system,
                     use_abilities_system,
                     when_near_system,
                     after_time_system,

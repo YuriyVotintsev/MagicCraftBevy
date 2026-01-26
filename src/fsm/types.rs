@@ -61,10 +61,22 @@ pub struct StateDef {
     pub transitions: Vec<TransitionDef>,
 }
 
+fn default_cooldown() -> f32 {
+    1.0
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub enum BehaviourDef {
     MoveTowardPlayer,
-    UseAbilities(Vec<String>),
+    UseAbilities {
+        abilities: Vec<String>,
+        #[serde(default = "default_cooldown")]
+        cooldown: f32,
+    },
+    KeepDistance {
+        min: f32,
+        max: f32,
+    },
 }
 
 #[derive(Debug, Clone, Deserialize)]

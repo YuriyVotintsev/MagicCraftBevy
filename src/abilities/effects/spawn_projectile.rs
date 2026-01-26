@@ -50,6 +50,7 @@ impl EffectExecutor for SpawnProjectileEffect {
                 on_hit_effects,
                 context: ctx.clone(),
             },
+            ctx.caster_faction,
             Collider::circle(size / 2.0),
             Sensor,
             CollisionEventsEnabled,

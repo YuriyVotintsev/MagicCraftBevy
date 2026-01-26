@@ -7,6 +7,7 @@ mod ability_def;
 mod components;
 mod registry;
 mod dispatcher;
+mod init;
 
 pub mod activators;
 pub mod effects;
@@ -47,10 +48,25 @@ impl Plugin for AbilityPlugin {
         app.insert_resource(activator_registry)
             .insert_resource(effect_registry)
             .init_resource::<AbilityRegistry>()
+            .add_systems(PreStartup, init_abilities)
             .add_systems(Update, (
                 dispatcher::ability_dispatcher,
                 projectile_systems::despawn_out_of_bounds_projectiles,
                 projectile_systems::projectile_collision,
             ));
     }
+}
+
+fn init_abilities(
+    stat_registry: Res<crate::stats::StatRegistry>,
+    mut ability_registry: ResMut<AbilityRegistry>,
+    activator_registry: Res<ActivatorRegistry>,
+    mut effect_registry: ResMut<EffectRegistry>,
+) {
+    init::register_abilities(
+        &stat_registry,
+        &mut ability_registry,
+        &activator_registry,
+        &mut effect_registry,
+    );
 }

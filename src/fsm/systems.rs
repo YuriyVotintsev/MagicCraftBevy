@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::mob_ai::{AfterTime, MoveTowardPlayer, UseAbilities, WhenNear};
+use crate::mob_ai::{AfterTime, KeepDistance, MoveTowardPlayer, UseAbilities, WhenNear};
 use super::components::{CurrentState, MobType};
 use super::events::StateTransition;
 use super::registry::MobRegistry;
@@ -58,8 +58,11 @@ fn remove_state_components(
             BehaviourDef::MoveTowardPlayer => {
                 entity_commands.remove::<MoveTowardPlayer>();
             }
-            BehaviourDef::UseAbilities(_) => {
+            BehaviourDef::UseAbilities { .. } => {
                 entity_commands.remove::<UseAbilities>();
+            }
+            BehaviourDef::KeepDistance { .. } => {
+                entity_commands.remove::<KeepDistance>();
             }
         }
     }
@@ -89,8 +92,11 @@ pub fn add_state_components(
             BehaviourDef::MoveTowardPlayer => {
                 entity_commands.insert(MoveTowardPlayer);
             }
-            BehaviourDef::UseAbilities(abilities) => {
-                entity_commands.insert(UseAbilities::new(abilities.clone()));
+            BehaviourDef::UseAbilities { abilities, cooldown } => {
+                entity_commands.insert(UseAbilities::new(abilities.clone()).with_cooldown(*cooldown));
+            }
+            BehaviourDef::KeepDistance { min, max } => {
+                entity_commands.insert(KeepDistance::new(*min, *max));
             }
         }
     }

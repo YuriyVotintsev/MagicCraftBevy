@@ -1,10 +1,13 @@
 mod abilities;
 mod arena;
 mod expression;
+mod faction;
 mod fsm;
 mod mob_ai;
 mod player;
 mod stats;
+
+pub use faction::Faction;
 
 use avian2d::prelude::*;
 use bevy::prelude::*;

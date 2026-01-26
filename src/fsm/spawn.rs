@@ -1,6 +1,8 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
+use crate::Faction;
+use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
@@ -17,6 +19,7 @@ pub fn spawn_mob(
     mob_registry: &MobRegistry,
     stat_registry: &StatRegistry,
     calculators: &StatCalculators,
+    ability_registry: &AbilityRegistry,
     mob_name: &str,
     position: Vec3,
 ) -> Option<Entity> {
@@ -61,21 +64,35 @@ pub fn spawn_mob(
         }
     };
 
+    let mut abilities = Abilities::new();
+    for ability_name in &mob_def.abilities {
+        if let Some(ability_id) = ability_registry.get_id(ability_name) {
+            abilities.add(ability_id);
+        }
+    }
+
     let entity = commands
         .spawn((
-            Mesh2d(mesh),
-            MeshMaterial2d(materials.add(color)),
-            Transform::from_translation(position),
-            MobType(mob_name.to_string()),
-            CurrentState(mob_def.initial_state.clone()),
-            collider,
-            RigidBody::Dynamic,
-            LockedAxes::ROTATION_LOCKED,
-            LinearVelocity::ZERO,
-            modifiers,
-            computed,
-            dirty,
-            Health::new(max_life),
+            (
+                Mesh2d(mesh),
+                MeshMaterial2d(materials.add(color)),
+                Transform::from_translation(position),
+                MobType(mob_name.to_string()),
+                CurrentState(mob_def.initial_state.clone()),
+                Faction::Enemy,
+                collider,
+                RigidBody::Dynamic,
+            ),
+            (
+                LockedAxes::ROTATION_LOCKED,
+                LinearVelocity::ZERO,
+                modifiers,
+                computed,
+                dirty,
+                Health::new(max_life),
+                abilities,
+                AbilityInput::new(),
+            ),
         ))
         .id();
 

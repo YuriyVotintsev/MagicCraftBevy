@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::Faction;
 use crate::stats::ComputedStats;
 use super::context::AbilityContext;
 use super::components::{Abilities, AbilityInput};
@@ -14,12 +15,13 @@ pub fn ability_dispatcher(
         &mut AbilityInput,
         &ComputedStats,
         &Transform,
+        &Faction,
     )>,
     ability_registry: Res<AbilityRegistry>,
     activator_registry: Res<ActivatorRegistry>,
     effect_registry: Res<EffectRegistry>,
 ) {
-    for (entity, mut abilities, mut input, stats, transform) in &mut query {
+    for (entity, mut abilities, mut input, stats, transform, faction) in &mut query {
         let Some(wanted_ability_id) = input.want_to_cast else {
             continue;
         };
@@ -36,6 +38,7 @@ pub fn ability_dispatcher(
 
         let mut ctx = AbilityContext::new(
             entity,
+            *faction,
             stats,
             transform.translation,
             wanted_ability_id,
