@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
+use crate::wave::WavePhase;
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
@@ -27,7 +28,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(
                 Update,
-                (player_movement, player_shooting).run_if(in_state(GameState::Playing)),
+                (player_movement, player_shooting).run_if(in_state(WavePhase::Combat)),
             );
     }
 }

@@ -5,9 +5,11 @@ mod faction;
 mod fsm;
 mod game_state;
 mod mob_ai;
+mod money;
 mod player;
 mod stats;
 mod ui;
+mod wave;
 
 pub use faction::Faction;
 pub use game_state::GameState;
@@ -21,6 +23,7 @@ use fsm::FsmPlugin;
 use player::PlayerPlugin;
 use stats::StatsPlugin;
 use ui::UiPlugin;
+use wave::{WavePhase, WavePlugin};
 
 #[cfg(not(feature = "headless"))]
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
@@ -115,6 +118,7 @@ fn main() {
     }
 
     app.init_state::<GameState>()
+        .add_sub_state::<WavePhase>()
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
             ArenaPlugin,
@@ -123,6 +127,7 @@ fn main() {
             AbilityPlugin,
             FsmPlugin,
             UiPlugin,
+            WavePlugin,
         ))
         .run();
 }

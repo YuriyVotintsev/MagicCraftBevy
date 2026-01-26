@@ -1,9 +1,12 @@
 mod game_over;
+mod hud;
 mod main_menu;
+mod shop;
 
 use bevy::prelude::*;
 
 use crate::game_state::GameState;
+use crate::wave::WavePhase;
 
 pub struct UiPlugin;
 
@@ -18,6 +21,16 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 game_over::game_over_button_system.run_if(in_state(GameState::GameOver)),
+            )
+            .add_systems(OnEnter(GameState::Playing), hud::spawn_hud)
+            .add_systems(
+                Update,
+                hud::update_hud.run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(OnEnter(WavePhase::Shop), shop::spawn_shop)
+            .add_systems(
+                Update,
+                shop::shop_button_system.run_if(in_state(WavePhase::Shop)),
             );
     }
 }

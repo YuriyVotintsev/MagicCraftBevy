@@ -2,8 +2,17 @@ use bevy::prelude::*;
 
 use crate::GameState;
 use crate::player::Player;
+use crate::wave::WaveEnemy;
 
 use super::{ComputedStats, StatRegistry};
+
+#[derive(Message)]
+pub struct DeathEvent {
+    #[allow(dead_code)]
+    pub entity: Entity,
+    pub was_player: bool,
+    pub was_wave_enemy: bool,
+}
 
 #[derive(Component)]
 pub struct Health {
@@ -47,15 +56,30 @@ pub fn sync_health_to_max_life(
 
 pub fn death_system(
     mut commands: Commands,
-    query: Query<(Entity, &Health, Option<&Player>), Changed<Health>>,
+    mut death_events: MessageWriter<DeathEvent>,
+    query: Query<(Entity, &Health, Has<Player>, Has<WaveEnemy>), Changed<Health>>,
+) {
+    for (entity, health, is_player, is_wave_enemy) in &query {
+        if health.is_dead() {
+            death_events.write(DeathEvent {
+                entity,
+                was_player: is_player,
+                was_wave_enemy: is_wave_enemy,
+            });
+            if let Ok(mut entity_commands) = commands.get_entity(entity) {
+                entity_commands.despawn();
+            }
+        }
+    }
+}
+
+pub fn handle_player_death(
+    mut death_events: MessageReader<DeathEvent>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    for (entity, health, maybe_player) in &query {
-        if health.is_dead() {
-            if maybe_player.is_some() {
-                next_state.set(GameState::GameOver);
-            }
-            commands.entity(entity).despawn();
+    for event in death_events.read() {
+        if event.was_player {
+            next_state.set(GameState::GameOver);
         }
     }
 }

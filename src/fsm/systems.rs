@@ -51,7 +51,9 @@ fn remove_state_components(
     _mob_def: &MobDef,
     state: &super::types::StateDef,
 ) {
-    let mut entity_commands = commands.entity(entity);
+    let Ok(mut entity_commands) = commands.get_entity(entity) else {
+        return;
+    };
 
     for behaviour in &state.behaviour {
         match behaviour {
@@ -85,7 +87,9 @@ pub fn add_state_components(
     _mob_def: &MobDef,
     state: &super::types::StateDef,
 ) {
-    let mut entity_commands = commands.entity(entity);
+    let Ok(mut entity_commands) = commands.get_entity(entity) else {
+        return;
+    };
 
     for behaviour in &state.behaviour {
         match behaviour {

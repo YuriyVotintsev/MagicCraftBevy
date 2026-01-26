@@ -6,6 +6,7 @@ use crate::GameState;
 use crate::abilities::AbilityRegistry;
 use crate::fsm::{spawn_mob, MobRegistry};
 use crate::stats::{StatCalculators, StatRegistry};
+use crate::wave::{WaveEnemy, WavePhase, WaveState};
 
 #[cfg(not(feature = "headless"))]
 pub const WINDOW_WIDTH: f32 = 1280.0;
@@ -36,7 +37,7 @@ impl Plugin for ArenaPlugin {
         .add_systems(OnEnter(GameState::Playing), reset_spawn_timer)
         .add_systems(
             Update,
-            spawn_enemies.run_if(in_state(GameState::Playing)),
+            spawn_enemies.run_if(in_state(WavePhase::Combat)),
         )
         .add_systems(
             PostUpdate,
@@ -144,7 +145,12 @@ fn spawn_enemies(
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
     ability_registry: Res<AbilityRegistry>,
+    mut wave_state: ResMut<WaveState>,
 ) {
+    if wave_state.spawned_count >= wave_state.target_count {
+        return;
+    }
+
     if timer.0.tick(time.delta()).just_finished() {
         let mut rng = rand::rng();
         let half_width = ARENA_WIDTH / 2.0 - SLIME_SIZE / 2.0;
@@ -155,7 +161,7 @@ fn spawn_enemies(
 
         let mob_name = if rng.random_bool(0.5) { "slime" } else { "archer" };
 
-        spawn_mob(
+        if let Some(entity) = spawn_mob(
             &mut commands,
             &mut meshes,
             &mut materials,
@@ -165,6 +171,11 @@ fn spawn_enemies(
             &ability_registry,
             mob_name,
             Vec3::new(x, y, 1.0),
-        );
+        ) {
+            if let Ok(mut entity_commands) = commands.get_entity(entity) {
+                entity_commands.insert(WaveEnemy);
+            }
+            wave_state.spawned_count += 1;
+        }
     }
 }
