@@ -20,7 +20,13 @@
       "WebFetch(domain:bevy.org)",
       "Bash(grep:*)",
       "Bash(RUST_LOG=info cargo run:*)",
-      "Bash(cargo run:*)"
+      "Bash(cargo run:*)",
+      "Bash(claude-code agent start:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)"
+    ],
+    "additionalDirectories": [
+      "D:/Projects/_reference"
     ]
   }
 }
