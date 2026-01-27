@@ -34,6 +34,7 @@ use crate::Faction;
 
 mod projectile_systems;
 mod orbiting_systems;
+mod dash_systems;
 
 #[allow(unused_imports)]
 pub use effects::Projectile;
@@ -67,6 +68,7 @@ impl Plugin for AbilityPlugin {
                 (
                     projectile_systems::projectile_collision,
                     orbiting_systems::update_orbiting_positions,
+                    dash_systems::update_dashing,
                 )
                     .in_set(GameSet::AbilityExecution),
             )

@@ -1,0 +1,17 @@
+(
+    id: "dash",
+    tags: [],
+    activator: (
+        activator_type: "on_input",
+        params: {},
+    ),
+    effects: [
+        (
+            effect_type: "dash",
+            params: {
+                "speed": Float(1500.0),
+                "duration": Float(0.2),
+            },
+        ),
+    ],
+)

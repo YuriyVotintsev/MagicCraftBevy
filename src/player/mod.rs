@@ -5,6 +5,7 @@ use bevy::prelude::*;
 
 use crate::Faction;
 use crate::GameState;
+use crate::MovementLocked;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
 use crate::physics::ColliderShape;
 use crate::schedule::GameSet;
@@ -30,7 +31,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnExit(WavePhase::Combat), reset_player_velocity)
             .add_systems(
                 Update,
-                (player_movement, player_shooting)
+                (player_movement, player_shooting, player_dash_input)
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
             )
@@ -79,6 +80,9 @@ fn spawn_player(
     if let Some(orbs_id) = ability_registry.get_id("orbiting_orbs") {
         abilities.add(orbs_id);
     }
+    if let Some(dash_id) = ability_registry.get_id("dash") {
+        abilities.add(dash_id);
+    }
 
     let collider = match player_def.collider.shape {
         ColliderShape::Circle => Collider::circle(player_def.collider.size),
@@ -122,7 +126,7 @@ fn spawn_player(
 fn player_movement(
     keyboard: Res<ButtonInput<KeyCode>>,
     stat_registry: Res<StatRegistry>,
-    mut query: Query<(&mut LinearVelocity, &ComputedStats), With<Player>>,
+    mut query: Query<(&mut LinearVelocity, &ComputedStats), (With<Player>, Without<MovementLocked>)>,
 ) {
     let Ok((mut velocity, stats)) = query.single_mut() else {
         return;
@@ -195,6 +199,30 @@ fn player_shooting(
             input.target_direction = Some(direction.extend(0.0));
             input.target_point = Some(world_pos.extend(0.0));
         }
+    }
+}
+
+fn player_dash_input(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut query: Query<(&LinearVelocity, &mut AbilityInput), (With<Player>, Without<MovementLocked>)>,
+    ability_registry: Res<AbilityRegistry>,
+) {
+    if !keyboard.just_pressed(KeyCode::Space) {
+        return;
+    }
+
+    let Ok((velocity, mut input)) = query.single_mut() else {
+        return;
+    };
+
+    let direction = velocity.0.normalize_or_zero();
+    if direction == Vec2::ZERO {
+        return;
+    }
+
+    if let Some(dash_id) = ability_registry.get_id("dash") {
+        input.want_to_cast = Some(dash_id);
+        input.target_direction = Some(direction.extend(0.0));
     }
 }
 

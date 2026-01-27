@@ -37,7 +37,7 @@ pub use stat_id::{AggregationType, StatDef, StatId, StatRegistry};
 
 use bevy::prelude::*;
 
-use crate::wave::Invulnerable;
+use crate::wave::InvulnerableStack;
 
 pub struct StatsPlugin;
 
@@ -64,7 +64,7 @@ fn apply_pending_damage(
     mut damage_events: MessageWriter<DamageEvent>,
     mut query: Query<
         (Entity, &PendingDamage, &mut Health, &ComputedStats, &Transform, &Faction),
-        Without<Invulnerable>,
+        Without<InvulnerableStack>,
     >,
 ) {
     let max_life_id = stat_registry.get("max_life");

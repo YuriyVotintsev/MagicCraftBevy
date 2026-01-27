@@ -6,6 +6,7 @@ mod game_state;
 mod loading;
 mod mob_ai;
 mod money;
+mod movement;
 mod physics;
 mod player;
 mod schedule;
@@ -15,6 +16,7 @@ mod wave;
 
 pub use faction::Faction;
 pub use game_state::GameState;
+pub use movement::MovementLocked;
 
 use avian2d::prelude::*;
 use bevy::prelude::*;

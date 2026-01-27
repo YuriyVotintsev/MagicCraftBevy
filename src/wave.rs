@@ -49,7 +49,45 @@ impl WaveState {
 pub struct WaveEnemy;
 
 #[derive(Component)]
-pub struct Invulnerable;
+pub struct InvulnerableStack(pub u32);
+
+impl InvulnerableStack {
+    pub fn increment(&mut self) {
+        self.0 += 1;
+    }
+
+    pub fn decrement(&mut self) -> bool {
+        self.0 = self.0.saturating_sub(1);
+        self.0 == 0
+    }
+}
+
+pub fn add_invulnerability(commands: &mut Commands, entity: Entity) {
+    commands.queue(move |world: &mut World| {
+        if let Some(mut stack) = world.get_mut::<InvulnerableStack>(entity) {
+            stack.increment();
+        } else if let Ok(mut entity_mut) = world.get_entity_mut(entity) {
+            entity_mut.insert(InvulnerableStack(1));
+        }
+    });
+}
+
+pub fn remove_invulnerability(commands: &mut Commands, entity: Entity) {
+    commands.queue(move |world: &mut World| {
+        let should_remove = {
+            if let Some(mut stack) = world.get_mut::<InvulnerableStack>(entity) {
+                stack.decrement()
+            } else {
+                false
+            }
+        };
+        if should_remove {
+            if let Ok(mut entity_mut) = world.get_entity_mut(entity) {
+                entity_mut.remove::<InvulnerableStack>();
+            }
+        }
+    });
+}
 
 #[derive(Resource)]
 pub struct ShopDelayTimer(pub Timer);
@@ -125,9 +163,7 @@ fn check_wave_completion(
         shop_timer.0.reset();
 
         if let Ok(player_entity) = player_query.single() {
-            if let Ok(mut entity_commands) = commands.get_entity(player_entity) {
-                entity_commands.insert(Invulnerable);
-            }
+            add_invulnerability(&mut commands, player_entity);
         }
 
         next_phase.set(WavePhase::ShopDelay);
@@ -155,8 +191,6 @@ fn start_next_wave(
     wave_state.target_count = WaveState::calculate_target(wave_state.current_wave);
 
     if let Ok(player_entity) = player_query.single() {
-        if let Ok(mut entity_commands) = commands.get_entity(player_entity) {
-            entity_commands.remove::<Invulnerable>();
-        }
+        remove_invulnerability(&mut commands, player_entity);
     }
 }
