@@ -1,0 +1,25 @@
+(
+    id: "archer_shot",
+    tags: [],
+    activator: (
+        activator_type: "on_input",
+        params: {},
+    ),
+    effects: [
+        (
+            effect_type: "spawn_projectile",
+            params: {
+                "speed": Float(400.0),
+                "size": Float(8.0),
+                "on_hit": EffectList([
+                    (
+                        effect_type: "damage",
+                        params: {
+                            "amount": Stat("physical_damage"),
+                        },
+                    ),
+                ]),
+            },
+        ),
+    ],
+)

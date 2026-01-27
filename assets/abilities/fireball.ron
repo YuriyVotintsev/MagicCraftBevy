@@ -1,0 +1,23 @@
+(
+    id: "fireball",
+    tags: [],
+    activator: (
+        activator_type: "on_input",
+        params: {},
+    ),
+    effects: [
+        (
+            effect_type: "spawn_projectile",
+            params: {
+                "on_hit": EffectList([
+                    (
+                        effect_type: "damage",
+                        params: {
+                            "amount": Stat("physical_damage"),
+                        },
+                    ),
+                ]),
+            },
+        ),
+    ],
+)

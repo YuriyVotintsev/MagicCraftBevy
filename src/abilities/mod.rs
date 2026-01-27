@@ -7,7 +7,7 @@ mod ability_def;
 mod components;
 mod registry;
 mod dispatcher;
-mod init;
+mod loader;
 
 pub mod activators;
 pub mod effects;
@@ -61,7 +61,8 @@ fn init_abilities(
     activator_registry: Res<ActivatorRegistry>,
     mut effect_registry: ResMut<EffectRegistry>,
 ) {
-    init::register_abilities(
+    loader::load_abilities(
+        "assets/abilities",
         &stat_registry,
         &mut ability_registry,
         &activator_registry,
