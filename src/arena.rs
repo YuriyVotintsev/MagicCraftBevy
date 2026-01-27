@@ -5,7 +5,7 @@ use rand::Rng;
 use crate::GameState;
 use crate::abilities::AbilityRegistry;
 use crate::fsm::{spawn_mob, BehaviourRegistry, MobRegistry, TransitionRegistry};
-pub use crate::physics::Wall;
+use crate::physics::{GameLayer, Wall};
 use crate::stats::{StatCalculators, StatRegistry};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 
@@ -57,6 +57,8 @@ fn spawn_arena(mut commands: Commands) {
     let half_height = ARENA_HEIGHT / 2.0;
     let border_color = Color::srgb(0.8, 0.8, 0.8);
 
+    let wall_layers = CollisionLayers::new(GameLayer::Wall, LayerMask::ALL);
+
     commands.spawn((
         Name::new("Wall_Top"),
         Wall,
@@ -71,6 +73,7 @@ fn spawn_arena(mut commands: Commands) {
         Transform::from_xyz(0.0, half_height + BORDER_THICKNESS / 2.0, 0.0),
         Collider::rectangle(ARENA_WIDTH + BORDER_THICKNESS * 2.0, BORDER_THICKNESS),
         RigidBody::Static,
+        wall_layers,
     ));
 
     commands.spawn((
@@ -87,6 +90,7 @@ fn spawn_arena(mut commands: Commands) {
         Transform::from_xyz(0.0, -half_height - BORDER_THICKNESS / 2.0, 0.0),
         Collider::rectangle(ARENA_WIDTH + BORDER_THICKNESS * 2.0, BORDER_THICKNESS),
         RigidBody::Static,
+        wall_layers,
     ));
 
     commands.spawn((
@@ -103,6 +107,7 @@ fn spawn_arena(mut commands: Commands) {
         Transform::from_xyz(-half_width - BORDER_THICKNESS / 2.0, 0.0, 0.0),
         Collider::rectangle(BORDER_THICKNESS, ARENA_HEIGHT + BORDER_THICKNESS * 2.0),
         RigidBody::Static,
+        wall_layers,
     ));
 
     commands.spawn((
@@ -119,6 +124,7 @@ fn spawn_arena(mut commands: Commands) {
         Transform::from_xyz(half_width + BORDER_THICKNESS / 2.0, 0.0, 0.0),
         Collider::rectangle(BORDER_THICKNESS, ARENA_HEIGHT + BORDER_THICKNESS * 2.0),
         RigidBody::Static,
+        wall_layers,
     ));
 }
 

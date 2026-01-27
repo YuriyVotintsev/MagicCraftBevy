@@ -7,7 +7,7 @@ use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
-use crate::physics::ColliderShape;
+use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
 use crate::stats::{
@@ -31,7 +31,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnExit(WavePhase::Combat), reset_player_velocity)
             .add_systems(
                 Update,
-                (player_movement, player_shooting, player_dash_input)
+                (player_movement, player_shooting, player_dash_input, player_shield_input)
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
             )
@@ -89,6 +89,9 @@ fn spawn_player(
     if let Some(meteor_id) = ability_registry.get_id("meteor") {
         abilities.add(meteor_id);
     }
+    if let Some(shield_id) = ability_registry.get_id("shield") {
+        abilities.add(shield_id);
+    }
 
     let collider = match player_def.collider.shape {
         ColliderShape::Circle => Collider::circle(player_def.collider.size),
@@ -96,6 +99,11 @@ fn spawn_player(
             Collider::rectangle(player_def.collider.size, player_def.collider.size)
         }
     };
+
+    let player_layers = CollisionLayers::new(
+        GameLayer::Player,
+        [GameLayer::Enemy, GameLayer::EnemyProjectile, GameLayer::Wall],
+    );
 
     commands.spawn((
         (
@@ -107,6 +115,7 @@ fn spawn_player(
             RigidBody::Dynamic,
             LockedAxes::ROTATION_LOCKED,
             LinearVelocity::ZERO,
+            player_layers,
         ),
         (
             modifiers,
@@ -240,6 +249,24 @@ fn player_dash_input(
     if let Some(dash_id) = ability_registry.get_id("dash") {
         input.want_to_cast = Some(dash_id);
         input.target_direction = Some(direction.extend(0.0));
+    }
+}
+
+fn player_shield_input(
+    keyboard: Res<ButtonInput<KeyCode>>,
+    mut query: Query<&mut AbilityInput, With<Player>>,
+    ability_registry: Res<AbilityRegistry>,
+) {
+    if !keyboard.just_pressed(KeyCode::ShiftLeft) {
+        return;
+    }
+
+    let Ok(mut input) = query.single_mut() else {
+        return;
+    };
+
+    if let Some(shield_id) = ability_registry.get_id("shield") {
+        input.want_to_cast = Some(shield_id);
     }
 }
 

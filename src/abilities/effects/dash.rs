@@ -1,8 +1,10 @@
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::abilities::context::AbilityContext;
 use crate::abilities::effect_def::{EffectDef, ParamValue};
 use crate::abilities::registry::{EffectExecutor, EffectRegistry};
+use crate::physics::GameLayer;
 use crate::wave::add_invulnerability;
 use crate::MovementLocked;
 
@@ -15,6 +17,9 @@ pub struct Dashing {
     pub direction: Vec2,
     pub speed: f32,
 }
+
+#[derive(Component)]
+pub struct PreDashLayers(pub CollisionLayers);
 
 pub struct DashEffect;
 
@@ -47,14 +52,28 @@ impl EffectExecutor for DashEffect {
         }
 
         let caster = ctx.caster;
-        commands.entity(caster).insert((
-            Dashing {
-                timer: Timer::from_seconds(duration, TimerMode::Once),
-                direction,
-                speed,
-            },
-            MovementLocked,
-        ));
+
+        commands.queue(move |world: &mut World| {
+            let current_layers = world
+                .get::<CollisionLayers>(caster)
+                .copied()
+                .unwrap_or_default();
+
+            let dash_layers = CollisionLayers::new(GameLayer::Player, [GameLayer::Wall]);
+
+            if let Ok(mut entity_mut) = world.get_entity_mut(caster) {
+                entity_mut.insert((
+                    Dashing {
+                        timer: Timer::from_seconds(duration, TimerMode::Once),
+                        direction,
+                        speed,
+                    },
+                    MovementLocked,
+                    PreDashLayers(current_layers),
+                    dash_layers,
+                ));
+            }
+        });
 
         add_invulnerability(commands, caster);
     }

@@ -14,7 +14,7 @@ use super::registry::MobRegistry;
 use super::systems::add_state_components;
 use super::transition_registry::TransitionRegistry;
 use super::types::Shape;
-use crate::physics::ColliderShape;
+use crate::physics::{ColliderShape, GameLayer};
 
 pub fn spawn_mob(
     commands: &mut Commands,
@@ -77,6 +77,11 @@ pub fn spawn_mob(
         }
     }
 
+    let enemy_layers = CollisionLayers::new(
+        GameLayer::Enemy,
+        [GameLayer::Player, GameLayer::PlayerProjectile, GameLayer::Wall],
+    );
+
     let entity = commands
         .spawn((
             (
@@ -90,6 +95,7 @@ pub fn spawn_mob(
                 Faction::Enemy,
                 collider,
                 RigidBody::Dynamic,
+                enemy_layers,
             ),
             (
                 LockedAxes::ROTATION_LOCKED,

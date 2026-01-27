@@ -6,6 +6,8 @@ use crate::abilities::registry::{EffectExecutor, EffectRegistry};
 use crate::abilities::effect_def::{EffectDef, ParamValue};
 use crate::abilities::context::AbilityContext;
 use crate::abilities::owner::OwnedBy;
+use crate::physics::GameLayer;
+use crate::Faction;
 use crate::{Growing, Lifetime};
 
 const DEFAULT_PROJECTILE_SPEED: f32 = 800.0;
@@ -92,6 +94,17 @@ impl EffectExecutor for SpawnProjectileEffect {
 
         let initial_size = start_size.unwrap_or(size);
 
+        let projectile_layers = match ctx.caster_faction {
+            Faction::Player => CollisionLayers::new(
+                GameLayer::PlayerProjectile,
+                [GameLayer::Enemy, GameLayer::Wall],
+            ),
+            Faction::Enemy => CollisionLayers::new(
+                GameLayer::EnemyProjectile,
+                [GameLayer::Player, GameLayer::Wall],
+            ),
+        };
+
         let mut entity_commands = commands.spawn((
             Name::new("Projectile"),
             Projectile {
@@ -105,6 +118,7 @@ impl EffectExecutor for SpawnProjectileEffect {
             RigidBody::Kinematic,
             LinearVelocity(velocity),
             OwnedBy::from_arc(ctx.caster, ctx.stats_snapshot.clone()),
+            projectile_layers,
             Sprite {
                 color: Color::srgb(1.0, 0.5, 0.0),
                 custom_size: Some(Vec2::splat(initial_size)),

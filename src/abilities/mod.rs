@@ -36,6 +36,7 @@ mod projectile_systems;
 mod orbiting_systems;
 mod dash_systems;
 mod meteor_systems;
+mod shield_systems;
 
 #[allow(unused_imports)]
 pub use effects::Projectile;
@@ -74,6 +75,8 @@ impl Plugin for AbilityPlugin {
                     meteor_systems::meteor_target_finder,
                     meteor_systems::meteor_falling_update,
                     meteor_systems::meteor_explosion_damage,
+                    shield_systems::update_shield,
+                    shield_systems::update_shield_visual,
                 )
                     .in_set(GameSet::AbilityExecution),
             )
