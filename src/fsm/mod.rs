@@ -12,7 +12,7 @@ pub use events::StateTransition;
 pub use registry::MobRegistry;
 pub use spawn::spawn_mob;
 #[allow(unused_imports)]
-pub use types::{BehaviourDef, ColliderShape, MobDef, Shape, StateDef, TransitionDef, VisualDef};
+pub use types::{BehaviourDef, ColliderDef, ColliderShape, MobDef, Shape, StateDef, TransitionDef, VisualDef};
 
 use bevy::prelude::*;
 

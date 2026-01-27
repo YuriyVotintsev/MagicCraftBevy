@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
+use crate::fsm::ColliderShape;
 use crate::wave::WavePhase;
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
@@ -26,10 +27,17 @@ impl Plugin for PlayerPlugin {
         let player_def = load_player_def("assets/player.ron");
         app.insert_resource(PlayerDefResource(player_def))
             .add_systems(OnEnter(GameState::Playing), spawn_player)
+            .add_systems(OnExit(WavePhase::Combat), reset_player_velocity)
             .add_systems(
                 Update,
                 (player_movement, player_shooting).run_if(in_state(WavePhase::Combat)),
             );
+    }
+}
+
+fn reset_player_velocity(mut query: Query<&mut LinearVelocity, With<Player>>) {
+    for mut velocity in &mut query {
+        velocity.0 = Vec2::ZERO;
     }
 }
 
@@ -66,11 +74,18 @@ fn spawn_player(
         abilities.add(fireball_id);
     }
 
+    let collider = match player_def.collider.shape {
+        ColliderShape::Circle => Collider::circle(player_def.collider.size),
+        ColliderShape::Rectangle => {
+            Collider::rectangle(player_def.collider.size, player_def.collider.size)
+        }
+    };
+
     commands.spawn((
         DespawnOnExit(GameState::Playing),
         Player,
         Faction::Player,
-        Collider::rectangle(player_def.visual.size, player_def.visual.size),
+        collider,
         RigidBody::Dynamic,
         LockedAxes::ROTATION_LOCKED,
         LinearVelocity::ZERO,

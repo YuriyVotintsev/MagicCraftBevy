@@ -2,12 +2,23 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 
+use crate::fsm::{ColliderDef, ColliderShape};
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct PlayerDef {
     pub visual: PlayerVisualDef,
+    #[serde(default = "default_player_collider")]
+    pub collider: ColliderDef,
     pub base_stats: HashMap<String, f32>,
     #[allow(dead_code)]
     pub abilities: Vec<String>,
+}
+
+fn default_player_collider() -> ColliderDef {
+    ColliderDef {
+        shape: ColliderShape::Rectangle,
+        size: 100.0,
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]

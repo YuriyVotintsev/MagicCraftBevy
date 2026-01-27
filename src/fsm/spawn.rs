@@ -59,7 +59,7 @@ pub fn spawn_mob(
         .unwrap_or(100.0);
 
     let collider = match mob_def.collider.shape {
-        ColliderShape::Circle => Collider::circle(mob_def.collider.size / 2.0),
+        ColliderShape::Circle => Collider::circle(mob_def.collider.size),
         ColliderShape::Rectangle => {
             Collider::rectangle(mob_def.collider.size, mob_def.collider.size)
         }
