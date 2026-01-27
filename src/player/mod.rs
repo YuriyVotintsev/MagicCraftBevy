@@ -1,4 +1,5 @@
 pub mod player_def;
+pub mod selected_spells;
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -6,7 +7,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
-use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
+use crate::abilities::{Abilities, AbilityInput, AbilityRegistry, ActivatorRegistry};
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
@@ -16,6 +17,7 @@ use crate::stats::{
 use crate::wave::WavePhase;
 
 use player_def::PlayerDef;
+pub use selected_spells::{SelectedSpells, SpellSlot};
 
 #[derive(Component)]
 pub struct Player;
@@ -27,11 +29,12 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Playing), spawn_player)
+        app.init_resource::<SelectedSpells>()
+            .add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(OnExit(WavePhase::Combat), reset_player_velocity)
             .add_systems(
                 Update,
-                (player_movement, player_shooting, player_dash_input, player_shield_input)
+                (player_movement, player_shooting, player_defensive_input)
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
             )
@@ -50,7 +53,7 @@ fn spawn_player(
     player_def_res: Res<PlayerDefResource>,
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
-    ability_registry: Res<AbilityRegistry>,
+    selected_spells: Res<SelectedSpells>,
 ) {
     let player_def = &player_def_res.0;
 
@@ -74,23 +77,14 @@ fn spawn_player(
         .unwrap_or(100.0);
 
     let mut abilities = Abilities::new();
-    if let Some(fireball_id) = ability_registry.get_id("fireball") {
-        abilities.add(fireball_id);
+    if let Some(active_id) = selected_spells.active {
+        abilities.add(active_id);
     }
-    if let Some(orbs_id) = ability_registry.get_id("orbiting_orbs") {
-        abilities.add(orbs_id);
+    if let Some(passive_id) = selected_spells.passive {
+        abilities.add(passive_id);
     }
-    if let Some(dash_id) = ability_registry.get_id("dash") {
-        abilities.add(dash_id);
-    }
-    if let Some(flamethrower_id) = ability_registry.get_id("flamethrower") {
-        abilities.add(flamethrower_id);
-    }
-    if let Some(meteor_id) = ability_registry.get_id("meteor") {
-        abilities.add(meteor_id);
-    }
-    if let Some(shield_id) = ability_registry.get_id("shield") {
-        abilities.add(shield_id);
+    if let Some(defensive_id) = selected_spells.defensive {
+        abilities.add(defensive_id);
     }
 
     let collider = match player_def.collider.shape {
@@ -179,12 +173,28 @@ fn player_shooting(
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     mut player_query: Query<(&Transform, &mut AbilityInput), With<Player>>,
+    selected_spells: Res<SelectedSpells>,
     ability_registry: Res<AbilityRegistry>,
+    activator_registry: Res<ActivatorRegistry>,
 ) {
-    let left_just_pressed = mouse.just_pressed(MouseButton::Left);
-    let right_pressed = mouse.pressed(MouseButton::Right);
+    let Some(active_id) = selected_spells.active else {
+        return;
+    };
 
-    if !left_just_pressed && !right_pressed {
+    let Some(ability_def) = ability_registry.get(active_id) else {
+        return;
+    };
+
+    let activator_name = activator_registry.get_name(ability_def.activator.activator_type);
+    let is_while_held = activator_name == Some("while_held");
+
+    let should_trigger = if is_while_held {
+        mouse.pressed(MouseButton::Left)
+    } else {
+        mouse.just_pressed(MouseButton::Left)
+    };
+
+    if !should_trigger {
         return;
     }
 
@@ -212,61 +222,44 @@ fn player_shooting(
     let direction = (world_pos - player_pos).normalize_or_zero();
 
     if direction != Vec2::ZERO {
-        if right_pressed {
-            if let Some(flamethrower_id) = ability_registry.get_id("flamethrower") {
-                input.want_to_cast = Some(flamethrower_id);
-                input.target_direction = Some(direction.extend(0.0));
-                input.target_point = Some(world_pos.extend(0.0));
-            }
-        } else if left_just_pressed {
-            if let Some(fireball_id) = ability_registry.get_id("fireball") {
-                input.want_to_cast = Some(fireball_id);
-                input.target_direction = Some(direction.extend(0.0));
-                input.target_point = Some(world_pos.extend(0.0));
-            }
-        }
+        input.want_to_cast = Some(active_id);
+        input.target_direction = Some(direction.extend(0.0));
+        input.target_point = Some(world_pos.extend(0.0));
     }
 }
 
-fn player_dash_input(
+fn player_defensive_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     mut query: Query<(&LinearVelocity, &mut AbilityInput), (With<Player>, Without<MovementLocked>)>,
+    selected_spells: Res<SelectedSpells>,
     ability_registry: Res<AbilityRegistry>,
 ) {
     if !keyboard.just_pressed(KeyCode::Space) {
         return;
     }
 
+    let Some(defensive_id) = selected_spells.defensive else {
+        return;
+    };
+
     let Ok((velocity, mut input)) = query.single_mut() else {
         return;
     };
 
-    let direction = velocity.0.normalize_or_zero();
-    if direction == Vec2::ZERO {
-        return;
-    }
+    let ability_name = ability_registry
+        .get_id("dash")
+        .map(|id| id == defensive_id)
+        .unwrap_or(false);
 
-    if let Some(dash_id) = ability_registry.get_id("dash") {
-        input.want_to_cast = Some(dash_id);
+    if ability_name {
+        let direction = velocity.0.normalize_or_zero();
+        if direction == Vec2::ZERO {
+            return;
+        }
+        input.want_to_cast = Some(defensive_id);
         input.target_direction = Some(direction.extend(0.0));
-    }
-}
-
-fn player_shield_input(
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<&mut AbilityInput, With<Player>>,
-    ability_registry: Res<AbilityRegistry>,
-) {
-    if !keyboard.just_pressed(KeyCode::ShiftLeft) {
-        return;
-    }
-
-    let Ok(mut input) = query.single_mut() else {
-        return;
-    };
-
-    if let Some(shield_id) = ability_registry.get_id("shield") {
-        input.want_to_cast = Some(shield_id);
+    } else {
+        input.want_to_cast = Some(defensive_id);
     }
 }
 

@@ -5,6 +5,7 @@ pub enum GameState {
     #[default]
     Loading,
     MainMenu,
+    SpellSelection,
     Playing,
     GameOver,
 }

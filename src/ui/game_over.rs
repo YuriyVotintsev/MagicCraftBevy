@@ -104,7 +104,7 @@ pub(super) fn game_over_button_system(
             Interaction::Pressed => {
                 *color = PRESSED_BUTTON.into();
                 match button {
-                    GameOverButton::Retry => next_state.set(GameState::Playing),
+                    GameOverButton::Retry => next_state.set(GameState::SpellSelection),
                     GameOverButton::MainMenu => next_state.set(GameState::MainMenu),
                 }
             }

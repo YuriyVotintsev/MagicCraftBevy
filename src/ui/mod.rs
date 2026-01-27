@@ -4,6 +4,7 @@ mod hud;
 mod loading;
 mod main_menu;
 mod shop;
+mod spell_selection;
 
 use bevy::prelude::*;
 
@@ -19,6 +20,19 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 main_menu::menu_button_system.run_if(in_state(GameState::MainMenu)),
+            )
+            .add_systems(
+                OnEnter(GameState::SpellSelection),
+                spell_selection::spawn_spell_selection,
+            )
+            .add_systems(
+                Update,
+                (
+                    spell_selection::spell_button_system,
+                    spell_selection::update_spell_button_colors,
+                    spell_selection::start_button_system,
+                )
+                    .run_if(in_state(GameState::SpellSelection)),
             )
             .add_systems(OnEnter(GameState::GameOver), game_over::spawn_game_over)
             .add_systems(

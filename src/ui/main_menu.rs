@@ -104,7 +104,7 @@ pub(super) fn menu_button_system(
             Interaction::Pressed => {
                 *color = PRESSED_BUTTON.into();
                 match button {
-                    MenuButton::Play => next_state.set(GameState::Playing),
+                    MenuButton::Play => next_state.set(GameState::SpellSelection),
                     MenuButton::Exit => {
                         exit.write(AppExit::Success);
                     }
