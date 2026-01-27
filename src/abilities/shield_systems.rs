@@ -23,7 +23,9 @@ pub fn update_shield(
             let distance = shield_pos.distance(proj_pos);
 
             if distance <= shield.radius {
-                commands.entity(proj_entity).despawn();
+                if let Ok(mut entity_commands) = commands.get_entity(proj_entity) {
+                    entity_commands.despawn();
+                }
             }
         }
 
@@ -42,8 +44,8 @@ pub fn update_shield_visual(
     for (visual_entity, visual, mut visual_transform) in &mut visual_query {
         if let Ok(owner_transform) = shield_query.get(visual.owner) {
             visual_transform.translation = owner_transform.translation.with_z(0.5);
-        } else {
-            commands.entity(visual_entity).despawn();
+        } else if let Ok(mut entity_commands) = commands.get_entity(visual_entity) {
+            entity_commands.despawn();
         }
     }
 }

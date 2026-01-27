@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::money::PlayerMoney;
 use crate::schedule::{GameSet, PostGameSet};
-use crate::stats::DeathEvent;
+use crate::stats::{death_system, DeathEvent};
 use crate::Faction;
 use crate::GameState;
 
@@ -113,6 +113,7 @@ impl Plugin for WavePlugin {
                 PostUpdate,
                 track_wave_kills
                     .in_set(PostGameSet)
+                    .after(death_system)
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(

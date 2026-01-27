@@ -17,7 +17,7 @@ pub use expression::Expression;
 pub use expression::ExpressionRaw;
 #[allow(unused_imports)]
 pub use health::{cleanup_dead, Dead};
-pub use health::{DeathEvent, Health};
+pub use health::{death_system, DeathEvent, Health};
 #[allow(unused_imports)]
 pub use modifiers::{Modifier, Modifiers};
 pub use pending_damage::PendingDamage;

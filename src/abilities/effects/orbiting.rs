@@ -5,6 +5,8 @@ use std::f32::consts::PI;
 use crate::abilities::registry::{EffectExecutor, EffectRegistry};
 use crate::abilities::effect_def::{EffectDef, ParamValue};
 use crate::abilities::context::AbilityContext;
+use crate::physics::GameLayer;
+use crate::Faction;
 
 use super::spawn_projectile::{Projectile, Pierce};
 
@@ -56,6 +58,17 @@ impl EffectExecutor for SpawnOrbitingEffect {
             _ => Vec::new(),
         };
 
+        let orb_layers = match ctx.caster_faction {
+            Faction::Player => CollisionLayers::new(
+                GameLayer::PlayerProjectile,
+                [GameLayer::Enemy, GameLayer::Wall],
+            ),
+            Faction::Enemy => CollisionLayers::new(
+                GameLayer::EnemyProjectile,
+                [GameLayer::Player, GameLayer::Wall],
+            ),
+        };
+
         for i in 0..count {
             let angle = 2.0 * PI * (i as f32) / (count as f32);
             let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
@@ -79,6 +92,7 @@ impl EffectExecutor for SpawnOrbitingEffect {
                 Sensor,
                 CollisionEventsEnabled,
                 RigidBody::Kinematic,
+                orb_layers,
                 Sprite {
                     color: Color::srgb(0.3, 0.7, 1.0),
                     custom_size: Some(Vec2::splat(size)),
