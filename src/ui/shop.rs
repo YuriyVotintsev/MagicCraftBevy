@@ -20,6 +20,7 @@ pub fn spawn_shop(
     money: Res<PlayerMoney>,
 ) {
     commands.spawn((
+        Name::new("ShopRoot"),
         ShopRoot,
         DespawnOnExit(WavePhase::Shop),
         Node {

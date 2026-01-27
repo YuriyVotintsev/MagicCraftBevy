@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::money::PlayerMoney;
+use crate::schedule::GameSet;
 use crate::stats::DeathEvent;
 use crate::Faction;
 use crate::GameState;
@@ -66,11 +67,12 @@ impl Plugin for WavePlugin {
             .add_systems(OnEnter(GameState::Playing), reset_wave_state)
             .add_systems(
                 Update,
-                track_wave_kills.run_if(in_state(GameState::Playing)),
-            )
-            .add_systems(
-                Update,
-                check_wave_completion.run_if(in_state(WavePhase::Combat)),
+                (
+                    track_wave_kills.run_if(in_state(GameState::Playing)),
+                    check_wave_completion.run_if(in_state(WavePhase::Combat)),
+                )
+                    .in_set(GameSet::WaveManagement)
+                    .run_if(not(in_state(GameState::Loading))),
             )
             .add_systems(
                 Update,

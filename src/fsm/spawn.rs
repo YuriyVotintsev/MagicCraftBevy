@@ -75,6 +75,7 @@ pub fn spawn_mob(
     let entity = commands
         .spawn((
             (
+                Name::new(format!("Mob_{}", mob_name)),
                 DespawnOnExit(WavePhase::Combat),
                 Mesh2d(mesh),
                 MeshMaterial2d(materials.add(color)),

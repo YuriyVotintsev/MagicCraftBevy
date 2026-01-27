@@ -2,7 +2,7 @@ mod calculators;
 mod computed_stats;
 mod dirty_stats;
 mod health;
-mod loader;
+pub mod loader;
 mod modifiers;
 mod pending_damage;
 mod stat_id;
@@ -12,12 +12,13 @@ pub use calculators::StatCalculators;
 pub use computed_stats::ComputedStats;
 pub use dirty_stats::DirtyStats;
 pub use health::{DeathEvent, Health};
-pub use loader::load_stats;
 #[allow(unused_imports)]
 pub use modifiers::{Modifier, Modifiers};
 pub use pending_damage::PendingDamage;
 
+use crate::schedule::GameSet;
 use crate::Faction;
+use crate::GameState;
 
 #[derive(Message)]
 pub struct DamageEvent {
@@ -36,17 +37,18 @@ pub struct StatsPlugin;
 
 impl Plugin for StatsPlugin {
     fn build(&self, app: &mut App) {
-        let (registry, calculators) = load_stats(
-            "assets/stats/stat_ids.ron",
-            "assets/stats/calculators.ron",
-        );
-
-        app.insert_resource(registry)
-            .insert_resource(calculators)
-            .add_message::<DeathEvent>()
+        app.add_message::<DeathEvent>()
             .add_message::<DamageEvent>()
-            .add_systems(PreUpdate, systems::recalculate_stats)
-            .add_systems(Update, apply_pending_damage)
+            .add_systems(
+                PreUpdate,
+                systems::recalculate_stats.run_if(not(in_state(GameState::Loading))),
+            )
+            .add_systems(
+                Update,
+                apply_pending_damage
+                    .in_set(GameSet::Damage)
+                    .run_if(not(in_state(GameState::Loading))),
+            )
             .add_systems(
                 PostUpdate,
                 (
@@ -54,7 +56,8 @@ impl Plugin for StatsPlugin {
                     health::death_system,
                     health::handle_player_death,
                 )
-                    .chain(),
+                    .chain()
+                    .run_if(not(in_state(GameState::Loading))),
             );
     }
 }

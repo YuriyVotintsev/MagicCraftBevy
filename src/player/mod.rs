@@ -1,4 +1,4 @@
-mod player_def;
+pub mod player_def;
 
 use avian2d::prelude::*;
 use bevy::prelude::*;
@@ -7,12 +7,13 @@ use crate::Faction;
 use crate::GameState;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
 use crate::fsm::ColliderShape;
-use crate::wave::WavePhase;
+use crate::schedule::GameSet;
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
+use crate::wave::WavePhase;
 
-use player_def::{load_player_def, PlayerDef};
+use player_def::PlayerDef;
 
 #[derive(Component)]
 pub struct Player;
@@ -24,13 +25,13 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        let player_def = load_player_def("assets/player.ron");
-        app.insert_resource(PlayerDefResource(player_def))
-            .add_systems(OnEnter(GameState::Playing), spawn_player)
+        app.add_systems(OnEnter(GameState::Playing), spawn_player)
             .add_systems(OnExit(WavePhase::Combat), reset_player_velocity)
             .add_systems(
                 Update,
-                (player_movement, player_shooting).run_if(in_state(WavePhase::Combat)),
+                (player_movement, player_shooting)
+                    .in_set(GameSet::Input)
+                    .run_if(in_state(WavePhase::Combat)),
             );
     }
 }
@@ -82,29 +83,34 @@ fn spawn_player(
     };
 
     commands.spawn((
-        DespawnOnExit(GameState::Playing),
-        Player,
-        Faction::Player,
-        collider,
-        RigidBody::Dynamic,
-        LockedAxes::ROTATION_LOCKED,
-        LinearVelocity::ZERO,
-        modifiers,
-        computed,
-        dirty,
-        Health::new(max_life),
-        abilities,
-        AbilityInput::new(),
-        Sprite {
-            color: Color::srgb(
-                player_def.visual.color[0],
-                player_def.visual.color[1],
-                player_def.visual.color[2],
-            ),
-            custom_size: Some(Vec2::splat(player_def.visual.size)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, 1.0),
+        (
+            Name::new("Player"),
+            DespawnOnExit(GameState::Playing),
+            Player,
+            Faction::Player,
+            collider,
+            RigidBody::Dynamic,
+            LockedAxes::ROTATION_LOCKED,
+            LinearVelocity::ZERO,
+        ),
+        (
+            modifiers,
+            computed,
+            dirty,
+            Health::new(max_life),
+            abilities,
+            AbilityInput::new(),
+            Sprite {
+                color: Color::srgb(
+                    player_def.visual.color[0],
+                    player_def.visual.color[1],
+                    player_def.visual.color[2],
+                ),
+                custom_size: Some(Vec2::splat(player_def.visual.size)),
+                ..default()
+            },
+            Transform::from_xyz(0.0, 0.0, 1.0),
+        ),
     ));
 }
 

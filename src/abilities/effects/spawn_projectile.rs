@@ -46,6 +46,7 @@ impl EffectExecutor for SpawnProjectileEffect {
         let velocity = direction * speed;
 
         commands.spawn((
+            Name::new("Projectile"),
             Projectile {
                 on_hit_effects,
                 context: ctx.clone(),

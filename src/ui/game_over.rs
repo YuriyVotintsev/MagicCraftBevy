@@ -15,6 +15,7 @@ const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 
 pub(super) fn spawn_game_over(mut commands: Commands) {
     commands.spawn((
+        Name::new("GameOverRoot"),
         DespawnOnExit(GameState::GameOver),
         Node {
             width: Val::Percent(100.0),

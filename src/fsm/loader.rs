@@ -5,6 +5,7 @@ use std::path::Path;
 use super::registry::MobRegistry;
 use super::types::MobDef;
 
+#[allow(dead_code)]
 pub fn load_mobs(mobs_dir: &str) -> MobRegistry {
     let mut registry = MobRegistry::new();
 

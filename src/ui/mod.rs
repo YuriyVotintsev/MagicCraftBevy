@@ -1,6 +1,7 @@
 mod damage_numbers;
 mod game_over;
 mod hud;
+mod loading;
 mod main_menu;
 mod shop;
 
@@ -13,7 +14,8 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::MainMenu), main_menu::spawn_main_menu)
+        app.add_systems(OnEnter(GameState::Loading), loading::spawn_loading_screen)
+            .add_systems(OnEnter(GameState::MainMenu), main_menu::spawn_main_menu)
             .add_systems(
                 Update,
                 main_menu::menu_button_system.run_if(in_state(GameState::MainMenu)),

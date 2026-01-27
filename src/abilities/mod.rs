@@ -1,4 +1,4 @@
-mod ids;
+pub mod ids;
 mod context;
 mod owner;
 mod effect_def;
@@ -7,7 +7,6 @@ mod ability_def;
 mod components;
 mod registry;
 mod dispatcher;
-mod loader;
 
 pub mod activators;
 pub mod effects;
@@ -29,6 +28,9 @@ pub use registry::{Activator, EffectExecutor, ActivatorRegistry, EffectRegistry,
 
 use bevy::prelude::*;
 
+use crate::schedule::GameSet;
+use crate::GameState;
+
 mod projectile_systems;
 
 #[allow(unused_imports)]
@@ -47,25 +49,17 @@ impl Plugin for AbilityPlugin {
         app.insert_resource(activator_registry)
             .insert_resource(effect_registry)
             .init_resource::<AbilityRegistry>()
-            .add_systems(PreStartup, init_abilities)
-            .add_systems(Update, (
-                dispatcher::ability_dispatcher,
-                projectile_systems::projectile_collision,
-            ));
+            .add_systems(
+                Update,
+                dispatcher::ability_dispatcher
+                    .in_set(GameSet::AbilityActivation)
+                    .run_if(not(in_state(GameState::Loading))),
+            )
+            .add_systems(
+                Update,
+                projectile_systems::projectile_collision
+                    .in_set(GameSet::AbilityExecution)
+                    .run_if(not(in_state(GameState::Loading))),
+            );
     }
-}
-
-fn init_abilities(
-    stat_registry: Res<crate::stats::StatRegistry>,
-    mut ability_registry: ResMut<AbilityRegistry>,
-    activator_registry: Res<ActivatorRegistry>,
-    mut effect_registry: ResMut<EffectRegistry>,
-) {
-    loader::load_abilities(
-        "assets/abilities",
-        &stat_registry,
-        &mut ability_registry,
-        &activator_registry,
-        &mut effect_registry,
-    );
 }

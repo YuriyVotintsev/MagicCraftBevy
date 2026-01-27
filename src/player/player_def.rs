@@ -27,6 +27,7 @@ pub struct PlayerVisualDef {
     pub color: [f32; 3],
 }
 
+#[allow(dead_code)]
 pub fn load_player_def(path: &str) -> PlayerDef {
     let content = fs::read_to_string(path).unwrap_or_else(|e| {
         panic!("Failed to read player definition file '{}': {}", path, e)

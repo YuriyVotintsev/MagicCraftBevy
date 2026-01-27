@@ -15,6 +15,7 @@ const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 
 pub(super) fn spawn_main_menu(mut commands: Commands) {
     commands.spawn((
+        Name::new("MainMenuRoot"),
         DespawnOnExit(GameState::MainMenu),
         Node {
             width: Val::Percent(100.0),

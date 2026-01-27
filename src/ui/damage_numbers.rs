@@ -11,8 +11,13 @@ pub struct DamageNumber {
 const DURATION: f32 = 0.8;
 const FONT_SIZE: f32 = 28.0;
 
-pub fn spawn_damage_numbers(mut commands: Commands, mut events: MessageReader<DamageEvent>) {
+pub fn spawn_damage_numbers(
+    mut commands: Commands,
+    mut events: MessageReader<DamageEvent>,
+    mut counter: Local<u64>,
+) {
     for event in events.read() {
+        *counter += 1;
         let offset_x = (rand::random::<f32>() - 0.5) * 20.0;
         let position = event.position + Vec3::new(offset_x, 20.0, 10.0);
 
@@ -22,6 +27,7 @@ pub fn spawn_damage_numbers(mut commands: Commands, mut events: MessageReader<Da
         };
 
         commands.spawn((
+            Name::new(format!("DamageNum_{}", *counter)),
             DamageNumber {
                 timer: Timer::from_seconds(DURATION, TimerMode::Once),
             },

@@ -17,6 +17,7 @@ pub struct CalculatorDefRaw {
     pub depends_on: Vec<String>,
 }
 
+#[allow(dead_code)]
 pub fn load_stats(
     stat_ids_path: &str,
     calculators_path: &str,

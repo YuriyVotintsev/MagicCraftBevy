@@ -4,9 +4,11 @@ mod expression;
 mod faction;
 mod fsm;
 mod game_state;
+mod loading;
 mod mob_ai;
 mod money;
 mod player;
+mod schedule;
 mod stats;
 mod ui;
 mod wave;
@@ -20,7 +22,9 @@ use bevy::prelude::*;
 use abilities::AbilityPlugin;
 use arena::ArenaPlugin;
 use fsm::FsmPlugin;
+use loading::LoadingPlugin;
 use player::PlayerPlugin;
+use schedule::GameSet;
 use stats::StatsPlugin;
 use ui::UiPlugin;
 use wave::{WavePhase, WavePlugin};
@@ -119,8 +123,21 @@ fn main() {
 
     app.init_state::<GameState>()
         .add_sub_state::<WavePhase>()
+        .configure_sets(
+            Update,
+            (
+                GameSet::Input,
+                GameSet::MobAI,
+                GameSet::AbilityActivation,
+                GameSet::AbilityExecution,
+                GameSet::Damage,
+                GameSet::WaveManagement,
+            )
+                .chain(),
+        )
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
+            LoadingPlugin,
             ArenaPlugin,
             PlayerPlugin,
             StatsPlugin,

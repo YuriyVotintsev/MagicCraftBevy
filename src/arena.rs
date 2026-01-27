@@ -51,7 +51,7 @@ fn reset_spawn_timer(mut timer: ResMut<SlimeSpawnTimer>) {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2d);
+    commands.spawn((Name::new("MainCamera"), Camera2d));
 }
 
 fn spawn_arena(mut commands: Commands) {
@@ -60,6 +60,7 @@ fn spawn_arena(mut commands: Commands) {
     let border_color = Color::srgb(0.8, 0.8, 0.8);
 
     commands.spawn((
+        Name::new("Wall_Top"),
         Wall,
         Sprite {
             color: border_color,
@@ -75,6 +76,7 @@ fn spawn_arena(mut commands: Commands) {
     ));
 
     commands.spawn((
+        Name::new("Wall_Bottom"),
         Wall,
         Sprite {
             color: border_color,
@@ -90,6 +92,7 @@ fn spawn_arena(mut commands: Commands) {
     ));
 
     commands.spawn((
+        Name::new("Wall_Left"),
         Wall,
         Sprite {
             color: border_color,
@@ -105,6 +108,7 @@ fn spawn_arena(mut commands: Commands) {
     ));
 
     commands.spawn((
+        Name::new("Wall_Right"),
         Wall,
         Sprite {
             color: border_color,

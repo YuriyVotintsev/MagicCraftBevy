@@ -34,6 +34,7 @@ const KILL_BAR_COLOR: Color = Color::srgb(0.2, 0.6, 0.8);
 
 pub fn spawn_hud(mut commands: Commands) {
     commands.spawn((
+        Name::new("HudRoot"),
         HudRoot,
         DespawnOnExit(GameState::Playing),
         Node {
