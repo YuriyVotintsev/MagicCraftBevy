@@ -21,7 +21,6 @@ pub use types::{BehaviourDef, MobDef, Shape, StateDef, TransitionDef, VisualDef}
 use bevy::prelude::*;
 
 use crate::schedule::GameSet;
-use crate::GameState;
 use systems::fsm_transition_system;
 
 pub struct FsmPlugin;
@@ -31,11 +30,6 @@ impl Plugin for FsmPlugin {
         app.init_resource::<BehaviourRegistry>()
             .init_resource::<TransitionRegistry>()
             .add_message::<StateTransition>()
-            .add_systems(
-                Update,
-                fsm_transition_system
-                    .in_set(GameSet::MobAI)
-                    .run_if(not(in_state(GameState::Loading))),
-            );
+            .add_systems(Update, fsm_transition_system.in_set(GameSet::MobAI));
     }
 }

@@ -25,7 +25,7 @@ use fsm::FsmPlugin;
 use loading::LoadingPlugin;
 use mob_ai::MobAiPlugin;
 use player::PlayerPlugin;
-use schedule::GameSet;
+use schedule::{GameSet, PostGameSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
 use wave::{WavePhase, WavePlugin};
@@ -134,8 +134,10 @@ fn main() {
                 GameSet::Damage,
                 GameSet::WaveManagement,
             )
-                .chain(),
+                .chain()
+                .run_if(not(in_state(GameState::Loading))),
         )
+        .configure_sets(PostUpdate, PostGameSet.run_if(not(in_state(GameState::Loading))))
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
             LoadingPlugin,

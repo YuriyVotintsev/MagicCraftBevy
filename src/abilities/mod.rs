@@ -29,7 +29,6 @@ pub use registry::{Activator, EffectExecutor, ActivatorRegistry, EffectRegistry,
 use bevy::prelude::*;
 
 use crate::schedule::GameSet;
-use crate::GameState;
 
 mod projectile_systems;
 
@@ -51,15 +50,11 @@ impl Plugin for AbilityPlugin {
             .init_resource::<AbilityRegistry>()
             .add_systems(
                 Update,
-                dispatcher::ability_dispatcher
-                    .in_set(GameSet::AbilityActivation)
-                    .run_if(not(in_state(GameState::Loading))),
+                dispatcher::ability_dispatcher.in_set(GameSet::AbilityActivation),
             )
             .add_systems(
                 Update,
-                projectile_systems::projectile_collision
-                    .in_set(GameSet::AbilityExecution)
-                    .run_if(not(in_state(GameState::Loading))),
+                projectile_systems::projectile_collision.in_set(GameSet::AbilityExecution),
             );
     }
 }

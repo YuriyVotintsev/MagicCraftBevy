@@ -17,12 +17,12 @@ pub use expression::Expression;
 pub use expression::ExpressionRaw;
 #[allow(unused_imports)]
 pub use health::{cleanup_dead, Dead};
-pub use health::{death_system, DeathEvent, Health};
+pub use health::{DeathEvent, Health};
 #[allow(unused_imports)]
 pub use modifiers::{Modifier, Modifiers};
 pub use pending_damage::PendingDamage;
 
-use crate::schedule::GameSet;
+use crate::schedule::{GameSet, PostGameSet};
 use crate::Faction;
 use crate::GameState;
 
@@ -49,21 +49,8 @@ impl Plugin for StatsPlugin {
                 PreUpdate,
                 systems::recalculate_stats.run_if(not(in_state(GameState::Loading))),
             )
-            .add_systems(
-                Update,
-                apply_pending_damage
-                    .in_set(GameSet::Damage)
-                    .run_if(not(in_state(GameState::Loading))),
-            )
-            .add_systems(
-                PostUpdate,
-                (
-                    health::sync_health_to_max_life,
-                    health::death_system,
-                )
-                    .chain()
-                    .run_if(not(in_state(GameState::Loading))),
-            )
+            .add_systems(Update, apply_pending_damage.in_set(GameSet::Damage))
+            .add_systems(PostUpdate, health::death_system.in_set(PostGameSet))
             .add_systems(
                 Last,
                 health::cleanup_dead.run_if(not(in_state(GameState::Loading))),
@@ -73,11 +60,18 @@ impl Plugin for StatsPlugin {
 
 fn apply_pending_damage(
     mut commands: Commands,
+    stat_registry: Res<StatRegistry>,
     mut damage_events: MessageWriter<DamageEvent>,
-    mut query: Query<(Entity, &PendingDamage, &mut Health, &Transform, &Faction), Without<Invulnerable>>,
+    mut query: Query<
+        (Entity, &PendingDamage, &mut Health, &ComputedStats, &Transform, &Faction),
+        Without<Invulnerable>,
+    >,
 ) {
-    for (entity, pending, mut health, transform, faction) in &mut query {
-        health.take_damage(pending.0);
+    let max_life_id = stat_registry.get("max_life");
+
+    for (entity, pending, mut health, stats, transform, faction) in &mut query {
+        let max = max_life_id.map(|id| stats.get(id)).unwrap_or(f32::MAX);
+        health.current = (health.current - pending.0).clamp(0.0, max);
 
         damage_events.write(DamageEvent {
             position: transform.translation,

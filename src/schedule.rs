@@ -9,3 +9,6 @@ pub enum GameSet {
     Damage,
     WaveManagement,
 }
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PostGameSet;

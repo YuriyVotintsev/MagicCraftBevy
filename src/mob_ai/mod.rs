@@ -8,7 +8,6 @@ use bevy::prelude::*;
 
 use crate::fsm::{BehaviourDef, BehaviourRegistry, TransitionDef, TransitionRegistry};
 use crate::schedule::GameSet;
-use crate::GameState;
 
 pub struct MobAiPlugin;
 
@@ -24,8 +23,7 @@ impl Plugin for MobAiPlugin {
                     when_near_system,
                     after_time_system,
                 )
-                    .in_set(GameSet::MobAI)
-                    .run_if(not(in_state(GameState::Loading))),
+                    .in_set(GameSet::MobAI),
             );
     }
 }

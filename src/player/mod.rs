@@ -8,9 +8,9 @@ use crate::GameState;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
 use crate::physics::ColliderShape;
 use crate::schedule::GameSet;
+use crate::schedule::PostGameSet;
 use crate::stats::{
-    death_system, ComputedStats, DeathEvent, DirtyStats, Health, Modifiers, StatCalculators, StatId,
-    StatRegistry,
+    ComputedStats, DeathEvent, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
 use crate::wave::WavePhase;
 
@@ -34,12 +34,7 @@ impl Plugin for PlayerPlugin {
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
             )
-            .add_systems(
-                PostUpdate,
-                handle_player_death
-                    .after(death_system)
-                    .run_if(not(in_state(GameState::Loading))),
-            );
+            .add_systems(PostUpdate, handle_player_death.in_set(PostGameSet));
     }
 }
 
