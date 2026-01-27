@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use crate::physics::Wall;
 use crate::Faction;
-use super::effects::Projectile;
+use super::effects::{Projectile, Pierce};
 use super::registry::EffectRegistry;
 use super::context::ContextValue;
 
@@ -11,6 +11,7 @@ pub fn projectile_collision(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
     projectile_query: Query<(&Projectile, &Faction)>,
+    mut pierce_query: Query<&mut Pierce>,
     target_query: Query<&Faction, Without<Projectile>>,
     wall_query: Query<(), With<Wall>>,
     effect_registry: Res<EffectRegistry>,
@@ -29,8 +30,15 @@ pub fn projectile_collision(
             };
 
         if wall_query.contains(other_entity) {
-            if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
-                entity_commands.despawn();
+            let has_pierce_infinite = pierce_query
+                .get(projectile_entity)
+                .map(|p| matches!(*p, Pierce::Infinite))
+                .unwrap_or(false);
+
+            if !has_pierce_infinite {
+                if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
+                    entity_commands.despawn();
+                }
             }
             continue;
         }
@@ -57,8 +65,21 @@ pub fn projectile_collision(
             effect_registry.execute(effect_def, &ctx, &mut commands);
         }
 
-        if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
-            entity_commands.despawn();
+        let should_despawn = match pierce_query.get_mut(projectile_entity) {
+            Err(_) => true,
+            Ok(pierce) => match pierce.into_inner() {
+                Pierce::Infinite => false,
+                Pierce::Count(n) => {
+                    *n = n.saturating_sub(1);
+                    *n == 0
+                }
+            },
+        };
+
+        if should_despawn {
+            if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
+                entity_commands.despawn();
+            }
         }
     }
 }

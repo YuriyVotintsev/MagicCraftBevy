@@ -76,6 +76,9 @@ fn spawn_player(
     if let Some(fireball_id) = ability_registry.get_id("fireball") {
         abilities.add(fireball_id);
     }
+    if let Some(orbs_id) = ability_registry.get_id("orbiting_orbs") {
+        abilities.add(orbs_id);
+    }
 
     let collider = match player_def.collider.shape {
         ColliderShape::Circle => Collider::circle(player_def.collider.size),

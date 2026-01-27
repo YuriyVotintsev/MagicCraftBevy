@@ -130,6 +130,7 @@ pub fn check_stats_loaded(
     loading_state.ability_handles = vec![
         asset_server.load("abilities/fireball.ability.ron"),
         asset_server.load("abilities/archer_shot.ability.ron"),
+        asset_server.load("abilities/orbiting_orbs.ability.ron"),
     ];
 
     loading_state.phase = LoadingPhase::WaitingForContent;

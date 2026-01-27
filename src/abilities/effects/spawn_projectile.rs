@@ -15,6 +15,12 @@ pub struct Projectile {
     pub context: AbilityContext,
 }
 
+#[derive(Component)]
+pub enum Pierce {
+    Count(u32),
+    Infinite,
+}
+
 pub struct SpawnProjectileEffect;
 
 impl EffectExecutor for SpawnProjectileEffect {
@@ -45,7 +51,12 @@ impl EffectExecutor for SpawnProjectileEffect {
         let direction = ctx.target_direction.unwrap_or(Vec3::X).truncate().normalize_or_zero();
         let velocity = direction * speed;
 
-        commands.spawn((
+        let pierce = match def.get_param("pierce", registry) {
+            Some(ParamValue::Int(n)) => Some(Pierce::Count(*n as u32)),
+            _ => None,
+        };
+
+        let mut entity_commands = commands.spawn((
             Name::new("Projectile"),
             Projectile {
                 on_hit_effects,
@@ -65,5 +76,9 @@ impl EffectExecutor for SpawnProjectileEffect {
             },
             Transform::from_translation(ctx.caster_position),
         ));
+
+        if let Some(pierce) = pierce {
+            entity_commands.insert(pierce);
+        }
     }
 }

@@ -29,11 +29,17 @@ pub use registry::{Activator, EffectExecutor, ActivatorRegistry, EffectRegistry,
 use bevy::prelude::*;
 
 use crate::schedule::GameSet;
+use crate::stats::ComputedStats;
+use crate::Faction;
 
 mod projectile_systems;
+mod orbiting_systems;
 
 #[allow(unused_imports)]
 pub use effects::Projectile;
+
+#[derive(Component)]
+pub struct PassiveAbilitiesActivated;
 
 pub struct AbilityPlugin;
 
@@ -50,11 +56,60 @@ impl Plugin for AbilityPlugin {
             .init_resource::<AbilityRegistry>()
             .add_systems(
                 Update,
-                dispatcher::ability_dispatcher.in_set(GameSet::AbilityActivation),
+                (
+                    dispatcher::ability_dispatcher,
+                    passive_ability_activator,
+                )
+                    .in_set(GameSet::AbilityActivation),
             )
             .add_systems(
                 Update,
-                projectile_systems::projectile_collision.in_set(GameSet::AbilityExecution),
+                (
+                    projectile_systems::projectile_collision,
+                    orbiting_systems::update_orbiting_positions,
+                )
+                    .in_set(GameSet::AbilityExecution),
+            )
+            .add_systems(
+                PostUpdate,
+                orbiting_systems::cleanup_orbiting_on_owner_despawn,
             );
+    }
+}
+
+fn passive_ability_activator(
+    mut commands: Commands,
+    query: Query<
+        (Entity, &Abilities, &ComputedStats, &Transform, &Faction),
+        (Added<Abilities>, Without<PassiveAbilitiesActivated>),
+    >,
+    ability_registry: Res<AbilityRegistry>,
+    activator_registry: Res<ActivatorRegistry>,
+    effect_registry: Res<EffectRegistry>,
+) {
+    for (entity, abilities, stats, transform, faction) in &query {
+        let mut activated_any = false;
+
+        for (ability_id, _instance) in abilities.iter() {
+            let Some(ability_def) = ability_registry.get(ability_id) else {
+                continue;
+            };
+
+            if activator_registry.get_name(ability_def.activator.activator_type) != Some("passive") {
+                continue;
+            }
+
+            let ctx = AbilityContext::new(entity, *faction, stats, transform.translation, ability_id);
+
+            for effect_def in &ability_def.effects {
+                effect_registry.execute(effect_def, &ctx, &mut commands);
+            }
+
+            activated_any = true;
+        }
+
+        if activated_any {
+            commands.entity(entity).insert(PassiveAbilitiesActivated);
+        }
     }
 }
