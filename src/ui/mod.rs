@@ -1,3 +1,4 @@
+mod damage_numbers;
 mod game_over;
 mod hud;
 mod main_menu;
@@ -31,6 +32,14 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 shop::shop_button_system.run_if(in_state(WavePhase::Shop)),
+            )
+            .add_systems(
+                Update,
+                (
+                    damage_numbers::spawn_damage_numbers,
+                    damage_numbers::update_damage_numbers,
+                )
+                    .run_if(in_state(GameState::Playing)),
             );
     }
 }

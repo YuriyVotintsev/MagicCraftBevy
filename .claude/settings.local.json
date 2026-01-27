@@ -24,7 +24,9 @@
       "Bash(claude-code agent start:*)",
       "Bash(ls:*)",
       "Bash(find:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "WebFetch(domain:crates.io)",
+      "WebFetch(domain:lib.rs)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"

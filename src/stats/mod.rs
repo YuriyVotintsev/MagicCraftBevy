@@ -16,6 +16,12 @@ pub use loader::load_stats;
 #[allow(unused_imports)]
 pub use modifiers::{Modifier, Modifiers};
 pub use pending_damage::PendingDamage;
+
+#[derive(Message)]
+pub struct DamageEvent {
+    pub position: Vec3,
+    pub amount: f32,
+}
 #[allow(unused_imports)]
 pub use stat_id::{AggregationType, StatDef, StatId, StatRegistry};
 
@@ -35,6 +41,7 @@ impl Plugin for StatsPlugin {
         app.insert_resource(registry)
             .insert_resource(calculators)
             .add_message::<DeathEvent>()
+            .add_message::<DamageEvent>()
             .add_systems(PreUpdate, systems::recalculate_stats)
             .add_systems(Update, apply_pending_damage)
             .add_systems(
@@ -51,10 +58,17 @@ impl Plugin for StatsPlugin {
 
 fn apply_pending_damage(
     mut commands: Commands,
-    mut query: Query<(Entity, &PendingDamage, &mut Health), Without<Invulnerable>>,
+    mut damage_events: MessageWriter<DamageEvent>,
+    mut query: Query<(Entity, &PendingDamage, &mut Health, &Transform), Without<Invulnerable>>,
 ) {
-    for (entity, pending, mut health) in &mut query {
+    for (entity, pending, mut health, transform) in &mut query {
         health.take_damage(pending.0);
+
+        damage_events.write(DamageEvent {
+            position: transform.translation,
+            amount: pending.0,
+        });
+
         if let Ok(mut entity_commands) = commands.get_entity(entity) {
             entity_commands.remove::<PendingDamage>();
         }
