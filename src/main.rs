@@ -39,6 +39,8 @@ use wave::{WavePhase, WavePlugin};
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
 #[cfg(not(feature = "headless"))]
 use bevy::window::WindowResolution;
+#[cfg(not(feature = "headless"))]
+use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 #[cfg(feature = "headless")]
 use bevy::window::ExitCondition;
 
@@ -124,7 +126,8 @@ fn main() {
                 ..default()
             }),
             ..default()
-        }));
+        }))
+        .add_plugins((EguiPlugin::default(), WorldInspectorPlugin::new()));
     }
 
     app.init_state::<GameState>()
@@ -146,6 +149,12 @@ fn main() {
         .add_systems(
             Update,
             (tick_lifetime, tick_growing).in_set(GameSet::AbilityExecution),
+        )
+        .add_systems(
+            Update,
+            ApplyDeferred
+                .after(GameSet::AbilityExecution)
+                .before(GameSet::Damage),
         )
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),

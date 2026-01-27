@@ -86,6 +86,9 @@ fn spawn_player(
     if let Some(flamethrower_id) = ability_registry.get_id("flamethrower") {
         abilities.add(flamethrower_id);
     }
+    if let Some(meteor_id) = ability_registry.get_id("meteor") {
+        abilities.add(meteor_id);
+    }
 
     let collider = match player_def.collider.shape {
         ColliderShape::Circle => Collider::circle(player_def.collider.size),

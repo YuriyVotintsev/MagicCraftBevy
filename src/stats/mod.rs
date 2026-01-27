@@ -49,12 +49,24 @@ impl Plugin for StatsPlugin {
                 PreUpdate,
                 systems::recalculate_stats.run_if(not(in_state(GameState::Loading))),
             )
-            .add_systems(Update, apply_pending_damage.in_set(GameSet::Damage))
+            .add_systems(
+                Update,
+                (discard_damage_on_invulnerable, apply_pending_damage).in_set(GameSet::Damage),
+            )
             .add_systems(PostUpdate, health::death_system.in_set(PostGameSet))
             .add_systems(
                 Last,
                 health::cleanup_dead.run_if(not(in_state(GameState::Loading))),
             );
+    }
+}
+
+fn discard_damage_on_invulnerable(
+    mut commands: Commands,
+    query: Query<Entity, (With<PendingDamage>, With<InvulnerableStack>)>,
+) {
+    for entity in &query {
+        commands.entity(entity).remove::<PendingDamage>();
     }
 }
 
