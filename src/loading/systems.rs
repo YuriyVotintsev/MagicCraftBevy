@@ -5,10 +5,9 @@ use crate::abilities::{
     AbilityDef, AbilityDefRaw, AbilityRegistry, ActivatorDef, ActivatorDefRaw, ActivatorRegistry,
     EffectDef, EffectDefRaw, EffectRegistry, ParamValue, ParamValueRaw,
 };
-use crate::expression::Expression;
 use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;
-use crate::stats::{AggregationType, StatCalculators, StatId, StatRegistry};
+use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
 use super::assets::{AbilityDefAsset, MobDefAsset, PlayerDefAsset, StatsConfigAsset};
 

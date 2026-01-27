@@ -1,12 +1,12 @@
 mod abilities;
 mod arena;
-mod expression;
 mod faction;
 mod fsm;
 mod game_state;
 mod loading;
 mod mob_ai;
 mod money;
+mod physics;
 mod player;
 mod schedule;
 mod stats;
@@ -23,6 +23,7 @@ use abilities::AbilityPlugin;
 use arena::ArenaPlugin;
 use fsm::FsmPlugin;
 use loading::LoadingPlugin;
+use mob_ai::MobAiPlugin;
 use player::PlayerPlugin;
 use schedule::GameSet;
 use stats::StatsPlugin;
@@ -143,6 +144,7 @@ fn main() {
             StatsPlugin,
             AbilityPlugin,
             FsmPlugin,
+            MobAiPlugin,
             UiPlugin,
             WavePlugin,
         ))

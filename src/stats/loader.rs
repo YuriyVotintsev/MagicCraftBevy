@@ -1,7 +1,7 @@
 use serde::Deserialize;
 use std::fs;
 
-use crate::expression::{Expression, ExpressionRaw};
+use super::expression::{Expression, ExpressionRaw};
 use super::{AggregationType, StatCalculators, StatId, StatRegistry};
 
 #[derive(Debug, Deserialize)]

@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::expression::Expression;
-use crate::stats::StatId;
+use crate::stats::{Expression, StatId};
 use super::ids::{EffectTypeId, ParamId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

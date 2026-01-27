@@ -1,6 +1,7 @@
-use bevy::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
+
+use crate::physics::ColliderDef;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct MobDef {
@@ -22,28 +23,6 @@ pub struct VisualDef {
     pub shape: Shape,
     pub size: f32,
     pub color: [f32; 3],
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ColliderDef {
-    pub shape: ColliderShape,
-    pub size: f32,
-}
-
-impl Default for ColliderDef {
-    fn default() -> Self {
-        Self {
-            shape: ColliderShape::Circle,
-            size: 30.0,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Deserialize, Default)]
-pub enum ColliderShape {
-    #[default]
-    Circle,
-    Rectangle,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -79,8 +58,27 @@ pub enum BehaviourDef {
     },
 }
 
+impl BehaviourDef {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            BehaviourDef::MoveTowardPlayer => "MoveTowardPlayer",
+            BehaviourDef::UseAbilities { .. } => "UseAbilities",
+            BehaviourDef::KeepDistance { .. } => "KeepDistance",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub enum TransitionDef {
     WhenNear(Vec<(String, f32)>),
     AfterTime(String, f32),
+}
+
+impl TransitionDef {
+    pub fn type_name(&self) -> &'static str {
+        match self {
+            TransitionDef::WhenNear(_) => "WhenNear",
+            TransitionDef::AfterTime(_, _) => "AfterTime",
+        }
+    }
 }

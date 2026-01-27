@@ -8,10 +8,13 @@ use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
 };
 
+use super::behaviour_registry::BehaviourRegistry;
 use super::components::{CurrentState, MobType};
 use super::registry::MobRegistry;
 use super::systems::add_state_components;
-use super::types::{ColliderShape, Shape};
+use super::transition_registry::TransitionRegistry;
+use super::types::Shape;
+use crate::physics::ColliderShape;
 
 pub fn spawn_mob(
     commands: &mut Commands,
@@ -21,6 +24,8 @@ pub fn spawn_mob(
     stat_registry: &StatRegistry,
     calculators: &StatCalculators,
     ability_registry: &AbilityRegistry,
+    behaviour_registry: &BehaviourRegistry,
+    transition_registry: &TransitionRegistry,
     mob_name: &str,
     position: Vec3,
 ) -> Option<Entity> {
@@ -100,7 +105,14 @@ pub fn spawn_mob(
         .id();
 
     let initial_state = mob_def.states.get(&mob_def.initial_state)?;
-    add_state_components(commands, entity, mob_def, initial_state);
+    add_state_components(
+        commands,
+        entity,
+        mob_def,
+        initial_state,
+        behaviour_registry,
+        transition_registry,
+    );
 
     info!("Spawned mob '{}' at {:?}", mob_name, position);
 

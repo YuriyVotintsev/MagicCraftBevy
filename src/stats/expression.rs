@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::stats::{ComputedStats, Modifiers, StatId, StatRegistry};
+use super::{ComputedStats, Modifiers, StatId, StatRegistry};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExpressionRaw {

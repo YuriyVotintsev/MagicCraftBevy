@@ -1,15 +1,18 @@
 use bevy::prelude::*;
 
-use crate::mob_ai::{AfterTime, KeepDistance, MoveTowardPlayer, UseAbilities, WhenNear};
+use super::behaviour_registry::BehaviourRegistry;
 use super::components::{CurrentState, MobType};
 use super::events::StateTransition;
 use super::registry::MobRegistry;
-use super::types::{BehaviourDef, MobDef, TransitionDef};
+use super::transition_registry::TransitionRegistry;
+use super::types::{MobDef, StateDef};
 
 pub fn fsm_transition_system(
     mut commands: Commands,
     mut events: MessageReader<StateTransition>,
     mob_registry: Res<MobRegistry>,
+    behaviour_registry: Res<BehaviourRegistry>,
+    transition_registry: Res<TransitionRegistry>,
     mut query: Query<(&MobType, &mut CurrentState)>,
 ) {
     for event in events.read() {
@@ -29,11 +32,25 @@ pub fn fsm_transition_system(
         }
 
         if let Some(old_state) = mob_def.states.get(&old_state_name) {
-            remove_state_components(&mut commands, event.entity, mob_def, old_state);
+            remove_state_components(
+                &mut commands,
+                event.entity,
+                mob_def,
+                old_state,
+                &behaviour_registry,
+                &transition_registry,
+            );
         }
 
         if let Some(new_state) = mob_def.states.get(new_state_name) {
-            add_state_components(&mut commands, event.entity, mob_def, new_state);
+            add_state_components(
+                &mut commands,
+                event.entity,
+                mob_def,
+                new_state,
+                &behaviour_registry,
+                &transition_registry,
+            );
         }
 
         current_state.0 = new_state_name.clone();
@@ -49,35 +66,16 @@ fn remove_state_components(
     commands: &mut Commands,
     entity: Entity,
     _mob_def: &MobDef,
-    state: &super::types::StateDef,
+    state: &StateDef,
+    behaviour_registry: &BehaviourRegistry,
+    transition_registry: &TransitionRegistry,
 ) {
-    let Ok(mut entity_commands) = commands.get_entity(entity) else {
-        return;
-    };
-
     for behaviour in &state.behaviour {
-        match behaviour {
-            BehaviourDef::MoveTowardPlayer => {
-                entity_commands.remove::<MoveTowardPlayer>();
-            }
-            BehaviourDef::UseAbilities { .. } => {
-                entity_commands.remove::<UseAbilities>();
-            }
-            BehaviourDef::KeepDistance { .. } => {
-                entity_commands.remove::<KeepDistance>();
-            }
-        }
+        behaviour_registry.remove(commands, entity, behaviour);
     }
 
     for transition in &state.transitions {
-        match transition {
-            TransitionDef::WhenNear(_) => {
-                entity_commands.remove::<WhenNear>();
-            }
-            TransitionDef::AfterTime(_, _) => {
-                entity_commands.remove::<AfterTime>();
-            }
-        }
+        transition_registry.remove(commands, entity, transition);
     }
 }
 
@@ -85,34 +83,15 @@ pub fn add_state_components(
     commands: &mut Commands,
     entity: Entity,
     _mob_def: &MobDef,
-    state: &super::types::StateDef,
+    state: &StateDef,
+    behaviour_registry: &BehaviourRegistry,
+    transition_registry: &TransitionRegistry,
 ) {
-    let Ok(mut entity_commands) = commands.get_entity(entity) else {
-        return;
-    };
-
     for behaviour in &state.behaviour {
-        match behaviour {
-            BehaviourDef::MoveTowardPlayer => {
-                entity_commands.insert(MoveTowardPlayer);
-            }
-            BehaviourDef::UseAbilities { abilities, cooldown } => {
-                entity_commands.insert(UseAbilities::new(abilities.clone()).with_cooldown(*cooldown));
-            }
-            BehaviourDef::KeepDistance { min, max } => {
-                entity_commands.insert(KeepDistance::new(*min, *max));
-            }
-        }
+        behaviour_registry.add(commands, entity, behaviour);
     }
 
     for transition in &state.transitions {
-        match transition {
-            TransitionDef::WhenNear(targets) => {
-                entity_commands.insert(WhenNear::new(targets.clone()));
-            }
-            TransitionDef::AfterTime(target, duration) => {
-                entity_commands.insert(AfterTime::new(target.clone(), *duration));
-            }
-        }
+        transition_registry.add(commands, entity, transition);
     }
 }

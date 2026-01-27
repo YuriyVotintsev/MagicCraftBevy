@@ -1,6 +1,7 @@
 mod calculators;
 mod computed_stats;
 mod dirty_stats;
+mod expression;
 mod health;
 pub mod loader;
 mod modifiers;
@@ -11,7 +12,12 @@ mod systems;
 pub use calculators::StatCalculators;
 pub use computed_stats::ComputedStats;
 pub use dirty_stats::DirtyStats;
-pub use health::{DeathEvent, Health};
+pub use expression::Expression;
+#[allow(unused_imports)]
+pub use expression::ExpressionRaw;
+#[allow(unused_imports)]
+pub use health::{cleanup_dead, Dead};
+pub use health::{death_system, DeathEvent, Health};
 #[allow(unused_imports)]
 pub use modifiers::{Modifier, Modifiers};
 pub use pending_damage::PendingDamage;
@@ -54,10 +60,13 @@ impl Plugin for StatsPlugin {
                 (
                     health::sync_health_to_max_life,
                     health::death_system,
-                    health::handle_player_death,
                 )
                     .chain()
                     .run_if(not(in_state(GameState::Loading))),
+            )
+            .add_systems(
+                Last,
+                health::cleanup_dead.run_if(not(in_state(GameState::Loading))),
             );
     }
 }

@@ -4,7 +4,8 @@ use rand::Rng;
 
 use crate::GameState;
 use crate::abilities::AbilityRegistry;
-use crate::fsm::{spawn_mob, MobRegistry};
+use crate::fsm::{spawn_mob, BehaviourRegistry, MobRegistry, TransitionRegistry};
+pub use crate::physics::Wall;
 use crate::stats::{StatCalculators, StatRegistry};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 
@@ -15,9 +16,6 @@ pub const WINDOW_HEIGHT: f32 = 720.0;
 pub const ARENA_WIDTH: f32 = 1920.0;
 pub const ARENA_HEIGHT: f32 = 1080.0;
 pub const BORDER_THICKNESS: f32 = 10.0;
-
-#[derive(Component)]
-pub struct Wall;
 
 const SLIME_SPAWN_INTERVAL: f32 = 1.5;
 const SLIME_SIZE: f32 = 30.0;
@@ -149,6 +147,8 @@ fn spawn_enemies(
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
     ability_registry: Res<AbilityRegistry>,
+    behaviour_registry: Res<BehaviourRegistry>,
+    transition_registry: Res<TransitionRegistry>,
     mut wave_state: ResMut<WaveState>,
 ) {
     if wave_state.spawned_count >= wave_state.target_count {
@@ -173,6 +173,8 @@ fn spawn_enemies(
             &stat_registry,
             &calculators,
             &ability_registry,
+            &behaviour_registry,
+            &transition_registry,
             mob_name,
             Vec3::new(x, y, 1.0),
         ) {

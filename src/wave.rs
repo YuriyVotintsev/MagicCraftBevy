@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::money::PlayerMoney;
 use crate::schedule::GameSet;
-use crate::stats::DeathEvent;
+use crate::stats::{death_system, DeathEvent};
 use crate::Faction;
 use crate::GameState;
 
@@ -67,11 +67,16 @@ impl Plugin for WavePlugin {
             .add_systems(OnEnter(GameState::Playing), reset_wave_state)
             .add_systems(
                 Update,
-                (
-                    track_wave_kills.run_if(in_state(GameState::Playing)),
-                    check_wave_completion.run_if(in_state(WavePhase::Combat)),
-                )
+                check_wave_completion
                     .in_set(GameSet::WaveManagement)
+                    .run_if(in_state(WavePhase::Combat))
+                    .run_if(not(in_state(GameState::Loading))),
+            )
+            .add_systems(
+                PostUpdate,
+                track_wave_kills
+                    .after(death_system)
+                    .run_if(in_state(GameState::Playing))
                     .run_if(not(in_state(GameState::Loading))),
             )
             .add_systems(
@@ -95,9 +100,10 @@ fn reset_wave_state(
 fn track_wave_kills(
     mut death_events: MessageReader<DeathEvent>,
     mut wave_state: ResMut<WaveState>,
+    wave_enemy_query: Query<(), With<WaveEnemy>>,
 ) {
     for event in death_events.read() {
-        if event.was_wave_enemy {
+        if wave_enemy_query.contains(event.entity) {
             wave_state.killed_count += 1;
         }
     }

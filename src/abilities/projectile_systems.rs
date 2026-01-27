@@ -1,7 +1,7 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::arena::Wall;
+use crate::physics::Wall;
 use crate::Faction;
 use super::effects::Projectile;
 use super::registry::EffectRegistry;

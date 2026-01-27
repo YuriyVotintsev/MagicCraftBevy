@@ -6,10 +6,11 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
-use crate::fsm::ColliderShape;
+use crate::physics::ColliderShape;
 use crate::schedule::GameSet;
 use crate::stats::{
-    ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
+    death_system, ComputedStats, DeathEvent, DirtyStats, Health, Modifiers, StatCalculators, StatId,
+    StatRegistry,
 };
 use crate::wave::WavePhase;
 
@@ -32,6 +33,12 @@ impl Plugin for PlayerPlugin {
                 (player_movement, player_shooting)
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
+            )
+            .add_systems(
+                PostUpdate,
+                handle_player_death
+                    .after(death_system)
+                    .run_if(not(in_state(GameState::Loading))),
             );
     }
 }
@@ -189,6 +196,18 @@ fn player_shooting(
             input.want_to_cast = Some(fireball_id);
             input.target_direction = Some(direction.extend(0.0));
             input.target_point = Some(world_pos.extend(0.0));
+        }
+    }
+}
+
+fn handle_player_death(
+    mut death_events: MessageReader<DeathEvent>,
+    mut next_state: ResMut<NextState<GameState>>,
+    player_query: Query<(), With<Player>>,
+) {
+    for event in death_events.read() {
+        if player_query.contains(event.entity) {
+            next_state.set(GameState::GameOver);
         }
     }
 }

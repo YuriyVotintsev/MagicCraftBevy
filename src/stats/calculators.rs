@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::expression::Expression;
+use super::expression::Expression;
 use super::{ComputedStats, DirtyStats, Modifiers, StatId};
 
 #[derive(Clone)]

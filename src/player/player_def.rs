@@ -2,7 +2,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs;
 
-use crate::fsm::{ColliderDef, ColliderShape};
+use crate::physics::{ColliderDef, ColliderShape};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct PlayerDef {
