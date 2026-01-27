@@ -15,6 +15,7 @@ pub trait Activator: Send + Sync + 'static {
         state: &mut ActivatorState,
         ctx: &mut AbilityContext,
         input: &AbilityInput,
+        delta_time: f32,
     ) -> ActivationResult;
 }
 
@@ -67,9 +68,10 @@ impl ActivatorRegistry {
         state: &mut ActivatorState,
         ctx: &mut AbilityContext,
         input: &AbilityInput,
+        delta_time: f32,
     ) -> ActivationResult {
         if let Some(activator) = self.get(def.activator_type) {
-            activator.check(def, state, ctx, input)
+            activator.check(def, state, ctx, input, delta_time)
         } else {
             ActivationResult::NotReady
         }

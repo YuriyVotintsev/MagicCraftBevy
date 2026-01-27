@@ -12,6 +12,7 @@ impl Activator for PassiveActivator {
         _state: &mut ActivatorState,
         _ctx: &mut AbilityContext,
         _input: &AbilityInput,
+        _delta_time: f32,
     ) -> ActivationResult {
         ActivationResult::Ready
     }

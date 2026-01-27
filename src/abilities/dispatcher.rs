@@ -9,6 +9,7 @@ use super::activator_def::ActivationResult;
 
 pub fn ability_dispatcher(
     mut commands: Commands,
+    time: Res<Time>,
     mut query: Query<(
         Entity,
         &mut Abilities,
@@ -21,6 +22,7 @@ pub fn ability_dispatcher(
     activator_registry: Res<ActivatorRegistry>,
     effect_registry: Res<EffectRegistry>,
 ) {
+    let delta_time = time.delta_secs();
     for (entity, mut abilities, mut input, stats, transform, faction) in &mut query {
         let Some(wanted_ability_id) = input.want_to_cast else {
             continue;
@@ -56,6 +58,7 @@ pub fn ability_dispatcher(
             &mut ability_instance.state,
             &mut ctx,
             &input,
+            delta_time,
         );
 
         if result == ActivationResult::Ready {

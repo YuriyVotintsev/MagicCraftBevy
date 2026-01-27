@@ -26,11 +26,6 @@ impl EffectExecutor for DamageEffect {
             return;
         };
 
-        info!(
-            "Damage effect: {} damage from {:?} to {:?}",
-            amount, ctx.caster, Some(target)
-        );
-
         if let Ok(mut entity_commands) = commands.get_entity(target) {
             entity_commands.insert(PendingDamage(amount));
         }

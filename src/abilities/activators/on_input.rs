@@ -12,6 +12,7 @@ impl Activator for OnInputActivator {
         _state: &mut ActivatorState,
         ctx: &mut AbilityContext,
         input: &AbilityInput,
+        _delta_time: f32,
     ) -> ActivationResult {
         if input.want_to_cast == Some(ctx.ability_id) {
             ActivationResult::Ready

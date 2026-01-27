@@ -1,5 +1,6 @@
 mod abilities;
 mod arena;
+mod components;
 mod faction;
 mod fsm;
 mod game_state;
@@ -14,6 +15,7 @@ mod stats;
 mod ui;
 mod wave;
 
+pub use components::{Growing, Lifetime};
 pub use faction::Faction;
 pub use game_state::GameState;
 pub use movement::MovementLocked;
@@ -23,6 +25,7 @@ use bevy::prelude::*;
 
 use abilities::AbilityPlugin;
 use arena::ArenaPlugin;
+use components::{tick_growing, tick_lifetime};
 use fsm::FsmPlugin;
 use loading::LoadingPlugin;
 use mob_ai::MobAiPlugin;
@@ -140,6 +143,10 @@ fn main() {
                 .run_if(not(in_state(GameState::Loading))),
         )
         .configure_sets(PostUpdate, PostGameSet.run_if(not(in_state(GameState::Loading))))
+        .add_systems(
+            Update,
+            (tick_lifetime, tick_growing).in_set(GameSet::AbilityExecution),
+        )
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
             LoadingPlugin,

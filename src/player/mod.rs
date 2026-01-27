@@ -83,6 +83,9 @@ fn spawn_player(
     if let Some(dash_id) = ability_registry.get_id("dash") {
         abilities.add(dash_id);
     }
+    if let Some(flamethrower_id) = ability_registry.get_id("flamethrower") {
+        abilities.add(flamethrower_id);
+    }
 
     let collider = match player_def.collider.shape {
         ColliderShape::Circle => Collider::circle(player_def.collider.size),
@@ -166,7 +169,10 @@ fn player_shooting(
     mut player_query: Query<(&Transform, &mut AbilityInput), With<Player>>,
     ability_registry: Res<AbilityRegistry>,
 ) {
-    if !mouse.just_pressed(MouseButton::Left) {
+    let left_just_pressed = mouse.just_pressed(MouseButton::Left);
+    let right_pressed = mouse.pressed(MouseButton::Right);
+
+    if !left_just_pressed && !right_pressed {
         return;
     }
 
@@ -194,10 +200,18 @@ fn player_shooting(
     let direction = (world_pos - player_pos).normalize_or_zero();
 
     if direction != Vec2::ZERO {
-        if let Some(fireball_id) = ability_registry.get_id("fireball") {
-            input.want_to_cast = Some(fireball_id);
-            input.target_direction = Some(direction.extend(0.0));
-            input.target_point = Some(world_pos.extend(0.0));
+        if right_pressed {
+            if let Some(flamethrower_id) = ability_registry.get_id("flamethrower") {
+                input.want_to_cast = Some(flamethrower_id);
+                input.target_direction = Some(direction.extend(0.0));
+                input.target_point = Some(world_pos.extend(0.0));
+            }
+        } else if left_just_pressed {
+            if let Some(fireball_id) = ability_registry.get_id("fireball") {
+                input.want_to_cast = Some(fireball_id);
+                input.target_direction = Some(direction.extend(0.0));
+                input.target_point = Some(world_pos.extend(0.0));
+            }
         }
     }
 }
