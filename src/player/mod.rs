@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
-use crate::abilities::{AbilityInput, AbilityRegistry, ActivatorRegistry, HeldAbility, add_ability_activator};
+use crate::abilities::{AbilityInputs, AbilityRegistry, ActivatorRegistry, InputState, add_ability_activator};
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
@@ -34,7 +34,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnExit(WavePhase::Combat), reset_player_velocity)
             .add_systems(
                 Update,
-                (player_movement, player_defensive_input, player_shooting)
+                (player_movement, player_defensive_input, player_active_input)
                     .chain()
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
@@ -108,7 +108,7 @@ fn spawn_player(
             computed,
             dirty,
             Health::new(max_life),
-            AbilityInput::new(),
+            AbilityInputs::new(),
             Sprite {
                 color: Color::srgb(
                     player_def.visual.color[0],
@@ -169,39 +169,27 @@ fn player_movement(
     };
 }
 
-fn player_shooting(
+fn player_active_input(
     mouse: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
-    mut player_query: Query<(&Transform, &mut AbilityInput), With<Player>>,
+    mut player_query: Query<(&Transform, &mut AbilityInputs), With<Player>>,
     selected_spells: Res<SelectedSpells>,
-    ability_registry: Res<AbilityRegistry>,
-    activator_registry: Res<ActivatorRegistry>,
 ) {
-    let Some(active_id) = selected_spells.active else {
+    let Some(ability_id) = selected_spells.active else {
         return;
     };
 
-    let Some(ability_def) = ability_registry.get(active_id) else {
+    let Ok((player_transform, mut inputs)) = player_query.single_mut() else {
         return;
     };
 
-    let activator_name = activator_registry.get_name(ability_def.activator.activator_type);
-    let is_while_held = activator_name == Some("while_held");
+    let pressed = mouse.pressed(MouseButton::Left);
+    let just_pressed = mouse.just_pressed(MouseButton::Left);
 
-    let Ok((player_transform, mut input)) = player_query.single_mut() else {
+    if !pressed && !just_pressed {
+        inputs.inputs.remove(&ability_id);
         return;
-    };
-
-    if is_while_held {
-        if !mouse.pressed(MouseButton::Left) {
-            input.holding = None;
-            return;
-        }
-    } else {
-        if !mouse.just_pressed(MouseButton::Left) {
-            return;
-        }
     }
 
     let Ok(window) = windows.single() else {
@@ -227,52 +215,39 @@ fn player_shooting(
         return;
     }
 
-    if is_while_held {
-        input.holding = Some(HeldAbility {
-            ability_id: active_id,
-            target_direction: direction.extend(0.0),
-            target_point: world_pos.extend(0.0),
-        });
-    } else if input.want_to_cast.is_none() {
-        input.want_to_cast = Some(active_id);
-        input.target_direction = Some(direction.extend(0.0));
-        input.target_point = Some(world_pos.extend(0.0));
-    }
+    inputs.set(ability_id, InputState {
+        pressed,
+        just_pressed,
+        direction: direction.extend(0.0),
+        point: world_pos.extend(0.0),
+    });
 }
 
 fn player_defensive_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&LinearVelocity, &mut AbilityInput), (With<Player>, Without<MovementLocked>)>,
+    mut query: Query<(&LinearVelocity, &mut AbilityInputs), (With<Player>, Without<MovementLocked>)>,
     selected_spells: Res<SelectedSpells>,
-    ability_registry: Res<AbilityRegistry>,
 ) {
+    let Some(ability_id) = selected_spells.defensive else {
+        return;
+    };
+
+    let Ok((velocity, mut inputs)) = query.single_mut() else {
+        return;
+    };
+
     if !keyboard.just_pressed(KeyCode::Space) {
         return;
     }
 
-    let Some(defensive_id) = selected_spells.defensive else {
-        return;
-    };
+    let direction = velocity.0.normalize_or_zero();
 
-    let Ok((velocity, mut input)) = query.single_mut() else {
-        return;
-    };
-
-    let ability_name = ability_registry
-        .get_id("dash")
-        .map(|id| id == defensive_id)
-        .unwrap_or(false);
-
-    if ability_name {
-        let direction = velocity.0.normalize_or_zero();
-        if direction == Vec2::ZERO {
-            return;
-        }
-        input.want_to_cast = Some(defensive_id);
-        input.target_direction = Some(direction.extend(0.0));
-    } else {
-        input.want_to_cast = Some(defensive_id);
-    }
+    inputs.set(ability_id, InputState {
+        pressed: true,
+        just_pressed: true,
+        direction: direction.extend(0.0),
+        point: Vec3::ZERO,
+    });
 }
 
 fn handle_player_death(

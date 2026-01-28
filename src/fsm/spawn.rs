@@ -2,7 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::Faction;
-use crate::abilities::{AbilityInput, AbilityRegistry, ActivatorRegistry, add_ability_activator};
+use crate::abilities::{AbilityInputs, AbilityRegistry, ActivatorRegistry, add_ability_activator};
 use crate::wave::WavePhase;
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
@@ -98,7 +98,7 @@ pub fn spawn_mob(
                 computed,
                 dirty,
                 Health::new(max_life),
-                AbilityInput::new(),
+                AbilityInputs::new(),
             ),
         ))
         .id();

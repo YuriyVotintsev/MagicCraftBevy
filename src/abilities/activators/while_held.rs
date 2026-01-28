@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::abilities::{AbilityId, AbilityInput, AbilityRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, EffectRegistry, AbilityContext};
 use crate::stats::ComputedStats;
 use crate::Faction;
 
@@ -31,7 +31,7 @@ pub fn while_held_system(
     mut query: Query<(
         Entity,
         &mut WhileHeldActivations,
-        &AbilityInput,
+        &AbilityInputs,
         &ComputedStats,
         &Transform,
         &Faction,
@@ -41,17 +41,15 @@ pub fn while_held_system(
 ) {
     let delta = time.delta_secs();
 
-    for (entity, mut activations, input, stats, transform, faction) in &mut query {
-        let held = input.holding.as_ref();
-
+    for (entity, mut activations, inputs, stats, transform, faction) in &mut query {
         for entry in &mut activations.entries {
             entry.timer = (entry.timer - delta).max(0.0);
 
-            let Some(held) = held else {
+            let Some(input) = inputs.get(entry.ability_id) else {
                 continue;
             };
 
-            if held.ability_id != entry.ability_id {
+            if !input.pressed {
                 continue;
             }
 
@@ -72,8 +70,8 @@ pub fn while_held_system(
                 transform.translation,
                 entry.ability_id,
             )
-            .with_target_direction(held.target_direction)
-            .with_target_point(held.target_point);
+            .with_target_direction(input.direction)
+            .with_target_point(input.point);
 
             for effect_def in &ability_def.effects {
                 effect_registry.execute(effect_def, &ctx, &mut commands);

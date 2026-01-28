@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::abilities::{AbilityInput, AbilityRegistry};
+use crate::abilities::{AbilityInputs, AbilityRegistry, InputState};
 use crate::player::Player;
 
 #[derive(Component)]
@@ -30,14 +30,14 @@ pub fn use_abilities_system(
     time: Res<Time>,
     ability_registry: Res<AbilityRegistry>,
     player_query: Query<&Transform, With<Player>>,
-    mut query: Query<(&Transform, &mut UseAbilities, &mut AbilityInput)>,
+    mut query: Query<(&Transform, &mut UseAbilities, &mut AbilityInputs)>,
 ) {
     let Ok(player_transform) = player_query.single() else {
         return;
     };
     let player_pos = player_transform.translation;
 
-    for (transform, mut use_abilities, mut input) in &mut query {
+    for (transform, mut use_abilities, mut inputs) in &mut query {
         use_abilities.timer += time.delta_secs();
 
         if use_abilities.timer < use_abilities.cooldown {
@@ -46,13 +46,16 @@ pub fn use_abilities_system(
 
         use_abilities.timer = 0.0;
 
+        let direction = (player_pos - transform.translation).normalize_or_zero();
+
         for ability_name in &use_abilities.ability_names {
             if let Some(ability_id) = ability_registry.get_id(ability_name) {
-                let direction = (player_pos - transform.translation).normalize_or_zero();
-                input.want_to_cast = Some(ability_id);
-                input.target_direction = Some(direction);
-                input.target_point = Some(player_pos);
-                break;
+                inputs.set(ability_id, InputState {
+                    pressed: true,
+                    just_pressed: true,
+                    direction,
+                    point: player_pos,
+                });
             }
         }
     }

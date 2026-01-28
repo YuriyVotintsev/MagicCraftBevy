@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::abilities::{AbilityId, AbilityInput, AbilityRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, EffectRegistry, AbilityContext};
 use crate::stats::ComputedStats;
 use crate::Faction;
 
@@ -21,10 +21,10 @@ impl OnInputActivations {
 
 pub fn on_input_system(
     mut commands: Commands,
-    mut query: Query<(
+    query: Query<(
         Entity,
         &OnInputActivations,
-        &mut AbilityInput,
+        &AbilityInputs,
         &ComputedStats,
         &Transform,
         &Faction,
@@ -32,40 +32,33 @@ pub fn on_input_system(
     ability_registry: Res<AbilityRegistry>,
     effect_registry: Res<EffectRegistry>,
 ) {
-    for (entity, activations, mut input, stats, transform, faction) in &mut query {
-        let Some(wanted_ability_id) = input.want_to_cast else {
-            continue;
-        };
+    for (entity, activations, inputs, stats, transform, faction) in &query {
+        for entry in &activations.entries {
+            let Some(input) = inputs.get(entry.ability_id) else {
+                continue;
+            };
 
-        let has_ability = activations.entries.iter().any(|e| e.ability_id == wanted_ability_id);
-        if !has_ability {
-            continue;
+            if !input.just_pressed {
+                continue;
+            }
+
+            let Some(ability_def) = ability_registry.get(entry.ability_id) else {
+                continue;
+            };
+
+            let ctx = AbilityContext::new(
+                entity,
+                *faction,
+                stats,
+                transform.translation,
+                entry.ability_id,
+            )
+            .with_target_direction(input.direction)
+            .with_target_point(input.point);
+
+            for effect_def in &ability_def.effects {
+                effect_registry.execute(effect_def, &ctx, &mut commands);
+            }
         }
-
-        let Some(ability_def) = ability_registry.get(wanted_ability_id) else {
-            input.clear();
-            continue;
-        };
-
-        let mut ctx = AbilityContext::new(
-            entity,
-            *faction,
-            stats,
-            transform.translation,
-            wanted_ability_id,
-        );
-
-        if let Some(dir) = input.target_direction {
-            ctx = ctx.with_target_direction(dir);
-        }
-        if let Some(pt) = input.target_point {
-            ctx = ctx.with_target_point(pt);
-        }
-
-        for effect_def in &ability_def.effects {
-            effect_registry.execute(effect_def, &ctx, &mut commands);
-        }
-
-        input.clear();
     }
 }

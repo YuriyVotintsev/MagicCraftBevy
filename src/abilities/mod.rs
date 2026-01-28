@@ -22,7 +22,7 @@ pub use activator_def::{ActivatorDef, ActivatorDefRaw};
 #[allow(unused_imports)]
 pub use ability_def::{AbilityDef, AbilityDefRaw};
 #[allow(unused_imports)]
-pub use components::{AbilityInput, AbilityId, HeldAbility};
+pub use components::{AbilityInputs, AbilityId, InputState};
 #[allow(unused_imports)]
 pub use registry::{EffectExecutor, ActivatorRegistry, EffectRegistry, AbilityRegistry};
 #[allow(unused_imports)]
@@ -35,6 +35,7 @@ pub use activators::{
 use bevy::prelude::*;
 
 use crate::schedule::GameSet;
+use crate::wave::WavePhase;
 
 mod projectile_systems;
 mod orbiting_systems;
@@ -44,6 +45,12 @@ mod shield_systems;
 
 #[allow(unused_imports)]
 pub use effects::Projectile;
+
+fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {
+    for mut inputs in &mut query {
+        inputs.clear();
+    }
+}
 
 pub struct AbilityPlugin;
 
@@ -65,6 +72,12 @@ impl Plugin for AbilityPlugin {
         activators::register_activator_systems(app);
 
         app.add_systems(
+            Update,
+            clear_ability_inputs
+                .before(GameSet::Input)
+                .run_if(in_state(WavePhase::Combat)),
+        )
+        .add_systems(
             Update,
             (
                 projectile_systems::projectile_collision,

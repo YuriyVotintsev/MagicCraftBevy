@@ -1,30 +1,36 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 
 pub use super::ids::AbilityId;
 
 #[derive(Clone, Default)]
-pub struct HeldAbility {
-    pub ability_id: AbilityId,
-    pub target_direction: Vec3,
-    pub target_point: Vec3,
+pub struct InputState {
+    pub pressed: bool,
+    pub just_pressed: bool,
+    pub direction: Vec3,
+    pub point: Vec3,
 }
 
 #[derive(Component, Default)]
-pub struct AbilityInput {
-    pub want_to_cast: Option<AbilityId>,
-    pub target_direction: Option<Vec3>,
-    pub target_point: Option<Vec3>,
-    pub holding: Option<HeldAbility>,
+pub struct AbilityInputs {
+    pub inputs: HashMap<AbilityId, InputState>,
 }
 
-impl AbilityInput {
+impl AbilityInputs {
     pub fn new() -> Self {
         Self::default()
     }
 
+    pub fn set(&mut self, ability_id: AbilityId, state: InputState) {
+        self.inputs.insert(ability_id, state);
+    }
+
+    pub fn get(&self, ability_id: AbilityId) -> Option<&InputState> {
+        self.inputs.get(&ability_id)
+    }
+
     pub fn clear(&mut self) {
-        self.want_to_cast = None;
-        self.target_direction = None;
-        self.target_point = None;
+        self.inputs.clear();
     }
 }
