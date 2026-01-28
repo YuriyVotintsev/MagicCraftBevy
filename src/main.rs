@@ -143,9 +143,9 @@ fn main() {
                 GameSet::WaveManagement,
             )
                 .chain()
-                .run_if(not(in_state(GameState::Loading))),
+                .run_if(in_state(GameState::Playing)),
         )
-        .configure_sets(PostUpdate, PostGameSet.run_if(not(in_state(GameState::Loading))))
+        .configure_sets(PostUpdate, PostGameSet.run_if(in_state(GameState::Playing)))
         .add_systems(
             Update,
             (tick_lifetime, tick_growing).in_set(GameSet::AbilityExecution),

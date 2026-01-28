@@ -1,31 +1,33 @@
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
+use crate::physics::GameLayer;
 use crate::wave::remove_invulnerability;
 use crate::Faction;
 
-use super::effects::{Projectile, ShieldActive, ShieldVisual};
+use super::effects::{ShieldActive, ShieldVisual};
 
 pub fn update_shield(
     mut commands: Commands,
     time: Res<Time>,
     mut shield_query: Query<(Entity, &mut ShieldActive, &Transform)>,
-    projectile_query: Query<(Entity, &Transform, &Faction), With<Projectile>>,
+    spatial_query: SpatialQuery,
 ) {
     for (entity, mut shield, shield_transform) in &mut shield_query {
         let shield_pos = shield_transform.translation.truncate();
 
-        for (proj_entity, proj_transform, proj_faction) in &projectile_query {
-            if *proj_faction != Faction::Enemy {
-                continue;
-            }
+        let projectile_layer = match shield.owner_faction {
+            Faction::Player => GameLayer::EnemyProjectile,
+            Faction::Enemy => GameLayer::PlayerProjectile,
+        };
 
-            let proj_pos = proj_transform.translation.truncate();
-            let distance = shield_pos.distance(proj_pos);
+        let filter = SpatialQueryFilter::from_mask(projectile_layer);
+        let shape = Collider::circle(shield.radius);
+        let hits = spatial_query.shape_intersections(&shape, shield_pos, 0.0, &filter);
 
-            if distance <= shield.radius {
-                if let Ok(mut entity_commands) = commands.get_entity(proj_entity) {
-                    entity_commands.despawn();
-                }
+        for proj_entity in hits {
+            if let Ok(mut entity_commands) = commands.get_entity(proj_entity) {
+                entity_commands.despawn();
             }
         }
 

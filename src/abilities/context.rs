@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use crate::Faction;
 use crate::stats::ComputedStats;
-use super::ids::{AbilityId, TagId};
+use super::ids::AbilityId;
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -24,7 +24,6 @@ pub struct AbilityContext {
     pub stats_snapshot: Arc<ComputedStats>,
     pub caster_position: Vec3,
     pub ability_id: AbilityId,
-    pub ability_tags: Vec<TagId>,
     pub target_point: Option<Vec3>,
     pub target_direction: Option<Vec3>,
     pub params: HashMap<String, ContextValue>,
@@ -44,7 +43,6 @@ impl AbilityContext {
             stats_snapshot: Arc::new(stats.clone()),
             caster_position: position,
             ability_id,
-            ability_tags: Vec::new(),
             target_point: None,
             target_direction: None,
             params: HashMap::new(),
@@ -58,11 +56,6 @@ impl AbilityContext {
 
     pub fn with_target_point(mut self, point: Vec3) -> Self {
         self.target_point = Some(point);
-        self
-    }
-
-    pub fn with_tags(mut self, tags: Vec<TagId>) -> Self {
-        self.ability_tags = tags;
         self
     }
 

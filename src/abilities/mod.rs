@@ -82,7 +82,8 @@ impl Plugin for AbilityPlugin {
             )
             .add_systems(
                 PostUpdate,
-                orbiting_systems::cleanup_orbiting_on_owner_despawn,
+                orbiting_systems::cleanup_orbiting_on_owner_despawn
+                    .run_if(in_state(crate::GameState::Playing)),
             );
     }
 }
@@ -157,7 +158,7 @@ fn interval_ability_dispatcher(
                 stats,
                 transform.translation,
                 ability_id,
-            ).with_tags(ability_def.tags.clone());
+            );
 
             let result = activator_registry.check(
                 &ability_def.activator,

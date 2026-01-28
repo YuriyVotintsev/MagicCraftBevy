@@ -4,6 +4,7 @@ use crate::abilities::context::AbilityContext;
 use crate::abilities::effect_def::{EffectDef, ParamValue};
 use crate::abilities::registry::{EffectExecutor, EffectRegistry};
 use crate::wave::add_invulnerability;
+use crate::Faction;
 
 const DEFAULT_SHIELD_DURATION: f32 = 0.5;
 const DEFAULT_SHIELD_RADIUS: f32 = 100.0;
@@ -12,6 +13,7 @@ const DEFAULT_SHIELD_RADIUS: f32 = 100.0;
 pub struct ShieldActive {
     pub timer: Timer,
     pub radius: f32,
+    pub owner_faction: Faction,
 }
 
 #[derive(Component)]
@@ -45,6 +47,7 @@ impl EffectExecutor for ShieldEffect {
         commands.entity(caster).insert(ShieldActive {
             timer: Timer::from_seconds(duration, TimerMode::Once),
             radius,
+            owner_faction: ctx.caster_faction,
         });
 
         add_invulnerability(commands, caster);

@@ -10,8 +10,6 @@ pub struct EffectTypeId(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ParamId(pub u32);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct TagId(pub u32);
 
 impl From<u32> for AbilityId {
     fn from(v: u32) -> Self {
@@ -37,11 +35,6 @@ impl From<u32> for ParamId {
     }
 }
 
-impl From<u32> for TagId {
-    fn from(v: u32) -> Self {
-        Self(v)
-    }
-}
 
 impl From<AbilityId> for u32 {
     fn from(id: AbilityId) -> Self {
@@ -67,8 +60,3 @@ impl From<ParamId> for u32 {
     }
 }
 
-impl From<TagId> for u32 {
-    fn from(id: TagId) -> Self {
-        id.0
-    }
-}

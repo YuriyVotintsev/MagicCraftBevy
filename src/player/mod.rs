@@ -34,7 +34,8 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnExit(WavePhase::Combat), reset_player_velocity)
             .add_systems(
                 Update,
-                (player_movement, player_shooting, player_defensive_input)
+                (player_movement, player_defensive_input, player_shooting)
+                    .chain()
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
             )
@@ -221,7 +222,7 @@ fn player_shooting(
     let player_pos = player_transform.translation.truncate();
     let direction = (world_pos - player_pos).normalize_or_zero();
 
-    if direction != Vec2::ZERO {
+    if direction != Vec2::ZERO && input.want_to_cast.is_none() {
         input.want_to_cast = Some(active_id);
         input.target_direction = Some(direction.extend(0.0));
         input.target_point = Some(world_pos.extend(0.0));

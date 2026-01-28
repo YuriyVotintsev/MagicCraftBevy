@@ -44,7 +44,7 @@ pub fn ability_dispatcher(
             stats,
             transform.translation,
             wanted_ability_id,
-        ).with_tags(ability_def.tags.clone());
+        );
 
         if let Some(dir) = input.target_direction {
             ctx = ctx.with_target_direction(dir);

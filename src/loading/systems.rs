@@ -73,7 +73,8 @@ pub fn check_stats_loaded(
     let mut calculators = StatCalculators::new(registry.len());
 
     for def in &stats_config.stat_ids {
-        let stat_id = registry.get(&def.name).unwrap();
+        let stat_id = registry.get(&def.name)
+            .unwrap_or_else(|| panic!("Stat '{}' not found in registry", def.name));
         match &def.aggregation {
             AggregationType::Sum => {
                 calculators.set(stat_id, Expression::ModifierSum(stat_id), vec![]);
@@ -82,9 +83,12 @@ pub fn check_stats_loaded(
                 calculators.set(stat_id, Expression::ModifierProduct(stat_id), vec![]);
             }
             AggregationType::Standard { base, increased, more } => {
-                let base_id = registry.get(base).unwrap();
-                let increased_id = registry.get(increased).unwrap();
-                let more_id = registry.get(more).unwrap();
+                let base_id = registry.get(base)
+                    .unwrap_or_else(|| panic!("Stat '{}' (base for '{}') not found in registry", base, def.name));
+                let increased_id = registry.get(increased)
+                    .unwrap_or_else(|| panic!("Stat '{}' (increased for '{}') not found in registry", increased, def.name));
+                let more_id = registry.get(more)
+                    .unwrap_or_else(|| panic!("Stat '{}' (more for '{}') not found in registry", more, def.name));
 
                 let formula = Expression::Mul(
                     Box::new(Expression::Mul(
@@ -105,7 +109,8 @@ pub fn check_stats_loaded(
     }
 
     for calc in &stats_config.calculators {
-        let stat_id = registry.get(&calc.stat).unwrap();
+        let stat_id = registry.get(&calc.stat)
+            .unwrap_or_else(|| panic!("Calculator references unknown stat '{}'", calc.stat));
         let formula = calc.formula.resolve(&registry);
         let deps: Vec<StatId> = calc
             .depends_on
@@ -182,7 +187,8 @@ pub fn check_content_loaded(
 
     info!("All content loaded, finalizing...");
 
-    let player_def = player_assets.get(player_handle.id()).unwrap();
+    let player_def = player_assets.get(player_handle.id())
+        .expect("Player definition asset not loaded");
     commands.insert_resource(PlayerDefResource(player_def.0.clone()));
 
     let mut mob_registry = MobRegistry::new();
@@ -241,7 +247,8 @@ fn resolve_param_value(
         ParamValueRaw::Bool(v) => ParamValue::Bool(*v),
         ParamValueRaw::String(v) => ParamValue::String(v.clone()),
         ParamValueRaw::Stat(name) => {
-            let stat_id = stat_registry.get(name).unwrap();
+            let stat_id = stat_registry.get(name)
+                .unwrap_or_else(|| panic!("Effect param references unknown stat '{}'", name));
             ParamValue::Stat(stat_id)
         }
         ParamValueRaw::Effect(raw_effect) => {
@@ -263,7 +270,8 @@ fn resolve_effect_def(
     stat_registry: &StatRegistry,
     effect_registry: &mut EffectRegistry,
 ) -> EffectDef {
-    let effect_type = effect_registry.get_id(&raw.effect_type).unwrap();
+    let effect_type = effect_registry.get_id(&raw.effect_type)
+        .unwrap_or_else(|| panic!("Unknown effect type '{}'", raw.effect_type));
 
     let params = raw
         .params
@@ -284,7 +292,8 @@ fn resolve_activator_def(
     activator_registry: &ActivatorRegistry,
     effect_registry: &mut EffectRegistry,
 ) -> ActivatorDef {
-    let activator_type = activator_registry.get_id(&raw.activator_type).unwrap();
+    let activator_type = activator_registry.get_id(&raw.activator_type)
+        .unwrap_or_else(|| panic!("Unknown activator type '{}'", raw.activator_type));
 
     let params = raw
         .params
@@ -306,16 +315,7 @@ fn resolve_ability_def(
     activator_registry: &ActivatorRegistry,
     effect_registry: &mut EffectRegistry,
 ) -> AbilityDef {
-    use crate::abilities::ids::TagId;
-
     let id = ability_registry.allocate_id(&raw.id);
-
-    let tags: Vec<TagId> = raw
-        .tags
-        .iter()
-        .enumerate()
-        .map(|(i, _)| TagId(i as u32))
-        .collect();
 
     let activator = resolve_activator_def(&raw.activator, stat_registry, activator_registry, effect_registry);
 
@@ -325,5 +325,5 @@ fn resolve_ability_def(
         .map(|e| resolve_effect_def(e, stat_registry, effect_registry))
         .collect();
 
-    AbilityDef { id, tags, activator, effects }
+    AbilityDef { id, activator, effects }
 }

@@ -57,8 +57,6 @@ impl Abilities {
     }
 }
 
-use bevy::prelude::Vec3;
-
 #[derive(Component, Default)]
 pub struct AbilityInput {
     pub want_to_cast: Option<AbilityId>,

@@ -1,9 +1,11 @@
+use avian2d::prelude::*;
 use bevy::prelude::*;
 
+use crate::physics::GameLayer;
 use crate::Faction;
 use crate::Lifetime;
 use super::context::ContextValue;
-use super::effects::{MeteorRequest, MeteorFalling, MeteorIndicator, MeteorExplosion, Projectile, OrbitingMovement};
+use super::effects::{MeteorRequest, MeteorFalling, MeteorIndicator, MeteorExplosion};
 use super::registry::EffectRegistry;
 
 const METEOR_START_HEIGHT: f32 = 400.0;
@@ -15,37 +17,37 @@ pub fn meteor_target_finder(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     query: Query<(Entity, &MeteorRequest)>,
-    enemies: Query<(Entity, &Transform, &Faction), (Without<Projectile>, Without<OrbitingMovement>)>,
+    spatial_query: SpatialQuery,
+    transforms: Query<&Transform>,
 ) {
     for (request_entity, request) in &query {
         let caster_pos = request.context.caster_position.truncate();
-        let search_radius_sq = request.search_radius * request.search_radius;
 
-        let opposite_faction = match request.context.caster_faction {
-            Faction::Player => Faction::Enemy,
-            Faction::Enemy => Faction::Player,
+        let target_layer = match request.context.caster_faction {
+            Faction::Player => GameLayer::Enemy,
+            Faction::Enemy => GameLayer::Player,
         };
+
+        let filter = SpatialQueryFilter::from_mask(target_layer);
+        let shape = Collider::circle(request.search_radius);
+        let hits = spatial_query.shape_intersections(&shape, caster_pos, 0.0, &filter);
 
         let mut closest_enemy: Option<(Entity, f32, Vec2)> = None;
 
-        for (enemy_entity, enemy_transform, faction) in &enemies {
-            if *faction != opposite_faction {
+        for entity in hits {
+            let Ok(transform) = transforms.get(entity) else {
                 continue;
-            }
+            };
 
-            let enemy_pos = enemy_transform.translation.truncate();
+            let enemy_pos = transform.translation.truncate();
             let dist_sq = caster_pos.distance_squared(enemy_pos);
-
-            if dist_sq > search_radius_sq {
-                continue;
-            }
 
             if let Some((_, current_dist_sq, _)) = closest_enemy {
                 if dist_sq < current_dist_sq {
-                    closest_enemy = Some((enemy_entity, dist_sq, enemy_pos));
+                    closest_enemy = Some((entity, dist_sq, enemy_pos));
                 }
             } else {
-                closest_enemy = Some((enemy_entity, dist_sq, enemy_pos));
+                closest_enemy = Some((entity, dist_sq, enemy_pos));
             }
         }
 
@@ -134,7 +136,7 @@ pub fn meteor_falling_update(
 pub fn meteor_explosion_damage(
     mut commands: Commands,
     mut query: Query<(Entity, &mut MeteorExplosion, &Transform)>,
-    enemies: Query<(Entity, &Transform, &Faction), (Without<Projectile>, Without<OrbitingMovement>)>,
+    spatial_query: SpatialQuery,
     effect_registry: Res<EffectRegistry>,
 ) {
     for (_explosion_entity, mut explosion, explosion_transform) in &mut query {
@@ -144,25 +146,17 @@ pub fn meteor_explosion_damage(
         explosion.damaged = true;
 
         let explosion_pos = explosion_transform.translation.truncate();
-        let damage_radius_sq = explosion.damage_radius * explosion.damage_radius;
 
-        let opposite_faction = match explosion.context.caster_faction {
-            Faction::Player => Faction::Enemy,
-            Faction::Enemy => Faction::Player,
+        let target_layer = match explosion.context.caster_faction {
+            Faction::Player => GameLayer::Enemy,
+            Faction::Enemy => GameLayer::Player,
         };
 
-        for (enemy_entity, enemy_transform, faction) in &enemies {
-            if *faction != opposite_faction {
-                continue;
-            }
+        let filter = SpatialQueryFilter::from_mask(target_layer);
+        let shape = Collider::circle(explosion.damage_radius);
+        let hits = spatial_query.shape_intersections(&shape, explosion_pos, 0.0, &filter);
 
-            let enemy_pos = enemy_transform.translation.truncate();
-            let dist_sq = explosion_pos.distance_squared(enemy_pos);
-
-            if dist_sq > damage_radius_sq {
-                continue;
-            }
-
+        for enemy_entity in hits {
             let mut ctx = explosion.context.clone();
             ctx.set_param("target", ContextValue::Entity(enemy_entity));
 
