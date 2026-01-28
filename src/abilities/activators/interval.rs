@@ -1,8 +1,14 @@
+use std::collections::HashMap;
 use bevy::prelude::*;
 
-use crate::abilities::{AbilityId, AbilityRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::ids::ParamId;
+use crate::abilities::effect_def::ParamValue;
+use crate::abilities::registry::ActivatorHandler;
+use crate::abilities::{AbilityId, AbilityRegistry, ActivatorRegistry, EffectRegistry, AbilityContext};
+use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
 use crate::Faction;
+use crate::GameState;
 
 #[derive(Component, Default)]
 pub struct IntervalActivations {
@@ -68,3 +74,51 @@ pub fn interval_system(
         }
     }
 }
+
+#[derive(Default)]
+pub struct IntervalHandler;
+
+impl ActivatorHandler for IntervalHandler {
+    fn name(&self) -> &'static str {
+        "interval"
+    }
+
+    fn add_to_entity(
+        &self,
+        commands: &mut Commands,
+        entity: Entity,
+        ability_id: AbilityId,
+        params: &HashMap<ParamId, ParamValue>,
+        registry: &ActivatorRegistry,
+    ) {
+        let interval = extract_float_param(params, "interval", registry).unwrap_or(1.0);
+        commands
+            .entity(entity)
+            .entry::<IntervalActivations>()
+            .or_default()
+            .and_modify(move |mut a| a.add(ability_id, interval));
+    }
+
+    fn register_systems(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            interval_system
+                .in_set(GameSet::AbilityActivation)
+                .run_if(in_state(GameState::Playing)),
+        );
+    }
+}
+
+fn extract_float_param(
+    params: &HashMap<ParamId, ParamValue>,
+    name: &str,
+    registry: &ActivatorRegistry,
+) -> Option<f32> {
+    let param_id = registry.get_param_id(name)?;
+    match params.get(&param_id)? {
+        ParamValue::Float(f) => Some(*f),
+        _ => None,
+    }
+}
+
+register_activator!(IntervalHandler);

@@ -143,7 +143,7 @@ pub fn check_content_loaded(
     ability_assets: Res<Assets<AbilityDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
-    activator_registry: Res<ActivatorRegistry>,
+    mut activator_registry: ResMut<ActivatorRegistry>,
     mut effect_registry: ResMut<EffectRegistry>,
     mut ability_registry: ResMut<AbilityRegistry>,
 ) {
@@ -211,7 +211,7 @@ pub fn check_content_loaded(
                     &ability_asset.0,
                     &stat_registry,
                     &mut ability_registry,
-                    &activator_registry,
+                    &mut activator_registry,
                     &mut effect_registry,
                 );
                 info!("Registered ability: {}", ability_asset.0.id);
@@ -289,7 +289,7 @@ fn resolve_effect_def(
 fn resolve_activator_def(
     raw: &ActivatorDefRaw,
     stat_registry: &StatRegistry,
-    activator_registry: &ActivatorRegistry,
+    activator_registry: &mut ActivatorRegistry,
     effect_registry: &mut EffectRegistry,
 ) -> ActivatorDef {
     let activator_type = activator_registry.get_id(&raw.activator_type)
@@ -299,7 +299,7 @@ fn resolve_activator_def(
         .params
         .iter()
         .map(|(name, value)| {
-            let param_id = effect_registry.get_or_insert_param_id(name);
+            let param_id = activator_registry.get_or_insert_param_id(name);
             let resolved_value = resolve_param_value(value, stat_registry, effect_registry);
             (param_id, resolved_value)
         })
@@ -312,7 +312,7 @@ fn resolve_ability_def(
     raw: &AbilityDefRaw,
     stat_registry: &StatRegistry,
     ability_registry: &mut AbilityRegistry,
-    activator_registry: &ActivatorRegistry,
+    activator_registry: &mut ActivatorRegistry,
     effect_registry: &mut EffectRegistry,
 ) -> AbilityDef {
     let id = ability_registry.allocate_id(&raw.id);

@@ -8,6 +8,9 @@ mod components;
 mod registry;
 mod spawn_helpers;
 
+#[macro_use]
+mod macros;
+
 pub mod activators;
 pub mod effects;
 
@@ -24,7 +27,7 @@ pub use ability_def::{AbilityDef, AbilityDefRaw};
 #[allow(unused_imports)]
 pub use components::{AbilityInputs, AbilityId, InputState};
 #[allow(unused_imports)]
-pub use registry::{EffectExecutor, ActivatorRegistry, EffectRegistry, AbilityRegistry};
+pub use registry::{EffectExecutor, ActivatorHandler, ActivatorRegistry, EffectRegistry, AbilityRegistry};
 #[allow(unused_imports)]
 pub use spawn_helpers::add_ability_activator;
 #[allow(unused_imports)]
@@ -57,10 +60,7 @@ pub struct AbilityPlugin;
 impl Plugin for AbilityPlugin {
     fn build(&self, app: &mut App) {
         let mut activator_registry = ActivatorRegistry::new();
-        activator_registry.register_name("on_input");
-        activator_registry.register_name("passive");
-        activator_registry.register_name("while_held");
-        activator_registry.register_name("interval");
+        activators::register_all(app, &mut activator_registry);
 
         let mut effect_registry = EffectRegistry::new();
         effects::register_effects(&mut effect_registry);
@@ -68,8 +68,6 @@ impl Plugin for AbilityPlugin {
         app.insert_resource(activator_registry)
             .insert_resource(effect_registry)
             .init_resource::<AbilityRegistry>();
-
-        activators::register_activator_systems(app);
 
         app.add_systems(
             Update,

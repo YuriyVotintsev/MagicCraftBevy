@@ -1,8 +1,14 @@
+use std::collections::HashMap;
 use bevy::prelude::*;
 
-use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::ids::ParamId;
+use crate::abilities::effect_def::ParamValue;
+use crate::abilities::registry::ActivatorHandler;
+use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, ActivatorRegistry, EffectRegistry, AbilityContext};
+use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
 use crate::Faction;
+use crate::GameState;
 
 #[derive(Component, Default)]
 pub struct OnInputActivations {
@@ -62,3 +68,38 @@ pub fn on_input_system(
         }
     }
 }
+
+#[derive(Default)]
+pub struct OnInputHandler;
+
+impl ActivatorHandler for OnInputHandler {
+    fn name(&self) -> &'static str {
+        "on_input"
+    }
+
+    fn add_to_entity(
+        &self,
+        commands: &mut Commands,
+        entity: Entity,
+        ability_id: AbilityId,
+        _params: &HashMap<ParamId, ParamValue>,
+        _registry: &ActivatorRegistry,
+    ) {
+        commands
+            .entity(entity)
+            .entry::<OnInputActivations>()
+            .or_default()
+            .and_modify(move |mut a| a.add(ability_id));
+    }
+
+    fn register_systems(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            on_input_system
+                .in_set(GameSet::AbilityActivation)
+                .run_if(in_state(GameState::Playing)),
+        );
+    }
+}
+
+register_activator!(OnInputHandler);
