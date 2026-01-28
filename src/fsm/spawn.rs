@@ -2,7 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::Faction;
-use crate::abilities::{Abilities, AbilityInput, AbilityRegistry};
+use crate::abilities::{AbilityInput, AbilityRegistry, ActivatorRegistry, add_ability_activator};
 use crate::wave::WavePhase;
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
@@ -24,6 +24,7 @@ pub fn spawn_mob(
     stat_registry: &StatRegistry,
     calculators: &StatCalculators,
     ability_registry: &AbilityRegistry,
+    activator_registry: &ActivatorRegistry,
     behaviour_registry: &BehaviourRegistry,
     transition_registry: &TransitionRegistry,
     mob_name: &str,
@@ -70,13 +71,6 @@ pub fn spawn_mob(
         }
     };
 
-    let mut abilities = Abilities::new();
-    for ability_name in &mob_def.abilities {
-        if let Some(ability_id) = ability_registry.get_id(ability_name) {
-            abilities.add(ability_id);
-        }
-    }
-
     let enemy_layers = CollisionLayers::new(
         GameLayer::Enemy,
         [GameLayer::Player, GameLayer::PlayerProjectile, GameLayer::Wall],
@@ -104,11 +98,16 @@ pub fn spawn_mob(
                 computed,
                 dirty,
                 Health::new(max_life),
-                abilities,
                 AbilityInput::new(),
             ),
         ))
         .id();
+
+    for ability_name in &mob_def.abilities {
+        if let Some(ability_id) = ability_registry.get_id(ability_name) {
+            add_ability_activator(commands, entity, ability_id, ability_registry, activator_registry);
+        }
+    }
 
     let initial_state = mob_def.states.get(&mob_def.initial_state)?;
     add_state_components(

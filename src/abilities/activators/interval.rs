@@ -1,38 +1,70 @@
-use crate::abilities::activator_def::{ActivatorDef, ActivatorState, ActivationResult};
-use crate::abilities::context::AbilityContext;
-use crate::abilities::components::AbilityInput;
-use crate::abilities::effect_def::ParamValue;
-use crate::abilities::registry::Activator;
-use crate::abilities::ids::ParamId;
+use bevy::prelude::*;
 
-const INTERVAL_TIMER_ID: ParamId = ParamId(0);
+use crate::abilities::{AbilityId, AbilityRegistry, EffectRegistry, AbilityContext};
+use crate::stats::ComputedStats;
+use crate::Faction;
 
-pub struct IntervalActivator;
+#[derive(Component, Default)]
+pub struct IntervalActivations {
+    pub entries: Vec<IntervalEntry>,
+}
 
-impl Activator for IntervalActivator {
-    fn check(
-        &self,
-        def: &ActivatorDef,
-        state: &mut ActivatorState,
-        _ctx: &mut AbilityContext,
-        _input: &AbilityInput,
-        delta_time: f32,
-    ) -> ActivationResult {
-        let timer = state.get(INTERVAL_TIMER_ID);
-        let new_timer = timer - delta_time;
+pub struct IntervalEntry {
+    pub ability_id: AbilityId,
+    pub interval: f32,
+    pub timer: f32,
+}
 
-        if new_timer <= 0.0 {
-            let interval = def.params.values()
-                .find_map(|v| match v {
-                    ParamValue::Float(f) => Some(*f),
-                    _ => None,
-                })
-                .unwrap_or(1.0);
-            state.set(INTERVAL_TIMER_ID, interval);
-            ActivationResult::Ready
-        } else {
-            state.set(INTERVAL_TIMER_ID, new_timer);
-            ActivationResult::NotReady
+impl IntervalActivations {
+    pub fn add(&mut self, ability_id: AbilityId, interval: f32) {
+        self.entries.push(IntervalEntry {
+            ability_id,
+            interval,
+            timer: interval,
+        });
+    }
+}
+
+pub fn interval_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(
+        Entity,
+        &mut IntervalActivations,
+        &ComputedStats,
+        &Transform,
+        &Faction,
+    )>,
+    ability_registry: Res<AbilityRegistry>,
+    effect_registry: Res<EffectRegistry>,
+) {
+    let delta = time.delta_secs();
+
+    for (entity, mut activations, stats, transform, faction) in &mut query {
+        for entry in &mut activations.entries {
+            entry.timer -= delta;
+
+            if entry.timer > 0.0 {
+                continue;
+            }
+
+            entry.timer = entry.interval;
+
+            let Some(ability_def) = ability_registry.get(entry.ability_id) else {
+                continue;
+            };
+
+            let ctx = AbilityContext::new(
+                entity,
+                *faction,
+                stats,
+                transform.translation,
+                entry.ability_id,
+            );
+
+            for effect_def in &ability_def.effects {
+                effect_registry.execute(effect_def, &ctx, &mut commands);
+            }
         }
     }
 }

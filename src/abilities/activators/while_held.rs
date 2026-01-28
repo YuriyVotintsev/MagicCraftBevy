@@ -1,42 +1,83 @@
-use crate::abilities::activator_def::{ActivatorDef, ActivatorState, ActivationResult};
-use crate::abilities::context::AbilityContext;
-use crate::abilities::components::AbilityInput;
-use crate::abilities::effect_def::ParamValue;
-use crate::abilities::registry::Activator;
-use crate::abilities::ids::ParamId;
+use bevy::prelude::*;
 
-const COOLDOWN_TIMER_ID: ParamId = ParamId(0);
+use crate::abilities::{AbilityId, AbilityInput, AbilityRegistry, EffectRegistry, AbilityContext};
+use crate::stats::ComputedStats;
+use crate::Faction;
 
-pub struct WhileHeldActivator;
+#[derive(Component, Default)]
+pub struct WhileHeldActivations {
+    pub entries: Vec<WhileHeldEntry>,
+}
 
-impl Activator for WhileHeldActivator {
-    fn check(
-        &self,
-        def: &ActivatorDef,
-        state: &mut ActivatorState,
-        ctx: &mut AbilityContext,
-        input: &AbilityInput,
-        delta_time: f32,
-    ) -> ActivationResult {
-        let timer = state.get(COOLDOWN_TIMER_ID);
-        let new_timer = (timer - delta_time).max(0.0);
-        state.set(COOLDOWN_TIMER_ID, new_timer);
+pub struct WhileHeldEntry {
+    pub ability_id: AbilityId,
+    pub cooldown: f32,
+    pub timer: f32,
+}
 
-        if input.want_to_cast != Some(ctx.ability_id) {
-            return ActivationResult::NotReady;
-        }
+impl WhileHeldActivations {
+    pub fn add(&mut self, ability_id: AbilityId, cooldown: f32) {
+        self.entries.push(WhileHeldEntry {
+            ability_id,
+            cooldown,
+            timer: 0.0,
+        });
+    }
+}
 
-        if new_timer <= 0.0 {
-            let cooldown = def.params.values()
-                .find_map(|v| match v {
-                    ParamValue::Float(f) => Some(*f),
-                    _ => None,
-                })
-                .unwrap_or(0.05);
-            state.set(COOLDOWN_TIMER_ID, cooldown);
-            ActivationResult::Ready
-        } else {
-            ActivationResult::NotReady
+pub fn while_held_system(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(
+        Entity,
+        &mut WhileHeldActivations,
+        &AbilityInput,
+        &ComputedStats,
+        &Transform,
+        &Faction,
+    )>,
+    ability_registry: Res<AbilityRegistry>,
+    effect_registry: Res<EffectRegistry>,
+) {
+    let delta = time.delta_secs();
+
+    for (entity, mut activations, input, stats, transform, faction) in &mut query {
+        let held = input.holding.as_ref();
+
+        for entry in &mut activations.entries {
+            entry.timer = (entry.timer - delta).max(0.0);
+
+            let Some(held) = held else {
+                continue;
+            };
+
+            if held.ability_id != entry.ability_id {
+                continue;
+            }
+
+            if entry.timer > 0.0 {
+                continue;
+            }
+
+            entry.timer = entry.cooldown;
+
+            let Some(ability_def) = ability_registry.get(entry.ability_id) else {
+                continue;
+            };
+
+            let ctx = AbilityContext::new(
+                entity,
+                *faction,
+                stats,
+                transform.translation,
+                entry.ability_id,
+            )
+            .with_target_direction(held.target_direction)
+            .with_target_point(held.target_point);
+
+            for effect_def in &ability_def.effects {
+                effect_registry.execute(effect_def, &ctx, &mut commands);
+            }
         }
     }
 }

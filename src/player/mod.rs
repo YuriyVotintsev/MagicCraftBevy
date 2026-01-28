@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
-use crate::abilities::{Abilities, AbilityInput, AbilityRegistry, ActivatorRegistry};
+use crate::abilities::{AbilityInput, AbilityRegistry, ActivatorRegistry, HeldAbility, add_ability_activator};
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
@@ -55,6 +55,8 @@ fn spawn_player(
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
     selected_spells: Res<SelectedSpells>,
+    ability_registry: Res<AbilityRegistry>,
+    activator_registry: Res<ActivatorRegistry>,
 ) {
     let player_def = &player_def_res.0;
 
@@ -77,17 +79,6 @@ fn spawn_player(
         .map(|id| computed.get(id))
         .unwrap_or(100.0);
 
-    let mut abilities = Abilities::new();
-    if let Some(active_id) = selected_spells.active {
-        abilities.add(active_id);
-    }
-    if let Some(passive_id) = selected_spells.passive {
-        abilities.add(passive_id);
-    }
-    if let Some(defensive_id) = selected_spells.defensive {
-        abilities.add(defensive_id);
-    }
-
     let collider = match player_def.collider.shape {
         ColliderShape::Circle => Collider::circle(player_def.collider.size),
         ColliderShape::Rectangle => {
@@ -100,7 +91,7 @@ fn spawn_player(
         [GameLayer::Enemy, GameLayer::EnemyProjectile, GameLayer::Wall],
     );
 
-    commands.spawn((
+    let entity = commands.spawn((
         (
             Name::new("Player"),
             DespawnOnExit(GameState::Playing),
@@ -117,7 +108,6 @@ fn spawn_player(
             computed,
             dirty,
             Health::new(max_life),
-            abilities,
             AbilityInput::new(),
             Sprite {
                 color: Color::srgb(
@@ -130,7 +120,17 @@ fn spawn_player(
             },
             Transform::from_xyz(0.0, 0.0, 1.0),
         ),
-    ));
+    )).id();
+
+    if let Some(active_id) = selected_spells.active {
+        add_ability_activator(&mut commands, entity, active_id, &ability_registry, &activator_registry);
+    }
+    if let Some(passive_id) = selected_spells.passive {
+        add_ability_activator(&mut commands, entity, passive_id, &ability_registry, &activator_registry);
+    }
+    if let Some(defensive_id) = selected_spells.defensive {
+        add_ability_activator(&mut commands, entity, defensive_id, &ability_registry, &activator_registry);
+    }
 }
 
 fn player_movement(
@@ -189,19 +189,20 @@ fn player_shooting(
     let activator_name = activator_registry.get_name(ability_def.activator.activator_type);
     let is_while_held = activator_name == Some("while_held");
 
-    let should_trigger = if is_while_held {
-        mouse.pressed(MouseButton::Left)
-    } else {
-        mouse.just_pressed(MouseButton::Left)
-    };
-
-    if !should_trigger {
-        return;
-    }
-
     let Ok((player_transform, mut input)) = player_query.single_mut() else {
         return;
     };
+
+    if is_while_held {
+        if !mouse.pressed(MouseButton::Left) {
+            input.holding = None;
+            return;
+        }
+    } else {
+        if !mouse.just_pressed(MouseButton::Left) {
+            return;
+        }
+    }
 
     let Ok(window) = windows.single() else {
         return;
@@ -222,7 +223,17 @@ fn player_shooting(
     let player_pos = player_transform.translation.truncate();
     let direction = (world_pos - player_pos).normalize_or_zero();
 
-    if direction != Vec2::ZERO && input.want_to_cast.is_none() {
+    if direction == Vec2::ZERO {
+        return;
+    }
+
+    if is_while_held {
+        input.holding = Some(HeldAbility {
+            ability_id: active_id,
+            target_direction: direction.extend(0.0),
+            target_point: world_pos.extend(0.0),
+        });
+    } else if input.want_to_cast.is_none() {
         input.want_to_cast = Some(active_id);
         input.target_direction = Some(direction.extend(0.0));
         input.target_point = Some(world_pos.extend(0.0));
@@ -275,4 +286,3 @@ fn handle_player_death(
         }
     }
 }
-

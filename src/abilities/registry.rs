@@ -3,21 +3,8 @@ use std::collections::HashMap;
 
 use super::ids::{ActivatorTypeId, EffectTypeId, AbilityId, ParamId};
 use super::context::AbilityContext;
-use super::activator_def::{ActivatorState, ActivationResult, ActivatorDef};
 use super::effect_def::EffectDef;
 use super::ability_def::AbilityDef;
-use super::components::AbilityInput;
-
-pub trait Activator: Send + Sync + 'static {
-    fn check(
-        &self,
-        def: &ActivatorDef,
-        state: &mut ActivatorState,
-        ctx: &mut AbilityContext,
-        input: &AbilityInput,
-        delta_time: f32,
-    ) -> ActivationResult;
-}
 
 pub trait EffectExecutor: Send + Sync + 'static {
     fn execute(
@@ -33,7 +20,6 @@ pub trait EffectExecutor: Send + Sync + 'static {
 pub struct ActivatorRegistry {
     name_to_id: HashMap<String, ActivatorTypeId>,
     id_to_name: Vec<String>,
-    activators: Vec<Box<dyn Activator>>,
 }
 
 impl ActivatorRegistry {
@@ -41,11 +27,10 @@ impl ActivatorRegistry {
         Self::default()
     }
 
-    pub fn register<A: Activator>(&mut self, name: &str, activator: A) -> ActivatorTypeId {
-        let id = ActivatorTypeId(self.activators.len() as u32);
+    pub fn register_name(&mut self, name: &str) -> ActivatorTypeId {
+        let id = ActivatorTypeId(self.id_to_name.len() as u32);
         self.name_to_id.insert(name.to_string(), id);
         self.id_to_name.push(name.to_string());
-        self.activators.push(Box::new(activator));
         id
     }
 
@@ -53,28 +38,8 @@ impl ActivatorRegistry {
         self.name_to_id.get(name).copied()
     }
 
-    #[allow(dead_code)]
     pub fn get_name(&self, id: ActivatorTypeId) -> Option<&str> {
         self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
-    }
-
-    pub fn get(&self, id: ActivatorTypeId) -> Option<&dyn Activator> {
-        self.activators.get(id.0 as usize).map(|a| a.as_ref())
-    }
-
-    pub fn check(
-        &self,
-        def: &ActivatorDef,
-        state: &mut ActivatorState,
-        ctx: &mut AbilityContext,
-        input: &AbilityInput,
-        delta_time: f32,
-    ) -> ActivationResult {
-        if let Some(activator) = self.get(def.activator_type) {
-            activator.check(def, state, ctx, input, delta_time)
-        } else {
-            ActivationResult::NotReady
-        }
     }
 }
 
