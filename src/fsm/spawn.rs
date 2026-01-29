@@ -73,7 +73,7 @@ pub fn spawn_mob(
 
     let enemy_layers = CollisionLayers::new(
         GameLayer::Enemy,
-        [GameLayer::Player, GameLayer::PlayerProjectile, GameLayer::Wall],
+        [GameLayer::Player, GameLayer::PlayerProjectile, GameLayer::Wall, GameLayer::Enemy],
     );
 
     let entity = commands

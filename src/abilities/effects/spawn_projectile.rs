@@ -1,5 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy::platform::collections::HashSet;
 use rand::Rng;
 
 use crate::abilities::registry::{EffectHandler, EffectRegistry};
@@ -137,6 +138,8 @@ fn projectile_collision(
     wall_query: Query<(), With<Wall>>,
     effect_registry: Res<EffectRegistry>,
 ) {
+    let mut despawned: HashSet<Entity> = HashSet::default();
+
     for event in collision_events.read() {
         let entity1 = event.collider1;
         let entity2 = event.collider2;
@@ -150,6 +153,10 @@ fn projectile_collision(
                 continue;
             };
 
+        if despawned.contains(&projectile_entity) {
+            continue;
+        }
+
         if wall_query.contains(other_entity) {
             let has_pierce_infinite = pierce_query
                 .get(projectile_entity)
@@ -159,6 +166,7 @@ fn projectile_collision(
             if !has_pierce_infinite {
                 if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
                     entity_commands.despawn();
+                    despawned.insert(projectile_entity);
                 }
             }
             continue;
@@ -200,6 +208,7 @@ fn projectile_collision(
         if should_despawn {
             if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
                 entity_commands.despawn();
+                despawned.insert(projectile_entity);
             }
         }
     }
