@@ -9,6 +9,7 @@ mod spell_selection;
 use bevy::prelude::*;
 
 use crate::game_state::GameState;
+use crate::schedule::GameSet;
 use crate::wave::WavePhase;
 
 pub struct UiPlugin;
@@ -42,7 +43,9 @@ impl Plugin for UiPlugin {
             .add_systems(OnEnter(GameState::Playing), hud::spawn_hud)
             .add_systems(
                 Update,
-                hud::update_hud.run_if(in_state(GameState::Playing)),
+                hud::update_hud
+                    .after(GameSet::Damage)
+                    .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnEnter(WavePhase::Shop), shop::spawn_shop)
             .add_systems(

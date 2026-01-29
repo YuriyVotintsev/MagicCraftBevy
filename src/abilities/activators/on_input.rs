@@ -57,7 +57,6 @@ pub fn on_input_system(
                 *faction,
                 stats,
                 transform.translation,
-                entry.ability_id,
             )
             .with_target_direction(input.direction)
             .with_target_point(input.point);

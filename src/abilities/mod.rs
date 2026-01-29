@@ -32,7 +32,8 @@ pub use registry::{EffectHandler, ActivatorHandler, ActivatorRegistry, EffectReg
 pub use spawn_helpers::add_ability_activator;
 #[allow(unused_imports)]
 pub use activators::{
-    OnInputActivations, PassiveActivations, WhileHeldActivations, IntervalActivations,
+    on_input::OnInputActivations, passive::PassiveActivations,
+    while_held::WhileHeldActivations, interval::IntervalActivations,
 };
 
 use bevy::prelude::*;
@@ -41,7 +42,7 @@ use crate::schedule::GameSet;
 use crate::wave::WavePhase;
 
 #[allow(unused_imports)]
-pub use effects::Projectile;
+pub use effects::spawn_projectile::Projectile;
 
 fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {
     for mut inputs in &mut query {
@@ -69,5 +70,7 @@ impl Plugin for AbilityPlugin {
                 .before(GameSet::Input)
                 .run_if(in_state(WavePhase::Combat)),
         );
+
+        app.add_systems(OnExit(WavePhase::Combat), clear_ability_inputs);
     }
 }

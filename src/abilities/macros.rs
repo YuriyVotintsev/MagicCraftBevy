@@ -16,8 +16,7 @@ macro_rules! register_activator {
 #[macro_export]
 macro_rules! collect_activators {
     ($($module:ident),* $(,)?) => {
-        $(mod $module;)*
-        $(pub use $module::*;)*
+        $(pub mod $module;)*
 
         pub fn register_all(
             app: &mut ::bevy::prelude::App,
@@ -46,8 +45,7 @@ macro_rules! register_effect {
 #[macro_export]
 macro_rules! collect_effects {
     ($($module:ident),* $(,)?) => {
-        $(mod $module;)*
-        $(pub use $module::*;)*
+        $(pub mod $module;)*
 
         pub fn register_all(
             app: &mut ::bevy::prelude::App,

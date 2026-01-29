@@ -56,7 +56,6 @@ pub fn passive_system(
                 *faction,
                 stats,
                 transform.translation,
-                entry.ability_id,
             );
 
             for effect_def in &ability_def.effects {

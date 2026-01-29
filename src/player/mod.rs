@@ -13,6 +13,7 @@ use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
 use crate::stats::{
     ComputedStats, DeathEvent, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
+    death_system,
 };
 use crate::wave::WavePhase;
 
@@ -39,7 +40,7 @@ impl Plugin for PlayerPlugin {
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
             )
-            .add_systems(PostUpdate, handle_player_death.in_set(PostGameSet));
+            .add_systems(PostUpdate, handle_player_death.after(death_system).in_set(PostGameSet));
     }
 }
 
