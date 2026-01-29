@@ -1,13 +1,18 @@
 use bevy::prelude::*;
 
-use crate::abilities::registry::{EffectExecutor, EffectRegistry};
-use crate::abilities::effect_def::{EffectDef, ParamValue};
+use crate::abilities::registry::{EffectHandler, EffectRegistry};
+use crate::abilities::effect_def::EffectDef;
 use crate::abilities::context::AbilityContext;
 use crate::stats::PendingDamage;
 
-pub struct DamageEffect;
+#[derive(Default)]
+pub struct DamageHandler;
 
-impl EffectExecutor for DamageEffect {
+impl EffectHandler for DamageHandler {
+    fn name(&self) -> &'static str {
+        "damage"
+    }
+
     fn execute(
         &self,
         def: &EffectDef,
@@ -15,11 +20,8 @@ impl EffectExecutor for DamageEffect {
         commands: &mut Commands,
         registry: &EffectRegistry,
     ) {
-        let amount = match def.get_param("amount", registry) {
-            Some(ParamValue::Float(v)) => *v,
-            Some(ParamValue::Stat(stat_id)) => ctx.stats_snapshot.get(*stat_id),
-            Some(ParamValue::Expr(expr)) => expr.evaluate_computed(&ctx.stats_snapshot),
-            _ => return,
+        let Some(amount) = def.get_f32("amount", &ctx.stats_snapshot, registry) else {
+            return;
         };
 
         let Some(target) = ctx.get_param_entity("target") else {
@@ -31,3 +33,5 @@ impl EffectExecutor for DamageEffect {
         }
     }
 }
+
+register_effect!(DamageHandler);

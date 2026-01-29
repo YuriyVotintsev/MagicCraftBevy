@@ -17,16 +17,17 @@ pub struct IntervalActivations {
 
 pub struct IntervalEntry {
     pub ability_id: AbilityId,
-    pub interval: f32,
+    pub interval: ParamValue,
     pub timer: f32,
 }
 
 impl IntervalActivations {
-    pub fn add(&mut self, ability_id: AbilityId, interval: f32) {
+    pub fn add(&mut self, ability_id: AbilityId, interval: ParamValue) {
+        let initial_timer = interval.as_float().unwrap_or(1.0);
         self.entries.push(IntervalEntry {
             ability_id,
             interval,
-            timer: interval,
+            timer: initial_timer,
         });
     }
 }
@@ -54,7 +55,8 @@ pub fn interval_system(
                 continue;
             }
 
-            entry.timer = entry.interval;
+            let interval = entry.interval.evaluate_f32(stats).unwrap_or(1.0);
+            entry.timer = interval;
 
             let Some(ability_def) = ability_registry.get(entry.ability_id) else {
                 continue;
@@ -91,7 +93,10 @@ impl ActivatorHandler for IntervalHandler {
         params: &HashMap<ParamId, ParamValue>,
         registry: &ActivatorRegistry,
     ) {
-        let interval = extract_float_param(params, "interval", registry).unwrap_or(1.0);
+        let interval = registry
+            .get_param_id("interval")
+            .and_then(|id| params.get(&id).cloned())
+            .unwrap_or(ParamValue::Float(1.0));
         commands
             .entity(entity)
             .entry::<IntervalActivations>()
@@ -106,18 +111,6 @@ impl ActivatorHandler for IntervalHandler {
                 .in_set(GameSet::AbilityActivation)
                 .run_if(in_state(GameState::Playing)),
         );
-    }
-}
-
-fn extract_float_param(
-    params: &HashMap<ParamId, ParamValue>,
-    name: &str,
-    registry: &ActivatorRegistry,
-) -> Option<f32> {
-    let param_id = registry.get_param_id(name)?;
-    match params.get(&param_id)? {
-        ParamValue::Float(f) => Some(*f),
-        _ => None,
     }
 }
 

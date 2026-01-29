@@ -6,7 +6,9 @@ use super::context::AbilityContext;
 use super::effect_def::{EffectDef, ParamValue};
 use super::ability_def::AbilityDef;
 
-pub trait EffectExecutor: Send + Sync + 'static {
+pub trait EffectHandler: Send + Sync + 'static {
+    fn name(&self) -> &'static str;
+
     fn execute(
         &self,
         def: &EffectDef,
@@ -14,6 +16,8 @@ pub trait EffectExecutor: Send + Sync + 'static {
         commands: &mut Commands,
         registry: &EffectRegistry,
     );
+
+    fn register_systems(&self, _app: &mut App) {}
 }
 
 pub trait ActivatorHandler: Send + Sync + 'static {
@@ -86,7 +90,7 @@ impl ActivatorRegistry {
 pub struct EffectRegistry {
     name_to_id: HashMap<String, EffectTypeId>,
     id_to_name: Vec<String>,
-    executors: Vec<Box<dyn EffectExecutor>>,
+    handlers: Vec<Box<dyn EffectHandler>>,
     param_name_to_id: HashMap<String, ParamId>,
     param_id_to_name: Vec<String>,
 }
@@ -96,11 +100,12 @@ impl EffectRegistry {
         Self::default()
     }
 
-    pub fn register<E: EffectExecutor>(&mut self, name: &str, executor: E) -> EffectTypeId {
-        let id = EffectTypeId(self.executors.len() as u32);
-        self.name_to_id.insert(name.to_string(), id);
-        self.id_to_name.push(name.to_string());
-        self.executors.push(Box::new(executor));
+    pub fn register(&mut self, handler: Box<dyn EffectHandler>) -> EffectTypeId {
+        let name = handler.name().to_string();
+        let id = EffectTypeId(self.handlers.len() as u32);
+        self.name_to_id.insert(name.clone(), id);
+        self.id_to_name.push(name);
+        self.handlers.push(handler);
         id
     }
 
@@ -113,8 +118,8 @@ impl EffectRegistry {
         self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
     }
 
-    pub fn get(&self, id: EffectTypeId) -> Option<&dyn EffectExecutor> {
-        self.executors.get(id.0 as usize).map(|e| e.as_ref())
+    pub fn get(&self, id: EffectTypeId) -> Option<&dyn EffectHandler> {
+        self.handlers.get(id.0 as usize).map(|h| h.as_ref())
     }
 
     pub fn get_or_insert_param_id(&mut self, name: &str) -> ParamId {

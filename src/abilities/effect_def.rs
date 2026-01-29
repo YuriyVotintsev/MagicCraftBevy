@@ -48,10 +48,44 @@ impl EffectDef {
         let id = registry.get_param_id(name)?;
         self.params.get(&id)
     }
+
+    pub fn get_f32(&self, name: &str, stats: &ComputedStats, registry: &crate::abilities::registry::EffectRegistry) -> Option<f32> {
+        self.get_param(name, registry)?.evaluate_f32(stats)
+    }
+
+    pub fn get_i32(&self, name: &str, stats: &ComputedStats, registry: &crate::abilities::registry::EffectRegistry) -> Option<i32> {
+        self.get_param(name, registry)?.evaluate_i32(stats)
+    }
+
+    pub fn get_effect_list<'a>(&'a self, name: &str, registry: &crate::abilities::registry::EffectRegistry) -> Option<&'a Vec<EffectDef>> {
+        self.get_param(name, registry)?.as_effect_list()
+    }
 }
 
-#[allow(dead_code)]
+use crate::stats::ComputedStats;
+
 impl ParamValue {
+    pub fn evaluate_f32(&self, stats: &ComputedStats) -> Option<f32> {
+        match self {
+            Self::Float(v) => Some(*v),
+            Self::Int(v) => Some(*v as f32),
+            Self::Stat(stat_id) => Some(stats.get(*stat_id)),
+            Self::Expr(expr) => Some(expr.evaluate_computed(stats)),
+            _ => None,
+        }
+    }
+
+    pub fn evaluate_i32(&self, stats: &ComputedStats) -> Option<i32> {
+        match self {
+            Self::Int(v) => Some(*v),
+            Self::Float(v) => Some(*v as i32),
+            Self::Stat(stat_id) => Some(stats.get(*stat_id) as i32),
+            Self::Expr(expr) => Some(expr.evaluate_computed(stats) as i32),
+            _ => None,
+        }
+    }
+
+    #[allow(dead_code)]
     pub fn as_float(&self) -> Option<f32> {
         match self {
             Self::Float(v) => Some(*v),
@@ -59,6 +93,7 @@ impl ParamValue {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_int(&self) -> Option<i32> {
         match self {
             Self::Int(v) => Some(*v),
@@ -66,6 +101,7 @@ impl ParamValue {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_bool(&self) -> Option<bool> {
         match self {
             Self::Bool(v) => Some(*v),
@@ -73,6 +109,7 @@ impl ParamValue {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_string(&self) -> Option<&str> {
         match self {
             Self::String(v) => Some(v),
@@ -80,6 +117,7 @@ impl ParamValue {
         }
     }
 
+    #[allow(dead_code)]
     pub fn as_expr(&self) -> Option<&Expression> {
         match self {
             Self::Expr(v) => Some(v),

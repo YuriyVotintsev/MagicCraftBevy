@@ -2,10 +2,11 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::abilities::context::AbilityContext;
-use crate::abilities::effect_def::{EffectDef, ParamValue};
-use crate::abilities::registry::{EffectExecutor, EffectRegistry};
+use crate::abilities::effect_def::EffectDef;
+use crate::abilities::registry::{EffectHandler, EffectRegistry};
 use crate::physics::GameLayer;
-use crate::wave::add_invulnerability;
+use crate::schedule::GameSet;
+use crate::wave::{add_invulnerability, remove_invulnerability};
 use crate::MovementLocked;
 
 const DEFAULT_DASH_SPEED: f32 = 1500.0;
@@ -21,9 +22,14 @@ pub struct Dashing {
 #[derive(Component)]
 pub struct PreDashLayers(pub CollisionLayers);
 
-pub struct DashEffect;
+#[derive(Default)]
+pub struct DashHandler;
 
-impl EffectExecutor for DashEffect {
+impl EffectHandler for DashHandler {
+    fn name(&self) -> &'static str {
+        "dash"
+    }
+
     fn execute(
         &self,
         def: &EffectDef,
@@ -31,16 +37,9 @@ impl EffectExecutor for DashEffect {
         commands: &mut Commands,
         registry: &EffectRegistry,
     ) {
-        let speed = match def.get_param("speed", registry) {
-            Some(ParamValue::Float(v)) => *v,
-            Some(ParamValue::Stat(stat_id)) => ctx.stats_snapshot.get(*stat_id),
-            _ => DEFAULT_DASH_SPEED,
-        };
-
-        let duration = match def.get_param("duration", registry) {
-            Some(ParamValue::Float(v)) => *v,
-            _ => DEFAULT_DASH_DURATION,
-        };
+        let stats = &ctx.stats_snapshot;
+        let speed = def.get_f32("speed", stats, registry).unwrap_or(DEFAULT_DASH_SPEED);
+        let duration = def.get_f32("duration", stats, registry).unwrap_or(DEFAULT_DASH_DURATION);
 
         let direction = ctx
             .target_direction
@@ -77,4 +76,32 @@ impl EffectExecutor for DashEffect {
 
         add_invulnerability(commands, caster);
     }
+
+    fn register_systems(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            update_dashing.in_set(GameSet::AbilityExecution),
+        );
+    }
 }
+
+fn update_dashing(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut Dashing, &mut LinearVelocity, &PreDashLayers)>,
+) {
+    for (entity, mut dashing, mut velocity, pre_dash_layers) in &mut query {
+        velocity.0 = dashing.direction * dashing.speed;
+
+        if dashing.timer.tick(time.delta()).just_finished() {
+            let restored_layers = pre_dash_layers.0;
+            commands
+                .entity(entity)
+                .remove::<(Dashing, MovementLocked, PreDashLayers)>()
+                .insert(restored_layers);
+            remove_invulnerability(&mut commands, entity);
+        }
+    }
+}
+
+register_effect!(DashHandler);

@@ -17,12 +17,12 @@ pub struct WhileHeldActivations {
 
 pub struct WhileHeldEntry {
     pub ability_id: AbilityId,
-    pub cooldown: f32,
+    pub cooldown: ParamValue,
     pub timer: f32,
 }
 
 impl WhileHeldActivations {
-    pub fn add(&mut self, ability_id: AbilityId, cooldown: f32) {
+    pub fn add(&mut self, ability_id: AbilityId, cooldown: ParamValue) {
         self.entries.push(WhileHeldEntry {
             ability_id,
             cooldown,
@@ -63,7 +63,8 @@ pub fn while_held_system(
                 continue;
             }
 
-            entry.timer = entry.cooldown;
+            let cooldown = entry.cooldown.evaluate_f32(stats).unwrap_or(0.05);
+            entry.timer = cooldown;
 
             let Some(ability_def) = ability_registry.get(entry.ability_id) else {
                 continue;
@@ -102,7 +103,10 @@ impl ActivatorHandler for WhileHeldHandler {
         params: &HashMap<ParamId, ParamValue>,
         registry: &ActivatorRegistry,
     ) {
-        let cooldown = extract_float_param(params, "cooldown", registry).unwrap_or(0.05);
+        let cooldown = registry
+            .get_param_id("cooldown")
+            .and_then(|id| params.get(&id).cloned())
+            .unwrap_or(ParamValue::Float(0.05));
         commands
             .entity(entity)
             .entry::<WhileHeldActivations>()
@@ -117,18 +121,6 @@ impl ActivatorHandler for WhileHeldHandler {
                 .in_set(GameSet::AbilityActivation)
                 .run_if(in_state(GameState::Playing)),
         );
-    }
-}
-
-fn extract_float_param(
-    params: &HashMap<ParamId, ParamValue>,
-    name: &str,
-    registry: &ActivatorRegistry,
-) -> Option<f32> {
-    let param_id = registry.get_param_id(name)?;
-    match params.get(&param_id)? {
-        ParamValue::Float(f) => Some(*f),
-        _ => None,
     }
 }
 

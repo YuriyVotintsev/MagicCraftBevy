@@ -2,11 +2,12 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::abilities::registry::{EffectExecutor, EffectRegistry};
-use crate::abilities::effect_def::{EffectDef, ParamValue};
-use crate::abilities::context::AbilityContext;
+use crate::abilities::registry::{EffectHandler, EffectRegistry};
+use crate::abilities::effect_def::EffectDef;
+use crate::abilities::context::{AbilityContext, ContextValue};
 use crate::abilities::owner::OwnedBy;
-use crate::physics::GameLayer;
+use crate::physics::{GameLayer, Wall};
+use crate::schedule::GameSet;
 use crate::Faction;
 use crate::{Growing, Lifetime};
 
@@ -25,9 +26,14 @@ pub enum Pierce {
     Infinite,
 }
 
-pub struct SpawnProjectileEffect;
+#[derive(Default)]
+pub struct SpawnProjectileHandler;
 
-impl EffectExecutor for SpawnProjectileEffect {
+impl EffectHandler for SpawnProjectileHandler {
+    fn name(&self) -> &'static str {
+        "spawn_projectile"
+    }
+
     fn execute(
         &self,
         def: &EffectDef,
@@ -35,42 +41,14 @@ impl EffectExecutor for SpawnProjectileEffect {
         commands: &mut Commands,
         registry: &EffectRegistry,
     ) {
-        let speed = match def.get_param("speed", registry) {
-            Some(ParamValue::Float(v)) => *v,
-            Some(ParamValue::Stat(stat_id)) => ctx.stats_snapshot.get(*stat_id),
-            Some(ParamValue::Expr(expr)) => expr.evaluate_computed(&ctx.stats_snapshot),
-            _ => DEFAULT_PROJECTILE_SPEED,
-        };
-
-        let size = match def.get_param("size", registry) {
-            Some(ParamValue::Float(v)) => *v,
-            _ => DEFAULT_PROJECTILE_SIZE,
-        };
-
-        let on_hit_effects = match def.get_param("on_hit", registry) {
-            Some(ParamValue::EffectList(effects)) => effects.clone(),
-            _ => Vec::new(),
-        };
-
-        let spread = match def.get_param("spread", registry) {
-            Some(ParamValue::Float(v)) => *v,
-            _ => 0.0,
-        };
-
-        let lifetime = match def.get_param("lifetime", registry) {
-            Some(ParamValue::Float(v)) => Some(*v),
-            _ => None,
-        };
-
-        let start_size = match def.get_param("start_size", registry) {
-            Some(ParamValue::Float(v)) => Some(*v),
-            _ => None,
-        };
-
-        let end_size = match def.get_param("end_size", registry) {
-            Some(ParamValue::Float(v)) => Some(*v),
-            _ => None,
-        };
+        let stats = &ctx.stats_snapshot;
+        let speed = def.get_f32("speed", stats, registry).unwrap_or(DEFAULT_PROJECTILE_SPEED);
+        let size = def.get_f32("size", stats, registry).unwrap_or(DEFAULT_PROJECTILE_SIZE);
+        let on_hit_effects = def.get_effect_list("on_hit", registry).cloned().unwrap_or_default();
+        let spread = def.get_f32("spread", stats, registry).unwrap_or(0.0);
+        let lifetime = def.get_f32("lifetime", stats, registry);
+        let start_size = def.get_f32("start_size", stats, registry);
+        let end_size = def.get_f32("end_size", stats, registry);
 
         let base_direction = ctx.target_direction.unwrap_or(Vec3::X).truncate().normalize_or_zero();
         let direction = if spread > 0.0 {
@@ -87,10 +65,7 @@ impl EffectExecutor for SpawnProjectileEffect {
         };
         let velocity = direction * speed;
 
-        let pierce = match def.get_param("pierce", registry) {
-            Some(ParamValue::Int(n)) => Some(Pierce::Count(*n as u32)),
-            _ => None,
-        };
+        let pierce = def.get_i32("pierce", stats, registry).map(|n| Pierce::Count(n as u32));
 
         let initial_size = start_size.unwrap_or(size);
 
@@ -144,4 +119,90 @@ impl EffectExecutor for SpawnProjectileEffect {
             }
         }
     }
+
+    fn register_systems(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            projectile_collision.in_set(GameSet::AbilityExecution),
+        );
+    }
 }
+
+fn projectile_collision(
+    mut commands: Commands,
+    mut collision_events: MessageReader<CollisionStart>,
+    projectile_query: Query<(&Projectile, &Faction)>,
+    mut pierce_query: Query<&mut Pierce>,
+    target_query: Query<&Faction, Without<Projectile>>,
+    wall_query: Query<(), With<Wall>>,
+    effect_registry: Res<EffectRegistry>,
+) {
+    for event in collision_events.read() {
+        let entity1 = event.collider1;
+        let entity2 = event.collider2;
+
+        let (projectile_entity, other_entity) =
+            if projectile_query.contains(entity1) {
+                (entity1, entity2)
+            } else if projectile_query.contains(entity2) {
+                (entity2, entity1)
+            } else {
+                continue;
+            };
+
+        if wall_query.contains(other_entity) {
+            let has_pierce_infinite = pierce_query
+                .get(projectile_entity)
+                .map(|p| matches!(*p, Pierce::Infinite))
+                .unwrap_or(false);
+
+            if !has_pierce_infinite {
+                if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
+                    entity_commands.despawn();
+                }
+            }
+            continue;
+        }
+
+        if projectile_query.contains(other_entity) {
+            continue;
+        }
+
+        let Ok((projectile, proj_faction)) = projectile_query.get(projectile_entity) else {
+            continue;
+        };
+        let Ok(target_faction) = target_query.get(other_entity) else {
+            continue;
+        };
+
+        if proj_faction == target_faction {
+            continue;
+        }
+
+        let mut ctx = projectile.context.clone();
+        ctx.set_param("target", ContextValue::Entity(other_entity));
+
+        for effect_def in &projectile.on_hit_effects {
+            effect_registry.execute(effect_def, &ctx, &mut commands);
+        }
+
+        let should_despawn = match pierce_query.get_mut(projectile_entity) {
+            Err(_) => true,
+            Ok(pierce) => match pierce.into_inner() {
+                Pierce::Infinite => false,
+                Pierce::Count(n) => {
+                    *n = n.saturating_sub(1);
+                    *n == 0
+                }
+            },
+        };
+
+        if should_despawn {
+            if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
+                entity_commands.despawn();
+            }
+        }
+    }
+}
+
+register_effect!(SpawnProjectileHandler);
