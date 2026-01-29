@@ -3,40 +3,33 @@ use bevy::prelude::*;
 
 use crate::abilities::ids::ParamId;
 use crate::abilities::effect_def::ParamValue;
-use crate::abilities::registry::ActivatorHandler;
-use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, ActivatorRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::registry::TriggerHandler;
+use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, TriggerRegistry, EffectRegistry, AbilityContext};
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
 #[derive(Component, Default)]
-pub struct WhileHeldActivations {
-    pub entries: Vec<WhileHeldEntry>,
+pub struct OnInputTriggers {
+    pub entries: Vec<OnInputEntry>,
 }
 
-pub struct WhileHeldEntry {
+pub struct OnInputEntry {
     pub ability_id: AbilityId,
-    pub cooldown: ParamValue,
-    pub timer: f32,
 }
 
-impl WhileHeldActivations {
-    pub fn add(&mut self, ability_id: AbilityId, cooldown: ParamValue) {
-        self.entries.push(WhileHeldEntry {
-            ability_id,
-            cooldown,
-            timer: 0.0,
-        });
+impl OnInputTriggers {
+    pub fn add(&mut self, ability_id: AbilityId) {
+        self.entries.push(OnInputEntry { ability_id });
     }
 }
 
-pub fn while_held_system(
+pub fn on_input_system(
     mut commands: Commands,
-    time: Res<Time>,
-    mut query: Query<(
+    query: Query<(
         Entity,
-        &mut WhileHeldActivations,
+        &OnInputTriggers,
         &AbilityInputs,
         &ComputedStats,
         &Transform,
@@ -45,26 +38,15 @@ pub fn while_held_system(
     ability_registry: Res<AbilityRegistry>,
     effect_registry: Res<EffectRegistry>,
 ) {
-    let delta = time.delta_secs();
-
-    for (entity, mut activations, inputs, stats, transform, faction) in &mut query {
-        for entry in &mut activations.entries {
-            entry.timer = (entry.timer - delta).max(0.0);
-
+    for (entity, triggers, inputs, stats, transform, faction) in &query {
+        for entry in &triggers.entries {
             let Some(input) = inputs.get(entry.ability_id) else {
                 continue;
             };
 
-            if !input.pressed {
+            if !input.just_pressed {
                 continue;
             }
-
-            if entry.timer > 0.0 {
-                continue;
-            }
-
-            let cooldown = entry.cooldown.evaluate_f32(stats).unwrap_or(0.05);
-            entry.timer = cooldown;
 
             let Some(ability_def) = ability_registry.get(entry.ability_id) else {
                 continue;
@@ -87,11 +69,11 @@ pub fn while_held_system(
 }
 
 #[derive(Default)]
-pub struct WhileHeldHandler;
+pub struct OnInputHandler;
 
-impl ActivatorHandler for WhileHeldHandler {
+impl TriggerHandler for OnInputHandler {
     fn name(&self) -> &'static str {
-        "while_held"
+        "on_input"
     }
 
     fn add_to_entity(
@@ -99,28 +81,24 @@ impl ActivatorHandler for WhileHeldHandler {
         commands: &mut Commands,
         entity: Entity,
         ability_id: AbilityId,
-        params: &HashMap<ParamId, ParamValue>,
-        registry: &ActivatorRegistry,
+        _params: &HashMap<ParamId, ParamValue>,
+        _registry: &TriggerRegistry,
     ) {
-        let cooldown = registry
-            .get_param_id("cooldown")
-            .and_then(|id| params.get(&id).cloned())
-            .unwrap_or(ParamValue::Float(0.05));
         commands
             .entity(entity)
-            .entry::<WhileHeldActivations>()
+            .entry::<OnInputTriggers>()
             .or_default()
-            .and_modify(move |mut a| a.add(ability_id, cooldown));
+            .and_modify(move |mut a| a.add(ability_id));
     }
 
     fn register_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
-            while_held_system
+            on_input_system
                 .in_set(GameSet::AbilityActivation)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-register_activator!(WhileHeldHandler);
+register_trigger!(OnInputHandler);

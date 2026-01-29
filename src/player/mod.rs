@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
-use crate::abilities::{AbilityInputs, AbilityRegistry, ActivatorRegistry, InputState, add_ability_activator};
+use crate::abilities::{AbilityInputs, AbilityRegistry, TriggerRegistry, InputState, add_ability_trigger};
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
@@ -57,7 +57,7 @@ fn spawn_player(
     calculators: Res<StatCalculators>,
     selected_spells: Res<SelectedSpells>,
     ability_registry: Res<AbilityRegistry>,
-    activator_registry: Res<ActivatorRegistry>,
+    trigger_registry: Res<TriggerRegistry>,
 ) {
     let player_def = &player_def_res.0;
 
@@ -124,13 +124,13 @@ fn spawn_player(
     )).id();
 
     if let Some(active_id) = selected_spells.active {
-        add_ability_activator(&mut commands, entity, active_id, &ability_registry, &activator_registry);
+        add_ability_trigger(&mut commands, entity, active_id, &ability_registry, &trigger_registry);
     }
     if let Some(passive_id) = selected_spells.passive {
-        add_ability_activator(&mut commands, entity, passive_id, &ability_registry, &activator_registry);
+        add_ability_trigger(&mut commands, entity, passive_id, &ability_registry, &trigger_registry);
     }
     if let Some(defensive_id) = selected_spells.defensive {
-        add_ability_activator(&mut commands, entity, defensive_id, &ability_registry, &activator_registry);
+        add_ability_trigger(&mut commands, entity, defensive_id, &ability_registry, &trigger_registry);
     }
 }
 

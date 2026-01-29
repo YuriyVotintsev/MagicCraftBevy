@@ -2,7 +2,7 @@ pub mod ids;
 mod context;
 mod owner;
 mod effect_def;
-mod activator_def;
+mod trigger_def;
 mod ability_def;
 mod components;
 mod registry;
@@ -11,7 +11,7 @@ mod spawn_helpers;
 #[macro_use]
 mod macros;
 
-pub mod activators;
+pub mod triggers;
 pub mod effects;
 
 #[allow(unused_imports)]
@@ -21,19 +21,19 @@ pub use owner::OwnedBy;
 #[allow(unused_imports)]
 pub use effect_def::{EffectDef, EffectDefRaw, ParamValue, ParamValueRaw};
 #[allow(unused_imports)]
-pub use activator_def::{ActivatorDef, ActivatorDefRaw};
+pub use trigger_def::{TriggerDef, TriggerDefRaw};
 #[allow(unused_imports)]
 pub use ability_def::{AbilityDef, AbilityDefRaw};
 #[allow(unused_imports)]
 pub use components::{AbilityInputs, AbilityId, InputState};
 #[allow(unused_imports)]
-pub use registry::{EffectHandler, ActivatorHandler, ActivatorRegistry, EffectRegistry, AbilityRegistry};
+pub use registry::{EffectHandler, TriggerHandler, TriggerRegistry, EffectRegistry, AbilityRegistry};
 #[allow(unused_imports)]
-pub use spawn_helpers::add_ability_activator;
+pub use spawn_helpers::add_ability_trigger;
 #[allow(unused_imports)]
-pub use activators::{
-    on_input::OnInputActivations, passive::PassiveActivations,
-    while_held::WhileHeldActivations, interval::IntervalActivations,
+pub use triggers::{
+    on_input::OnInputTriggers, passive::PassiveTriggers,
+    while_held::WhileHeldTriggers, interval::IntervalTriggers,
 };
 
 use bevy::prelude::*;
@@ -54,13 +54,13 @@ pub struct AbilityPlugin;
 
 impl Plugin for AbilityPlugin {
     fn build(&self, app: &mut App) {
-        let mut activator_registry = ActivatorRegistry::new();
-        activators::register_all(app, &mut activator_registry);
+        let mut trigger_registry = TriggerRegistry::new();
+        triggers::register_all(app, &mut trigger_registry);
 
         let mut effect_registry = EffectRegistry::new();
         effects::register_all(app, &mut effect_registry);
 
-        app.insert_resource(activator_registry)
+        app.insert_resource(trigger_registry)
             .insert_resource(effect_registry)
             .init_resource::<AbilityRegistry>();
 

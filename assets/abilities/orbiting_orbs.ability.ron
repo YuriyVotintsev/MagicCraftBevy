@@ -1,8 +1,8 @@
 (
     id: "orbiting_orbs",
     tags: ["passive"],
-    activator: (
-        activator_type: "passive",
+    trigger: (
+        trigger_type: "passive",
         params: {},
     ),
     effects: [

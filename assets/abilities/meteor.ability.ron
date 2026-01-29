@@ -1,8 +1,8 @@
 (
     id: "meteor",
     tags: ["passive", "fire", "aoe"],
-    activator: (
-        activator_type: "interval",
+    trigger: (
+        trigger_type: "interval",
         params: {
             "interval": Float(3.0),
         },

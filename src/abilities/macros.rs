@@ -1,11 +1,11 @@
 #[macro_export]
-macro_rules! register_activator {
+macro_rules! register_trigger {
     ($handler:ty) => {
-        pub fn __register_activator(
+        pub fn __register_trigger(
             app: &mut ::bevy::prelude::App,
-            registry: &mut $crate::abilities::ActivatorRegistry,
+            registry: &mut $crate::abilities::TriggerRegistry,
         ) {
-            use $crate::abilities::registry::ActivatorHandler;
+            use $crate::abilities::registry::TriggerHandler;
             let handler = <$handler>::default();
             handler.register_systems(app);
             registry.register(Box::new(handler));
@@ -14,15 +14,15 @@ macro_rules! register_activator {
 }
 
 #[macro_export]
-macro_rules! collect_activators {
+macro_rules! collect_triggers {
     ($($module:ident),* $(,)?) => {
         $(pub mod $module;)*
 
         pub fn register_all(
             app: &mut ::bevy::prelude::App,
-            registry: &mut $crate::abilities::ActivatorRegistry,
+            registry: &mut $crate::abilities::TriggerRegistry,
         ) {
-            $($module::__register_activator(app, registry);)*
+            $($module::__register_trigger(app, registry);)*
         }
     };
 }

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
 
-use super::ids::{ActivatorTypeId, EffectTypeId, AbilityId, ParamId};
+use super::ids::{TriggerTypeId, EffectTypeId, AbilityId, ParamId};
 use super::context::AbilityContext;
 use super::effect_def::{EffectDef, ParamValue};
 use super::ability_def::AbilityDef;
@@ -20,7 +20,7 @@ pub trait EffectHandler: Send + Sync + 'static {
     fn register_systems(&self, _app: &mut App) {}
 }
 
-pub trait ActivatorHandler: Send + Sync + 'static {
+pub trait TriggerHandler: Send + Sync + 'static {
     fn name(&self) -> &'static str;
 
     fn add_to_entity(
@@ -29,45 +29,45 @@ pub trait ActivatorHandler: Send + Sync + 'static {
         entity: Entity,
         ability_id: AbilityId,
         params: &HashMap<ParamId, ParamValue>,
-        registry: &ActivatorRegistry,
+        registry: &TriggerRegistry,
     );
 
     fn register_systems(&self, app: &mut App);
 }
 
 #[derive(Resource, Default)]
-pub struct ActivatorRegistry {
-    name_to_id: HashMap<String, ActivatorTypeId>,
+pub struct TriggerRegistry {
+    name_to_id: HashMap<String, TriggerTypeId>,
     id_to_name: Vec<String>,
-    handlers: Vec<Box<dyn ActivatorHandler>>,
+    handlers: Vec<Box<dyn TriggerHandler>>,
     param_name_to_id: HashMap<String, ParamId>,
     param_id_to_name: Vec<String>,
 }
 
-impl ActivatorRegistry {
+impl TriggerRegistry {
     pub fn new() -> Self {
         Self::default()
     }
 
-    pub fn register(&mut self, handler: Box<dyn ActivatorHandler>) -> ActivatorTypeId {
+    pub fn register(&mut self, handler: Box<dyn TriggerHandler>) -> TriggerTypeId {
         let name = handler.name().to_string();
-        let id = ActivatorTypeId(self.handlers.len() as u32);
+        let id = TriggerTypeId(self.handlers.len() as u32);
         self.name_to_id.insert(name.clone(), id);
         self.id_to_name.push(name);
         self.handlers.push(handler);
         id
     }
 
-    pub fn get_id(&self, name: &str) -> Option<ActivatorTypeId> {
+    pub fn get_id(&self, name: &str) -> Option<TriggerTypeId> {
         self.name_to_id.get(name).copied()
     }
 
     #[allow(dead_code)]
-    pub fn get_name(&self, id: ActivatorTypeId) -> Option<&str> {
+    pub fn get_name(&self, id: TriggerTypeId) -> Option<&str> {
         self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
     }
 
-    pub fn get(&self, id: ActivatorTypeId) -> Option<&dyn ActivatorHandler> {
+    pub fn get(&self, id: TriggerTypeId) -> Option<&dyn TriggerHandler> {
         self.handlers.get(id.0 as usize).map(|h| h.as_ref())
     }
 

@@ -3,33 +3,40 @@ use bevy::prelude::*;
 
 use crate::abilities::ids::ParamId;
 use crate::abilities::effect_def::ParamValue;
-use crate::abilities::registry::ActivatorHandler;
-use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, ActivatorRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::registry::TriggerHandler;
+use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, TriggerRegistry, EffectRegistry, AbilityContext};
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
 #[derive(Component, Default)]
-pub struct OnInputActivations {
-    pub entries: Vec<OnInputEntry>,
+pub struct WhileHeldTriggers {
+    pub entries: Vec<WhileHeldEntry>,
 }
 
-pub struct OnInputEntry {
+pub struct WhileHeldEntry {
     pub ability_id: AbilityId,
+    pub cooldown: ParamValue,
+    pub timer: f32,
 }
 
-impl OnInputActivations {
-    pub fn add(&mut self, ability_id: AbilityId) {
-        self.entries.push(OnInputEntry { ability_id });
+impl WhileHeldTriggers {
+    pub fn add(&mut self, ability_id: AbilityId, cooldown: ParamValue) {
+        self.entries.push(WhileHeldEntry {
+            ability_id,
+            cooldown,
+            timer: 0.0,
+        });
     }
 }
 
-pub fn on_input_system(
+pub fn while_held_system(
     mut commands: Commands,
-    query: Query<(
+    time: Res<Time>,
+    mut query: Query<(
         Entity,
-        &OnInputActivations,
+        &mut WhileHeldTriggers,
         &AbilityInputs,
         &ComputedStats,
         &Transform,
@@ -38,15 +45,26 @@ pub fn on_input_system(
     ability_registry: Res<AbilityRegistry>,
     effect_registry: Res<EffectRegistry>,
 ) {
-    for (entity, activations, inputs, stats, transform, faction) in &query {
-        for entry in &activations.entries {
+    let delta = time.delta_secs();
+
+    for (entity, mut triggers, inputs, stats, transform, faction) in &mut query {
+        for entry in &mut triggers.entries {
+            entry.timer = (entry.timer - delta).max(0.0);
+
             let Some(input) = inputs.get(entry.ability_id) else {
                 continue;
             };
 
-            if !input.just_pressed {
+            if !input.pressed {
                 continue;
             }
+
+            if entry.timer > 0.0 {
+                continue;
+            }
+
+            let cooldown = entry.cooldown.evaluate_f32(stats).unwrap_or(0.05);
+            entry.timer = cooldown;
 
             let Some(ability_def) = ability_registry.get(entry.ability_id) else {
                 continue;
@@ -69,11 +87,11 @@ pub fn on_input_system(
 }
 
 #[derive(Default)]
-pub struct OnInputHandler;
+pub struct WhileHeldHandler;
 
-impl ActivatorHandler for OnInputHandler {
+impl TriggerHandler for WhileHeldHandler {
     fn name(&self) -> &'static str {
-        "on_input"
+        "while_held"
     }
 
     fn add_to_entity(
@@ -81,24 +99,28 @@ impl ActivatorHandler for OnInputHandler {
         commands: &mut Commands,
         entity: Entity,
         ability_id: AbilityId,
-        _params: &HashMap<ParamId, ParamValue>,
-        _registry: &ActivatorRegistry,
+        params: &HashMap<ParamId, ParamValue>,
+        registry: &TriggerRegistry,
     ) {
+        let cooldown = registry
+            .get_param_id("cooldown")
+            .and_then(|id| params.get(&id).cloned())
+            .unwrap_or(ParamValue::Float(0.05));
         commands
             .entity(entity)
-            .entry::<OnInputActivations>()
+            .entry::<WhileHeldTriggers>()
             .or_default()
-            .and_modify(move |mut a| a.add(ability_id));
+            .and_modify(move |mut a| a.add(ability_id, cooldown));
     }
 
     fn register_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
-            on_input_system
+            while_held_system
                 .in_set(GameSet::AbilityActivation)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-register_activator!(OnInputHandler);
+register_trigger!(WhileHeldHandler);

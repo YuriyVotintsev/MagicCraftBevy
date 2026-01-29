@@ -1,8 +1,8 @@
 (
     id: "dash",
     tags: [],
-    activator: (
-        activator_type: "on_input",
+    trigger: (
+        trigger_type: "on_input",
         params: {},
     ),
     effects: [

@@ -1,8 +1,8 @@
 (
     id: "flamethrower",
     tags: [],
-    activator: (
-        activator_type: "while_held",
+    trigger: (
+        trigger_type: "while_held",
         params: {
             "cooldown": Float(0.03),
         },

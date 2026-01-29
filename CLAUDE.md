@@ -50,12 +50,12 @@ Custom asset loaders implement Bevy's `AssetLoader` trait.
 
 ### Trait-Based Registries
 Abilities use trait registries for extensibility:
-- `Activator` trait → `ActivatorRegistry` (when abilities trigger)
+- `Trigger` trait → `TriggerRegistry` (when abilities trigger)
 - `EffectExecutor` trait → `EffectRegistry` (what abilities do)
 - `BehaviourRegistry`, `TransitionRegistry` for FSM
 
 ### Key Patterns
-- **AbilityContext**: Data passed to effects/activators during execution
+- **AbilityContext**: Data passed to effects/triggers during execution
 - **PendingDamage**: Queued damage applied in GameSet::Damage
 - **DirtyStats**: Tracks which stats need recalculation (optimization)
 - **Raw→Processed types**: `*Raw` types use strings for Ron deserialization, converted to typed IDs at load time
@@ -64,7 +64,7 @@ Abilities use trait registries for extensibility:
 
 ```
 src/
-├── abilities/       # Core ability system: dispatcher, registries, effects, activators
+├── abilities/       # Core ability system: dispatcher, registries, effects, triggers
 ├── stats/           # Stat calculation: modifiers, expressions, health, damage
 ├── fsm/             # Mob FSM core: states, transitions, events
 ├── mob_ai/          # Concrete behaviors (move_toward_player, when_near, etc.)
@@ -77,7 +77,7 @@ src/
 ## Common Development Tasks
 
 **Add new ability type:**
-1. Implement `Activator` or `EffectExecutor` trait in `abilities/activators/` or `abilities/effects/`
+1. Implement `Trigger` or `EffectExecutor` trait in `abilities/triggers/` or `abilities/effects/`
 2. Register in `abilities/mod.rs` plugin setup
 
 **Add new mob:**

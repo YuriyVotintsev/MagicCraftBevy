@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
-use super::ids::{ActivatorTypeId, ParamId};
+use super::ids::{TriggerTypeId, ParamId};
 use super::effect_def::{ParamValue, ParamValueRaw};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ActivatorDefRaw {
-    pub activator_type: String,
+pub struct TriggerDefRaw {
+    pub trigger_type: String,
     #[serde(default)]
     pub params: HashMap<String, ParamValueRaw>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ActivatorDef {
-    pub activator_type: ActivatorTypeId,
+pub struct TriggerDef {
+    pub trigger_type: TriggerTypeId,
     pub params: HashMap<ParamId, ParamValue>,
 }

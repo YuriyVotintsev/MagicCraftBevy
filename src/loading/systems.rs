@@ -2,7 +2,7 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::abilities::{
-    AbilityDef, AbilityDefRaw, AbilityRegistry, ActivatorDef, ActivatorDefRaw, ActivatorRegistry,
+    AbilityDef, AbilityDefRaw, AbilityRegistry, TriggerDef, TriggerDefRaw, TriggerRegistry,
     EffectDef, EffectDefRaw, EffectRegistry, ParamValue, ParamValueRaw,
 };
 use crate::fsm::MobRegistry;
@@ -143,7 +143,7 @@ pub fn check_content_loaded(
     ability_assets: Res<Assets<AbilityDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
-    mut activator_registry: ResMut<ActivatorRegistry>,
+    mut trigger_registry: ResMut<TriggerRegistry>,
     mut effect_registry: ResMut<EffectRegistry>,
     mut ability_registry: ResMut<AbilityRegistry>,
 ) {
@@ -211,7 +211,7 @@ pub fn check_content_loaded(
                     &ability_asset.0,
                     &stat_registry,
                     &mut ability_registry,
-                    &mut activator_registry,
+                    &mut trigger_registry,
                     &mut effect_registry,
                 );
                 info!("Registered ability: {}", ability_asset.0.id);
@@ -286,38 +286,38 @@ fn resolve_effect_def(
     EffectDef { effect_type, params }
 }
 
-fn resolve_activator_def(
-    raw: &ActivatorDefRaw,
+fn resolve_trigger_def(
+    raw: &TriggerDefRaw,
     stat_registry: &StatRegistry,
-    activator_registry: &mut ActivatorRegistry,
+    trigger_registry: &mut TriggerRegistry,
     effect_registry: &mut EffectRegistry,
-) -> ActivatorDef {
-    let activator_type = activator_registry.get_id(&raw.activator_type)
-        .unwrap_or_else(|| panic!("Unknown activator type '{}'", raw.activator_type));
+) -> TriggerDef {
+    let trigger_type = trigger_registry.get_id(&raw.trigger_type)
+        .unwrap_or_else(|| panic!("Unknown trigger type '{}'", raw.trigger_type));
 
     let params = raw
         .params
         .iter()
         .map(|(name, value)| {
-            let param_id = activator_registry.get_or_insert_param_id(name);
+            let param_id = trigger_registry.get_or_insert_param_id(name);
             let resolved_value = resolve_param_value(value, stat_registry, effect_registry);
             (param_id, resolved_value)
         })
         .collect();
 
-    ActivatorDef { activator_type, params }
+    TriggerDef { trigger_type, params }
 }
 
 fn resolve_ability_def(
     raw: &AbilityDefRaw,
     stat_registry: &StatRegistry,
     ability_registry: &mut AbilityRegistry,
-    activator_registry: &mut ActivatorRegistry,
+    trigger_registry: &mut TriggerRegistry,
     effect_registry: &mut EffectRegistry,
 ) -> AbilityDef {
     let id = ability_registry.allocate_id(&raw.id);
 
-    let activator = resolve_activator_def(&raw.activator, stat_registry, activator_registry, effect_registry);
+    let trigger = resolve_trigger_def(&raw.trigger, stat_registry, trigger_registry, effect_registry);
 
     let effects = raw
         .effects
@@ -325,5 +325,5 @@ fn resolve_ability_def(
         .map(|e| resolve_effect_def(e, stat_registry, effect_registry))
         .collect();
 
-    AbilityDef { id, activator, effects }
+    AbilityDef { id, trigger, effects }
 }
