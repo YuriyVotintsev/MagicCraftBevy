@@ -208,4 +208,4 @@ cargo run --features headless -- --timeout 30
 - meteor (interval → spawn_meteor → on_hit → damage)
 - dash (on_input → dash)
 - shield (on_input → shield)
-- orbiting_orbs (passive → spawn_orbiting → on_hit → damage)
+- orbiting_orbs (every_frame → spawn_orbiting → on_hit → damage)

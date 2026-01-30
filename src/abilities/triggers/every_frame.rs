@@ -11,29 +11,29 @@ use crate::Faction;
 use crate::GameState;
 
 #[derive(Component, Default)]
-pub struct PassiveTriggers {
-    pub entries: Vec<PassiveEntry>,
+pub struct EveryFrameTriggers {
+    pub entries: Vec<EveryFrameEntry>,
 }
 
-pub struct PassiveEntry {
+pub struct EveryFrameEntry {
     pub ability_id: AbilityId,
     pub activated: bool,
 }
 
-impl PassiveTriggers {
+impl EveryFrameTriggers {
     pub fn add(&mut self, ability_id: AbilityId) {
-        self.entries.push(PassiveEntry {
+        self.entries.push(EveryFrameEntry {
             ability_id,
             activated: false,
         });
     }
 }
 
-pub fn passive_system(
+pub fn every_frame_system(
     mut commands: Commands,
     mut query: Query<(
         Entity,
-        &mut PassiveTriggers,
+        &mut EveryFrameTriggers,
         &ComputedStats,
         &Transform,
         &Faction,
@@ -68,11 +68,11 @@ pub fn passive_system(
 }
 
 #[derive(Default)]
-pub struct PassiveHandler;
+pub struct EveryFrameHandler;
 
-impl TriggerHandler for PassiveHandler {
+impl TriggerHandler for EveryFrameHandler {
     fn name(&self) -> &'static str {
-        "passive"
+        "every_frame"
     }
 
     fn add_to_entity(
@@ -85,7 +85,7 @@ impl TriggerHandler for PassiveHandler {
     ) {
         commands
             .entity(entity)
-            .entry::<PassiveTriggers>()
+            .entry::<EveryFrameTriggers>()
             .or_default()
             .and_modify(move |mut a| a.add(ability_id));
     }
@@ -93,11 +93,11 @@ impl TriggerHandler for PassiveHandler {
     fn register_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
-            passive_system
+            every_frame_system
                 .in_set(GameSet::AbilityActivation)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-register_trigger!(PassiveHandler);
+register_trigger!(EveryFrameHandler);

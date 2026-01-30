@@ -32,7 +32,7 @@ pub use registry::{EffectHandler, TriggerHandler, TriggerRegistry, EffectRegistr
 pub use spawn_helpers::add_ability_trigger;
 #[allow(unused_imports)]
 pub use triggers::{
-    on_input::OnInputTriggers, passive::PassiveTriggers,
+    on_input::OnInputTriggers, every_frame::EveryFrameTriggers,
     while_held::WhileHeldTriggers, interval::IntervalTriggers,
 };
 

@@ -1,6 +1,6 @@
 (
     id: "meteor",
-    tags: ["passive", "fire", "aoe"],
+    tags: ["every_frame", "fire", "aoe"],
     trigger: (
         trigger_type: "interval",
         params: {

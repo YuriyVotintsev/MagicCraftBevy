@@ -1,8 +1,8 @@
 (
     id: "orbiting_orbs",
-    tags: ["passive"],
+    tags: ["every_frame"],
     trigger: (
-        trigger_type: "passive",
+        trigger_type: "every_frame",
         params: {},
     ),
     effects: [

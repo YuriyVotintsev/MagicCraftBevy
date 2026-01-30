@@ -1,1 +1,1 @@
-collect_triggers!(on_input, passive, while_held, interval);
+collect_triggers!(on_input, every_frame, while_held, interval);
