@@ -6,7 +6,7 @@ use crate::abilities::events::ExecuteEffectEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
-use crate::wave::{add_invulnerability, remove_invulnerability};
+use crate::wave::InvulnerableStack;
 use crate::Faction;
 use crate::GameState;
 
@@ -30,6 +30,7 @@ fn execute_shield_effect(
     mut effect_events: MessageReader<ExecuteEffectEvent>,
     effect_registry: Res<EffectRegistry>,
     stats_query: Query<&ComputedStats>,
+    mut invuln_query: Query<&mut InvulnerableStack>,
 ) {
     for event in effect_events.read() {
         let Some(handler_id) = effect_registry.get_id("shield") else {
@@ -62,6 +63,12 @@ fn execute_shield_effect(
                 radius,
                 owner_faction: event.context.caster_faction,
             });
+
+            if let Ok(mut stack) = invuln_query.get_mut(caster) {
+                stack.increment();
+            } else {
+                entity_commands.insert(InvulnerableStack(1));
+            }
         }
 
         commands.spawn((
@@ -74,8 +81,6 @@ fn execute_shield_effect(
             },
             Transform::from_translation(event.context.caster_position.with_z(0.5)),
         ));
-
-        add_invulnerability(&mut commands, caster);
     }
 }
 
@@ -108,6 +113,7 @@ fn update_shield(
     mut commands: Commands,
     time: Res<Time>,
     mut shield_query: Query<(Entity, &mut ShieldActive, &Transform)>,
+    mut invuln_query: Query<&mut InvulnerableStack>,
     spatial_query: SpatialQuery,
 ) {
     for (entity, mut shield, shield_transform) in &mut shield_query {
@@ -130,7 +136,12 @@ fn update_shield(
 
         if shield.timer.tick(time.delta()).just_finished() {
             commands.entity(entity).remove::<ShieldActive>();
-            remove_invulnerability(&mut commands, entity);
+
+            if let Ok(mut stack) = invuln_query.get_mut(entity) {
+                if stack.decrement() {
+                    commands.entity(entity).remove::<InvulnerableStack>();
+                }
+            }
         }
     }
 }

@@ -6,7 +6,7 @@ use crate::abilities::events::ExecuteEffectEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
-use crate::wave::{add_invulnerability, remove_invulnerability};
+use crate::wave::InvulnerableStack;
 use crate::MovementLocked;
 use crate::GameState;
 
@@ -28,6 +28,7 @@ fn execute_dash_effect(
     mut effect_events: MessageReader<ExecuteEffectEvent>,
     effect_registry: Res<EffectRegistry>,
     stats_query: Query<&ComputedStats>,
+    mut invuln_query: Query<&mut InvulnerableStack>,
     collision_query: Query<&CollisionLayers>,
 ) {
     for event in effect_events.read() {
@@ -82,9 +83,13 @@ fn execute_dash_effect(
                 PreDashLayers(current_layers),
                 dash_layers,
             ));
-        }
 
-        add_invulnerability(&mut commands, caster);
+            if let Ok(mut stack) = invuln_query.get_mut(caster) {
+                stack.increment();
+            } else {
+                entity_commands.insert(InvulnerableStack(1));
+            }
+        }
     }
 }
 
@@ -117,6 +122,7 @@ fn update_dashing(
     mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(Entity, &mut Dashing, &mut LinearVelocity, &PreDashLayers)>,
+    mut invuln_query: Query<&mut InvulnerableStack>,
 ) {
     for (entity, mut dashing, mut velocity, pre_dash_layers) in &mut query {
         velocity.0 = dashing.direction * dashing.speed;
@@ -127,7 +133,12 @@ fn update_dashing(
                 .entity(entity)
                 .remove::<(Dashing, MovementLocked, PreDashLayers)>()
                 .insert(restored_layers);
-            remove_invulnerability(&mut commands, entity);
+
+            if let Ok(mut stack) = invuln_query.get_mut(entity) {
+                if stack.decrement() {
+                    commands.entity(entity).remove::<InvulnerableStack>();
+                }
+            }
         }
     }
 }

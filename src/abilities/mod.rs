@@ -1,6 +1,5 @@
 pub mod ids;
 mod context;
-mod owner;
 mod effect_def;
 mod trigger_def;
 mod ability_def;
@@ -9,6 +8,7 @@ mod registry;
 mod spawn_helpers;
 pub mod events;
 mod dispatcher;
+mod lifecycle;
 
 #[macro_use]
 mod macros;
@@ -18,8 +18,6 @@ pub mod effects;
 
 #[allow(unused_imports)]
 pub use context::{AbilityContext, ContextValue};
-#[allow(unused_imports)]
-pub use owner::OwnedBy;
 #[allow(unused_imports)]
 pub use effect_def::{EffectDef, EffectDefRaw, ParamValue, ParamValueRaw};
 #[allow(unused_imports)]
@@ -32,6 +30,8 @@ pub use components::{AbilityInputs, AbilityId, InputState};
 pub use registry::{EffectHandler, TriggerHandler, TriggerRegistry, EffectRegistry, AbilityRegistry};
 #[allow(unused_imports)]
 pub use spawn_helpers::add_ability_trigger;
+#[allow(unused_imports)]
+pub use lifecycle::AttachedTo;
 #[allow(unused_imports)]
 pub use triggers::{
     on_input::OnInputTriggers, every_frame::EveryFrameTriggers,
@@ -87,5 +87,7 @@ impl Plugin for AbilityPlugin {
         );
 
         app.add_systems(OnExit(WavePhase::Combat), clear_ability_inputs);
+
+        lifecycle::register_lifecycle_systems(app);
     }
 }

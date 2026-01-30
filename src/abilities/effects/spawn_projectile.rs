@@ -6,7 +6,6 @@ use rand::Rng;
 use crate::abilities::registry::{EffectHandler, EffectRegistry};
 use crate::abilities::effect_def::EffectDef;
 use crate::abilities::context::{AbilityContext, ContextValue};
-use crate::abilities::owner::OwnedBy;
 use crate::abilities::events::ExecuteEffectEvent;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
@@ -121,7 +120,6 @@ fn execute_spawn_projectile_effect(
             CollisionEventsEnabled,
             RigidBody::Kinematic,
             LinearVelocity(velocity),
-            OwnedBy::new(event.context.caster),
             projectile_layers,
             Sprite {
                 color: Color::srgb(1.0, 0.5, 0.0),
@@ -179,7 +177,7 @@ fn projectile_collision(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
     mut effect_events: MessageWriter<ExecuteEffectEvent>,
-    projectile_query: Query<(&Projectile, &Faction, &OwnedBy)>,
+    projectile_query: Query<(&Projectile, &Faction)>,
     mut pierce_query: Query<&mut Pierce>,
     target_query: Query<&Faction, Without<Projectile>>,
     wall_query: Query<(), With<Wall>>,
@@ -222,7 +220,7 @@ fn projectile_collision(
             continue;
         }
 
-        let Ok((projectile, proj_faction, _owned_by)) = projectile_query.get(projectile_entity) else {
+        let Ok((projectile, proj_faction)) = projectile_query.get(projectile_entity) else {
             continue;
         };
         let Ok(target_faction) = target_query.get(other_entity) else {

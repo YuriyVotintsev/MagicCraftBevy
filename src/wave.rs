@@ -62,32 +62,6 @@ impl InvulnerableStack {
     }
 }
 
-pub fn add_invulnerability(commands: &mut Commands, entity: Entity) {
-    commands.queue(move |world: &mut World| {
-        if let Some(mut stack) = world.get_mut::<InvulnerableStack>(entity) {
-            stack.increment();
-        } else if let Ok(mut entity_mut) = world.get_entity_mut(entity) {
-            entity_mut.insert(InvulnerableStack(1));
-        }
-    });
-}
-
-pub fn remove_invulnerability(commands: &mut Commands, entity: Entity) {
-    commands.queue(move |world: &mut World| {
-        let should_remove = {
-            if let Some(mut stack) = world.get_mut::<InvulnerableStack>(entity) {
-                stack.decrement()
-            } else {
-                false
-            }
-        };
-        if should_remove {
-            if let Ok(mut entity_mut) = world.get_entity_mut(entity) {
-                entity_mut.remove::<InvulnerableStack>();
-            }
-        }
-    });
-}
 
 #[derive(Resource)]
 pub struct ShopDelayTimer(pub Timer);
@@ -151,6 +125,7 @@ fn check_wave_completion(
     wave_state: Res<WaveState>,
     enemies_query: Query<&Faction>,
     player_query: Query<Entity, With<crate::player::Player>>,
+    mut invuln_query: Query<&mut InvulnerableStack>,
     mut next_phase: ResMut<NextState<WavePhase>>,
     mut money: ResMut<PlayerMoney>,
     mut shop_timer: ResMut<ShopDelayTimer>,
@@ -164,7 +139,11 @@ fn check_wave_completion(
         shop_timer.0.reset();
 
         if let Ok(player_entity) = player_query.single() {
-            add_invulnerability(&mut commands, player_entity);
+            if let Ok(mut stack) = invuln_query.get_mut(player_entity) {
+                stack.increment();
+            } else {
+                commands.entity(player_entity).insert(InvulnerableStack(1));
+            }
         }
 
         next_phase.set(WavePhase::ShopDelay);
@@ -185,6 +164,7 @@ fn start_next_wave(
     mut commands: Commands,
     mut wave_state: ResMut<WaveState>,
     player_query: Query<Entity, With<crate::player::Player>>,
+    mut invuln_query: Query<&mut InvulnerableStack>,
 ) {
     wave_state.current_wave += 1;
     wave_state.spawned_count = 0;
@@ -192,6 +172,10 @@ fn start_next_wave(
     wave_state.target_count = WaveState::calculate_target(wave_state.current_wave);
 
     if let Ok(player_entity) = player_query.single() {
-        remove_invulnerability(&mut commands, player_entity);
+        if let Ok(mut stack) = invuln_query.get_mut(player_entity) {
+            if stack.decrement() {
+                commands.entity(player_entity).remove::<InvulnerableStack>();
+            }
+        }
     }
 }

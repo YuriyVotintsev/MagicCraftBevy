@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use std::f32::consts::PI;
 
 use crate::abilities::registry::{EffectHandler, EffectRegistry};
-use crate::abilities::owner::OwnedBy;
+use crate::abilities::AttachedTo;
 use crate::abilities::events::ExecuteEffectEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
@@ -20,7 +20,6 @@ const DEFAULT_ORB_SIZE: f32 = 20.0;
 
 #[derive(Component)]
 pub struct OrbitingMovement {
-    pub owner: Entity,
     pub radius: f32,
     pub angular_speed: f32,
     pub current_angle: f32,
@@ -92,12 +91,11 @@ fn execute_orbiting_effect(
                 },
                 Pierce::Infinite,
                 OrbitingMovement {
-                    owner: event.context.caster,
                     radius,
                     angular_speed,
                     current_angle: angle,
                 },
-                OwnedBy::new(event.context.caster),
+                AttachedTo { owner: event.context.caster },
                 event.context.caster_faction,
                 Collider::circle(size / 2.0),
                 Sensor,
@@ -136,10 +134,6 @@ impl EffectHandler for SpawnOrbitingHandler {
         app.add_systems(
             Update,
             update_orbiting_positions.in_set(GameSet::AbilityExecution),
-        )
-        .add_systems(
-            PostUpdate,
-            cleanup_orbiting_on_owner_despawn.run_if(in_state(GameState::Playing)),
         );
     }
 }
@@ -147,29 +141,17 @@ impl EffectHandler for SpawnOrbitingHandler {
 fn update_orbiting_positions(
     time: Res<Time>,
     owner_query: Query<&Transform, Without<OrbitingMovement>>,
-    mut orb_query: Query<(&mut OrbitingMovement, &mut Transform)>,
+    mut orb_query: Query<(&AttachedTo, &mut OrbitingMovement, &mut Transform)>,
 ) {
-    for (mut orbiting, mut transform) in &mut orb_query {
+    for (attached, mut orbiting, mut transform) in &mut orb_query {
         orbiting.current_angle += orbiting.angular_speed * time.delta_secs();
 
-        if let Ok(owner_transform) = owner_query.get(orbiting.owner) {
+        if let Ok(owner_transform) = owner_query.get(attached.owner) {
             let offset = Vec2::new(
                 orbiting.current_angle.cos() * orbiting.radius,
                 orbiting.current_angle.sin() * orbiting.radius,
             );
             transform.translation = owner_transform.translation + offset.extend(0.0);
-        }
-    }
-}
-
-fn cleanup_orbiting_on_owner_despawn(
-    mut commands: Commands,
-    orb_query: Query<(Entity, &OrbitingMovement)>,
-    owner_query: Query<&Transform>,
-) {
-    for (entity, orbiting) in &orb_query {
-        if owner_query.get(orbiting.owner).is_err() {
-            commands.entity(entity).despawn();
         }
     }
 }
