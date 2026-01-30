@@ -4,9 +4,8 @@ use bevy::prelude::*;
 use crate::abilities::ids::ParamId;
 use crate::abilities::effect_def::ParamValue;
 use crate::abilities::registry::TriggerHandler;
-use crate::abilities::{AbilityId, AbilityRegistry, TriggerRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::{AbilityId, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
@@ -30,37 +29,35 @@ impl EveryFrameTriggers {
 }
 
 pub fn every_frame_system(
-    mut commands: Commands,
+    mut trigger_events: MessageWriter<TriggerAbilityEvent>,
     mut query: Query<(
         Entity,
         &mut EveryFrameTriggers,
-        &ComputedStats,
         &Transform,
         &Faction,
     )>,
     ability_registry: Res<AbilityRegistry>,
-    effect_registry: Res<EffectRegistry>,
 ) {
-    for (entity, mut triggers, stats, transform, faction) in &mut query {
+    for (entity, mut triggers, transform, faction) in &mut query {
         for entry in &mut triggers.entries {
             if entry.activated {
                 continue;
             }
 
-            let Some(ability_def) = ability_registry.get(entry.ability_id) else {
+            let Some(_ability_def) = ability_registry.get(entry.ability_id) else {
                 continue;
             };
 
             let ctx = AbilityContext::new(
                 entity,
                 *faction,
-                stats,
                 transform.translation,
             );
 
-            for effect_def in &ability_def.effects {
-                effect_registry.execute(effect_def, &ctx, &mut commands);
-            }
+            trigger_events.write(TriggerAbilityEvent {
+                ability_id: entry.ability_id,
+                context: ctx,
+            });
 
             entry.activated = true;
         }

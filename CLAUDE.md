@@ -12,8 +12,12 @@ Magic Craft is a Bevy 0.18 roguelite arena shooter with a Path-of-Exile-inspired
 
 ```bash
 cargo run                                      # Normal mode
-cargo run --features headless -- --timeout 60  # Headless mode (CI/testing)
+cargo run --features headless -- --timeout 10  # Headless mode (quick test, 10 seconds is enough)
 ```
+
+**Testing:**
+- Use headless mode with `--timeout 10` for quick validation (10 seconds is sufficient)
+- Longer tests are unnecessary for basic functionality verification
 
 ## Architecture
 

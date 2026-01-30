@@ -1,13 +1,14 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::context::AbilityContext;
-use crate::abilities::effect_def::EffectDef;
 use crate::abilities::registry::{EffectHandler, EffectRegistry};
+use crate::abilities::events::ExecuteEffectEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
+use crate::stats::ComputedStats;
 use crate::wave::{add_invulnerability, remove_invulnerability};
 use crate::MovementLocked;
+use crate::GameState;
 
 const DEFAULT_DASH_SPEED: f32 = 1500.0;
 const DEFAULT_DASH_DURATION: f32 = 0.2;
@@ -22,6 +23,71 @@ pub struct Dashing {
 #[derive(Component)]
 pub struct PreDashLayers(pub CollisionLayers);
 
+fn execute_dash_effect(
+    mut commands: Commands,
+    mut effect_events: MessageReader<ExecuteEffectEvent>,
+    effect_registry: Res<EffectRegistry>,
+    stats_query: Query<&ComputedStats>,
+    collision_query: Query<&CollisionLayers>,
+) {
+    for event in effect_events.read() {
+        let Some(handler_id) = effect_registry.get_id("dash") else {
+            continue;
+        };
+        if event.effect.effect_type != handler_id {
+            continue;
+        }
+
+        let caster_stats = stats_query
+            .get(event.context.caster)
+            .ok()
+            .cloned()
+            .unwrap_or_default();
+
+        let speed = event
+            .effect
+            .get_f32("speed", &caster_stats, &effect_registry)
+            .unwrap_or(DEFAULT_DASH_SPEED);
+        let duration = event
+            .effect
+            .get_f32("duration", &caster_stats, &effect_registry)
+            .unwrap_or(DEFAULT_DASH_DURATION);
+
+        let direction = event
+            .context
+            .target_direction
+            .map(|d| d.truncate().normalize_or_zero())
+            .unwrap_or(Vec2::ZERO);
+
+        if direction == Vec2::ZERO {
+            continue;
+        }
+
+        let caster = event.context.caster;
+
+        let current_layers = collision_query
+            .get(caster)
+            .copied()
+            .unwrap_or_default();
+        let dash_layers = CollisionLayers::new(GameLayer::Player, [GameLayer::Wall]);
+
+        if let Ok(mut entity_commands) = commands.get_entity(caster) {
+            entity_commands.insert((
+                Dashing {
+                    timer: Timer::from_seconds(duration, TimerMode::Once),
+                    direction,
+                    speed,
+                },
+                MovementLocked,
+                PreDashLayers(current_layers),
+                dash_layers,
+            ));
+        }
+
+        add_invulnerability(&mut commands, caster);
+    }
+}
+
 #[derive(Default)]
 pub struct DashHandler;
 
@@ -30,54 +96,16 @@ impl EffectHandler for DashHandler {
         "dash"
     }
 
-    fn execute(
-        &self,
-        def: &EffectDef,
-        ctx: &AbilityContext,
-        commands: &mut Commands,
-        registry: &EffectRegistry,
-    ) {
-        let stats = &ctx.stats_snapshot;
-        let speed = def.get_f32("speed", stats, registry).unwrap_or(DEFAULT_DASH_SPEED);
-        let duration = def.get_f32("duration", stats, registry).unwrap_or(DEFAULT_DASH_DURATION);
-
-        let direction = ctx
-            .target_direction
-            .map(|d| d.truncate().normalize_or_zero())
-            .unwrap_or(Vec2::ZERO);
-
-        if direction == Vec2::ZERO {
-            return;
-        }
-
-        let caster = ctx.caster;
-
-        commands.queue(move |world: &mut World| {
-            let current_layers = world
-                .get::<CollisionLayers>(caster)
-                .copied()
-                .unwrap_or_default();
-
-            let dash_layers = CollisionLayers::new(GameLayer::Player, [GameLayer::Wall]);
-
-            if let Ok(mut entity_mut) = world.get_entity_mut(caster) {
-                entity_mut.insert((
-                    Dashing {
-                        timer: Timer::from_seconds(duration, TimerMode::Once),
-                        direction,
-                        speed,
-                    },
-                    MovementLocked,
-                    PreDashLayers(current_layers),
-                    dash_layers,
-                ));
-            }
-        });
-
-        add_invulnerability(commands, caster);
+    fn register_execution_system(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            execute_dash_effect
+                .in_set(GameSet::AbilityExecution)
+                .run_if(in_state(GameState::Playing)),
+        );
     }
 
-    fn register_systems(&self, app: &mut App) {
+    fn register_behavior_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
             update_dashing.in_set(GameSet::AbilityExecution),

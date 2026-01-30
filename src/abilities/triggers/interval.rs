@@ -4,9 +4,8 @@ use bevy::prelude::*;
 use crate::abilities::ids::ParamId;
 use crate::abilities::effect_def::ParamValue;
 use crate::abilities::registry::TriggerHandler;
-use crate::abilities::{AbilityId, AbilityRegistry, TriggerRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::{AbilityId, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
@@ -33,21 +32,19 @@ impl IntervalTriggers {
 }
 
 pub fn interval_system(
-    mut commands: Commands,
+    mut trigger_events: MessageWriter<TriggerAbilityEvent>,
     time: Res<Time>,
     mut query: Query<(
         Entity,
         &mut IntervalTriggers,
-        &ComputedStats,
         &Transform,
         &Faction,
     )>,
     ability_registry: Res<AbilityRegistry>,
-    effect_registry: Res<EffectRegistry>,
 ) {
     let delta = time.delta_secs();
 
-    for (entity, mut triggers, stats, transform, faction) in &mut query {
+    for (entity, mut triggers, transform, faction) in &mut query {
         for entry in &mut triggers.entries {
             entry.timer -= delta;
 
@@ -55,23 +52,22 @@ pub fn interval_system(
                 continue;
             }
 
-            let interval = entry.interval.evaluate_f32(stats).unwrap_or(1.0);
-            entry.timer = interval;
-
-            let Some(ability_def) = ability_registry.get(entry.ability_id) else {
+            let Some(_ability_def) = ability_registry.get(entry.ability_id) else {
                 continue;
             };
 
             let ctx = AbilityContext::new(
                 entity,
                 *faction,
-                stats,
                 transform.translation,
             );
 
-            for effect_def in &ability_def.effects {
-                effect_registry.execute(effect_def, &ctx, &mut commands);
-            }
+            trigger_events.write(TriggerAbilityEvent {
+                ability_id: entry.ability_id,
+                context: ctx,
+            });
+
+            entry.timer = entry.interval.as_float().unwrap_or(1.0);
         }
     }
 }

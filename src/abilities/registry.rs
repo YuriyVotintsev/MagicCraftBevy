@@ -5,19 +5,14 @@ use super::ids::{TriggerTypeId, EffectTypeId, AbilityId, ParamId};
 use super::context::AbilityContext;
 use super::effect_def::{EffectDef, ParamValue};
 use super::ability_def::AbilityDef;
+use crate::stats::ComputedStats;
 
 pub trait EffectHandler: Send + Sync + 'static {
     fn name(&self) -> &'static str;
 
-    fn execute(
-        &self,
-        def: &EffectDef,
-        ctx: &AbilityContext,
-        commands: &mut Commands,
-        registry: &EffectRegistry,
-    );
+    fn register_execution_system(&self, app: &mut App);
 
-    fn register_systems(&self, _app: &mut App) {}
+    fn register_behavior_systems(&self, _app: &mut App) {}
 }
 
 pub trait TriggerHandler: Send + Sync + 'static {
@@ -139,12 +134,6 @@ impl EffectRegistry {
     #[allow(dead_code)]
     pub fn get_param_name(&self, id: ParamId) -> Option<&str> {
         self.param_id_to_name.get(id.0 as usize).map(|s| s.as_str())
-    }
-
-    pub fn execute(&self, def: &EffectDef, ctx: &AbilityContext, commands: &mut Commands) {
-        if let Some(executor) = self.get(def.effect_type) {
-            executor.execute(def, ctx, commands, self);
-        }
     }
 }
 

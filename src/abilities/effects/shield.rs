@@ -1,13 +1,14 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::context::AbilityContext;
-use crate::abilities::effect_def::EffectDef;
 use crate::abilities::registry::{EffectHandler, EffectRegistry};
+use crate::abilities::events::ExecuteEffectEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
+use crate::stats::ComputedStats;
 use crate::wave::{add_invulnerability, remove_invulnerability};
 use crate::Faction;
+use crate::GameState;
 
 const DEFAULT_SHIELD_DURATION: f32 = 0.5;
 const DEFAULT_SHIELD_RADIUS: f32 = 100.0;
@@ -24,6 +25,60 @@ pub struct ShieldVisual {
     pub owner: Entity,
 }
 
+fn execute_shield_effect(
+    mut commands: Commands,
+    mut effect_events: MessageReader<ExecuteEffectEvent>,
+    effect_registry: Res<EffectRegistry>,
+    stats_query: Query<&ComputedStats>,
+) {
+    for event in effect_events.read() {
+        let Some(handler_id) = effect_registry.get_id("shield") else {
+            continue;
+        };
+        if event.effect.effect_type != handler_id {
+            continue;
+        }
+
+        let caster_stats = stats_query
+            .get(event.context.caster)
+            .ok()
+            .cloned()
+            .unwrap_or_default();
+
+        let duration = event
+            .effect
+            .get_f32("duration", &caster_stats, &effect_registry)
+            .unwrap_or(DEFAULT_SHIELD_DURATION);
+        let radius = event
+            .effect
+            .get_f32("radius", &caster_stats, &effect_registry)
+            .unwrap_or(DEFAULT_SHIELD_RADIUS);
+
+        let caster = event.context.caster;
+
+        if let Ok(mut entity_commands) = commands.get_entity(caster) {
+            entity_commands.insert(ShieldActive {
+                timer: Timer::from_seconds(duration, TimerMode::Once),
+                radius,
+                owner_faction: event.context.caster_faction,
+            });
+        }
+
+        commands.spawn((
+            Name::new("ShieldVisual"),
+            ShieldVisual { owner: caster },
+            Sprite {
+                color: Color::srgba(0.3, 0.5, 1.0, 0.3),
+                custom_size: Some(Vec2::splat(radius * 2.0)),
+                ..default()
+            },
+            Transform::from_translation(event.context.caster_position.with_z(0.5)),
+        ));
+
+        add_invulnerability(&mut commands, caster);
+    }
+}
+
 #[derive(Default)]
 pub struct ShieldHandler;
 
@@ -32,41 +87,16 @@ impl EffectHandler for ShieldHandler {
         "shield"
     }
 
-    fn execute(
-        &self,
-        def: &EffectDef,
-        ctx: &AbilityContext,
-        commands: &mut Commands,
-        registry: &EffectRegistry,
-    ) {
-        let stats = &ctx.stats_snapshot;
-        let duration = def.get_f32("duration", stats, registry).unwrap_or(DEFAULT_SHIELD_DURATION);
-        let radius = def.get_f32("radius", stats, registry).unwrap_or(DEFAULT_SHIELD_RADIUS);
-
-        let caster = ctx.caster;
-        let caster_position = ctx.caster_position;
-
-        commands.entity(caster).insert(ShieldActive {
-            timer: Timer::from_seconds(duration, TimerMode::Once),
-            radius,
-            owner_faction: ctx.caster_faction,
-        });
-
-        add_invulnerability(commands, caster);
-
-        commands.spawn((
-            Name::new("ShieldVisual"),
-            ShieldVisual { owner: caster },
-            Sprite {
-                color: Color::srgba(0.3, 0.7, 1.0, 0.4),
-                custom_size: Some(Vec2::splat(radius * 2.0)),
-                ..default()
-            },
-            Transform::from_translation(caster_position.with_z(0.5)),
-        ));
+    fn register_execution_system(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            execute_shield_effect
+                .in_set(GameSet::AbilityExecution)
+                .run_if(in_state(GameState::Playing)),
+        );
     }
 
-    fn register_systems(&self, app: &mut App) {
+    fn register_behavior_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
             (update_shield, update_shield_visual).in_set(GameSet::AbilityExecution),

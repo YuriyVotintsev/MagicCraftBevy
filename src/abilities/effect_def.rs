@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
-use crate::stats::{Expression, StatId};
+use crate::stats::{ComputedStats, Expression, StatId};
 use super::ids::{EffectTypeId, ParamId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,20 +49,28 @@ impl EffectDef {
         self.params.get(&id)
     }
 
-    pub fn get_f32(&self, name: &str, stats: &ComputedStats, registry: &crate::abilities::registry::EffectRegistry) -> Option<f32> {
-        self.get_param(name, registry)?.evaluate_f32(stats)
-    }
-
-    pub fn get_i32(&self, name: &str, stats: &ComputedStats, registry: &crate::abilities::registry::EffectRegistry) -> Option<i32> {
-        self.get_param(name, registry)?.evaluate_i32(stats)
-    }
-
     pub fn get_effect_list<'a>(&'a self, name: &str, registry: &crate::abilities::registry::EffectRegistry) -> Option<&'a Vec<EffectDef>> {
         self.get_param(name, registry)?.as_effect_list()
     }
-}
 
-use crate::stats::ComputedStats;
+    pub fn get_f32(
+        &self,
+        name: &str,
+        stats: &ComputedStats,
+        registry: &crate::abilities::registry::EffectRegistry
+    ) -> Option<f32> {
+        self.get_param(name, registry)?.evaluate_f32(stats)
+    }
+
+    pub fn get_i32(
+        &self,
+        name: &str,
+        stats: &ComputedStats,
+        registry: &crate::abilities::registry::EffectRegistry
+    ) -> Option<i32> {
+        self.get_param(name, registry)?.evaluate_i32(stats)
+    }
+}
 
 impl ParamValue {
     pub fn evaluate_f32(&self, stats: &ComputedStats) -> Option<f32> {

@@ -1,9 +1,7 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use crate::Faction;
-use crate::stats::ComputedStats;
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -20,7 +18,6 @@ pub enum ContextValue {
 pub struct AbilityContext {
     pub caster: Entity,
     pub caster_faction: Faction,
-    pub stats_snapshot: Arc<ComputedStats>,
     pub caster_position: Vec3,
     pub target_point: Option<Vec3>,
     pub target_direction: Option<Vec3>,
@@ -31,13 +28,11 @@ impl AbilityContext {
     pub fn new(
         caster: Entity,
         caster_faction: Faction,
-        stats: &ComputedStats,
         position: Vec3,
     ) -> Self {
         Self {
             caster,
             caster_faction,
-            stats_snapshot: Arc::new(stats.clone()),
             caster_position: position,
             target_point: None,
             target_direction: None,

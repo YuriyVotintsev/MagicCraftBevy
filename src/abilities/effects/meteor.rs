@@ -4,10 +4,13 @@ use bevy::prelude::*;
 use crate::abilities::registry::{EffectHandler, EffectRegistry};
 use crate::abilities::effect_def::EffectDef;
 use crate::abilities::context::{AbilityContext, ContextValue};
+use crate::abilities::events::ExecuteEffectEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
+use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::Lifetime;
+use crate::GameState;
 
 const METEOR_START_HEIGHT: f32 = 400.0;
 const METEOR_SIZE: f32 = 40.0;
@@ -43,26 +46,43 @@ pub struct MeteorExplosion {
     pub damaged: bool,
 }
 
-#[derive(Default)]
-pub struct SpawnMeteorHandler;
+fn execute_meteor_effect(
+    mut commands: Commands,
+    mut effect_events: MessageReader<ExecuteEffectEvent>,
+    effect_registry: Res<EffectRegistry>,
+    stats_query: Query<&ComputedStats>,
+) {
+    for event in effect_events.read() {
+        let Some(handler_id) = effect_registry.get_id("spawn_meteor") else {
+            continue;
+        };
+        if event.effect.effect_type != handler_id {
+            continue;
+        }
 
-impl EffectHandler for SpawnMeteorHandler {
-    fn name(&self) -> &'static str {
-        "spawn_meteor"
-    }
+        let caster_stats = stats_query
+            .get(event.context.caster)
+            .ok()
+            .cloned()
+            .unwrap_or_default();
 
-    fn execute(
-        &self,
-        def: &EffectDef,
-        ctx: &AbilityContext,
-        commands: &mut Commands,
-        registry: &EffectRegistry,
-    ) {
-        let stats = &ctx.stats_snapshot;
-        let search_radius = def.get_f32("search_radius", stats, registry).unwrap_or(500.0);
-        let damage_radius = def.get_f32("damage_radius", stats, registry).unwrap_or(80.0);
-        let fall_duration = def.get_f32("fall_duration", stats, registry).unwrap_or(0.5);
-        let on_hit_effects = def.get_effect_list("on_hit", registry).cloned().unwrap_or_default();
+        let search_radius = event
+            .effect
+            .get_f32("search_radius", &caster_stats, &effect_registry)
+            .unwrap_or(500.0);
+        let damage_radius = event
+            .effect
+            .get_f32("damage_radius", &caster_stats, &effect_registry)
+            .unwrap_or(80.0);
+        let fall_duration = event
+            .effect
+            .get_f32("fall_duration", &caster_stats, &effect_registry)
+            .unwrap_or(0.5);
+        let on_hit_effects = event
+            .effect
+            .get_effect_list("on_hit", &effect_registry)
+            .cloned()
+            .unwrap_or_default();
 
         commands.spawn((
             Name::new("MeteorRequest"),
@@ -71,12 +91,30 @@ impl EffectHandler for SpawnMeteorHandler {
                 damage_radius,
                 fall_duration,
                 on_hit_effects,
-                context: ctx.clone(),
+                context: event.context.clone(),
             },
         ));
     }
+}
 
-    fn register_systems(&self, app: &mut App) {
+#[derive(Default)]
+pub struct SpawnMeteorHandler;
+
+impl EffectHandler for SpawnMeteorHandler {
+    fn name(&self) -> &'static str {
+        "spawn_meteor"
+    }
+
+    fn register_execution_system(&self, app: &mut App) {
+        app.add_systems(
+            Update,
+            execute_meteor_effect
+                .in_set(GameSet::AbilityExecution)
+                .run_if(in_state(GameState::Playing)),
+        );
+    }
+
+    fn register_behavior_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
             (
@@ -211,12 +249,11 @@ fn meteor_falling_update(
 }
 
 fn meteor_explosion_damage(
-    mut commands: Commands,
-    mut query: Query<(Entity, &mut MeteorExplosion, &Transform)>,
+    mut query: Query<(&mut MeteorExplosion, &Transform)>,
+    mut effect_events: MessageWriter<ExecuteEffectEvent>,
     spatial_query: SpatialQuery,
-    effect_registry: Res<EffectRegistry>,
 ) {
-    for (_explosion_entity, mut explosion, explosion_transform) in &mut query {
+    for (mut explosion, explosion_transform) in &mut query {
         if explosion.damaged {
             continue;
         }
@@ -238,7 +275,10 @@ fn meteor_explosion_damage(
             ctx.set_param("target", ContextValue::Entity(enemy_entity));
 
             for effect_def in &explosion.on_hit_effects {
-                effect_registry.execute(effect_def, &ctx, &mut commands);
+                effect_events.write(ExecuteEffectEvent {
+                    effect: effect_def.clone(),
+                    context: ctx.clone(),
+                });
             }
         }
     }

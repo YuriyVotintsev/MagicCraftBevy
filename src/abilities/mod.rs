@@ -7,6 +7,8 @@ mod ability_def;
 mod components;
 mod registry;
 mod spawn_helpers;
+pub mod events;
+mod dispatcher;
 
 #[macro_use]
 mod macros;
@@ -40,9 +42,12 @@ use bevy::prelude::*;
 
 use crate::schedule::GameSet;
 use crate::wave::WavePhase;
+use crate::game_state::GameState;
 
 #[allow(unused_imports)]
 pub use effects::spawn_projectile::Projectile;
+#[allow(unused_imports)]
+pub use events::{TriggerAbilityEvent, ExecuteEffectEvent};
 
 fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {
     for mut inputs in &mut query {
@@ -54,6 +59,9 @@ pub struct AbilityPlugin;
 
 impl Plugin for AbilityPlugin {
     fn build(&self, app: &mut App) {
+        app.init_resource::<Messages<TriggerAbilityEvent>>();
+        app.init_resource::<Messages<ExecuteEffectEvent>>();
+
         let mut trigger_registry = TriggerRegistry::new();
         triggers::register_all(app, &mut trigger_registry);
 
@@ -63,6 +71,13 @@ impl Plugin for AbilityPlugin {
         app.insert_resource(trigger_registry)
             .insert_resource(effect_registry)
             .init_resource::<AbilityRegistry>();
+
+        app.add_systems(
+            Update,
+            dispatcher::ability_dispatcher
+                .in_set(GameSet::AbilityActivation)
+                .run_if(in_state(GameState::Playing)),
+        );
 
         app.add_systems(
             Update,

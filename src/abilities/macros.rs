@@ -36,7 +36,8 @@ macro_rules! register_effect {
         ) {
             use $crate::abilities::registry::EffectHandler;
             let handler = <$handler>::default();
-            handler.register_systems(app);
+            handler.register_execution_system(app);
+            handler.register_behavior_systems(app);
             registry.register(Box::new(handler));
         }
     };

@@ -4,9 +4,8 @@ use bevy::prelude::*;
 use crate::abilities::ids::ParamId;
 use crate::abilities::effect_def::ParamValue;
 use crate::abilities::registry::TriggerHandler;
-use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, TriggerRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
@@ -32,22 +31,20 @@ impl WhileHeldTriggers {
 }
 
 pub fn while_held_system(
-    mut commands: Commands,
+    mut trigger_events: MessageWriter<TriggerAbilityEvent>,
     time: Res<Time>,
     mut query: Query<(
         Entity,
         &mut WhileHeldTriggers,
         &AbilityInputs,
-        &ComputedStats,
         &Transform,
         &Faction,
     )>,
     ability_registry: Res<AbilityRegistry>,
-    effect_registry: Res<EffectRegistry>,
 ) {
     let delta = time.delta_secs();
 
-    for (entity, mut triggers, inputs, stats, transform, faction) in &mut query {
+    for (entity, mut triggers, inputs, transform, faction) in &mut query {
         for entry in &mut triggers.entries {
             entry.timer = (entry.timer - delta).max(0.0);
 
@@ -63,25 +60,24 @@ pub fn while_held_system(
                 continue;
             }
 
-            let cooldown = entry.cooldown.evaluate_f32(stats).unwrap_or(0.05);
-            entry.timer = cooldown;
-
-            let Some(ability_def) = ability_registry.get(entry.ability_id) else {
+            let Some(_ability_def) = ability_registry.get(entry.ability_id) else {
                 continue;
             };
 
             let ctx = AbilityContext::new(
                 entity,
                 *faction,
-                stats,
                 transform.translation,
             )
             .with_target_direction(input.direction)
             .with_target_point(input.point);
 
-            for effect_def in &ability_def.effects {
-                effect_registry.execute(effect_def, &ctx, &mut commands);
-            }
+            trigger_events.write(TriggerAbilityEvent {
+                ability_id: entry.ability_id,
+                context: ctx,
+            });
+
+            entry.timer = entry.cooldown.as_float().unwrap_or(0.05);
         }
     }
 }

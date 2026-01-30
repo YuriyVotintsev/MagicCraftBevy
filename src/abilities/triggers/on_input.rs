@@ -4,9 +4,8 @@ use bevy::prelude::*;
 use crate::abilities::ids::ParamId;
 use crate::abilities::effect_def::ParamValue;
 use crate::abilities::registry::TriggerHandler;
-use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, TriggerRegistry, EffectRegistry, AbilityContext};
+use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
@@ -26,19 +25,17 @@ impl OnInputTriggers {
 }
 
 pub fn on_input_system(
-    mut commands: Commands,
+    mut trigger_events: MessageWriter<TriggerAbilityEvent>,
     query: Query<(
         Entity,
         &OnInputTriggers,
         &AbilityInputs,
-        &ComputedStats,
         &Transform,
         &Faction,
     )>,
     ability_registry: Res<AbilityRegistry>,
-    effect_registry: Res<EffectRegistry>,
 ) {
-    for (entity, triggers, inputs, stats, transform, faction) in &query {
+    for (entity, triggers, inputs, transform, faction) in &query {
         for entry in &triggers.entries {
             let Some(input) = inputs.get(entry.ability_id) else {
                 continue;
@@ -48,22 +45,22 @@ pub fn on_input_system(
                 continue;
             }
 
-            let Some(ability_def) = ability_registry.get(entry.ability_id) else {
+            let Some(_ability_def) = ability_registry.get(entry.ability_id) else {
                 continue;
             };
 
             let ctx = AbilityContext::new(
                 entity,
                 *faction,
-                stats,
                 transform.translation,
             )
             .with_target_direction(input.direction)
             .with_target_point(input.point);
 
-            for effect_def in &ability_def.effects {
-                effect_registry.execute(effect_def, &ctx, &mut commands);
-            }
+            trigger_events.write(TriggerAbilityEvent {
+                ability_id: entry.ability_id,
+                context: ctx,
+            });
         }
     }
 }
