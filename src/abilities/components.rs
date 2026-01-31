@@ -10,7 +10,6 @@ pub struct InputState {
     pub pressed: bool,
     pub just_pressed: bool,
     pub direction: Vec3,
-    pub point: Vec3,
 }
 
 #[derive(Component, Default)]

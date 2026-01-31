@@ -88,7 +88,7 @@ fn execute_shield_action(
                 custom_size: Some(Vec2::splat(radius * 2.0)),
                 ..default()
             },
-            Transform::from_translation(event.context.source_point.with_z(0.5)),
+            Transform::from_translation(event.context.source.as_point().unwrap_or(Vec3::ZERO).with_z(0.5)),
         ));
     }
 }

@@ -13,7 +13,7 @@ mod macros;
 pub use crate::building_blocks::triggers;
 pub use crate::building_blocks::actions;
 
-pub use context::AbilityContext;
+pub use context::{AbilityContext, Target};
 pub use param::{ParamValue, ParamValueRaw};
 pub use node::{NodeDef, NodeDefRaw, NodeKind, NodeRegistry, AbilityRegistry};
 pub use ability_def::{AbilityDef, AbilityDefRaw};

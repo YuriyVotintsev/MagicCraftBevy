@@ -5,7 +5,7 @@ use crate::register_node;
 use crate::abilities::ids::{ParamId, AbilityId};
 use crate::abilities::param::ParamValue;
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry, AbilityRegistry};
-use crate::abilities::{TriggerAbilityEvent, AbilityContext};
+use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target};
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
@@ -52,7 +52,8 @@ pub fn every_frame_system(
             let ctx = AbilityContext::new(
                 entity,
                 *faction,
-                transform.translation,
+                Target::Point(transform.translation),
+                None,
             );
 
             trigger_events.write(TriggerAbilityEvent {

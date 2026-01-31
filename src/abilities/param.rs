@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::stats::{ComputedStats, StatId};
+use crate::stats::{ComputedStats, Expression, ExpressionRaw, Modifiers, StatId};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ParamValueRaw {
@@ -8,6 +8,7 @@ pub enum ParamValueRaw {
     Int(i32),
     Bool(bool),
     Stat(String),
+    Expr(ExpressionRaw),
 }
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,7 @@ pub enum ParamValue {
     Int(i32),
     Bool(bool),
     Stat(StatId),
+    Expr(Expression),
 }
 
 impl ParamValue {
@@ -25,6 +27,7 @@ impl ParamValue {
             Self::Int(v) => *v as f32,
             Self::Bool(v) => if *v { 1.0 } else { 0.0 },
             Self::Stat(stat_id) => stats.get(*stat_id),
+            Self::Expr(expr) => expr.evaluate(&Modifiers::default(), stats),
         }
     }
 
@@ -34,6 +37,7 @@ impl ParamValue {
             Self::Float(v) => *v as i32,
             Self::Bool(v) => *v as i32,
             Self::Stat(stat_id) => stats.get(*stat_id) as i32,
+            Self::Expr(expr) => expr.evaluate(&Modifiers::default(), stats) as i32,
         }
     }
 
@@ -42,7 +46,7 @@ impl ParamValue {
             Self::Bool(v) => *v,
             Self::Int(v) => *v != 0,
             Self::Float(v) => *v != 0.0,
-            Self::Stat(_) => false,
+            Self::Stat(_) | Self::Expr(_) => false,
         }
     }
 }

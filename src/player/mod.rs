@@ -220,7 +220,6 @@ fn player_active_input(
         pressed,
         just_pressed,
         direction: direction.extend(0.0),
-        point: world_pos.extend(0.0),
     });
 }
 
@@ -247,7 +246,6 @@ fn player_defensive_input(
         pressed: true,
         just_pressed: true,
         direction: direction.extend(0.0),
-        point: Vec3::ZERO,
     });
 }
 

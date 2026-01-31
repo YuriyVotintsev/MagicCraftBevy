@@ -5,7 +5,7 @@ use crate::register_node;
 use crate::abilities::ids::{ParamId, AbilityId};
 use crate::abilities::param::ParamValue;
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
-use crate::abilities::{AbilityRegistry, AbilityContext, TriggerAbilityEvent};
+use crate::abilities::{AbilityRegistry, AbilityContext, TriggerAbilityEvent, Target};
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
 use crate::Faction;
@@ -69,7 +69,8 @@ pub fn interval_system(
             let ctx = AbilityContext::new(
                 entity,
                 *faction,
-                transform.translation,
+                Target::Point(transform.translation),
+                None,
             );
 
             trigger_events.write(TriggerAbilityEvent {

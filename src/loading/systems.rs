@@ -312,6 +312,7 @@ fn resolve_node_params(
                         .unwrap_or_else(|| panic!("Param references unknown stat '{}'", name));
                     ParamValue::Stat(stat_id)
                 }
+                ParamValueRaw::Expr(expr) => ParamValue::Expr(expr.resolve(stat_registry)),
             };
             (param_id, resolved)
         })

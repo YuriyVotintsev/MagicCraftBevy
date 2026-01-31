@@ -6,7 +6,7 @@ use rand::Rng;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};
-use crate::abilities::context::{AbilityContext, ContextValue};
+use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::{ExecuteNodeEvent, NodeTriggerEvent};
 use crate::abilities::AbilitySource;
 use crate::building_blocks::triggers::on_hit::HasOnHitTrigger;
@@ -76,12 +76,10 @@ fn execute_spawn_projectile_action(
             .get_i32("pierce", &caster_stats, &node_registry)
             .map(|n| Pierce::Count(n as u32));
 
-        let base_direction = event
-            .context
-            .target_direction
-            .unwrap_or(Vec3::X)
-            .truncate()
-            .normalize_or_zero();
+        let base_direction = match event.context.target {
+            Some(Target::Direction(d)) => d.truncate().normalize_or_zero(),
+            _ => Vec2::X,
+        };
 
         let direction = if spread > 0.0 {
             let spread_rad = spread.to_radians();
@@ -131,7 +129,7 @@ fn execute_spawn_projectile_action(
                 custom_size: Some(Vec2::splat(initial_size)),
                 ..default()
             },
-            Transform::from_translation(event.context.source_point),
+            Transform::from_translation(event.context.source.as_point().unwrap_or(Vec3::ZERO)),
         ));
 
         if let Some(pierce) = pierce {
@@ -313,12 +311,12 @@ fn projectile_on_hit_trigger(
             continue;
         }
 
-        let mut ctx = AbilityContext::new(
+        let ctx = AbilityContext::new(
             source.caster,
             source.caster_faction,
-            projectile_transform.translation,
+            Target::Point(projectile_transform.translation),
+            Some(Target::Entity(other_entity)),
         );
-        ctx.set_param("target", ContextValue::Entity(other_entity));
 
         trigger_events.write(NodeTriggerEvent {
             ability_id: source.ability_id,

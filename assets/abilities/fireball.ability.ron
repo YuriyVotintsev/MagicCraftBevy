@@ -1,7 +1,9 @@
 (
     id: "fireball",
     trigger: ("on_input", [
-        ("spawn_projectile", [
+        ("spawn_projectile", {
+            "speed": Expr(Add(Stat("projectile_speed"), Constant(100.0))),
+        }, [
             ("on_hit", [
                 ("damage", {"amount": Stat("physical_damage")}),
             ]),

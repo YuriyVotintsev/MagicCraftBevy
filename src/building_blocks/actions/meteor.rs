@@ -4,7 +4,7 @@ use crate::register_node;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};
-use crate::abilities::context::{AbilityContext, ContextValue};
+use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::{ExecuteNodeEvent, NodeTriggerEvent};
 use crate::abilities::AbilitySource;
 use crate::building_blocks::triggers::on_hit::HasOnHitTrigger;
@@ -97,7 +97,7 @@ fn execute_meteor_action(
                 event.context.caster,
                 event.context.caster_faction,
             ),
-            Transform::from_translation(event.context.source_point),
+            Transform::from_translation(event.context.source.as_point().unwrap_or(Vec3::ZERO)),
         ));
 
         if let Some(on_hit_id) = on_hit_id {
@@ -297,12 +297,12 @@ fn meteor_explosion_trigger(
         let hits = spatial_query.shape_intersections(&shape, explosion_pos, 0.0, &filter);
 
         for enemy_entity in hits {
-            let mut ctx = AbilityContext::new(
+            let ctx = AbilityContext::new(
                 source.caster,
                 source.caster_faction,
-                explosion_transform.translation,
+                Target::Point(explosion_transform.translation),
+                Some(Target::Entity(enemy_entity)),
             );
-            ctx.set_param("target", ContextValue::Entity(enemy_entity));
 
             trigger_events.write(NodeTriggerEvent {
                 ability_id: source.ability_id,

@@ -107,6 +107,9 @@ impl NodeRegistry {
 
     pub fn register(&mut self, handler: Box<dyn NodeHandler>) -> NodeTypeId {
         let name = handler.name().to_string();
+        if self.name_to_id.contains_key(&name) {
+            panic!("Handler with name '{}' already registered", name);
+        }
         let kind = handler.kind();
         let id = NodeTypeId(self.handlers.len() as u32);
 

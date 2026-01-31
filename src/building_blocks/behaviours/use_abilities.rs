@@ -54,7 +54,6 @@ pub fn use_abilities_system(
                     pressed: true,
                     just_pressed: true,
                     direction,
-                    point: player_pos,
                 });
             }
         }

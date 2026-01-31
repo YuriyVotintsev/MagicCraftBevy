@@ -4,6 +4,7 @@ use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::events::ExecuteNodeEvent;
+use crate::abilities::Target;
 use crate::stats::{ComputedStats, PendingDamage};
 use crate::schedule::GameSet;
 use crate::GameState;
@@ -31,7 +32,7 @@ fn execute_damage_action(
             continue;
         }
 
-        let Some(target) = event.context.get_param_entity("target") else {
+        let Some(Target::Entity(target)) = event.context.target else {
             continue;
         };
 

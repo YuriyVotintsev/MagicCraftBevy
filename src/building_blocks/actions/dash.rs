@@ -5,6 +5,7 @@ use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::events::ExecuteNodeEvent;
+use crate::abilities::Target;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -63,11 +64,10 @@ fn execute_dash_action(
             .get_f32("duration", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_DASH_DURATION);
 
-        let direction = event
-            .context
-            .target_direction
-            .map(|d| d.truncate().normalize_or_zero())
-            .unwrap_or(Vec2::ZERO);
+        let direction = match event.context.target {
+            Some(Target::Direction(d)) => d.truncate().normalize_or_zero(),
+            _ => Vec2::ZERO,
+        };
 
         if direction == Vec2::ZERO {
             continue;
