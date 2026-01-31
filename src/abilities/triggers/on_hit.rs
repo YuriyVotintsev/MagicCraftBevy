@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use std::collections::HashMap;
 
 use crate::abilities::registry::TriggerHandler;
-use crate::abilities::ids::{AbilityId, ParamId, TriggerTypeId};
-use crate::abilities::effect_def::ParamValue;
+use crate::abilities::ids::{AbilityId, ParamId};
+use crate::abilities::param::ParamValue;
 
 #[derive(Default)]
 pub struct OnHitTrigger;

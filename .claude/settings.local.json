@@ -27,7 +27,8 @@
       "Bash(xargs:*)",
       "WebFetch(domain:crates.io)",
       "WebFetch(domain:lib.rs)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(tree:*)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"

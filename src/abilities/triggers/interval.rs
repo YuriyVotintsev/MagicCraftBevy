@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use crate::abilities::ids::ParamId;
-use crate::abilities::effect_def::ParamValue;
+use crate::abilities::param::ParamValue;
 use crate::abilities::registry::TriggerHandler;
 use crate::abilities::{AbilityId, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
 use crate::schedule::GameSet;

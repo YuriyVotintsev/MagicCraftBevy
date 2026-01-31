@@ -3,7 +3,8 @@ use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use super::ids::{TriggerTypeId, ActionTypeId, ParamId};
-use super::effect_def::{ParamValue, ParamValueRaw};
+use super::param::{ParamValue, ParamValueRaw};
+use crate::stats::ComputedStats;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -35,4 +36,33 @@ pub struct TriggerDef {
     pub trigger_type: TriggerTypeId,
     pub params: HashMap<ParamId, ParamValue>,
     pub actions: Vec<Arc<ActionDef>>,
+}
+
+impl ActionDef {
+    pub fn get_param<'a>(&'a self, name: &str, registry: &crate::abilities::registry::ActionRegistry) -> Option<&'a ParamValue> {
+        let id = registry.get_param_id(name)?;
+        self.params.get(&id)
+    }
+
+    pub fn get_action_list<'a>(&'a self, name: &str, registry: &crate::abilities::registry::ActionRegistry) -> Option<&'a Vec<Arc<ActionDef>>> {
+        self.get_param(name, registry)?.as_action_list()
+    }
+
+    pub fn get_f32(
+        &self,
+        name: &str,
+        stats: &ComputedStats,
+        registry: &crate::abilities::registry::ActionRegistry
+    ) -> Option<f32> {
+        self.get_param(name, registry)?.evaluate_f32(stats)
+    }
+
+    pub fn get_i32(
+        &self,
+        name: &str,
+        stats: &ComputedStats,
+        registry: &crate::abilities::registry::ActionRegistry
+    ) -> Option<i32> {
+        self.get_param(name, registry)?.evaluate_i32(stats)
+    }
 }

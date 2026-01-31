@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::f32::consts::PI;
 use avian2d::prelude::*;
 use bevy::prelude::*;
