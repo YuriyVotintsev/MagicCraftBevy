@@ -6,7 +6,7 @@
             "damage_radius": Float(80.0),
             "fall_duration": Float(0.5),
         }, [
-            ("on_hit", [
+            ("on_area", [
                 ("damage", {"amount": Stat("physical_damage")}),
             ]),
         ]),

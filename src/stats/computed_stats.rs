@@ -1,6 +1,9 @@
+use std::sync::LazyLock;
 use bevy::prelude::*;
 
 use super::StatId;
+
+pub static DEFAULT_STATS: LazyLock<ComputedStats> = LazyLock::new(ComputedStats::default);
 
 #[derive(Component, Default, Clone)]
 pub struct ComputedStats {

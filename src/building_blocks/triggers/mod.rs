@@ -1,3 +1,3 @@
 use crate::collect_nodes;
 
-collect_nodes!(on_input, every_frame, while_held, interval, on_hit);
+collect_nodes!(on_input, every_frame, while_held, interval, on_collision, on_area);

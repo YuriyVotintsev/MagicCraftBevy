@@ -10,7 +10,7 @@ mod stat_id;
 mod systems;
 
 pub use calculators::StatCalculators;
-pub use computed_stats::ComputedStats;
+pub use computed_stats::{ComputedStats, DEFAULT_STATS};
 pub use dirty_stats::DirtyStats;
 pub use expression::{Expression, ExpressionRaw};
 pub use health::Dead;

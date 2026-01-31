@@ -8,7 +8,7 @@
             "start_size": Float(8.0),
             "end_size": Float(25.0),
         }, [
-            ("on_hit", [
+            ("on_collision", [
                 ("damage", {"amount": Float(1.0)}),
             ]),
         ]),

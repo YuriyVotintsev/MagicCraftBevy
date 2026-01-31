@@ -7,11 +7,11 @@ use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::AbilitySource;
 use crate::common::AttachedTo;
-use crate::building_blocks::triggers::on_hit::HasOnHitTrigger;
+use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::Faction;
 use crate::GameState;
 
@@ -40,8 +40,6 @@ fn execute_orbiting_action(
         return;
     };
 
-    let on_hit_id = node_registry.get_id("on_hit");
-
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
@@ -56,9 +54,7 @@ fn execute_orbiting_action(
 
         let caster_stats = stats_query
             .get(event.context.caster)
-            .ok()
-            .cloned()
-            .unwrap_or_default();
+            .unwrap_or(&DEFAULT_STATS);
 
         let count = node_def
             .get_i32("count", &caster_stats, &node_registry)
@@ -119,10 +115,8 @@ fn execute_orbiting_action(
                 Transform::from_translation(position),
             ));
 
-            if let Some(on_hit_id) = on_hit_id {
-                if ability_def.has_trigger(event.node_id, on_hit_id) {
-                    entity.insert(HasOnHitTrigger);
-                }
+            if let Some(trigger) = OnCollisionTrigger::if_configured(ability_def, event.node_id, &node_registry) {
+                entity.insert(trigger);
             }
         }
     }

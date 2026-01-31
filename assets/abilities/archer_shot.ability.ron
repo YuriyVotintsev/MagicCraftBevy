@@ -5,7 +5,7 @@
             "speed": Float(400.0),
             "size": Float(8.0),
         }, [
-            ("on_hit", [
+            ("on_collision", [
                 ("damage", {"amount": Stat("physical_damage")}),
             ]),
         ]),

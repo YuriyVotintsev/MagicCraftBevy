@@ -6,13 +6,13 @@ use rand::Rng;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};
-use crate::abilities::context::{AbilityContext, Target};
-use crate::abilities::events::{ExecuteNodeEvent, NodeTriggerEvent};
+use crate::abilities::context::Target;
+use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::AbilitySource;
-use crate::building_blocks::triggers::on_hit::HasOnHitTrigger;
+use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::Faction;
 use crate::{Growing, Lifetime};
 use crate::GameState;
@@ -40,8 +40,6 @@ fn execute_spawn_projectile_action(
         return;
     };
 
-    let on_hit_id = node_registry.get_id("on_hit");
-
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
@@ -56,9 +54,7 @@ fn execute_spawn_projectile_action(
 
         let caster_stats = stats_query
             .get(event.context.caster)
-            .ok()
-            .cloned()
-            .unwrap_or_default();
+            .unwrap_or(&DEFAULT_STATS);
 
         let speed = node_def
             .get_f32("speed", &caster_stats, &node_registry)
@@ -149,10 +145,8 @@ fn execute_spawn_projectile_action(
             }
         }
 
-        if let Some(on_hit_id) = on_hit_id {
-            if ability_def.has_trigger(event.node_id, on_hit_id) {
-                entity_commands.insert(HasOnHitTrigger);
-            }
+        if let Some(trigger) = OnCollisionTrigger::if_configured(ability_def, event.node_id, &node_registry) {
+            entity_commands.insert(trigger);
         }
     }
 }
@@ -181,7 +175,7 @@ impl NodeHandler for SpawnProjectileHandler {
     fn register_behavior_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
-            (projectile_collision_physics, projectile_on_hit_trigger).in_set(GameSet::AbilityExecution),
+            projectile_collision_physics.in_set(GameSet::AbilityExecution),
         );
     }
 }
@@ -264,66 +258,6 @@ fn projectile_collision_physics(
                 despawned.insert(projectile_entity);
             }
         }
-    }
-}
-
-fn projectile_on_hit_trigger(
-    mut collision_events: MessageReader<CollisionStart>,
-    mut trigger_events: MessageWriter<NodeTriggerEvent>,
-    projectile_query: Query<(&AbilitySource, &Faction, &Transform), With<HasOnHitTrigger>>,
-    target_query: Query<&Faction, Without<Projectile>>,
-    wall_query: Query<(), With<Wall>>,
-    node_registry: Res<NodeRegistry>,
-) {
-    let Some(on_hit_id) = node_registry.get_id("on_hit") else {
-        return;
-    };
-
-    for event in collision_events.read() {
-        let entity1 = event.collider1;
-        let entity2 = event.collider2;
-
-        let (projectile_entity, other_entity) =
-            if projectile_query.contains(entity1) {
-                (entity1, entity2)
-            } else if projectile_query.contains(entity2) {
-                (entity2, entity1)
-            } else {
-                continue;
-            };
-
-        if wall_query.contains(other_entity) {
-            continue;
-        }
-
-        if projectile_query.contains(other_entity) {
-            continue;
-        }
-
-        let Ok((source, proj_faction, projectile_transform)) = projectile_query.get(projectile_entity) else {
-            continue;
-        };
-        let Ok(target_faction) = target_query.get(other_entity) else {
-            continue;
-        };
-
-        if proj_faction == target_faction {
-            continue;
-        }
-
-        let ctx = AbilityContext::new(
-            source.caster,
-            source.caster_faction,
-            Target::Point(projectile_transform.translation),
-            Some(Target::Entity(other_entity)),
-        );
-
-        trigger_events.write(NodeTriggerEvent {
-            ability_id: source.ability_id,
-            action_node_id: source.node_id,
-            trigger_type: on_hit_id,
-            context: ctx,
-        });
     }
 }
 

@@ -4,7 +4,7 @@
         ("spawn_projectile", {
             "speed": Expr(Add(Stat("projectile_speed"), Constant(100.0))),
         }, [
-            ("on_hit", [
+            ("on_collision", [
                 ("damage", {"amount": Stat("physical_damage")}),
             ]),
         ]),

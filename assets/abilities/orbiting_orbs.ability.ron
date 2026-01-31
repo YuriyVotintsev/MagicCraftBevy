@@ -7,7 +7,7 @@
             "angular_speed": Float(3.0),
             "size": Float(20.0),
         }, [
-            ("on_hit", [
+            ("on_collision", [
                 ("damage", {"amount": Stat("physical_damage")}),
             ]),
         ]),

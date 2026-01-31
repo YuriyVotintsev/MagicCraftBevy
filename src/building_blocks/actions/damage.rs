@@ -5,7 +5,7 @@ use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::Target;
-use crate::stats::{ComputedStats, PendingDamage};
+use crate::stats::{ComputedStats, PendingDamage, DEFAULT_STATS};
 use crate::schedule::GameSet;
 use crate::GameState;
 
@@ -38,9 +38,7 @@ fn execute_damage_action(
 
         let caster_stats = stats_query
             .get(event.context.caster)
-            .ok()
-            .cloned()
-            .unwrap_or_default();
+            .unwrap_or(&DEFAULT_STATS);
         let Some(amount) = node_def.get_f32("amount", &caster_stats, &node_registry) else {
             continue;
         };

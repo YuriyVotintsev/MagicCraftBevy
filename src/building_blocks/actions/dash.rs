@@ -8,7 +8,7 @@ use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::Target;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::wave::InvulnerableStack;
 use crate::MovementLocked;
 use crate::GameState;
@@ -53,9 +53,7 @@ fn execute_dash_action(
 
         let caster_stats = stats_query
             .get(event.context.caster)
-            .ok()
-            .cloned()
-            .unwrap_or_default();
+            .unwrap_or(&DEFAULT_STATS);
 
         let speed = node_def
             .get_f32("speed", &caster_stats, &node_registry)
