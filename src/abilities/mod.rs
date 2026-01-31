@@ -25,7 +25,9 @@ pub use trigger_def::{TriggerDef, TriggerDefRaw, ActionDef, ActionDefRaw};
 #[allow(unused_imports)]
 pub use ability_def::{AbilityDef, AbilityDefRaw};
 #[allow(unused_imports)]
-pub use components::{AbilityInputs, AbilityId, InputState, AbilitySource};
+pub use components::{AbilityInputs, AbilityId, InputState, AbilitySource, HasOnHitTrigger};
+#[allow(unused_imports)]
+pub use ids::{ActionDefId, TriggerDefId};
 #[allow(unused_imports)]
 pub use registry::{TriggerHandler, ActionHandler, TriggerRegistry, ActionRegistry, AbilityRegistry};
 #[allow(unused_imports)]
@@ -47,7 +49,7 @@ use crate::game_state::GameState;
 #[allow(unused_imports)]
 pub use actions::spawn_projectile::Projectile;
 #[allow(unused_imports)]
-pub use events::{TriggerAbilityEvent, ExecuteActionEvent};
+pub use events::{TriggerAbilityEvent, ExecuteActionEvent, TriggerEvent};
 
 fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {
     for mut inputs in &mut query {
@@ -61,6 +63,7 @@ impl Plugin for AbilityPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Messages<TriggerAbilityEvent>>();
         app.init_resource::<Messages<ExecuteActionEvent>>();
+        app.init_resource::<Messages<TriggerEvent>>();
 
         let mut trigger_registry = TriggerRegistry::new();
         triggers::register_all(app, &mut trigger_registry);
@@ -74,7 +77,7 @@ impl Plugin for AbilityPlugin {
 
         app.add_systems(
             Update,
-            dispatcher::ability_dispatcher
+            (dispatcher::ability_dispatcher, dispatcher::trigger_dispatcher)
                 .in_set(GameSet::AbilityActivation)
                 .run_if(in_state(GameState::Playing)),
         );

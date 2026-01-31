@@ -1,7 +1,7 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry};
+use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry};
 use crate::abilities::events::ExecuteActionEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
@@ -29,14 +29,23 @@ fn execute_shield_action(
     mut commands: Commands,
     mut action_events: MessageReader<ExecuteActionEvent>,
     action_registry: Res<ActionRegistry>,
+    ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
     mut invuln_query: Query<&mut InvulnerableStack>,
 ) {
+    let Some(handler_id) = action_registry.get_id("shield") else {
+        return;
+    };
+
     for event in action_events.read() {
-        let Some(handler_id) = action_registry.get_id("shield") else {
+        let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        if event.action.action_type != handler_id {
+        let Some(action_def) = ability_def.get_action(event.action_id) else {
+            continue;
+        };
+
+        if action_def.action_type != handler_id {
             continue;
         }
 
@@ -46,12 +55,10 @@ fn execute_shield_action(
             .cloned()
             .unwrap_or_default();
 
-        let duration = event
-            .action
+        let duration = action_def
             .get_f32("duration", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_SHIELD_DURATION);
-        let radius = event
-            .action
+        let radius = action_def
             .get_f32("radius", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_SHIELD_RADIUS);
 

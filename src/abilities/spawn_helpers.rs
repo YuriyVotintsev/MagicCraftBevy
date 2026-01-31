@@ -14,10 +14,14 @@ pub fn add_ability_trigger(
         return;
     };
 
-    let Some(handler) = trigger_registry.get(ability_def.trigger.trigger_type) else {
+    let Some(root_trigger) = ability_def.get_trigger(ability_def.root_trigger) else {
+        return;
+    };
+
+    let Some(handler) = trigger_registry.get(root_trigger.trigger_type) else {
         warn!(
             "Unknown trigger type: {:?}",
-            ability_def.trigger.trigger_type
+            root_trigger.trigger_type
         );
         return;
     };
@@ -26,7 +30,7 @@ pub fn add_ability_trigger(
         commands,
         entity,
         ability_id,
-        &ability_def.trigger.params,
+        &root_trigger.params,
         trigger_registry,
     );
 }

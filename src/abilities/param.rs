@@ -1,8 +1,7 @@
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::stats::{ComputedStats, Expression, StatId};
-use super::trigger_def::ActionDef;
+use super::ids::ActionDefId;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
@@ -27,8 +26,8 @@ pub enum ParamValue {
     String(String),
     Stat(StatId),
     Expr(Expression),
-    Action(Arc<ActionDef>),
-    ActionList(Vec<Arc<ActionDef>>),
+    Action(ActionDefId),
+    ActionList(Vec<ActionDefId>),
 }
 
 impl ParamValue {
@@ -92,7 +91,7 @@ impl ParamValue {
         }
     }
 
-    pub fn as_action_list(&self) -> Option<&Vec<Arc<ActionDef>>> {
+    pub fn as_action_list(&self) -> Option<&Vec<ActionDefId>> {
         match self {
             Self::ActionList(v) => Some(v),
             _ => None,

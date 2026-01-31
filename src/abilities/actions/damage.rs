@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry};
+use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry};
 use crate::abilities::events::ExecuteActionEvent;
 use crate::stats::{ComputedStats, PendingDamage};
 use crate::schedule::GameSet;
@@ -10,13 +10,22 @@ fn execute_damage_action(
     mut commands: Commands,
     mut action_events: MessageReader<ExecuteActionEvent>,
     action_registry: Res<ActionRegistry>,
+    ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
+    let Some(handler_id) = action_registry.get_id("damage") else {
+        return;
+    };
+
     for event in action_events.read() {
-        let Some(handler_id) = action_registry.get_id("damage") else {
+        let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        if event.action.action_type != handler_id {
+        let Some(action_def) = ability_def.get_action(event.action_id) else {
+            continue;
+        };
+
+        if action_def.action_type != handler_id {
             continue;
         }
 
@@ -29,7 +38,7 @@ fn execute_damage_action(
             .ok()
             .cloned()
             .unwrap_or_default();
-        let Some(amount) = event.action.get_f32("amount", &caster_stats, &action_registry) else {
+        let Some(amount) = action_def.get_f32("amount", &caster_stats, &action_registry) else {
             continue;
         };
 

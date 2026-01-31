@@ -2,9 +2,8 @@ use std::f32::consts::PI;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry};
-use crate::abilities::AttachedTo;
-use crate::abilities::AbilitySource;
+use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry, TriggerRegistry};
+use crate::abilities::{AttachedTo, AbilitySource, HasOnHitTrigger};
 use crate::abilities::events::ExecuteActionEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
@@ -30,13 +29,25 @@ fn execute_orbiting_action(
     mut commands: Commands,
     mut action_events: MessageReader<ExecuteActionEvent>,
     action_registry: Res<ActionRegistry>,
+    ability_registry: Res<AbilityRegistry>,
+    trigger_registry: Res<TriggerRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
+    let Some(handler_id) = action_registry.get_id("spawn_orbiting") else {
+        return;
+    };
+
+    let on_hit_id = trigger_registry.get_id("on_hit");
+
     for event in action_events.read() {
-        let Some(handler_id) = action_registry.get_id("spawn_orbiting") else {
+        let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        if event.action.action_type != handler_id {
+        let Some(action_def) = ability_def.get_action(event.action_id) else {
+            continue;
+        };
+
+        if action_def.action_type != handler_id {
             continue;
         }
 
@@ -46,20 +57,16 @@ fn execute_orbiting_action(
             .cloned()
             .unwrap_or_default();
 
-        let count = event
-            .action
+        let count = action_def
             .get_i32("count", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_ORB_COUNT);
-        let radius = event
-            .action
+        let radius = action_def
             .get_f32("radius", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_ORB_RADIUS);
-        let angular_speed = event
-            .action
+        let angular_speed = action_def
             .get_f32("angular_speed", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_ORB_ANGULAR_SPEED);
-        let size = event
-            .action
+        let size = action_def
             .get_f32("size", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_ORB_SIZE);
 
@@ -79,10 +86,11 @@ fn execute_orbiting_action(
             let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
             let position = event.context.source_point + offset.extend(0.0);
 
-            commands.spawn((
+            let mut entity = commands.spawn((
                 Name::new("Orb"),
                 AbilitySource::new(
-                    event.action.clone(),
+                    event.ability_id,
+                    event.action_id,
                     event.context.caster,
                     event.context.caster_faction,
                 ),
@@ -106,6 +114,12 @@ fn execute_orbiting_action(
                 },
                 Transform::from_translation(position),
             ));
+
+            if let Some(on_hit_id) = on_hit_id {
+                if ability_def.has_trigger(event.action_id, on_hit_id) {
+                    entity.insert(HasOnHitTrigger);
+                }
+            }
         }
     }
 }

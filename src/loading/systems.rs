@@ -1,13 +1,13 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
-use std::sync::Arc;
 use std::collections::HashMap;
 
 use crate::abilities::{
     AbilityDef, AbilityDefRaw, AbilityRegistry, TriggerDef, TriggerDefRaw, TriggerRegistry,
     ActionDef, ActionDefRaw, ActionRegistry,
     ParamValue, ParamValueRaw,
+    ActionDefId, TriggerDefId,
 };
 use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;
@@ -240,11 +240,52 @@ pub fn finalize_loading(
     next_state.set(crate::GameState::MainMenu);
 }
 
+struct AbilityBuilder {
+    id: crate::abilities::AbilityId,
+    triggers: Vec<TriggerDef>,
+    actions: Vec<ActionDef>,
+}
+
+impl AbilityBuilder {
+    fn new(id: crate::abilities::AbilityId) -> Self {
+        Self {
+            id,
+            triggers: vec![],
+            actions: vec![],
+        }
+    }
+
+    fn add_action(&mut self, def: ActionDef) -> ActionDefId {
+        let id = ActionDefId(self.actions.len() as u32);
+        self.actions.push(def);
+        id
+    }
+
+    fn add_trigger(&mut self, def: TriggerDef) -> TriggerDefId {
+        let id = TriggerDefId(self.triggers.len() as u32);
+        self.triggers.push(def);
+        id
+    }
+
+    fn build(self, root_trigger: TriggerDefId) -> AbilityDef {
+        let mut ability = AbilityDef::new(self.id);
+        ability.set_root_trigger(root_trigger);
+        for action in self.actions {
+            ability.add_action(action);
+        }
+        for trigger in self.triggers {
+            ability.add_trigger(trigger);
+        }
+        ability
+    }
+}
+
 fn resolve_param_value(
     raw: &ParamValueRaw,
     stat_registry: &StatRegistry,
     trigger_registry: &mut TriggerRegistry,
     action_registry: &mut ActionRegistry,
+    builder: &mut AbilityBuilder,
 ) -> ParamValue {
     match raw {
         ParamValueRaw::Float(v) => ParamValue::Float(*v),
@@ -257,15 +298,15 @@ fn resolve_param_value(
             ParamValue::Stat(stat_id)
         }
         ParamValueRaw::Action(raw_action) => {
-            let action = resolve_action_def(raw_action, stat_registry, trigger_registry, action_registry);
-            ParamValue::Action(action)
+            let action_id = resolve_action_def(raw_action, stat_registry, trigger_registry, action_registry, builder);
+            ParamValue::Action(action_id)
         }
         ParamValueRaw::ActionList(raw_actions) => {
-            let actions = raw_actions
+            let action_ids = raw_actions
                 .iter()
-                .map(|a| resolve_action_def(a, stat_registry, trigger_registry, action_registry))
+                .map(|a| resolve_action_def(a, stat_registry, trigger_registry, action_registry, builder))
                 .collect();
-            ParamValue::ActionList(actions)
+            ParamValue::ActionList(action_ids)
         }
     }
 }
@@ -275,7 +316,8 @@ fn resolve_action_def(
     stat_registry: &StatRegistry,
     trigger_registry: &mut TriggerRegistry,
     action_registry: &mut ActionRegistry,
-) -> Arc<ActionDef> {
+    builder: &mut AbilityBuilder,
+) -> ActionDefId {
     let (name, params_raw, triggers_raw) = match raw {
         ActionDefRaw::Full(n, p, t) => (n, p.clone(), t.clone()),
         ActionDefRaw::NoTriggers(n, p) => (n, p.clone(), vec![]),
@@ -286,25 +328,27 @@ fn resolve_action_def(
     let action_type = action_registry.get_id(name)
         .unwrap_or_else(|| panic!("Unknown action type '{}'", name));
 
+    let trigger_ids: Vec<TriggerDefId> = triggers_raw
+        .iter()
+        .map(|t| resolve_trigger_def(t, stat_registry, trigger_registry, action_registry, builder))
+        .collect();
+
     let params = params_raw
         .iter()
         .map(|(name, value)| {
             let param_id = action_registry.get_or_insert_param_id(name);
-            let resolved = resolve_param_value(value, stat_registry, trigger_registry, action_registry);
+            let resolved = resolve_param_value(value, stat_registry, trigger_registry, action_registry, builder);
             (param_id, resolved)
         })
         .collect();
 
-    let triggers = triggers_raw
-        .iter()
-        .map(|t| resolve_trigger_def(t, stat_registry, trigger_registry, action_registry))
-        .collect();
-
-    Arc::new(ActionDef {
+    let action_def = ActionDef {
         action_type,
         params,
-        triggers,
-    })
+        triggers: trigger_ids,
+    };
+
+    builder.add_action(action_def)
 }
 
 
@@ -313,7 +357,8 @@ fn resolve_trigger_def(
     stat_registry: &StatRegistry,
     trigger_registry: &mut TriggerRegistry,
     action_registry: &mut ActionRegistry,
-) -> Arc<TriggerDef> {
+    builder: &mut AbilityBuilder,
+) -> TriggerDefId {
     let (name, params_raw, actions_raw) = match raw {
         TriggerDefRaw::Full(n, p, a) => (n, p.clone(), a.clone()),
         TriggerDefRaw::NoActions(n, p) => (n, p.clone(), vec![]),
@@ -324,25 +369,27 @@ fn resolve_trigger_def(
     let trigger_type = trigger_registry.get_id(name)
         .unwrap_or_else(|| panic!("Unknown trigger type '{}'", name));
 
+    let action_ids: Vec<ActionDefId> = actions_raw
+        .iter()
+        .map(|a| resolve_action_def(a, stat_registry, trigger_registry, action_registry, builder))
+        .collect();
+
     let params = params_raw
         .iter()
         .map(|(name, value)| {
             let param_id = trigger_registry.get_or_insert_param_id(name);
-            let resolved_value = resolve_param_value(value, stat_registry, trigger_registry, action_registry);
+            let resolved_value = resolve_param_value(value, stat_registry, trigger_registry, action_registry, builder);
             (param_id, resolved_value)
         })
         .collect();
 
-    let actions = actions_raw
-        .iter()
-        .map(|a| resolve_action_def(a, stat_registry, trigger_registry, action_registry))
-        .collect();
-
-    Arc::new(TriggerDef {
+    let trigger_def = TriggerDef {
         trigger_type,
         params,
-        actions,
-    })
+        actions: action_ids,
+    };
+
+    builder.add_trigger(trigger_def)
 }
 
 fn resolve_ability_def(
@@ -353,8 +400,9 @@ fn resolve_ability_def(
     action_registry: &mut ActionRegistry,
 ) -> AbilityDef {
     let id = ability_registry.allocate_id(&raw.id);
+    let mut builder = AbilityBuilder::new(id);
 
-    let trigger = resolve_trigger_def(&raw.trigger, stat_registry, trigger_registry, action_registry);
+    let root_trigger_id = resolve_trigger_def(&raw.trigger, stat_registry, trigger_registry, action_registry, &mut builder);
 
-    AbilityDef { id, trigger }
+    builder.build(root_trigger_id)
 }

@@ -3,10 +3,10 @@ use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
 use rand::Rng;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry};
+use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry, TriggerRegistry};
 use crate::abilities::context::{AbilityContext, ContextValue};
-use crate::abilities::events::ExecuteActionEvent;
-use crate::abilities::AbilitySource;
+use crate::abilities::events::{ExecuteActionEvent, TriggerEvent};
+use crate::abilities::{AbilitySource, HasOnHitTrigger};
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -33,13 +33,25 @@ fn execute_spawn_projectile_action(
     mut commands: Commands,
     mut action_events: MessageReader<ExecuteActionEvent>,
     action_registry: Res<ActionRegistry>,
+    ability_registry: Res<AbilityRegistry>,
+    trigger_registry: Res<TriggerRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
+    let Some(handler_id) = action_registry.get_id("spawn_projectile") else {
+        return;
+    };
+
+    let on_hit_id = trigger_registry.get_id("on_hit");
+
     for event in action_events.read() {
-        let Some(handler_id) = action_registry.get_id("spawn_projectile") else {
+        let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        if event.action.action_type != handler_id {
+        let Some(action_def) = ability_def.get_action(event.action_id) else {
+            continue;
+        };
+
+        if action_def.action_type != handler_id {
             continue;
         }
 
@@ -49,23 +61,19 @@ fn execute_spawn_projectile_action(
             .cloned()
             .unwrap_or_default();
 
-        let speed = event
-            .action
+        let speed = action_def
             .get_f32("speed", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_PROJECTILE_SPEED);
-        let size = event
-            .action
+        let size = action_def
             .get_f32("size", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_PROJECTILE_SIZE);
-        let spread = event
-            .action
+        let spread = action_def
             .get_f32("spread", &caster_stats, &action_registry)
             .unwrap_or(0.0);
-        let lifetime = event.action.get_f32("lifetime", &caster_stats, &action_registry);
-        let start_size = event.action.get_f32("start_size", &caster_stats, &action_registry);
-        let end_size = event.action.get_f32("end_size", &caster_stats, &action_registry);
-        let pierce = event
-            .action
+        let lifetime = action_def.get_f32("lifetime", &caster_stats, &action_registry);
+        let start_size = action_def.get_f32("start_size", &caster_stats, &action_registry);
+        let end_size = action_def.get_f32("end_size", &caster_stats, &action_registry);
+        let pierce = action_def
             .get_i32("pierce", &caster_stats, &action_registry)
             .map(|n| Pierce::Count(n as u32));
 
@@ -107,7 +115,8 @@ fn execute_spawn_projectile_action(
             Name::new("Projectile"),
             Projectile { speed, size },
             AbilitySource::new(
-                event.action.clone(),
+                event.ability_id,
+                event.action_id,
                 event.context.caster,
                 event.context.caster_faction,
             ),
@@ -142,6 +151,12 @@ fn execute_spawn_projectile_action(
                 });
             }
         }
+
+        if let Some(on_hit_id) = on_hit_id {
+            if ability_def.has_trigger(event.action_id, on_hit_id) {
+                entity_commands.insert(HasOnHitTrigger);
+            }
+        }
     }
 }
 
@@ -165,26 +180,20 @@ impl ActionHandler for SpawnProjectileHandler {
     fn register_behavior_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
-            projectile_collision.in_set(GameSet::AbilityExecution),
+            (projectile_collision_physics, projectile_on_hit_trigger).in_set(GameSet::AbilityExecution),
         );
     }
 }
 
-fn projectile_collision(
+fn projectile_collision_physics(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
-    mut action_events: MessageWriter<ExecuteActionEvent>,
-    projectile_query: Query<(&Projectile, &AbilitySource, &Faction, &Transform)>,
+    projectile_query: Query<(&Projectile, &Faction), Without<Wall>>,
     mut pierce_query: Query<&mut Pierce>,
     target_query: Query<&Faction, Without<Projectile>>,
     wall_query: Query<(), With<Wall>>,
-    trigger_registry: Res<crate::abilities::TriggerRegistry>,
 ) {
     let mut despawned: HashSet<Entity> = HashSet::default();
-
-    let Some(on_hit_trigger_id) = trigger_registry.get_id("on_hit") else {
-        return;
-    };
 
     for event in collision_events.read() {
         let entity1 = event.collider1;
@@ -222,7 +231,7 @@ fn projectile_collision(
             continue;
         }
 
-        let Ok((_projectile, source, proj_faction, projectile_transform)) = projectile_query.get(projectile_entity) else {
+        let Ok((_projectile, proj_faction)) = projectile_query.get(projectile_entity) else {
             continue;
         };
         let Ok(target_faction) = target_query.get(other_entity) else {
@@ -233,32 +242,17 @@ fn projectile_collision(
             continue;
         }
 
-        let on_hit_trigger = source.action.triggers.iter()
-            .find(|t| t.trigger_type == on_hit_trigger_id);
-
-        if let Some(trigger) = on_hit_trigger {
-            let mut ctx = AbilityContext::new(
-                source.caster,
-                source.caster_faction,
-                projectile_transform.translation,
-            );
-            ctx.set_param("target", ContextValue::Entity(other_entity));
-
-            for action_def in &trigger.actions {
-                action_events.write(ExecuteActionEvent {
-                    action: action_def.clone(),
-                    context: ctx.clone(),
-                });
-            }
-        }
-
         let should_despawn = match pierce_query.get_mut(projectile_entity) {
             Err(_) => true,
             Ok(pierce) => match pierce.into_inner() {
                 Pierce::Infinite => false,
                 Pierce::Count(n) => {
-                    *n = n.saturating_sub(1);
-                    *n == 0
+                    if *n <= 1 {
+                        true
+                    } else {
+                        *n -= 1;
+                        false
+                    }
                 }
             },
         };
@@ -269,6 +263,66 @@ fn projectile_collision(
                 despawned.insert(projectile_entity);
             }
         }
+    }
+}
+
+fn projectile_on_hit_trigger(
+    mut collision_events: MessageReader<CollisionStart>,
+    mut trigger_events: MessageWriter<TriggerEvent>,
+    projectile_query: Query<(&AbilitySource, &Faction, &Transform), With<HasOnHitTrigger>>,
+    target_query: Query<&Faction, Without<Projectile>>,
+    wall_query: Query<(), With<Wall>>,
+    trigger_registry: Res<TriggerRegistry>,
+) {
+    let Some(on_hit_id) = trigger_registry.get_id("on_hit") else {
+        return;
+    };
+
+    for event in collision_events.read() {
+        let entity1 = event.collider1;
+        let entity2 = event.collider2;
+
+        let (projectile_entity, other_entity) =
+            if projectile_query.contains(entity1) {
+                (entity1, entity2)
+            } else if projectile_query.contains(entity2) {
+                (entity2, entity1)
+            } else {
+                continue;
+            };
+
+        if wall_query.contains(other_entity) {
+            continue;
+        }
+
+        if projectile_query.contains(other_entity) {
+            continue;
+        }
+
+        let Ok((source, proj_faction, projectile_transform)) = projectile_query.get(projectile_entity) else {
+            continue;
+        };
+        let Ok(target_faction) = target_query.get(other_entity) else {
+            continue;
+        };
+
+        if proj_faction == target_faction {
+            continue;
+        }
+
+        let mut ctx = AbilityContext::new(
+            source.caster,
+            source.caster_faction,
+            projectile_transform.translation,
+        );
+        ctx.set_param("target", ContextValue::Entity(other_entity));
+
+        trigger_events.write(TriggerEvent {
+            ability_id: source.ability_id,
+            action_id: source.action_id,
+            trigger_type: on_hit_id,
+            context: ctx,
+        });
     }
 }
 

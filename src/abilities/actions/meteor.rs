@@ -1,10 +1,10 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry};
+use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry, TriggerRegistry};
 use crate::abilities::context::{AbilityContext, ContextValue};
-use crate::abilities::events::ExecuteActionEvent;
-use crate::abilities::AbilitySource;
+use crate::abilities::events::{ExecuteActionEvent, TriggerEvent};
+use crate::abilities::{AbilitySource, HasOnHitTrigger};
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -44,13 +44,25 @@ fn execute_meteor_action(
     mut commands: Commands,
     mut action_events: MessageReader<ExecuteActionEvent>,
     action_registry: Res<ActionRegistry>,
+    ability_registry: Res<AbilityRegistry>,
+    trigger_registry: Res<TriggerRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
+    let Some(handler_id) = action_registry.get_id("spawn_meteor") else {
+        return;
+    };
+
+    let on_hit_id = trigger_registry.get_id("on_hit");
+
     for event in action_events.read() {
-        let Some(handler_id) = action_registry.get_id("spawn_meteor") else {
+        let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        if event.action.action_type != handler_id {
+        let Some(action_def) = ability_def.get_action(event.action_id) else {
+            continue;
+        };
+
+        if action_def.action_type != handler_id {
             continue;
         }
 
@@ -60,20 +72,17 @@ fn execute_meteor_action(
             .cloned()
             .unwrap_or_default();
 
-        let search_radius = event
-            .action
+        let search_radius = action_def
             .get_f32("search_radius", &caster_stats, &action_registry)
             .unwrap_or(500.0);
-        let damage_radius = event
-            .action
+        let damage_radius = action_def
             .get_f32("damage_radius", &caster_stats, &action_registry)
             .unwrap_or(80.0);
-        let fall_duration = event
-            .action
+        let fall_duration = action_def
             .get_f32("fall_duration", &caster_stats, &action_registry)
             .unwrap_or(0.5);
 
-        commands.spawn((
+        let mut entity_commands = commands.spawn((
             Name::new("MeteorRequest"),
             MeteorRequest {
                 search_radius,
@@ -81,12 +90,19 @@ fn execute_meteor_action(
                 fall_duration,
             },
             AbilitySource::new(
-                event.action.clone(),
+                event.ability_id,
+                event.action_id,
                 event.context.caster,
                 event.context.caster_faction,
             ),
             Transform::from_translation(event.context.source_point),
         ));
+
+        if let Some(on_hit_id) = on_hit_id {
+            if ability_def.has_trigger(event.action_id, on_hit_id) {
+                entity_commands.insert(HasOnHitTrigger);
+            }
+        }
     }
 }
 
@@ -113,7 +129,7 @@ impl ActionHandler for SpawnMeteorHandler {
             (
                 meteor_target_finder,
                 meteor_falling_update,
-                meteor_explosion_damage,
+                meteor_explosion_trigger,
             )
                 .in_set(GameSet::AbilityExecution),
         );
@@ -124,11 +140,11 @@ fn meteor_target_finder(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    query: Query<(Entity, &MeteorRequest, &AbilitySource, &Transform)>,
+    query: Query<(Entity, &MeteorRequest, &AbilitySource, &Transform, Option<&HasOnHitTrigger>)>,
     spatial_query: SpatialQuery,
     transforms: Query<&Transform, Without<MeteorRequest>>,
 ) {
-    for (request_entity, request, source, caster_transform) in &query {
+    for (request_entity, request, source, caster_transform, has_on_hit) in &query {
         let caster_pos = caster_transform.translation.truncate();
 
         let target_layer = match source.caster_faction {
@@ -183,7 +199,7 @@ fn meteor_target_finder(
         let meteor_material = materials.add(ColorMaterial::from_color(Color::srgb(1.0, 0.5, 0.0)));
 
         let start_position = target_position + Vec3::new(0.0, METEOR_START_HEIGHT, 0.0);
-        commands.spawn((
+        let mut meteor_entity = commands.spawn((
             Name::new("MeteorFalling"),
             MeteorFalling {
                 target_position,
@@ -196,6 +212,10 @@ fn meteor_target_finder(
             MeshMaterial2d(meteor_material),
             Transform::from_translation(start_position),
         ));
+
+        if has_on_hit.is_some() {
+            meteor_entity.insert(HasOnHitTrigger);
+        }
     }
 }
 
@@ -204,11 +224,11 @@ fn meteor_falling_update(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut MeteorFalling, &AbilitySource, &mut Transform)>,
+    mut query: Query<(Entity, &mut MeteorFalling, &AbilitySource, &mut Transform, Option<&HasOnHitTrigger>)>,
 ) {
     let dt = time.delta_secs();
 
-    for (entity, mut meteor, source, mut transform) in &mut query {
+    for (entity, mut meteor, source, mut transform, has_on_hit) in &mut query {
         meteor.elapsed += dt;
         let t = (meteor.elapsed / meteor.fall_duration).clamp(0.0, 1.0);
         let eased_t = t * t;
@@ -223,7 +243,7 @@ fn meteor_falling_update(
             let explosion_mesh = meshes.add(Circle::new(meteor.damage_radius));
             let explosion_material = materials.add(ColorMaterial::from_color(Color::srgba(1.0, 0.5, 0.0, 0.8)));
 
-            commands.spawn((
+            let mut explosion_entity = commands.spawn((
                 Name::new("MeteorExplosion"),
                 MeteorExplosion {
                     damage_radius: meteor.damage_radius,
@@ -235,17 +255,21 @@ fn meteor_falling_update(
                 Transform::from_translation(meteor.target_position),
                 Lifetime { remaining: EXPLOSION_DURATION },
             ));
+
+            if has_on_hit.is_some() {
+                explosion_entity.insert(HasOnHitTrigger);
+            }
         }
     }
 }
 
-fn meteor_explosion_damage(
-    mut query: Query<(&mut MeteorExplosion, &AbilitySource, &Transform)>,
-    mut action_events: MessageWriter<ExecuteActionEvent>,
+fn meteor_explosion_trigger(
+    mut query: Query<(&mut MeteorExplosion, &AbilitySource, &Transform), With<HasOnHitTrigger>>,
+    mut trigger_events: MessageWriter<TriggerEvent>,
     spatial_query: SpatialQuery,
-    trigger_registry: Res<crate::abilities::TriggerRegistry>,
+    trigger_registry: Res<TriggerRegistry>,
 ) {
-    let Some(on_hit_trigger_id) = trigger_registry.get_id("on_hit") else {
+    let Some(on_hit_id) = trigger_registry.get_id("on_hit") else {
         return;
     };
 
@@ -266,25 +290,20 @@ fn meteor_explosion_damage(
         let shape = Collider::circle(explosion.damage_radius);
         let hits = spatial_query.shape_intersections(&shape, explosion_pos, 0.0, &filter);
 
-        let on_hit_trigger = source.action.triggers.iter()
-            .find(|t| t.trigger_type == on_hit_trigger_id);
+        for enemy_entity in hits {
+            let mut ctx = AbilityContext::new(
+                source.caster,
+                source.caster_faction,
+                explosion_transform.translation,
+            );
+            ctx.set_param("target", ContextValue::Entity(enemy_entity));
 
-        if let Some(trigger) = on_hit_trigger {
-            for enemy_entity in hits {
-                let mut ctx = AbilityContext::new(
-                    source.caster,
-                    source.caster_faction,
-                    explosion_transform.translation,
-                );
-                ctx.set_param("target", ContextValue::Entity(enemy_entity));
-
-                for action_def in &trigger.actions {
-                    action_events.write(ExecuteActionEvent {
-                        action: action_def.clone(),
-                        context: ctx.clone(),
-                    });
-                }
-            }
+            trigger_events.write(TriggerEvent {
+                ability_id: source.ability_id,
+                action_id: source.action_id,
+                trigger_type: on_hit_id,
+                context: ctx,
+            });
         }
     }
 }

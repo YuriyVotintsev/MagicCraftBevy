@@ -1,8 +1,7 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
-use super::ids::{TriggerTypeId, ActionTypeId, ParamId};
+use super::ids::{TriggerTypeId, ActionTypeId, ParamId, ActionDefId, TriggerDefId};
 use super::param::{ParamValue, ParamValueRaw};
 use crate::stats::ComputedStats;
 
@@ -28,14 +27,14 @@ pub enum TriggerDefRaw {
 pub struct ActionDef {
     pub action_type: ActionTypeId,
     pub params: HashMap<ParamId, ParamValue>,
-    pub triggers: Vec<Arc<TriggerDef>>,
+    pub triggers: Vec<TriggerDefId>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TriggerDef {
     pub trigger_type: TriggerTypeId,
     pub params: HashMap<ParamId, ParamValue>,
-    pub actions: Vec<Arc<ActionDef>>,
+    pub actions: Vec<ActionDefId>,
 }
 
 impl ActionDef {
@@ -44,7 +43,7 @@ impl ActionDef {
         self.params.get(&id)
     }
 
-    pub fn get_action_list<'a>(&'a self, name: &str, registry: &crate::abilities::registry::ActionRegistry) -> Option<&'a Vec<Arc<ActionDef>>> {
+    pub fn get_action_list<'a>(&'a self, name: &str, registry: &crate::abilities::registry::ActionRegistry) -> Option<&'a Vec<ActionDefId>> {
         self.get_param(name, registry)?.as_action_list()
     }
 

@@ -1,11 +1,9 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use bevy::prelude::*;
 
 use crate::faction::Faction;
-pub use super::ids::AbilityId;
-use super::trigger_def::ActionDef;
+pub use super::ids::{AbilityId, ActionDefId};
 
 #[derive(Clone, Default)]
 pub struct InputState {
@@ -38,19 +36,24 @@ impl AbilityInputs {
     }
 }
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Copy)]
 pub struct AbilitySource {
-    pub action: Arc<ActionDef>,
+    pub ability_id: AbilityId,
+    pub action_id: ActionDefId,
     pub caster: Entity,
     pub caster_faction: Faction,
 }
 
 impl AbilitySource {
-    pub fn new(action: Arc<ActionDef>, caster: Entity, faction: Faction) -> Self {
+    pub fn new(ability_id: AbilityId, action_id: ActionDefId, caster: Entity, faction: Faction) -> Self {
         Self {
-            action,
+            ability_id,
+            action_id,
             caster,
             caster_faction: faction,
         }
     }
 }
+
+#[derive(Component)]
+pub struct HasOnHitTrigger;
