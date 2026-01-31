@@ -20,10 +20,7 @@ const DEFAULT_PROJECTILE_SPEED: f32 = 800.0;
 const DEFAULT_PROJECTILE_SIZE: f32 = 15.0;
 
 #[derive(Component)]
-pub struct Projectile {
-    pub speed: f32,
-    pub size: f32,
-}
+pub struct Projectile;
 
 #[derive(Component)]
 pub enum Pierce {
@@ -114,7 +111,7 @@ fn execute_spawn_projectile_action(
 
         let mut entity_commands = commands.spawn((
             Name::new("Projectile"),
-            Projectile { speed, size },
+            Projectile,
             AbilitySource::new(
                 event.ability_id,
                 event.node_id,

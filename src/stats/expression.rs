@@ -113,9 +113,4 @@ impl Expression {
             Self::PercentOf { stat, percent } => computed.get(*stat) * percent,
         }
     }
-
-    pub fn evaluate_computed(&self, computed: &ComputedStats) -> f32 {
-        let empty_modifiers = Modifiers::new();
-        self.evaluate(&empty_modifiers, computed)
-    }
 }

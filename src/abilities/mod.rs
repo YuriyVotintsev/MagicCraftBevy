@@ -15,27 +15,14 @@ mod macros;
 pub use crate::building_blocks::triggers;
 pub use crate::building_blocks::actions;
 
-#[allow(unused_imports)]
-pub use context::{AbilityContext, ContextValue};
-#[allow(unused_imports)]
+pub use context::AbilityContext;
 pub use param::{ParamValue, ParamValueRaw};
-#[allow(unused_imports)]
-pub use node::{NodeDef, NodeDefRaw, NodeKind, NodeHandler, NodeRegistry, AbilityRegistry};
-#[allow(unused_imports)]
+pub use node::{NodeDef, NodeDefRaw, NodeKind, NodeRegistry, AbilityRegistry};
 pub use ability_def::{AbilityDef, AbilityDefRaw};
-#[allow(unused_imports)]
-pub use components::{AbilityInputs, AbilityId, InputState, AbilitySource, HasOnHitTrigger};
-#[allow(unused_imports)]
-pub use ids::{NodeDefId, NodeTypeId};
-#[allow(unused_imports)]
+pub use components::{AbilityInputs, InputState, AbilitySource, HasOnHitTrigger};
+pub use ids::NodeDefId;
 pub use spawn_helpers::add_ability_trigger;
-#[allow(unused_imports)]
 pub use lifecycle::AttachedTo;
-
-pub use crate::building_blocks::triggers::{
-    on_input::OnInputTriggers, every_frame::EveryFrameTriggers,
-    while_held::WhileHeldTriggers, interval::IntervalTriggers,
-};
 
 use bevy::prelude::*;
 
@@ -43,9 +30,6 @@ use crate::schedule::GameSet;
 use crate::wave::WavePhase;
 use crate::game_state::GameState;
 
-#[allow(unused_imports)]
-pub use crate::building_blocks::actions::spawn_projectile::Projectile;
-#[allow(unused_imports)]
 pub use events::{TriggerAbilityEvent, ExecuteNodeEvent, NodeTriggerEvent};
 
 fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {

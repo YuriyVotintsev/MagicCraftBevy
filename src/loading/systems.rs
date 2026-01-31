@@ -239,14 +239,12 @@ pub fn finalize_loading(
 }
 
 struct AbilityBuilder {
-    id: crate::abilities::AbilityId,
     nodes: Vec<NodeDef>,
 }
 
 impl AbilityBuilder {
-    fn new(id: crate::abilities::AbilityId) -> Self {
+    fn new() -> Self {
         Self {
-            id,
             nodes: vec![],
         }
     }
@@ -258,7 +256,7 @@ impl AbilityBuilder {
     }
 
     fn build(self, root_node: NodeDefId) -> AbilityDef {
-        let mut ability = AbilityDef::new(self.id);
+        let mut ability = AbilityDef::new();
         ability.set_root_node(root_node);
         for node in self.nodes {
             ability.add_node(node);
@@ -273,8 +271,8 @@ fn resolve_ability_def(
     ability_registry: &mut AbilityRegistry,
     node_registry: &mut NodeRegistry,
 ) -> AbilityDef {
-    let id = ability_registry.allocate_id(&raw.id);
-    let mut builder = AbilityBuilder::new(id);
+    ability_registry.allocate_id(&raw.id);
+    let mut builder = AbilityBuilder::new();
 
     let root_node_id = resolve_node_def(
         &raw.root_node,
@@ -308,8 +306,6 @@ fn resolve_node_params(
             let resolved = match value {
                 ParamValueRaw::Float(v) => ParamValue::Float(*v),
                 ParamValueRaw::Int(v) => ParamValue::Int(*v),
-                ParamValueRaw::Bool(v) => ParamValue::Bool(*v),
-                ParamValueRaw::String(v) => ParamValue::String(v.clone()),
                 ParamValueRaw::Stat(name) => {
                     let stat_id = stat_registry.get(name)
                         .unwrap_or_else(|| panic!("Param references unknown stat '{}'", name));

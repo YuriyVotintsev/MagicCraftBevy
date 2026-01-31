@@ -13,13 +13,9 @@ pub use calculators::StatCalculators;
 pub use computed_stats::ComputedStats;
 pub use dirty_stats::DirtyStats;
 pub use expression::Expression;
-#[allow(unused_imports)]
-pub use expression::ExpressionRaw;
-#[allow(unused_imports)]
-pub use health::{cleanup_dead, Dead};
+pub use health::Dead;
 pub use health::{death_system, DeathEvent, Health};
-#[allow(unused_imports)]
-pub use modifiers::{Modifier, Modifiers};
+pub use modifiers::Modifiers;
 pub use pending_damage::PendingDamage;
 
 use crate::schedule::{GameSet, PostGameSet};
@@ -32,8 +28,7 @@ pub struct DamageEvent {
     pub amount: f32,
     pub target_faction: Faction,
 }
-#[allow(unused_imports)]
-pub use stat_id::{AggregationType, StatDef, StatId, StatRegistry};
+pub use stat_id::{AggregationType, StatId, StatRegistry};
 
 use bevy::prelude::*;
 
@@ -97,10 +92,3 @@ fn apply_pending_damage(
     }
 }
 
-#[derive(Bundle, Default)]
-#[allow(dead_code)]
-pub struct StatsBundle {
-    pub modifiers: Modifiers,
-    pub computed: ComputedStats,
-    pub dirty: DirtyStats,
-}

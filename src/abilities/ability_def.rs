@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::ids::{AbilityId, NodeDefId, NodeTypeId};
+use super::ids::{NodeDefId, NodeTypeId};
 use super::node::{NodeDef, NodeDefRaw};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -12,7 +12,6 @@ pub struct AbilityDefRaw {
 
 #[derive(Debug, Clone)]
 pub struct AbilityDef {
-    pub id: AbilityId,
     pub root_node: NodeDefId,
     nodes: Vec<NodeDef>,
 }
@@ -22,9 +21,8 @@ impl AbilityDef {
         self.nodes.get(id.0 as usize)
     }
 
-    pub fn new(id: AbilityId) -> Self {
+    pub fn new() -> Self {
         Self {
-            id,
             root_node: NodeDefId(0),
             nodes: vec![],
         }

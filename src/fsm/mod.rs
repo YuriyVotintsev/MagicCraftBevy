@@ -9,14 +9,11 @@ mod transition_registry;
 mod types;
 
 pub use behaviour_registry::BehaviourRegistry;
-#[allow(unused_imports)]
-pub use components::{CurrentState, MobType};
 pub use events::StateTransition;
 pub use registry::MobRegistry;
 pub use spawn::spawn_mob;
 pub use transition_registry::TransitionRegistry;
-#[allow(unused_imports)]
-pub use types::{BehaviourDef, MobDef, Shape, StateDef, TransitionDef, VisualDef};
+pub use types::{BehaviourDef, MobDef, TransitionDef};
 
 use bevy::prelude::*;
 

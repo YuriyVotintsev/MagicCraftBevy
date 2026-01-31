@@ -36,15 +36,11 @@ impl NodeDef {
     }
 
     pub fn get_f32(&self, name: &str, stats: &ComputedStats, registry: &NodeRegistry) -> Option<f32> {
-        self.get_param(name, registry)?.evaluate_f32(stats)
+        Some(self.get_param(name, registry)?.evaluate_f32(stats))
     }
 
     pub fn get_i32(&self, name: &str, stats: &ComputedStats, registry: &NodeRegistry) -> Option<i32> {
-        self.get_param(name, registry)?.evaluate_i32(stats)
-    }
-
-    pub fn get_string<'a>(&'a self, name: &str, registry: &NodeRegistry) -> Option<&'a str> {
-        self.get_param(name, registry)?.as_string()
+        Some(self.get_param(name, registry)?.evaluate_i32(stats))
     }
 }
 
@@ -126,10 +122,6 @@ impl NodeRegistry {
         self.name_to_id.get(name).copied()
     }
 
-    pub fn get_name(&self, id: NodeTypeId) -> Option<&str> {
-        self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
-    }
-
     pub fn get_kind(&self, id: NodeTypeId) -> NodeKind {
         self.kinds[id.0 as usize]
     }
@@ -151,10 +143,6 @@ impl NodeRegistry {
     pub fn get_param_id(&self, name: &str) -> Option<ParamId> {
         self.param_name_to_id.get(name).copied()
     }
-
-    pub fn get_param_name(&self, id: ParamId) -> Option<&str> {
-        self.param_id_to_name.get(id.0 as usize).map(|s| s.as_str())
-    }
 }
 
 #[derive(Resource, Default)]
@@ -164,10 +152,6 @@ pub struct AbilityRegistry {
 }
 
 impl AbilityRegistry {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     pub fn allocate_id(&mut self, name: &str) -> AbilityId {
         let id = AbilityId(self.abilities.len() as u32);
         self.name_to_id.insert(name.to_string(), id);
