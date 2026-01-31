@@ -6,6 +6,9 @@ use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
 use crate::abilities::ids::{AbilityId, ParamId};
 use crate::abilities::param::ParamValue;
 
+#[derive(Component)]
+pub struct HasOnHitTrigger;
+
 #[derive(Default)]
 pub struct OnHitTrigger;
 

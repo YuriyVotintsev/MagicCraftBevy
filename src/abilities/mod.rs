@@ -19,7 +19,7 @@ pub use context::AbilityContext;
 pub use param::{ParamValue, ParamValueRaw};
 pub use node::{NodeDef, NodeDefRaw, NodeKind, NodeRegistry, AbilityRegistry};
 pub use ability_def::{AbilityDef, AbilityDefRaw};
-pub use components::{AbilityInputs, InputState, AbilitySource, HasOnHitTrigger};
+pub use components::{AbilityInputs, InputState, AbilitySource};
 pub use ids::NodeDefId;
 pub use spawn_helpers::add_ability_trigger;
 pub use lifecycle::AttachedTo;

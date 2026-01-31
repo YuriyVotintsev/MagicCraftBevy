@@ -54,6 +54,3 @@ impl AbilitySource {
         }
     }
 }
-
-#[derive(Component)]
-pub struct HasOnHitTrigger;

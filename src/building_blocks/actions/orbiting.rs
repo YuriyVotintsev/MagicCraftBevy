@@ -5,7 +5,8 @@ use crate::register_node;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};
-use crate::abilities::{AttachedTo, AbilitySource, HasOnHitTrigger};
+use crate::abilities::{AttachedTo, AbilitySource};
+use crate::building_blocks::triggers::on_hit::HasOnHitTrigger;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
