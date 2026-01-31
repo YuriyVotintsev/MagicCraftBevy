@@ -1,19 +1,20 @@
 use bevy::prelude::*;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry};
-use crate::abilities::events::ExecuteActionEvent;
+use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::events::ExecuteNodeEvent;
 use crate::stats::{ComputedStats, PendingDamage};
 use crate::schedule::GameSet;
 use crate::GameState;
 
 fn execute_damage_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteActionEvent>,
-    action_registry: Res<ActionRegistry>,
+    mut action_events: MessageReader<ExecuteNodeEvent>,
+    node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
-    let Some(handler_id) = action_registry.get_id("damage") else {
+    let Some(handler_id) = node_registry.get_id("damage") else {
         return;
     };
 
@@ -21,11 +22,11 @@ fn execute_damage_action(
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        let Some(action_def) = ability_def.get_action(event.action_id) else {
+        let Some(node_def) = ability_def.get_node(event.node_id) else {
             continue;
         };
 
-        if action_def.action_type != handler_id {
+        if node_def.node_type != handler_id {
             continue;
         }
 
@@ -38,7 +39,7 @@ fn execute_damage_action(
             .ok()
             .cloned()
             .unwrap_or_default();
-        let Some(amount) = action_def.get_f32("amount", &caster_stats, &action_registry) else {
+        let Some(amount) = node_def.get_f32("amount", &caster_stats, &node_registry) else {
             continue;
         };
 
@@ -51,9 +52,13 @@ fn execute_damage_action(
 #[derive(Default)]
 pub struct DamageHandler;
 
-impl ActionHandler for DamageHandler {
+impl NodeHandler for DamageHandler {
     fn name(&self) -> &'static str {
         "damage"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Action
     }
 
     fn register_execution_system(&self, app: &mut App) {
@@ -66,4 +71,4 @@ impl ActionHandler for DamageHandler {
     }
 }
 
-register_action!(DamageHandler);
+register_node!(DamageHandler);

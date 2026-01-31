@@ -8,6 +8,9 @@ pub struct TriggerTypeId(pub u32);
 pub struct ActionTypeId(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct NodeTypeId(pub u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ParamId(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -15,6 +18,9 @@ pub struct ActionDefId(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct TriggerDefId(pub u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct NodeDefId(pub u32);
 
 
 impl From<u32> for AbilityId {
@@ -35,6 +41,12 @@ impl From<u32> for ActionTypeId {
     }
 }
 
+impl From<u32> for NodeTypeId {
+    fn from(v: u32) -> Self {
+        Self(v)
+    }
+}
+
 impl From<u32> for ParamId {
     fn from(v: u32) -> Self {
         Self(v)
@@ -48,6 +60,12 @@ impl From<u32> for ActionDefId {
 }
 
 impl From<u32> for TriggerDefId {
+    fn from(v: u32) -> Self {
+        Self(v)
+    }
+}
+
+impl From<u32> for NodeDefId {
     fn from(v: u32) -> Self {
         Self(v)
     }
@@ -72,6 +90,12 @@ impl From<ActionTypeId> for u32 {
     }
 }
 
+impl From<NodeTypeId> for u32 {
+    fn from(id: NodeTypeId) -> Self {
+        id.0
+    }
+}
+
 impl From<ParamId> for u32 {
     fn from(id: ParamId) -> Self {
         id.0
@@ -86,6 +110,12 @@ impl From<ActionDefId> for u32 {
 
 impl From<TriggerDefId> for u32 {
     fn from(id: TriggerDefId) -> Self {
+        id.0
+    }
+}
+
+impl From<NodeDefId> for u32 {
+    fn from(id: NodeDefId) -> Self {
         id.0
     }
 }

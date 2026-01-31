@@ -1,9 +1,10 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry, TriggerRegistry};
+use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::context::{AbilityContext, ContextValue};
-use crate::abilities::events::{ExecuteActionEvent, TriggerEvent};
+use crate::abilities::events::{ExecuteNodeEvent, NodeTriggerEvent};
 use crate::abilities::{AbilitySource, HasOnHitTrigger};
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
@@ -42,27 +43,26 @@ pub struct MeteorExplosion {
 
 fn execute_meteor_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteActionEvent>,
-    action_registry: Res<ActionRegistry>,
+    mut action_events: MessageReader<ExecuteNodeEvent>,
+    node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
-    trigger_registry: Res<TriggerRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
-    let Some(handler_id) = action_registry.get_id("spawn_meteor") else {
+    let Some(handler_id) = node_registry.get_id("spawn_meteor") else {
         return;
     };
 
-    let on_hit_id = trigger_registry.get_id("on_hit");
+    let on_hit_id = node_registry.get_id("on_hit");
 
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        let Some(action_def) = ability_def.get_action(event.action_id) else {
+        let Some(node_def) = ability_def.get_node(event.node_id) else {
             continue;
         };
 
-        if action_def.action_type != handler_id {
+        if node_def.node_type != handler_id {
             continue;
         }
 
@@ -72,14 +72,14 @@ fn execute_meteor_action(
             .cloned()
             .unwrap_or_default();
 
-        let search_radius = action_def
-            .get_f32("search_radius", &caster_stats, &action_registry)
+        let search_radius = node_def
+            .get_f32("search_radius", &caster_stats, &node_registry)
             .unwrap_or(500.0);
-        let damage_radius = action_def
-            .get_f32("damage_radius", &caster_stats, &action_registry)
+        let damage_radius = node_def
+            .get_f32("damage_radius", &caster_stats, &node_registry)
             .unwrap_or(80.0);
-        let fall_duration = action_def
-            .get_f32("fall_duration", &caster_stats, &action_registry)
+        let fall_duration = node_def
+            .get_f32("fall_duration", &caster_stats, &node_registry)
             .unwrap_or(0.5);
 
         let mut entity_commands = commands.spawn((
@@ -91,7 +91,7 @@ fn execute_meteor_action(
             },
             AbilitySource::new(
                 event.ability_id,
-                event.action_id,
+                event.node_id,
                 event.context.caster,
                 event.context.caster_faction,
             ),
@@ -99,7 +99,7 @@ fn execute_meteor_action(
         ));
 
         if let Some(on_hit_id) = on_hit_id {
-            if ability_def.has_trigger(event.action_id, on_hit_id) {
+            if ability_def.has_trigger(event.node_id, on_hit_id) {
                 entity_commands.insert(HasOnHitTrigger);
             }
         }
@@ -109,9 +109,13 @@ fn execute_meteor_action(
 #[derive(Default)]
 pub struct SpawnMeteorHandler;
 
-impl ActionHandler for SpawnMeteorHandler {
+impl NodeHandler for SpawnMeteorHandler {
     fn name(&self) -> &'static str {
         "spawn_meteor"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Action
     }
 
     fn register_execution_system(&self, app: &mut App) {
@@ -265,11 +269,11 @@ fn meteor_falling_update(
 
 fn meteor_explosion_trigger(
     mut query: Query<(&mut MeteorExplosion, &AbilitySource, &Transform), With<HasOnHitTrigger>>,
-    mut trigger_events: MessageWriter<TriggerEvent>,
+    mut trigger_events: MessageWriter<NodeTriggerEvent>,
     spatial_query: SpatialQuery,
-    trigger_registry: Res<TriggerRegistry>,
+    node_registry: Res<NodeRegistry>,
 ) {
-    let Some(on_hit_id) = trigger_registry.get_id("on_hit") else {
+    let Some(on_hit_id) = node_registry.get_id("on_hit") else {
         return;
     };
 
@@ -298,9 +302,9 @@ fn meteor_explosion_trigger(
             );
             ctx.set_param("target", ContextValue::Entity(enemy_entity));
 
-            trigger_events.write(TriggerEvent {
+            trigger_events.write(NodeTriggerEvent {
                 ability_id: source.ability_id,
-                action_id: source.action_id,
+                action_node_id: source.node_id,
                 trigger_type: on_hit_id,
                 context: ctx,
             });
@@ -308,4 +312,4 @@ fn meteor_explosion_trigger(
     }
 }
 
-register_action!(SpawnMeteorHandler);
+register_node!(SpawnMeteorHandler);

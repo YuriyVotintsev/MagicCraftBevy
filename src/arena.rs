@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::GameState;
-use crate::abilities::{AbilityRegistry, TriggerRegistry};
+use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::fsm::{spawn_mob, BehaviourRegistry, MobRegistry, TransitionRegistry};
 use crate::physics::{GameLayer, Wall};
 use crate::stats::{StatCalculators, StatRegistry};
@@ -153,7 +153,7 @@ fn spawn_enemies(
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
     ability_registry: Res<AbilityRegistry>,
-    trigger_registry: Res<TriggerRegistry>,
+    node_registry: Res<NodeRegistry>,
     behaviour_registry: Res<BehaviourRegistry>,
     transition_registry: Res<TransitionRegistry>,
     mut wave_state: ResMut<WaveState>,
@@ -180,7 +180,7 @@ fn spawn_enemies(
             &stat_registry,
             &calculators,
             &ability_registry,
-            &trigger_registry,
+            &node_registry,
             &behaviour_registry,
             &transition_registry,
             mob_name,

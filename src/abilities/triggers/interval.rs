@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
 
-use crate::abilities::ids::ParamId;
+use crate::abilities::ids::{ParamId, AbilityId};
 use crate::abilities::param::ParamValue;
-use crate::abilities::registry::TriggerHandler;
-use crate::abilities::{AbilityId, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
+use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
+use crate::abilities::{AbilityRegistry, AbilityContext, TriggerAbilityEvent};
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
@@ -75,9 +75,14 @@ pub fn interval_system(
 #[derive(Default)]
 pub struct IntervalHandler;
 
-impl TriggerHandler for IntervalHandler {
+
+impl NodeHandler for IntervalHandler {
     fn name(&self) -> &'static str {
         "interval"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Trigger
     }
 
     fn add_to_entity(
@@ -86,7 +91,7 @@ impl TriggerHandler for IntervalHandler {
         entity: Entity,
         ability_id: AbilityId,
         params: &HashMap<ParamId, ParamValue>,
-        registry: &TriggerRegistry,
+        registry: &NodeRegistry,
     ) {
         let interval = registry
             .get_param_id("interval")
@@ -99,7 +104,7 @@ impl TriggerHandler for IntervalHandler {
             .and_modify(move |mut a| a.add(ability_id, interval));
     }
 
-    fn register_systems(&self, app: &mut App) {
+    fn register_input_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
             interval_system
@@ -109,4 +114,4 @@ impl TriggerHandler for IntervalHandler {
     }
 }
 
-register_trigger!(IntervalHandler);
+register_node!(IntervalHandler);

@@ -2,9 +2,10 @@ use std::f32::consts::PI;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry, TriggerRegistry};
+use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::{AttachedTo, AbilitySource, HasOnHitTrigger};
-use crate::abilities::events::ExecuteActionEvent;
+use crate::abilities::events::ExecuteNodeEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -27,27 +28,26 @@ pub struct OrbitingMovement {
 
 fn execute_orbiting_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteActionEvent>,
-    action_registry: Res<ActionRegistry>,
+    mut action_events: MessageReader<ExecuteNodeEvent>,
+    node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
-    trigger_registry: Res<TriggerRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
-    let Some(handler_id) = action_registry.get_id("spawn_orbiting") else {
+    let Some(handler_id) = node_registry.get_id("spawn_orbiting") else {
         return;
     };
 
-    let on_hit_id = trigger_registry.get_id("on_hit");
+    let on_hit_id = node_registry.get_id("on_hit");
 
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        let Some(action_def) = ability_def.get_action(event.action_id) else {
+        let Some(node_def) = ability_def.get_node(event.node_id) else {
             continue;
         };
 
-        if action_def.action_type != handler_id {
+        if node_def.node_type != handler_id {
             continue;
         }
 
@@ -57,17 +57,17 @@ fn execute_orbiting_action(
             .cloned()
             .unwrap_or_default();
 
-        let count = action_def
-            .get_i32("count", &caster_stats, &action_registry)
+        let count = node_def
+            .get_i32("count", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_ORB_COUNT);
-        let radius = action_def
-            .get_f32("radius", &caster_stats, &action_registry)
+        let radius = node_def
+            .get_f32("radius", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_ORB_RADIUS);
-        let angular_speed = action_def
-            .get_f32("angular_speed", &caster_stats, &action_registry)
+        let angular_speed = node_def
+            .get_f32("angular_speed", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_ORB_ANGULAR_SPEED);
-        let size = action_def
-            .get_f32("size", &caster_stats, &action_registry)
+        let size = node_def
+            .get_f32("size", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_ORB_SIZE);
 
         let orb_layers = match event.context.caster_faction {
@@ -90,7 +90,7 @@ fn execute_orbiting_action(
                 Name::new("Orb"),
                 AbilitySource::new(
                     event.ability_id,
-                    event.action_id,
+                    event.node_id,
                     event.context.caster,
                     event.context.caster_faction,
                 ),
@@ -116,7 +116,7 @@ fn execute_orbiting_action(
             ));
 
             if let Some(on_hit_id) = on_hit_id {
-                if ability_def.has_trigger(event.action_id, on_hit_id) {
+                if ability_def.has_trigger(event.node_id, on_hit_id) {
                     entity.insert(HasOnHitTrigger);
                 }
             }
@@ -127,9 +127,13 @@ fn execute_orbiting_action(
 #[derive(Default)]
 pub struct SpawnOrbitingHandler;
 
-impl ActionHandler for SpawnOrbitingHandler {
+impl NodeHandler for SpawnOrbitingHandler {
     fn name(&self) -> &'static str {
         "spawn_orbiting"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Action
     }
 
     fn register_execution_system(&self, app: &mut App) {
@@ -167,4 +171,4 @@ fn update_orbiting_positions(
     }
 }
 
-register_action!(SpawnOrbitingHandler);
+register_node!(SpawnOrbitingHandler);

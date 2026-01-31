@@ -1,66 +1,53 @@
 use serde::{Deserialize, Serialize};
 
-use super::ids::{AbilityId, TriggerDefId, ActionDefId, TriggerTypeId};
-use super::trigger_def::{TriggerDef, TriggerDefRaw, ActionDef};
+use super::ids::{AbilityId, NodeDefId, NodeTypeId};
+use super::node::{NodeDef, NodeDefRaw};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[allow(dead_code)]
 pub struct AbilityDefRaw {
     pub id: String,
-    pub trigger: TriggerDefRaw,
+    #[serde(alias = "trigger")]
+    pub root_node: NodeDefRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct AbilityDef {
     pub id: AbilityId,
-    pub root_trigger: TriggerDefId,
-
-    triggers: Vec<TriggerDef>,
-    actions: Vec<ActionDef>,
+    pub root_node: NodeDefId,
+    nodes: Vec<NodeDef>,
 }
 
 impl AbilityDef {
-    pub fn get_trigger(&self, id: TriggerDefId) -> Option<&TriggerDef> {
-        self.triggers.get(id.0 as usize)
-    }
-
-    pub fn get_action(&self, id: ActionDefId) -> Option<&ActionDef> {
-        self.actions.get(id.0 as usize)
+    pub fn get_node(&self, id: NodeDefId) -> Option<&NodeDef> {
+        self.nodes.get(id.0 as usize)
     }
 
     pub fn new(id: AbilityId) -> Self {
         Self {
             id,
-            root_trigger: TriggerDefId(0),
-            triggers: vec![],
-            actions: vec![],
+            root_node: NodeDefId(0),
+            nodes: vec![],
         }
     }
 
-    pub fn add_action(&mut self, def: ActionDef) -> ActionDefId {
-        let id = ActionDefId(self.actions.len() as u32);
-        self.actions.push(def);
+    pub fn add_node(&mut self, def: NodeDef) -> NodeDefId {
+        let id = NodeDefId(self.nodes.len() as u32);
+        self.nodes.push(def);
         id
     }
 
-    pub fn add_trigger(&mut self, def: TriggerDef) -> TriggerDefId {
-        let id = TriggerDefId(self.triggers.len() as u32);
-        self.triggers.push(def);
-        id
+    pub fn set_root_node(&mut self, id: NodeDefId) {
+        self.root_node = id;
     }
 
-    pub fn set_root_trigger(&mut self, id: TriggerDefId) {
-        self.root_trigger = id;
-    }
-
-    pub fn has_trigger(&self, action_id: ActionDefId, trigger_type: TriggerTypeId) -> bool {
-        let Some(action) = self.get_action(action_id) else {
+    pub fn has_trigger(&self, node_id: NodeDefId, trigger_type: NodeTypeId) -> bool {
+        let Some(node) = self.get_node(node_id) else {
             return false;
         };
 
-        action.triggers.iter().any(|&trigger_id| {
-            self.get_trigger(trigger_id)
-                .map(|t| t.trigger_type == trigger_type)
+        node.children.iter().any(|&child_id| {
+            self.get_node(child_id)
+                .map(|n| n.node_type == trigger_type)
                 .unwrap_or(false)
         })
     }

@@ -1,10 +1,9 @@
 pub mod ids;
 mod context;
 mod param;
-mod trigger_def;
+mod node;
 mod ability_def;
 mod components;
-mod registry;
 mod spawn_helpers;
 pub mod events;
 mod dispatcher;
@@ -21,15 +20,13 @@ pub use context::{AbilityContext, ContextValue};
 #[allow(unused_imports)]
 pub use param::{ParamValue, ParamValueRaw};
 #[allow(unused_imports)]
-pub use trigger_def::{TriggerDef, TriggerDefRaw, ActionDef, ActionDefRaw};
+pub use node::{NodeDef, NodeDefRaw, NodeKind, NodeHandler, NodeRegistry, AbilityRegistry};
 #[allow(unused_imports)]
 pub use ability_def::{AbilityDef, AbilityDefRaw};
 #[allow(unused_imports)]
 pub use components::{AbilityInputs, AbilityId, InputState, AbilitySource, HasOnHitTrigger};
 #[allow(unused_imports)]
-pub use ids::{ActionDefId, TriggerDefId};
-#[allow(unused_imports)]
-pub use registry::{TriggerHandler, ActionHandler, TriggerRegistry, ActionRegistry, AbilityRegistry};
+pub use ids::{NodeDefId, NodeTypeId};
 #[allow(unused_imports)]
 pub use spawn_helpers::add_ability_trigger;
 #[allow(unused_imports)]
@@ -49,7 +46,7 @@ use crate::game_state::GameState;
 #[allow(unused_imports)]
 pub use actions::spawn_projectile::Projectile;
 #[allow(unused_imports)]
-pub use events::{TriggerAbilityEvent, ExecuteActionEvent, TriggerEvent};
+pub use events::{TriggerAbilityEvent, ExecuteNodeEvent, NodeTriggerEvent};
 
 fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {
     for mut inputs in &mut query {
@@ -62,22 +59,19 @@ pub struct AbilityPlugin;
 impl Plugin for AbilityPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Messages<TriggerAbilityEvent>>();
-        app.init_resource::<Messages<ExecuteActionEvent>>();
-        app.init_resource::<Messages<TriggerEvent>>();
+        app.init_resource::<Messages<ExecuteNodeEvent>>();
+        app.init_resource::<Messages<NodeTriggerEvent>>();
 
-        let mut trigger_registry = TriggerRegistry::new();
-        triggers::register_all(app, &mut trigger_registry);
+        let mut node_registry = NodeRegistry::new();
+        triggers::register_all(app, &mut node_registry);
+        actions::register_all(app, &mut node_registry);
 
-        let mut action_registry = ActionRegistry::new();
-        actions::register_all(app, &mut action_registry);
-
-        app.insert_resource(trigger_registry)
-            .insert_resource(action_registry)
+        app.insert_resource(node_registry)
             .init_resource::<AbilityRegistry>();
 
         app.add_systems(
             Update,
-            (dispatcher::ability_dispatcher, dispatcher::trigger_dispatcher)
+            (dispatcher::node_ability_dispatcher, dispatcher::node_trigger_dispatcher)
                 .in_set(GameSet::AbilityActivation)
                 .run_if(in_state(GameState::Playing)),
         );

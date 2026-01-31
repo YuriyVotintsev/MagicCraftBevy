@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
 
-use crate::abilities::ids::ParamId;
+use crate::abilities::ids::{ParamId, AbilityId};
 use crate::abilities::param::ParamValue;
-use crate::abilities::registry::TriggerHandler;
-use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
+use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry, AbilityRegistry};
+use crate::abilities::{TriggerAbilityEvent, AbilityInputs, AbilityContext};
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
@@ -85,9 +85,14 @@ pub fn while_held_system(
 #[derive(Default)]
 pub struct WhileHeldHandler;
 
-impl TriggerHandler for WhileHeldHandler {
+
+impl NodeHandler for WhileHeldHandler {
     fn name(&self) -> &'static str {
         "while_held"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Trigger
     }
 
     fn add_to_entity(
@@ -96,7 +101,7 @@ impl TriggerHandler for WhileHeldHandler {
         entity: Entity,
         ability_id: AbilityId,
         params: &HashMap<ParamId, ParamValue>,
-        registry: &TriggerRegistry,
+        registry: &NodeRegistry,
     ) {
         let cooldown = registry
             .get_param_id("cooldown")
@@ -109,7 +114,7 @@ impl TriggerHandler for WhileHeldHandler {
             .and_modify(move |mut a| a.add(ability_id, cooldown));
     }
 
-    fn register_systems(&self, app: &mut App) {
+    fn register_input_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
             while_held_system
@@ -119,4 +124,4 @@ impl TriggerHandler for WhileHeldHandler {
     }
 }
 
-register_trigger!(WhileHeldHandler);
+register_node!(WhileHeldHandler);

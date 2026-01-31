@@ -1,1 +1,1 @@
-collect_actions!(spawn_projectile, orbiting, damage, dash, meteor, shield);
+collect_nodes!(spawn_projectile, orbiting, damage, dash, meteor, shield);

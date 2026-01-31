@@ -1,58 +1,39 @@
 #[macro_export]
-macro_rules! register_trigger {
+macro_rules! register_node {
     ($handler:ty) => {
-        pub fn __register_trigger(
+        pub fn __register_node(
             app: &mut ::bevy::prelude::App,
-            registry: &mut $crate::abilities::TriggerRegistry,
+            registry: &mut $crate::abilities::NodeRegistry,
         ) {
-            use $crate::abilities::registry::TriggerHandler;
+            use $crate::abilities::node::NodeHandler;
             let handler = <$handler>::default();
-            handler.register_systems(app);
+            let kind = <$handler as NodeHandler>::kind(&handler);
+
+            match kind {
+                $crate::abilities::NodeKind::Trigger => {
+                    <$handler as NodeHandler>::register_input_systems(&handler, app);
+                }
+                $crate::abilities::NodeKind::Action => {
+                    <$handler as NodeHandler>::register_execution_system(&handler, app);
+                    <$handler as NodeHandler>::register_behavior_systems(&handler, app);
+                }
+            }
+
             registry.register(Box::new(handler));
         }
     };
 }
 
 #[macro_export]
-macro_rules! collect_triggers {
+macro_rules! collect_nodes {
     ($($module:ident),* $(,)?) => {
         $(pub mod $module;)*
 
         pub fn register_all(
             app: &mut ::bevy::prelude::App,
-            registry: &mut $crate::abilities::TriggerRegistry,
+            registry: &mut $crate::abilities::NodeRegistry,
         ) {
-            $($module::__register_trigger(app, registry);)*
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! collect_actions {
-    ($($module:ident),* $(,)?) => {
-        $(pub mod $module;)*
-
-        pub fn register_all(
-            app: &mut ::bevy::prelude::App,
-            registry: &mut $crate::abilities::ActionRegistry,
-        ) {
-            $($module::__register_action(app, registry);)*
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! register_action {
-    ($handler:ty) => {
-        pub fn __register_action(
-            app: &mut ::bevy::prelude::App,
-            registry: &mut $crate::abilities::ActionRegistry,
-        ) {
-            use $crate::abilities::registry::ActionHandler;
-            let handler = <$handler>::default();
-            handler.register_execution_system(app);
-            handler.register_behavior_systems(app);
-            registry.register(Box::new(handler));
+            $($module::__register_node(app, registry);)*
         }
     };
 }

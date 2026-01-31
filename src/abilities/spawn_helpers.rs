@@ -1,27 +1,27 @@
 use bevy::prelude::*;
 
 use super::ids::AbilityId;
-use super::registry::{AbilityRegistry, TriggerRegistry};
+use super::node::{AbilityRegistry, NodeRegistry};
 
 pub fn add_ability_trigger(
     commands: &mut Commands,
     entity: Entity,
     ability_id: AbilityId,
     ability_registry: &AbilityRegistry,
-    trigger_registry: &TriggerRegistry,
+    node_registry: &NodeRegistry,
 ) {
     let Some(ability_def) = ability_registry.get(ability_id) else {
         return;
     };
 
-    let Some(root_trigger) = ability_def.get_trigger(ability_def.root_trigger) else {
+    let Some(root_node) = ability_def.get_node(ability_def.root_node) else {
         return;
     };
 
-    let Some(handler) = trigger_registry.get(root_trigger.trigger_type) else {
+    let Some(handler) = node_registry.get(root_node.node_type) else {
         warn!(
-            "Unknown trigger type: {:?}",
-            root_trigger.trigger_type
+            "Unknown node type: {:?}",
+            root_node.node_type
         );
         return;
     };
@@ -30,7 +30,8 @@ pub fn add_ability_trigger(
         commands,
         entity,
         ability_id,
-        &root_trigger.params,
-        trigger_registry,
+        &root_node.params,
+        node_registry,
     );
 }
+

@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
 
-use crate::abilities::ids::ParamId;
+use crate::abilities::ids::{ParamId, AbilityId};
 use crate::abilities::param::ParamValue;
-use crate::abilities::registry::TriggerHandler;
-use crate::abilities::{AbilityId, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
+use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry, AbilityRegistry};
+use crate::abilities::{TriggerAbilityEvent, AbilityContext};
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
@@ -67,9 +67,14 @@ pub fn every_frame_system(
 #[derive(Default)]
 pub struct EveryFrameHandler;
 
-impl TriggerHandler for EveryFrameHandler {
+
+impl NodeHandler for EveryFrameHandler {
     fn name(&self) -> &'static str {
         "every_frame"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Trigger
     }
 
     fn add_to_entity(
@@ -78,7 +83,7 @@ impl TriggerHandler for EveryFrameHandler {
         entity: Entity,
         ability_id: AbilityId,
         _params: &HashMap<ParamId, ParamValue>,
-        _registry: &TriggerRegistry,
+        _registry: &NodeRegistry,
     ) {
         commands
             .entity(entity)
@@ -87,7 +92,7 @@ impl TriggerHandler for EveryFrameHandler {
             .and_modify(move |mut a| a.add(ability_id));
     }
 
-    fn register_systems(&self, app: &mut App) {
+    fn register_input_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
             every_frame_system
@@ -97,4 +102,4 @@ impl TriggerHandler for EveryFrameHandler {
     }
 }
 
-register_trigger!(EveryFrameHandler);
+register_node!(EveryFrameHandler);

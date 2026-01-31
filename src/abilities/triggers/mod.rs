@@ -1,1 +1,1 @@
-collect_triggers!(on_input, every_frame, while_held, interval, on_hit);
+collect_nodes!(on_input, every_frame, while_held, interval, on_hit);

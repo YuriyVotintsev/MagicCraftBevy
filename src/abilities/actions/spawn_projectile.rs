@@ -3,9 +3,10 @@ use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
 use rand::Rng;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry, TriggerRegistry};
+use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::context::{AbilityContext, ContextValue};
-use crate::abilities::events::{ExecuteActionEvent, TriggerEvent};
+use crate::abilities::events::{ExecuteNodeEvent, NodeTriggerEvent};
 use crate::abilities::{AbilitySource, HasOnHitTrigger};
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
@@ -31,27 +32,26 @@ pub enum Pierce {
 
 fn execute_spawn_projectile_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteActionEvent>,
-    action_registry: Res<ActionRegistry>,
+    mut action_events: MessageReader<ExecuteNodeEvent>,
+    node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
-    trigger_registry: Res<TriggerRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
-    let Some(handler_id) = action_registry.get_id("spawn_projectile") else {
+    let Some(handler_id) = node_registry.get_id("spawn_projectile") else {
         return;
     };
 
-    let on_hit_id = trigger_registry.get_id("on_hit");
+    let on_hit_id = node_registry.get_id("on_hit");
 
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        let Some(action_def) = ability_def.get_action(event.action_id) else {
+        let Some(node_def) = ability_def.get_node(event.node_id) else {
             continue;
         };
 
-        if action_def.action_type != handler_id {
+        if node_def.node_type != handler_id {
             continue;
         }
 
@@ -61,20 +61,20 @@ fn execute_spawn_projectile_action(
             .cloned()
             .unwrap_or_default();
 
-        let speed = action_def
-            .get_f32("speed", &caster_stats, &action_registry)
+        let speed = node_def
+            .get_f32("speed", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_PROJECTILE_SPEED);
-        let size = action_def
-            .get_f32("size", &caster_stats, &action_registry)
+        let size = node_def
+            .get_f32("size", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_PROJECTILE_SIZE);
-        let spread = action_def
-            .get_f32("spread", &caster_stats, &action_registry)
+        let spread = node_def
+            .get_f32("spread", &caster_stats, &node_registry)
             .unwrap_or(0.0);
-        let lifetime = action_def.get_f32("lifetime", &caster_stats, &action_registry);
-        let start_size = action_def.get_f32("start_size", &caster_stats, &action_registry);
-        let end_size = action_def.get_f32("end_size", &caster_stats, &action_registry);
-        let pierce = action_def
-            .get_i32("pierce", &caster_stats, &action_registry)
+        let lifetime = node_def.get_f32("lifetime", &caster_stats, &node_registry);
+        let start_size = node_def.get_f32("start_size", &caster_stats, &node_registry);
+        let end_size = node_def.get_f32("end_size", &caster_stats, &node_registry);
+        let pierce = node_def
+            .get_i32("pierce", &caster_stats, &node_registry)
             .map(|n| Pierce::Count(n as u32));
 
         let base_direction = event
@@ -116,7 +116,7 @@ fn execute_spawn_projectile_action(
             Projectile { speed, size },
             AbilitySource::new(
                 event.ability_id,
-                event.action_id,
+                event.node_id,
                 event.context.caster,
                 event.context.caster_faction,
             ),
@@ -153,7 +153,7 @@ fn execute_spawn_projectile_action(
         }
 
         if let Some(on_hit_id) = on_hit_id {
-            if ability_def.has_trigger(event.action_id, on_hit_id) {
+            if ability_def.has_trigger(event.node_id, on_hit_id) {
                 entity_commands.insert(HasOnHitTrigger);
             }
         }
@@ -163,9 +163,13 @@ fn execute_spawn_projectile_action(
 #[derive(Default)]
 pub struct SpawnProjectileHandler;
 
-impl ActionHandler for SpawnProjectileHandler {
+impl NodeHandler for SpawnProjectileHandler {
     fn name(&self) -> &'static str {
         "spawn_projectile"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Action
     }
 
     fn register_execution_system(&self, app: &mut App) {
@@ -268,13 +272,13 @@ fn projectile_collision_physics(
 
 fn projectile_on_hit_trigger(
     mut collision_events: MessageReader<CollisionStart>,
-    mut trigger_events: MessageWriter<TriggerEvent>,
+    mut trigger_events: MessageWriter<NodeTriggerEvent>,
     projectile_query: Query<(&AbilitySource, &Faction, &Transform), With<HasOnHitTrigger>>,
     target_query: Query<&Faction, Without<Projectile>>,
     wall_query: Query<(), With<Wall>>,
-    trigger_registry: Res<TriggerRegistry>,
+    node_registry: Res<NodeRegistry>,
 ) {
-    let Some(on_hit_id) = trigger_registry.get_id("on_hit") else {
+    let Some(on_hit_id) = node_registry.get_id("on_hit") else {
         return;
     };
 
@@ -317,13 +321,13 @@ fn projectile_on_hit_trigger(
         );
         ctx.set_param("target", ContextValue::Entity(other_entity));
 
-        trigger_events.write(TriggerEvent {
+        trigger_events.write(NodeTriggerEvent {
             ability_id: source.ability_id,
-            action_id: source.action_id,
+            action_node_id: source.node_id,
             trigger_type: on_hit_id,
             context: ctx,
         });
     }
 }
 
-register_action!(SpawnProjectileHandler);
+register_node!(SpawnProjectileHandler);

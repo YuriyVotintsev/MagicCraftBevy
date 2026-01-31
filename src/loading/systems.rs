@@ -4,10 +4,10 @@ use bevy::prelude::*;
 use std::collections::HashMap;
 
 use crate::abilities::{
-    AbilityDef, AbilityDefRaw, AbilityRegistry, TriggerDef, TriggerDefRaw, TriggerRegistry,
-    ActionDef, ActionDefRaw, ActionRegistry,
+    AbilityDef, AbilityDefRaw, AbilityRegistry,
+    NodeDef, NodeDefRaw, NodeKind, NodeRegistry,
     ParamValue, ParamValueRaw,
-    ActionDefId, TriggerDefId,
+    NodeDefId,
 };
 use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;
@@ -147,8 +147,7 @@ pub fn check_content_loaded(
     ability_assets: Res<Assets<AbilityDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
-    mut trigger_registry: ResMut<TriggerRegistry>,
-    mut action_registry: ResMut<ActionRegistry>,
+    mut node_registry: ResMut<NodeRegistry>,
     mut ability_registry: ResMut<AbilityRegistry>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForContent {
@@ -215,8 +214,7 @@ pub fn check_content_loaded(
                     &ability_asset.0,
                     &stat_registry,
                     &mut ability_registry,
-                    &mut trigger_registry,
-                    &mut action_registry,
+                    &mut node_registry,
                 );
                 info!("Registered ability: {}", ability_asset.0.id);
                 ability_registry.register(ability_def);
@@ -242,167 +240,125 @@ pub fn finalize_loading(
 
 struct AbilityBuilder {
     id: crate::abilities::AbilityId,
-    triggers: Vec<TriggerDef>,
-    actions: Vec<ActionDef>,
+    nodes: Vec<NodeDef>,
 }
 
 impl AbilityBuilder {
     fn new(id: crate::abilities::AbilityId) -> Self {
         Self {
             id,
-            triggers: vec![],
-            actions: vec![],
+            nodes: vec![],
         }
     }
 
-    fn add_action(&mut self, def: ActionDef) -> ActionDefId {
-        let id = ActionDefId(self.actions.len() as u32);
-        self.actions.push(def);
+    fn add_node(&mut self, def: NodeDef) -> NodeDefId {
+        let id = NodeDefId(self.nodes.len() as u32);
+        self.nodes.push(def);
         id
     }
 
-    fn add_trigger(&mut self, def: TriggerDef) -> TriggerDefId {
-        let id = TriggerDefId(self.triggers.len() as u32);
-        self.triggers.push(def);
-        id
-    }
-
-    fn build(self, root_trigger: TriggerDefId) -> AbilityDef {
+    fn build(self, root_node: NodeDefId) -> AbilityDef {
         let mut ability = AbilityDef::new(self.id);
-        ability.set_root_trigger(root_trigger);
-        for action in self.actions {
-            ability.add_action(action);
-        }
-        for trigger in self.triggers {
-            ability.add_trigger(trigger);
+        ability.set_root_node(root_node);
+        for node in self.nodes {
+            ability.add_node(node);
         }
         ability
     }
-}
-
-fn resolve_param_value(
-    raw: &ParamValueRaw,
-    stat_registry: &StatRegistry,
-    trigger_registry: &mut TriggerRegistry,
-    action_registry: &mut ActionRegistry,
-    builder: &mut AbilityBuilder,
-) -> ParamValue {
-    match raw {
-        ParamValueRaw::Float(v) => ParamValue::Float(*v),
-        ParamValueRaw::Int(v) => ParamValue::Int(*v),
-        ParamValueRaw::Bool(v) => ParamValue::Bool(*v),
-        ParamValueRaw::String(v) => ParamValue::String(v.clone()),
-        ParamValueRaw::Stat(name) => {
-            let stat_id = stat_registry.get(name)
-                .unwrap_or_else(|| panic!("Param references unknown stat '{}'", name));
-            ParamValue::Stat(stat_id)
-        }
-        ParamValueRaw::Action(raw_action) => {
-            let action_id = resolve_action_def(raw_action, stat_registry, trigger_registry, action_registry, builder);
-            ParamValue::Action(action_id)
-        }
-        ParamValueRaw::ActionList(raw_actions) => {
-            let action_ids = raw_actions
-                .iter()
-                .map(|a| resolve_action_def(a, stat_registry, trigger_registry, action_registry, builder))
-                .collect();
-            ParamValue::ActionList(action_ids)
-        }
-    }
-}
-
-fn resolve_action_def(
-    raw: &ActionDefRaw,
-    stat_registry: &StatRegistry,
-    trigger_registry: &mut TriggerRegistry,
-    action_registry: &mut ActionRegistry,
-    builder: &mut AbilityBuilder,
-) -> ActionDefId {
-    let (name, params_raw, triggers_raw) = match raw {
-        ActionDefRaw::Full(n, p, t) => (n, p.clone(), t.clone()),
-        ActionDefRaw::NoTriggers(n, p) => (n, p.clone(), vec![]),
-        ActionDefRaw::NoParams(n, t) => (n, HashMap::new(), t.clone()),
-        ActionDefRaw::OnlyName(n) => (n, HashMap::new(), vec![]),
-    };
-
-    let action_type = action_registry.get_id(name)
-        .unwrap_or_else(|| panic!("Unknown action type '{}'", name));
-
-    let trigger_ids: Vec<TriggerDefId> = triggers_raw
-        .iter()
-        .map(|t| resolve_trigger_def(t, stat_registry, trigger_registry, action_registry, builder))
-        .collect();
-
-    let params = params_raw
-        .iter()
-        .map(|(name, value)| {
-            let param_id = action_registry.get_or_insert_param_id(name);
-            let resolved = resolve_param_value(value, stat_registry, trigger_registry, action_registry, builder);
-            (param_id, resolved)
-        })
-        .collect();
-
-    let action_def = ActionDef {
-        action_type,
-        params,
-        triggers: trigger_ids,
-    };
-
-    builder.add_action(action_def)
-}
-
-
-fn resolve_trigger_def(
-    raw: &TriggerDefRaw,
-    stat_registry: &StatRegistry,
-    trigger_registry: &mut TriggerRegistry,
-    action_registry: &mut ActionRegistry,
-    builder: &mut AbilityBuilder,
-) -> TriggerDefId {
-    let (name, params_raw, actions_raw) = match raw {
-        TriggerDefRaw::Full(n, p, a) => (n, p.clone(), a.clone()),
-        TriggerDefRaw::NoActions(n, p) => (n, p.clone(), vec![]),
-        TriggerDefRaw::NoParams(n, a) => (n, HashMap::new(), a.clone()),
-        TriggerDefRaw::OnlyName(n) => (n, HashMap::new(), vec![]),
-    };
-
-    let trigger_type = trigger_registry.get_id(name)
-        .unwrap_or_else(|| panic!("Unknown trigger type '{}'", name));
-
-    let action_ids: Vec<ActionDefId> = actions_raw
-        .iter()
-        .map(|a| resolve_action_def(a, stat_registry, trigger_registry, action_registry, builder))
-        .collect();
-
-    let params = params_raw
-        .iter()
-        .map(|(name, value)| {
-            let param_id = trigger_registry.get_or_insert_param_id(name);
-            let resolved_value = resolve_param_value(value, stat_registry, trigger_registry, action_registry, builder);
-            (param_id, resolved_value)
-        })
-        .collect();
-
-    let trigger_def = TriggerDef {
-        trigger_type,
-        params,
-        actions: action_ids,
-    };
-
-    builder.add_trigger(trigger_def)
 }
 
 fn resolve_ability_def(
     raw: &AbilityDefRaw,
     stat_registry: &StatRegistry,
     ability_registry: &mut AbilityRegistry,
-    trigger_registry: &mut TriggerRegistry,
-    action_registry: &mut ActionRegistry,
+    node_registry: &mut NodeRegistry,
 ) -> AbilityDef {
     let id = ability_registry.allocate_id(&raw.id);
     let mut builder = AbilityBuilder::new(id);
 
-    let root_trigger_id = resolve_trigger_def(&raw.trigger, stat_registry, trigger_registry, action_registry, &mut builder);
+    let root_node_id = resolve_node_def(
+        &raw.root_node,
+        None,
+        stat_registry,
+        node_registry,
+        &mut builder,
+    );
 
-    builder.build(root_trigger_id)
+    if let Some(root_def) = builder.nodes.last() {
+        if root_def.kind != NodeKind::Trigger {
+            panic!(
+                "Ability '{}' root node must be a Trigger, but got {}",
+                raw.id, root_def.kind
+            );
+        }
+    }
+
+    builder.build(root_node_id)
+}
+
+fn resolve_node_params(
+    params_raw: &HashMap<String, ParamValueRaw>,
+    stat_registry: &StatRegistry,
+    node_registry: &mut NodeRegistry,
+) -> HashMap<crate::abilities::ids::ParamId, ParamValue> {
+    params_raw
+        .iter()
+        .map(|(name, value)| {
+            let param_id = node_registry.get_or_insert_param_id(name);
+            let resolved = match value {
+                ParamValueRaw::Float(v) => ParamValue::Float(*v),
+                ParamValueRaw::Int(v) => ParamValue::Int(*v),
+                ParamValueRaw::Bool(v) => ParamValue::Bool(*v),
+                ParamValueRaw::String(v) => ParamValue::String(v.clone()),
+                ParamValueRaw::Stat(name) => {
+                    let stat_id = stat_registry.get(name)
+                        .unwrap_or_else(|| panic!("Param references unknown stat '{}'", name));
+                    ParamValue::Stat(stat_id)
+                }
+                ParamValueRaw::Action(_) | ParamValueRaw::ActionList(_) => {
+                    panic!("Action parameters not supported in Node system");
+                }
+            };
+            (param_id, resolved)
+        })
+        .collect()
+}
+
+fn resolve_node_def(
+    raw: &NodeDefRaw,
+    parent_kind: Option<NodeKind>,
+    stat_registry: &StatRegistry,
+    node_registry: &mut NodeRegistry,
+    builder: &mut AbilityBuilder,
+) -> NodeDefId {
+    let (name, params_raw, children_raw) = raw.clone().destructure();
+
+    let node_type = node_registry.get_id(&name)
+        .unwrap_or_else(|| panic!("Unknown node type '{}'", name));
+
+    let kind = node_registry.get_kind(node_type);
+
+    if let Some(parent_kind) = parent_kind {
+        if kind == parent_kind {
+            panic!(
+                "Invalid ability structure at '{}': {} cannot be a child of {}.\n\
+                 Nodes must alternate: Trigger → Action → Trigger → Action",
+                name, kind, parent_kind
+            );
+        }
+    }
+
+    let children: Vec<NodeDefId> = children_raw
+        .iter()
+        .map(|c| resolve_node_def(c, Some(kind), stat_registry, node_registry, builder))
+        .collect();
+
+    let params = resolve_node_params(&params_raw, stat_registry, node_registry);
+
+    builder.add_node(NodeDef {
+        kind,
+        node_type,
+        params,
+        children,
+    })
 }

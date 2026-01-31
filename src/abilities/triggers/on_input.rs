@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
 
-use crate::abilities::ids::ParamId;
+use crate::abilities::ids::{ParamId, AbilityId};
 use crate::abilities::param::ParamValue;
-use crate::abilities::registry::TriggerHandler;
-use crate::abilities::{AbilityId, AbilityInputs, AbilityRegistry, TriggerRegistry, AbilityContext, TriggerAbilityEvent};
+use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry, AbilityRegistry};
+use crate::abilities::{TriggerAbilityEvent, AbilityInputs, AbilityContext};
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
@@ -68,9 +68,14 @@ pub fn on_input_system(
 #[derive(Default)]
 pub struct OnInputHandler;
 
-impl TriggerHandler for OnInputHandler {
+
+impl NodeHandler for OnInputHandler {
     fn name(&self) -> &'static str {
         "on_input"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Trigger
     }
 
     fn add_to_entity(
@@ -79,7 +84,7 @@ impl TriggerHandler for OnInputHandler {
         entity: Entity,
         ability_id: AbilityId,
         _params: &HashMap<ParamId, ParamValue>,
-        _registry: &TriggerRegistry,
+        _registry: &NodeRegistry,
     ) {
         commands
             .entity(entity)
@@ -88,7 +93,7 @@ impl TriggerHandler for OnInputHandler {
             .and_modify(move |mut a| a.add(ability_id));
     }
 
-    fn register_systems(&self, app: &mut App) {
+    fn register_input_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
             on_input_system
@@ -98,4 +103,4 @@ impl TriggerHandler for OnInputHandler {
     }
 }
 
-register_trigger!(OnInputHandler);
+register_node!(OnInputHandler);

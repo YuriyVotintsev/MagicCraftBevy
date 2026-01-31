@@ -78,6 +78,14 @@ src/
 └── game_state.rs    # GameState enum
 ```
 
+## File Operations
+
+**IMPORTANT:** Never use `cat`, `sed`, `awk`, `echo >`, or heredocs for file editing. Always use dedicated tools:
+- **Read files:** Use Read tool (not cat/head/tail)
+- **Edit files:** Use Edit tool (not sed/awk)
+- **Write files:** Use Write tool (not echo/cat with heredoc)
+- **Bash tool:** Only for actual terminal operations (git, cargo, npm, etc.)
+
 ## Common Development Tasks
 
 **Add new ability type:**

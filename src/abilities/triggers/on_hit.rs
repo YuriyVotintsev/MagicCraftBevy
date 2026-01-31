@@ -1,16 +1,21 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
 
-use crate::abilities::registry::TriggerHandler;
+use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
 use crate::abilities::ids::{AbilityId, ParamId};
 use crate::abilities::param::ParamValue;
 
 #[derive(Default)]
 pub struct OnHitTrigger;
 
-impl TriggerHandler for OnHitTrigger {
+
+impl NodeHandler for OnHitTrigger {
     fn name(&self) -> &'static str {
         "on_hit"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Trigger
     }
 
     fn add_to_entity(
@@ -19,12 +24,12 @@ impl TriggerHandler for OnHitTrigger {
         _entity: Entity,
         _ability_id: AbilityId,
         _params: &HashMap<ParamId, ParamValue>,
-        _registry: &crate::abilities::TriggerRegistry,
+        _registry: &NodeRegistry,
     ) {
     }
 
-    fn register_systems(&self, _app: &mut App) {
+    fn register_input_systems(&self, _app: &mut App) {
     }
 }
 
-register_trigger!(OnHitTrigger);
+register_node!(OnHitTrigger);

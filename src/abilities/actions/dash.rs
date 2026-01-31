@@ -1,8 +1,9 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::registry::{ActionHandler, ActionRegistry, AbilityRegistry};
-use crate::abilities::events::ExecuteActionEvent;
+use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::events::ExecuteNodeEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -25,14 +26,14 @@ pub struct PreDashLayers(pub CollisionLayers);
 
 fn execute_dash_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteActionEvent>,
-    action_registry: Res<ActionRegistry>,
+    mut action_events: MessageReader<ExecuteNodeEvent>,
+    node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
     mut invuln_query: Query<&mut InvulnerableStack>,
     collision_query: Query<&CollisionLayers>,
 ) {
-    let Some(handler_id) = action_registry.get_id("dash") else {
+    let Some(handler_id) = node_registry.get_id("dash") else {
         return;
     };
 
@@ -40,11 +41,11 @@ fn execute_dash_action(
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
             continue;
         };
-        let Some(action_def) = ability_def.get_action(event.action_id) else {
+        let Some(node_def) = ability_def.get_node(event.node_id) else {
             continue;
         };
 
-        if action_def.action_type != handler_id {
+        if node_def.node_type != handler_id {
             continue;
         }
 
@@ -54,11 +55,11 @@ fn execute_dash_action(
             .cloned()
             .unwrap_or_default();
 
-        let speed = action_def
-            .get_f32("speed", &caster_stats, &action_registry)
+        let speed = node_def
+            .get_f32("speed", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_DASH_SPEED);
-        let duration = action_def
-            .get_f32("duration", &caster_stats, &action_registry)
+        let duration = node_def
+            .get_f32("duration", &caster_stats, &node_registry)
             .unwrap_or(DEFAULT_DASH_DURATION);
 
         let direction = event
@@ -103,9 +104,13 @@ fn execute_dash_action(
 #[derive(Default)]
 pub struct DashHandler;
 
-impl ActionHandler for DashHandler {
+impl NodeHandler for DashHandler {
     fn name(&self) -> &'static str {
         "dash"
+    }
+
+    fn kind(&self) -> NodeKind {
+        NodeKind::Action
     }
 
     fn register_execution_system(&self, app: &mut App) {
@@ -150,4 +155,4 @@ fn update_dashing(
     }
 }
 
-register_action!(DashHandler);
+register_node!(DashHandler);

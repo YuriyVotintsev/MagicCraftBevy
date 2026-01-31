@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 
 use crate::stats::{ComputedStats, Expression, StatId};
-use super::ids::ActionDefId;
+use super::ids::NodeDefId;
+use super::node::NodeDefRaw;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
@@ -11,11 +12,9 @@ pub enum ParamValueRaw {
     Bool(bool),
     String(String),
     Stat(String),
-    Action(Box<ActionDefRaw>),
-    ActionList(Vec<ActionDefRaw>),
+    Action(Box<NodeDefRaw>),
+    ActionList(Vec<NodeDefRaw>),
 }
-
-use super::trigger_def::ActionDefRaw;
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
@@ -26,8 +25,8 @@ pub enum ParamValue {
     String(String),
     Stat(StatId),
     Expr(Expression),
-    Action(ActionDefId),
-    ActionList(Vec<ActionDefId>),
+    Action(NodeDefId),
+    ActionList(Vec<NodeDefId>),
 }
 
 impl ParamValue {
@@ -91,7 +90,7 @@ impl ParamValue {
         }
     }
 
-    pub fn as_action_list(&self) -> Option<&Vec<ActionDefId>> {
+    pub fn as_action_list(&self) -> Option<&Vec<NodeDefId>> {
         match self {
             Self::ActionList(v) => Some(v),
             _ => None,

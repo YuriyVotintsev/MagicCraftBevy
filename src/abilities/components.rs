@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use crate::faction::Faction;
-pub use super::ids::{AbilityId, ActionDefId};
+pub use super::ids::{AbilityId, NodeDefId};
 
 #[derive(Clone, Default)]
 pub struct InputState {
@@ -39,16 +39,16 @@ impl AbilityInputs {
 #[derive(Component, Clone, Copy)]
 pub struct AbilitySource {
     pub ability_id: AbilityId,
-    pub action_id: ActionDefId,
+    pub node_id: NodeDefId,
     pub caster: Entity,
     pub caster_faction: Faction,
 }
 
 impl AbilitySource {
-    pub fn new(ability_id: AbilityId, action_id: ActionDefId, caster: Entity, faction: Faction) -> Self {
+    pub fn new(ability_id: AbilityId, node_id: NodeDefId, caster: Entity, faction: Faction) -> Self {
         Self {
             ability_id,
-            action_id,
+            node_id,
             caster,
             caster_faction: faction,
         }
