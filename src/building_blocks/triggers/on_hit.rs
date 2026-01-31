@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
+use crate::register_node;
 
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
 use crate::abilities::ids::{AbilityId, ParamId};

@@ -1,7 +1,7 @@
 pub mod ids;
-mod context;
-mod param;
-mod node;
+pub mod context;
+pub mod param;
+pub mod node;
 mod ability_def;
 mod components;
 mod spawn_helpers;
@@ -12,8 +12,8 @@ mod lifecycle;
 #[macro_use]
 mod macros;
 
-pub mod triggers;
-pub mod actions;
+pub use crate::building_blocks::triggers;
+pub use crate::building_blocks::actions;
 
 #[allow(unused_imports)]
 pub use context::{AbilityContext, ContextValue};
@@ -31,8 +31,8 @@ pub use ids::{NodeDefId, NodeTypeId};
 pub use spawn_helpers::add_ability_trigger;
 #[allow(unused_imports)]
 pub use lifecycle::AttachedTo;
-#[allow(unused_imports)]
-pub use triggers::{
+
+pub use crate::building_blocks::triggers::{
     on_input::OnInputTriggers, every_frame::EveryFrameTriggers,
     while_held::WhileHeldTriggers, interval::IntervalTriggers,
 };
@@ -44,7 +44,7 @@ use crate::wave::WavePhase;
 use crate::game_state::GameState;
 
 #[allow(unused_imports)]
-pub use actions::spawn_projectile::Projectile;
+pub use crate::building_blocks::actions::spawn_projectile::Projectile;
 #[allow(unused_imports)]
 pub use events::{TriggerAbilityEvent, ExecuteNodeEvent, NodeTriggerEvent};
 

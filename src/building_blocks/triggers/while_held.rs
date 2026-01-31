@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
+use crate::register_node;
 
 use crate::abilities::ids::{ParamId, AbilityId};
 use crate::abilities::param::ParamValue;
@@ -10,38 +11,53 @@ use crate::Faction;
 use crate::GameState;
 
 #[derive(Component, Default)]
-pub struct OnInputTriggers {
-    pub entries: Vec<OnInputEntry>,
+pub struct WhileHeldTriggers {
+    pub entries: Vec<WhileHeldEntry>,
 }
 
-pub struct OnInputEntry {
+pub struct WhileHeldEntry {
     pub ability_id: AbilityId,
+    pub cooldown: ParamValue,
+    pub timer: f32,
 }
 
-impl OnInputTriggers {
-    pub fn add(&mut self, ability_id: AbilityId) {
-        self.entries.push(OnInputEntry { ability_id });
+impl WhileHeldTriggers {
+    pub fn add(&mut self, ability_id: AbilityId, cooldown: ParamValue) {
+        self.entries.push(WhileHeldEntry {
+            ability_id,
+            cooldown,
+            timer: 0.0,
+        });
     }
 }
 
-pub fn on_input_system(
+pub fn while_held_system(
     mut trigger_events: MessageWriter<TriggerAbilityEvent>,
-    query: Query<(
+    time: Res<Time>,
+    mut query: Query<(
         Entity,
-        &OnInputTriggers,
+        &mut WhileHeldTriggers,
         &AbilityInputs,
         &Transform,
         &Faction,
     )>,
     ability_registry: Res<AbilityRegistry>,
 ) {
-    for (entity, triggers, inputs, transform, faction) in &query {
-        for entry in &triggers.entries {
+    let delta = time.delta_secs();
+
+    for (entity, mut triggers, inputs, transform, faction) in &mut query {
+        for entry in &mut triggers.entries {
+            entry.timer = (entry.timer - delta).max(0.0);
+
             let Some(input) = inputs.get(entry.ability_id) else {
                 continue;
             };
 
-            if !input.just_pressed {
+            if !input.pressed {
+                continue;
+            }
+
+            if entry.timer > 0.0 {
                 continue;
             }
 
@@ -61,17 +77,19 @@ pub fn on_input_system(
                 ability_id: entry.ability_id,
                 context: ctx,
             });
+
+            entry.timer = entry.cooldown.as_float().unwrap_or(0.05);
         }
     }
 }
 
 #[derive(Default)]
-pub struct OnInputHandler;
+pub struct WhileHeldHandler;
 
 
-impl NodeHandler for OnInputHandler {
+impl NodeHandler for WhileHeldHandler {
     fn name(&self) -> &'static str {
-        "on_input"
+        "while_held"
     }
 
     fn kind(&self) -> NodeKind {
@@ -83,24 +101,28 @@ impl NodeHandler for OnInputHandler {
         commands: &mut Commands,
         entity: Entity,
         ability_id: AbilityId,
-        _params: &HashMap<ParamId, ParamValue>,
-        _registry: &NodeRegistry,
+        params: &HashMap<ParamId, ParamValue>,
+        registry: &NodeRegistry,
     ) {
+        let cooldown = registry
+            .get_param_id("cooldown")
+            .and_then(|id| params.get(&id).cloned())
+            .unwrap_or(ParamValue::Float(0.05));
         commands
             .entity(entity)
-            .entry::<OnInputTriggers>()
+            .entry::<WhileHeldTriggers>()
             .or_default()
-            .and_modify(move |mut a| a.add(ability_id));
+            .and_modify(move |mut a| a.add(ability_id, cooldown));
     }
 
     fn register_input_systems(&self, app: &mut App) {
         app.add_systems(
             Update,
-            on_input_system
+            while_held_system
                 .in_set(GameSet::AbilityActivation)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-register_node!(OnInputHandler);
+register_node!(WhileHeldHandler);

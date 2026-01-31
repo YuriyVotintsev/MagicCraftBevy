@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use crate::register_node;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::node::{NodeHandler, NodeKind};

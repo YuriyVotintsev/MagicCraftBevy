@@ -1,6 +1,7 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
+use crate::register_node;
 use rand::Rng;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
