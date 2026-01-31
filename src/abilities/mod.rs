@@ -4,10 +4,8 @@ pub mod param;
 pub mod node;
 mod ability_def;
 mod components;
-mod spawn_helpers;
 pub mod events;
 mod dispatcher;
-mod lifecycle;
 
 #[macro_use]
 mod macros;
@@ -21,8 +19,7 @@ pub use node::{NodeDef, NodeDefRaw, NodeKind, NodeRegistry, AbilityRegistry};
 pub use ability_def::{AbilityDef, AbilityDefRaw};
 pub use components::{AbilityInputs, InputState, AbilitySource};
 pub use ids::NodeDefId;
-pub use spawn_helpers::add_ability_trigger;
-pub use lifecycle::AttachedTo;
+pub use node::attach_ability;
 
 use bevy::prelude::*;
 
@@ -68,7 +65,5 @@ impl Plugin for AbilityPlugin {
         );
 
         app.add_systems(OnExit(WavePhase::Combat), clear_ability_inputs);
-
-        lifecycle::register_lifecycle_systems(app);
     }
 }

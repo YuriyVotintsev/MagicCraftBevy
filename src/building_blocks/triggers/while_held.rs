@@ -7,6 +7,7 @@ use crate::abilities::param::ParamValue;
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry, AbilityRegistry};
 use crate::abilities::{TriggerAbilityEvent, AbilityInputs, AbilityContext};
 use crate::schedule::GameSet;
+use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
@@ -40,12 +41,13 @@ pub fn while_held_system(
         &AbilityInputs,
         &Transform,
         &Faction,
+        &ComputedStats,
     )>,
     ability_registry: Res<AbilityRegistry>,
 ) {
     let delta = time.delta_secs();
 
-    for (entity, mut triggers, inputs, transform, faction) in &mut query {
+    for (entity, mut triggers, inputs, transform, faction, stats) in &mut query {
         for entry in &mut triggers.entries {
             entry.timer = (entry.timer - delta).max(0.0);
 
@@ -78,7 +80,7 @@ pub fn while_held_system(
                 context: ctx,
             });
 
-            entry.timer = entry.cooldown.as_float().unwrap_or(0.05);
+            entry.timer = entry.cooldown.evaluate_f32(stats);
         }
     }
 }

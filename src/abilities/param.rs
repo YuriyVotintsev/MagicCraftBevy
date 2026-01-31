@@ -1,21 +1,20 @@
 use serde::{Deserialize, Serialize};
 
 use crate::stats::{ComputedStats, StatId};
-use super::node::NodeDefRaw;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ParamValueRaw {
     Float(f32),
     Int(i32),
+    Bool(bool),
     Stat(String),
-    Action(Box<NodeDefRaw>),
-    ActionList(Vec<NodeDefRaw>),
 }
 
 #[derive(Debug, Clone)]
 pub enum ParamValue {
     Float(f32),
     Int(i32),
+    Bool(bool),
     Stat(StatId),
 }
 
@@ -24,6 +23,7 @@ impl ParamValue {
         match self {
             Self::Float(v) => *v,
             Self::Int(v) => *v as f32,
+            Self::Bool(v) => if *v { 1.0 } else { 0.0 },
             Self::Stat(stat_id) => stats.get(*stat_id),
         }
     }
@@ -32,14 +32,17 @@ impl ParamValue {
         match self {
             Self::Int(v) => *v,
             Self::Float(v) => *v as i32,
+            Self::Bool(v) => *v as i32,
             Self::Stat(stat_id) => stats.get(*stat_id) as i32,
         }
     }
 
-    pub fn as_float(&self) -> Option<f32> {
+    pub fn as_bool(&self) -> bool {
         match self {
-            Self::Float(v) => Some(*v),
-            Self::Int(_) | Self::Stat(_) => None,
+            Self::Bool(v) => *v,
+            Self::Int(v) => *v != 0,
+            Self::Float(v) => *v != 0.0,
+            Self::Stat(_) => false,
         }
     }
 }

@@ -306,13 +306,11 @@ fn resolve_node_params(
             let resolved = match value {
                 ParamValueRaw::Float(v) => ParamValue::Float(*v),
                 ParamValueRaw::Int(v) => ParamValue::Int(*v),
+                ParamValueRaw::Bool(v) => ParamValue::Bool(*v),
                 ParamValueRaw::Stat(name) => {
                     let stat_id = stat_registry.get(name)
                         .unwrap_or_else(|| panic!("Param references unknown stat '{}'", name));
                     ParamValue::Stat(stat_id)
-                }
-                ParamValueRaw::Action(_) | ParamValueRaw::ActionList(_) => {
-                    panic!("Action parameters not supported in Node system");
                 }
             };
             (param_id, resolved)

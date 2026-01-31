@@ -7,6 +7,7 @@ use crate::abilities::param::ParamValue;
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
 use crate::abilities::{AbilityRegistry, AbilityContext, TriggerAbilityEvent};
 use crate::schedule::GameSet;
+use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
@@ -19,15 +20,16 @@ pub struct IntervalEntry {
     pub ability_id: AbilityId,
     pub interval: ParamValue,
     pub timer: f32,
+    pub skip_first: bool,
 }
 
 impl IntervalTriggers {
-    pub fn add(&mut self, ability_id: AbilityId, interval: ParamValue) {
-        let initial_timer = interval.as_float().unwrap_or(1.0);
+    pub fn add(&mut self, ability_id: AbilityId, interval: ParamValue, skip_first: bool) {
         self.entries.push(IntervalEntry {
             ability_id,
             interval,
-            timer: initial_timer,
+            timer: 0.0,
+            skip_first,
         });
     }
 }
@@ -40,13 +42,20 @@ pub fn interval_system(
         &mut IntervalTriggers,
         &Transform,
         &Faction,
+        &ComputedStats,
     )>,
     ability_registry: Res<AbilityRegistry>,
 ) {
     let delta = time.delta_secs();
 
-    for (entity, mut triggers, transform, faction) in &mut query {
+    for (entity, mut triggers, transform, faction, stats) in &mut query {
         for entry in &mut triggers.entries {
+            if entry.skip_first {
+                entry.timer = entry.interval.evaluate_f32(stats);
+                entry.skip_first = false;
+                continue;
+            }
+
             entry.timer -= delta;
 
             if entry.timer > 0.0 {
@@ -68,7 +77,7 @@ pub fn interval_system(
                 context: ctx,
             });
 
-            entry.timer = entry.interval.as_float().unwrap_or(1.0);
+            entry.timer = entry.interval.evaluate_f32(stats);
         }
     }
 }
@@ -98,11 +107,16 @@ impl NodeHandler for IntervalHandler {
             .get_param_id("interval")
             .and_then(|id| params.get(&id).cloned())
             .unwrap_or(ParamValue::Float(1.0));
+        let skip_first = registry
+            .get_param_id("skip_first")
+            .and_then(|id| params.get(&id))
+            .map(|v| v.as_bool())
+            .unwrap_or(true);
         commands
             .entity(entity)
             .entry::<IntervalTriggers>()
             .or_default()
-            .and_modify(move |mut a| a.add(ability_id, interval));
+            .and_modify(move |mut a| a.add(ability_id, interval, skip_first));
     }
 
     fn register_input_systems(&self, app: &mut App) {

@@ -2,7 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::Faction;
-use crate::abilities::{AbilityInputs, AbilityRegistry, NodeRegistry, add_ability_trigger};
+use crate::abilities::{AbilityInputs, AbilityRegistry, NodeRegistry, attach_ability};
 use crate::wave::WavePhase;
 use crate::stats::{
     ComputedStats, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
@@ -105,7 +105,7 @@ pub fn spawn_mob(
 
     for ability_name in &mob_def.abilities {
         if let Some(ability_id) = ability_registry.get_id(ability_name) {
-            add_ability_trigger(commands, entity, ability_id, ability_registry, node_registry);
+            attach_ability(commands, entity, ability_id, ability_registry, node_registry);
         }
     }
 

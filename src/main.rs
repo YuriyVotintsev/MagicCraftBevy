@@ -1,5 +1,6 @@
 mod abilities;
 mod arena;
+mod common;
 mod components;
 mod faction;
 mod fsm;
@@ -25,6 +26,7 @@ use bevy::prelude::*;
 
 use abilities::AbilityPlugin;
 use arena::ArenaPlugin;
+use common::CommonPlugin;
 use components::{tick_growing, tick_lifetime};
 use fsm::FsmPlugin;
 use loading::LoadingPlugin;
@@ -159,6 +161,7 @@ fn main() {
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
             LoadingPlugin,
+            CommonPlugin,
             ArenaPlugin,
             PlayerPlugin,
             StatsPlugin,
