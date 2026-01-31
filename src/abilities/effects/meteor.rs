@@ -87,6 +87,7 @@ fn execute_meteor_action(
                 event.context.caster,
                 event.context.caster_faction,
             ),
+            Transform::from_translation(event.context.source_point),
         ));
     }
 }

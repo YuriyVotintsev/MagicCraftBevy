@@ -18,5 +18,4 @@
         "crit_chance_base": 0.05,
         "crit_multiplier_base": 1.5,
     },
-    abilities: ["fireball"],
 )

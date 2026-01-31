@@ -10,8 +10,6 @@ pub struct PlayerDef {
     #[serde(default = "default_player_collider")]
     pub collider: ColliderDef,
     pub base_stats: HashMap<String, f32>,
-    #[allow(dead_code)]
-    pub abilities: Vec<String>,
 }
 
 fn default_player_collider() -> ColliderDef {

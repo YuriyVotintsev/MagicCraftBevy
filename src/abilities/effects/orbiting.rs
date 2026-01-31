@@ -78,7 +78,7 @@ fn execute_orbiting_action(
         for i in 0..count {
             let angle = 2.0 * PI * (i as f32) / (count as f32);
             let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
-            let position = event.context.caster_position + offset.extend(0.0);
+            let position = event.context.source_point + offset.extend(0.0);
 
             commands.spawn((
                 Name::new("Orb"),

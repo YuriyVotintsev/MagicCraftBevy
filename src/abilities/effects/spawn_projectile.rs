@@ -126,7 +126,7 @@ fn execute_spawn_projectile_action(
                 custom_size: Some(Vec2::splat(initial_size)),
                 ..default()
             },
-            Transform::from_translation(event.context.caster_position),
+            Transform::from_translation(event.context.source_point),
         ));
 
         if let Some(pierce) = pierce {
@@ -177,7 +177,7 @@ fn projectile_collision(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
     mut action_events: MessageWriter<ExecuteActionEvent>,
-    projectile_query: Query<(&Projectile, &AbilitySource, &Faction)>,
+    projectile_query: Query<(&Projectile, &AbilitySource, &Faction, &Transform)>,
     mut pierce_query: Query<&mut Pierce>,
     target_query: Query<&Faction, Without<Projectile>>,
     wall_query: Query<(), With<Wall>>,
@@ -225,7 +225,7 @@ fn projectile_collision(
             continue;
         }
 
-        let Ok((_projectile, source, proj_faction)) = projectile_query.get(projectile_entity) else {
+        let Ok((_projectile, source, proj_faction, projectile_transform)) = projectile_query.get(projectile_entity) else {
             continue;
         };
         let Ok(target_faction) = target_query.get(other_entity) else {
@@ -243,7 +243,7 @@ fn projectile_collision(
             let mut ctx = AbilityContext::new(
                 source.caster,
                 source.caster_faction,
-                Vec3::ZERO,
+                projectile_transform.translation,
             );
             ctx.set_param("target", ContextValue::Entity(other_entity));
 

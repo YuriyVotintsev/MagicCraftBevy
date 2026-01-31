@@ -18,7 +18,7 @@ pub enum ContextValue {
 pub struct AbilityContext {
     pub caster: Entity,
     pub caster_faction: Faction,
-    pub caster_position: Vec3,
+    pub source_point: Vec3,
     pub target_point: Option<Vec3>,
     pub target_direction: Option<Vec3>,
     pub params: HashMap<String, ContextValue>,
@@ -33,7 +33,7 @@ impl AbilityContext {
         Self {
             caster,
             caster_faction,
-            caster_position: position,
+            source_point: position,
             target_point: None,
             target_direction: None,
             params: HashMap::new(),
