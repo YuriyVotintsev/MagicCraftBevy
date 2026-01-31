@@ -1,8 +1,10 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
 use crate::stats::{ComputedStats, Expression, StatId};
-use super::ids::{EffectTypeId, ParamId};
+use super::ids::{ActionTypeId, ParamId};
+use super::trigger_def::ActionDef;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
@@ -12,9 +14,11 @@ pub enum ParamValueRaw {
     Bool(bool),
     String(String),
     Stat(String),
-    Effect(Box<EffectDefRaw>),
-    EffectList(Vec<EffectDefRaw>),
+    Action(Box<ActionDefRaw>),
+    ActionList(Vec<ActionDefRaw>),
 }
+
+use super::trigger_def::ActionDefRaw;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(dead_code)]
@@ -33,31 +37,31 @@ pub enum ParamValue {
     String(String),
     Stat(StatId),
     Expr(Expression),
-    Effect(Box<EffectDef>),
-    EffectList(Vec<EffectDef>),
+    Action(Arc<ActionDef>),
+    ActionList(Vec<Arc<ActionDef>>),
 }
 
 #[derive(Debug, Clone)]
 pub struct EffectDef {
-    pub effect_type: EffectTypeId,
+    pub effect_type: ActionTypeId,
     pub params: HashMap<ParamId, ParamValue>,
 }
 
-impl EffectDef {
-    pub fn get_param<'a>(&'a self, name: &str, registry: &crate::abilities::registry::EffectRegistry) -> Option<&'a ParamValue> {
+impl ActionDef {
+    pub fn get_param<'a>(&'a self, name: &str, registry: &crate::abilities::registry::ActionRegistry) -> Option<&'a ParamValue> {
         let id = registry.get_param_id(name)?;
         self.params.get(&id)
     }
 
-    pub fn get_effect_list<'a>(&'a self, name: &str, registry: &crate::abilities::registry::EffectRegistry) -> Option<&'a Vec<EffectDef>> {
-        self.get_param(name, registry)?.as_effect_list()
+    pub fn get_action_list<'a>(&'a self, name: &str, registry: &crate::abilities::registry::ActionRegistry) -> Option<&'a Vec<Arc<ActionDef>>> {
+        self.get_param(name, registry)?.as_action_list()
     }
 
     pub fn get_f32(
         &self,
         name: &str,
         stats: &ComputedStats,
-        registry: &crate::abilities::registry::EffectRegistry
+        registry: &crate::abilities::registry::ActionRegistry
     ) -> Option<f32> {
         self.get_param(name, registry)?.evaluate_f32(stats)
     }
@@ -66,7 +70,7 @@ impl EffectDef {
         &self,
         name: &str,
         stats: &ComputedStats,
-        registry: &crate::abilities::registry::EffectRegistry
+        registry: &crate::abilities::registry::ActionRegistry
     ) -> Option<i32> {
         self.get_param(name, registry)?.evaluate_i32(stats)
     }
@@ -133,9 +137,9 @@ impl ParamValue {
         }
     }
 
-    pub fn as_effect_list(&self) -> Option<&Vec<EffectDef>> {
+    pub fn as_action_list(&self) -> Option<&Vec<Arc<ActionDef>>> {
         match self {
-            Self::EffectList(v) => Some(v),
+            Self::ActionList(v) => Some(v),
             _ => None,
         }
     }

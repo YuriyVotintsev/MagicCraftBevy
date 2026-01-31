@@ -1,12 +1,15 @@
+use std::sync::Arc;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
 use rand::Rng;
 
-use crate::abilities::registry::{EffectHandler, EffectRegistry};
-use crate::abilities::effect_def::EffectDef;
+use crate::abilities::registry::{ActionHandler, ActionRegistry};
+use crate::abilities::trigger_def::ActionDef;
 use crate::abilities::context::{AbilityContext, ContextValue};
-use crate::abilities::events::ExecuteEffectEvent;
+use crate::abilities::events::ExecuteActionEvent;
+use crate::abilities::AbilitySource;
+use crate::abilities::ids::TriggerTypeId;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -19,8 +22,8 @@ const DEFAULT_PROJECTILE_SIZE: f32 = 15.0;
 
 #[derive(Component)]
 pub struct Projectile {
-    pub on_hit_effects: Vec<EffectDef>,
-    pub context: AbilityContext,
+    pub speed: f32,
+    pub size: f32,
 }
 
 #[derive(Component)]
@@ -29,17 +32,17 @@ pub enum Pierce {
     Infinite,
 }
 
-fn execute_spawn_projectile_effect(
+fn execute_spawn_projectile_action(
     mut commands: Commands,
-    mut effect_events: MessageReader<ExecuteEffectEvent>,
-    effect_registry: Res<EffectRegistry>,
+    mut action_events: MessageReader<ExecuteActionEvent>,
+    action_registry: Res<ActionRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
-    for event in effect_events.read() {
-        let Some(handler_id) = effect_registry.get_id("spawn_projectile") else {
+    for event in action_events.read() {
+        let Some(handler_id) = action_registry.get_id("spawn_projectile") else {
             continue;
         };
-        if event.effect.effect_type != handler_id {
+        if event.action.action_type != handler_id {
             continue;
         }
 
@@ -50,28 +53,23 @@ fn execute_spawn_projectile_effect(
             .unwrap_or_default();
 
         let speed = event
-            .effect
-            .get_f32("speed", &caster_stats, &effect_registry)
+            .action
+            .get_f32("speed", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_PROJECTILE_SPEED);
         let size = event
-            .effect
-            .get_f32("size", &caster_stats, &effect_registry)
+            .action
+            .get_f32("size", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_PROJECTILE_SIZE);
-        let on_hit_effects = event
-            .effect
-            .get_effect_list("on_hit", &effect_registry)
-            .cloned()
-            .unwrap_or_default();
         let spread = event
-            .effect
-            .get_f32("spread", &caster_stats, &effect_registry)
+            .action
+            .get_f32("spread", &caster_stats, &action_registry)
             .unwrap_or(0.0);
-        let lifetime = event.effect.get_f32("lifetime", &caster_stats, &effect_registry);
-        let start_size = event.effect.get_f32("start_size", &caster_stats, &effect_registry);
-        let end_size = event.effect.get_f32("end_size", &caster_stats, &effect_registry);
+        let lifetime = event.action.get_f32("lifetime", &caster_stats, &action_registry);
+        let start_size = event.action.get_f32("start_size", &caster_stats, &action_registry);
+        let end_size = event.action.get_f32("end_size", &caster_stats, &action_registry);
         let pierce = event
-            .effect
-            .get_i32("pierce", &caster_stats, &effect_registry)
+            .action
+            .get_i32("pierce", &caster_stats, &action_registry)
             .map(|n| Pierce::Count(n as u32));
 
         let base_direction = event
@@ -110,10 +108,12 @@ fn execute_spawn_projectile_effect(
 
         let mut entity_commands = commands.spawn((
             Name::new("Projectile"),
-            Projectile {
-                on_hit_effects,
-                context: event.context.clone(),
-            },
+            Projectile { speed, size },
+            AbilitySource::new(
+                event.action.clone(),
+                event.context.caster,
+                event.context.caster_faction,
+            ),
             event.context.caster_faction,
             Collider::circle(initial_size / 2.0),
             Sensor,
@@ -151,7 +151,7 @@ fn execute_spawn_projectile_effect(
 #[derive(Default)]
 pub struct SpawnProjectileHandler;
 
-impl EffectHandler for SpawnProjectileHandler {
+impl ActionHandler for SpawnProjectileHandler {
     fn name(&self) -> &'static str {
         "spawn_projectile"
     }
@@ -159,7 +159,7 @@ impl EffectHandler for SpawnProjectileHandler {
     fn register_execution_system(&self, app: &mut App) {
         app.add_systems(
             Update,
-            execute_spawn_projectile_effect
+            execute_spawn_projectile_action
                 .in_set(GameSet::AbilityExecution)
                 .run_if(in_state(GameState::Playing)),
         );
@@ -176,13 +176,18 @@ impl EffectHandler for SpawnProjectileHandler {
 fn projectile_collision(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
-    mut effect_events: MessageWriter<ExecuteEffectEvent>,
-    projectile_query: Query<(&Projectile, &Faction)>,
+    mut action_events: MessageWriter<ExecuteActionEvent>,
+    projectile_query: Query<(&Projectile, &AbilitySource, &Faction)>,
     mut pierce_query: Query<&mut Pierce>,
     target_query: Query<&Faction, Without<Projectile>>,
     wall_query: Query<(), With<Wall>>,
+    trigger_registry: Res<crate::abilities::TriggerRegistry>,
 ) {
     let mut despawned: HashSet<Entity> = HashSet::default();
+
+    let Some(on_hit_trigger_id) = trigger_registry.get_id("on_hit") else {
+        return;
+    };
 
     for event in collision_events.read() {
         let entity1 = event.collider1;
@@ -220,7 +225,7 @@ fn projectile_collision(
             continue;
         }
 
-        let Ok((projectile, proj_faction)) = projectile_query.get(projectile_entity) else {
+        let Ok((_projectile, source, proj_faction)) = projectile_query.get(projectile_entity) else {
             continue;
         };
         let Ok(target_faction) = target_query.get(other_entity) else {
@@ -231,14 +236,23 @@ fn projectile_collision(
             continue;
         }
 
-        let mut ctx = projectile.context.clone();
-        ctx.set_param("target", ContextValue::Entity(other_entity));
+        let on_hit_trigger = source.action.triggers.iter()
+            .find(|t| t.trigger_type == on_hit_trigger_id);
 
-        for effect_def in &projectile.on_hit_effects {
-            effect_events.write(ExecuteEffectEvent {
-                effect: effect_def.clone(),
-                context: ctx.clone(),
-            });
+        if let Some(trigger) = on_hit_trigger {
+            let mut ctx = AbilityContext::new(
+                source.caster,
+                source.caster_faction,
+                Vec3::ZERO,
+            );
+            ctx.set_param("target", ContextValue::Entity(other_entity));
+
+            for action_def in &trigger.actions {
+                action_events.write(ExecuteActionEvent {
+                    action: action_def.clone(),
+                    context: ctx.clone(),
+                });
+            }
         }
 
         let should_despawn = match pierce_query.get_mut(projectile_entity) {
@@ -261,4 +275,4 @@ fn projectile_collision(
     }
 }
 
-register_effect!(SpawnProjectileHandler);
+register_action!(SpawnProjectileHandler);

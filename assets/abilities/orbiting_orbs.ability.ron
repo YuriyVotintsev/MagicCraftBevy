@@ -1,27 +1,15 @@
 (
     id: "orbiting_orbs",
-    tags: ["every_frame"],
-    trigger: (
-        trigger_type: "every_frame",
-        params: {},
-    ),
-    effects: [
-        (
-            effect_type: "spawn_orbiting",
-            params: {
-                "count": Int(3),
-                "radius": Float(80.0),
-                "angular_speed": Float(3.0),
-                "size": Float(20.0),
-                "on_hit": EffectList([
-                    (
-                        effect_type: "damage",
-                        params: {
-                            "amount": Stat("physical_damage"),
-                        },
-                    ),
-                ]),
-            },
-        ),
-    ],
+    trigger: ("every_frame", [
+        ("spawn_orbiting", {
+            "count": Int(3),
+            "radius": Float(80.0),
+            "angular_speed": Float(3.0),
+            "size": Float(20.0),
+        }, [
+            ("on_hit", [
+                ("damage", {"amount": Stat("physical_damage")}),
+            ]),
+        ]),
+    ]),
 )

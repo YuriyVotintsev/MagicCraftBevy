@@ -1,28 +1,14 @@
 (
     id: "meteor",
-    tags: ["every_frame", "fire", "aoe"],
-    trigger: (
-        trigger_type: "interval",
-        params: {
-            "interval": Float(3.0),
-        },
-    ),
-    effects: [
-        (
-            effect_type: "spawn_meteor",
-            params: {
-                "search_radius": Float(700.0),
-                "damage_radius": Float(80.0),
-                "fall_duration": Float(0.5),
-                "on_hit": EffectList([
-                    (
-                        effect_type: "damage",
-                        params: {
-                            "amount": Stat("physical_damage"),
-                        },
-                    ),
-                ]),
-            },
-        ),
-    ],
+    trigger: ("interval", {"interval": Float(3.0)}, [
+        ("spawn_meteor", {
+            "search_radius": Float(700.0),
+            "damage_radius": Float(80.0),
+            "fall_duration": Float(0.5),
+        }, [
+            ("on_hit", [
+                ("damage", {"amount": Stat("physical_damage")}),
+            ]),
+        ]),
+    ]),
 )

@@ -1,17 +1,9 @@
 (
     id: "dash",
-    tags: [],
-    trigger: (
-        trigger_type: "on_input",
-        params: {},
-    ),
-    effects: [
-        (
-            effect_type: "dash",
-            params: {
-                "speed": Float(1500.0),
-                "duration": Float(0.2),
-            },
-        ),
-    ],
+    trigger: ("on_input", [
+        ("dash", {
+            "speed": Float(1500.0),
+            "duration": Float(0.2),
+        }),
+    ]),
 )

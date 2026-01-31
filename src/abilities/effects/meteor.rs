@@ -1,10 +1,12 @@
+use std::sync::Arc;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::registry::{EffectHandler, EffectRegistry};
-use crate::abilities::effect_def::EffectDef;
+use crate::abilities::registry::{ActionHandler, ActionRegistry};
+use crate::abilities::trigger_def::ActionDef;
 use crate::abilities::context::{AbilityContext, ContextValue};
-use crate::abilities::events::ExecuteEffectEvent;
+use crate::abilities::events::ExecuteActionEvent;
+use crate::abilities::AbilitySource;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -21,8 +23,6 @@ pub struct MeteorRequest {
     pub search_radius: f32,
     pub damage_radius: f32,
     pub fall_duration: f32,
-    pub on_hit_effects: Vec<EffectDef>,
-    pub context: AbilityContext,
 }
 
 #[derive(Component)]
@@ -31,8 +31,6 @@ pub struct MeteorFalling {
     pub damage_radius: f32,
     pub fall_duration: f32,
     pub elapsed: f32,
-    pub on_hit_effects: Vec<EffectDef>,
-    pub context: AbilityContext,
 }
 
 #[derive(Component)]
@@ -41,22 +39,20 @@ pub struct MeteorIndicator;
 #[derive(Component)]
 pub struct MeteorExplosion {
     pub damage_radius: f32,
-    pub on_hit_effects: Vec<EffectDef>,
-    pub context: AbilityContext,
     pub damaged: bool,
 }
 
-fn execute_meteor_effect(
+fn execute_meteor_action(
     mut commands: Commands,
-    mut effect_events: MessageReader<ExecuteEffectEvent>,
-    effect_registry: Res<EffectRegistry>,
+    mut action_events: MessageReader<ExecuteActionEvent>,
+    action_registry: Res<ActionRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
-    for event in effect_events.read() {
-        let Some(handler_id) = effect_registry.get_id("spawn_meteor") else {
+    for event in action_events.read() {
+        let Some(handler_id) = action_registry.get_id("spawn_meteor") else {
             continue;
         };
-        if event.effect.effect_type != handler_id {
+        if event.action.action_type != handler_id {
             continue;
         }
 
@@ -67,22 +63,17 @@ fn execute_meteor_effect(
             .unwrap_or_default();
 
         let search_radius = event
-            .effect
-            .get_f32("search_radius", &caster_stats, &effect_registry)
+            .action
+            .get_f32("search_radius", &caster_stats, &action_registry)
             .unwrap_or(500.0);
         let damage_radius = event
-            .effect
-            .get_f32("damage_radius", &caster_stats, &effect_registry)
+            .action
+            .get_f32("damage_radius", &caster_stats, &action_registry)
             .unwrap_or(80.0);
         let fall_duration = event
-            .effect
-            .get_f32("fall_duration", &caster_stats, &effect_registry)
+            .action
+            .get_f32("fall_duration", &caster_stats, &action_registry)
             .unwrap_or(0.5);
-        let on_hit_effects = event
-            .effect
-            .get_effect_list("on_hit", &effect_registry)
-            .cloned()
-            .unwrap_or_default();
 
         commands.spawn((
             Name::new("MeteorRequest"),
@@ -90,9 +81,12 @@ fn execute_meteor_effect(
                 search_radius,
                 damage_radius,
                 fall_duration,
-                on_hit_effects,
-                context: event.context.clone(),
             },
+            AbilitySource::new(
+                event.action.clone(),
+                event.context.caster,
+                event.context.caster_faction,
+            ),
         ));
     }
 }
@@ -100,7 +94,7 @@ fn execute_meteor_effect(
 #[derive(Default)]
 pub struct SpawnMeteorHandler;
 
-impl EffectHandler for SpawnMeteorHandler {
+impl ActionHandler for SpawnMeteorHandler {
     fn name(&self) -> &'static str {
         "spawn_meteor"
     }
@@ -108,7 +102,7 @@ impl EffectHandler for SpawnMeteorHandler {
     fn register_execution_system(&self, app: &mut App) {
         app.add_systems(
             Update,
-            execute_meteor_effect
+            execute_meteor_action
                 .in_set(GameSet::AbilityExecution)
                 .run_if(in_state(GameState::Playing)),
         );
@@ -131,14 +125,14 @@ fn meteor_target_finder(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    query: Query<(Entity, &MeteorRequest)>,
+    query: Query<(Entity, &MeteorRequest, &AbilitySource, &Transform)>,
     spatial_query: SpatialQuery,
-    transforms: Query<&Transform>,
+    transforms: Query<&Transform, Without<MeteorRequest>>,
 ) {
-    for (request_entity, request) in &query {
-        let caster_pos = request.context.caster_position.truncate();
+    for (request_entity, request, source, caster_transform) in &query {
+        let caster_pos = caster_transform.translation.truncate();
 
-        let target_layer = match request.context.caster_faction {
+        let target_layer = match source.caster_faction {
             Faction::Player => GameLayer::Enemy,
             Faction::Enemy => GameLayer::Player,
         };
@@ -197,9 +191,8 @@ fn meteor_target_finder(
                 damage_radius: request.damage_radius,
                 fall_duration: request.fall_duration,
                 elapsed: 0.0,
-                on_hit_effects: request.on_hit_effects.clone(),
-                context: request.context.clone(),
             },
+            source.clone(),
             Mesh2d(meteor_mesh),
             MeshMaterial2d(meteor_material),
             Transform::from_translation(start_position),
@@ -212,11 +205,11 @@ fn meteor_falling_update(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut MeteorFalling, &mut Transform)>,
+    mut query: Query<(Entity, &mut MeteorFalling, &AbilitySource, &mut Transform)>,
 ) {
     let dt = time.delta_secs();
 
-    for (entity, mut meteor, mut transform) in &mut query {
+    for (entity, mut meteor, source, mut transform) in &mut query {
         meteor.elapsed += dt;
         let t = (meteor.elapsed / meteor.fall_duration).clamp(0.0, 1.0);
         let eased_t = t * t;
@@ -235,10 +228,9 @@ fn meteor_falling_update(
                 Name::new("MeteorExplosion"),
                 MeteorExplosion {
                     damage_radius: meteor.damage_radius,
-                    on_hit_effects: meteor.on_hit_effects.clone(),
-                    context: meteor.context.clone(),
                     damaged: false,
                 },
+                source.clone(),
                 Mesh2d(explosion_mesh),
                 MeshMaterial2d(explosion_material),
                 Transform::from_translation(meteor.target_position),
@@ -249,11 +241,16 @@ fn meteor_falling_update(
 }
 
 fn meteor_explosion_damage(
-    mut query: Query<(&mut MeteorExplosion, &Transform)>,
-    mut effect_events: MessageWriter<ExecuteEffectEvent>,
+    mut query: Query<(&mut MeteorExplosion, &AbilitySource, &Transform)>,
+    mut action_events: MessageWriter<ExecuteActionEvent>,
     spatial_query: SpatialQuery,
+    trigger_registry: Res<crate::abilities::TriggerRegistry>,
 ) {
-    for (mut explosion, explosion_transform) in &mut query {
+    let Some(on_hit_trigger_id) = trigger_registry.get_id("on_hit") else {
+        return;
+    };
+
+    for (mut explosion, source, explosion_transform) in &mut query {
         if explosion.damaged {
             continue;
         }
@@ -261,7 +258,7 @@ fn meteor_explosion_damage(
 
         let explosion_pos = explosion_transform.translation.truncate();
 
-        let target_layer = match explosion.context.caster_faction {
+        let target_layer = match source.caster_faction {
             Faction::Player => GameLayer::Enemy,
             Faction::Enemy => GameLayer::Player,
         };
@@ -270,18 +267,27 @@ fn meteor_explosion_damage(
         let shape = Collider::circle(explosion.damage_radius);
         let hits = spatial_query.shape_intersections(&shape, explosion_pos, 0.0, &filter);
 
-        for enemy_entity in hits {
-            let mut ctx = explosion.context.clone();
-            ctx.set_param("target", ContextValue::Entity(enemy_entity));
+        let on_hit_trigger = source.action.triggers.iter()
+            .find(|t| t.trigger_type == on_hit_trigger_id);
 
-            for effect_def in &explosion.on_hit_effects {
-                effect_events.write(ExecuteEffectEvent {
-                    effect: effect_def.clone(),
-                    context: ctx.clone(),
-                });
+        if let Some(trigger) = on_hit_trigger {
+            for enemy_entity in hits {
+                let mut ctx = AbilityContext::new(
+                    source.caster,
+                    source.caster_faction,
+                    explosion_transform.translation,
+                );
+                ctx.set_param("target", ContextValue::Entity(enemy_entity));
+
+                for action_def in &trigger.actions {
+                    action_events.write(ExecuteActionEvent {
+                        action: action_def.clone(),
+                        context: ctx.clone(),
+                    });
+                }
             }
         }
     }
 }
 
-register_effect!(SpawnMeteorHandler);
+register_action!(SpawnMeteorHandler);

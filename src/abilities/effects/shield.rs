@@ -1,8 +1,8 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::abilities::registry::{EffectHandler, EffectRegistry};
-use crate::abilities::events::ExecuteEffectEvent;
+use crate::abilities::registry::{ActionHandler, ActionRegistry};
+use crate::abilities::events::ExecuteActionEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -25,18 +25,18 @@ pub struct ShieldVisual {
     pub owner: Entity,
 }
 
-fn execute_shield_effect(
+fn execute_shield_action(
     mut commands: Commands,
-    mut effect_events: MessageReader<ExecuteEffectEvent>,
-    effect_registry: Res<EffectRegistry>,
+    mut action_events: MessageReader<ExecuteActionEvent>,
+    action_registry: Res<ActionRegistry>,
     stats_query: Query<&ComputedStats>,
     mut invuln_query: Query<&mut InvulnerableStack>,
 ) {
-    for event in effect_events.read() {
-        let Some(handler_id) = effect_registry.get_id("shield") else {
+    for event in action_events.read() {
+        let Some(handler_id) = action_registry.get_id("shield") else {
             continue;
         };
-        if event.effect.effect_type != handler_id {
+        if event.action.action_type != handler_id {
             continue;
         }
 
@@ -47,12 +47,12 @@ fn execute_shield_effect(
             .unwrap_or_default();
 
         let duration = event
-            .effect
-            .get_f32("duration", &caster_stats, &effect_registry)
+            .action
+            .get_f32("duration", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_SHIELD_DURATION);
         let radius = event
-            .effect
-            .get_f32("radius", &caster_stats, &effect_registry)
+            .action
+            .get_f32("radius", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_SHIELD_RADIUS);
 
         let caster = event.context.caster;
@@ -87,7 +87,7 @@ fn execute_shield_effect(
 #[derive(Default)]
 pub struct ShieldHandler;
 
-impl EffectHandler for ShieldHandler {
+impl ActionHandler for ShieldHandler {
     fn name(&self) -> &'static str {
         "shield"
     }
@@ -95,7 +95,7 @@ impl EffectHandler for ShieldHandler {
     fn register_execution_system(&self, app: &mut App) {
         app.add_systems(
             Update,
-            execute_shield_effect
+            execute_shield_action
                 .in_set(GameSet::AbilityExecution)
                 .run_if(in_state(GameState::Playing)),
         );
@@ -160,4 +160,4 @@ fn update_shield_visual(
     }
 }
 
-register_effect!(ShieldHandler);
+register_action!(ShieldHandler);

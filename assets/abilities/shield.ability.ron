@@ -1,17 +1,9 @@
 (
     id: "shield",
-    tags: [],
-    trigger: (
-        trigger_type: "on_input",
-        params: {},
-    ),
-    effects: [
-        (
-            effect_type: "shield",
-            params: {
-                "duration": Float(0.5),
-                "radius": Float(100.0),
-            },
-        ),
-    ],
+    trigger: ("on_input", [
+        ("shield", {
+            "duration": Float(0.5),
+            "radius": Float(100.0),
+        }),
+    ]),
 )

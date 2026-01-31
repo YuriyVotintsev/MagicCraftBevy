@@ -8,6 +8,9 @@ pub struct TriggerTypeId(pub u32);
 pub struct EffectTypeId(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct ActionTypeId(pub u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ParamId(pub u32);
 
 
@@ -24,6 +27,12 @@ impl From<u32> for TriggerTypeId {
 }
 
 impl From<u32> for EffectTypeId {
+    fn from(v: u32) -> Self {
+        Self(v)
+    }
+}
+
+impl From<u32> for ActionTypeId {
     fn from(v: u32) -> Self {
         Self(v)
     }
@@ -50,6 +59,12 @@ impl From<TriggerTypeId> for u32 {
 
 impl From<EffectTypeId> for u32 {
     fn from(id: EffectTypeId) -> Self {
+        id.0
+    }
+}
+
+impl From<ActionTypeId> for u32 {
+    fn from(id: ActionTypeId) -> Self {
         id.0
     }
 }

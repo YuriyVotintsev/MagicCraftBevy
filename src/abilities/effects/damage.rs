@@ -1,22 +1,22 @@
 use bevy::prelude::*;
 
-use crate::abilities::registry::{EffectHandler, EffectRegistry};
-use crate::abilities::events::ExecuteEffectEvent;
+use crate::abilities::registry::{ActionHandler, ActionRegistry};
+use crate::abilities::events::ExecuteActionEvent;
 use crate::stats::{ComputedStats, PendingDamage};
 use crate::schedule::GameSet;
 use crate::GameState;
 
-fn execute_damage_effect(
+fn execute_damage_action(
     mut commands: Commands,
-    mut effect_events: MessageReader<ExecuteEffectEvent>,
-    effect_registry: Res<EffectRegistry>,
+    mut action_events: MessageReader<ExecuteActionEvent>,
+    action_registry: Res<ActionRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
-    for event in effect_events.read() {
-        let Some(handler_id) = effect_registry.get_id("damage") else {
+    for event in action_events.read() {
+        let Some(handler_id) = action_registry.get_id("damage") else {
             continue;
         };
-        if event.effect.effect_type != handler_id {
+        if event.action.action_type != handler_id {
             continue;
         }
 
@@ -29,7 +29,7 @@ fn execute_damage_effect(
             .ok()
             .cloned()
             .unwrap_or_default();
-        let Some(amount) = event.effect.get_f32("amount", &caster_stats, &effect_registry) else {
+        let Some(amount) = event.action.get_f32("amount", &caster_stats, &action_registry) else {
             continue;
         };
 
@@ -42,7 +42,7 @@ fn execute_damage_effect(
 #[derive(Default)]
 pub struct DamageHandler;
 
-impl EffectHandler for DamageHandler {
+impl ActionHandler for DamageHandler {
     fn name(&self) -> &'static str {
         "damage"
     }
@@ -50,11 +50,11 @@ impl EffectHandler for DamageHandler {
     fn register_execution_system(&self, app: &mut App) {
         app.add_systems(
             Update,
-            execute_damage_effect
+            execute_damage_action
                 .in_set(GameSet::AbilityExecution)
                 .run_if(in_state(GameState::Playing)),
         );
     }
 }
 
-register_effect!(DamageHandler);
+register_action!(DamageHandler);

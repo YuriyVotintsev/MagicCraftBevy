@@ -1,13 +1,22 @@
 use bevy::prelude::*;
 use std::collections::HashMap;
 
-use super::ids::{TriggerTypeId, EffectTypeId, AbilityId, ParamId};
+use super::ids::{TriggerTypeId, EffectTypeId, ActionTypeId, AbilityId, ParamId};
 use super::context::AbilityContext;
 use super::effect_def::{EffectDef, ParamValue};
+use super::trigger_def::ActionDef;
 use super::ability_def::AbilityDef;
 use crate::stats::ComputedStats;
 
 pub trait EffectHandler: Send + Sync + 'static {
+    fn name(&self) -> &'static str;
+
+    fn register_execution_system(&self, app: &mut App);
+
+    fn register_behavior_systems(&self, _app: &mut App) {}
+}
+
+pub trait ActionHandler: Send + Sync + 'static {
     fn name(&self) -> &'static str;
 
     fn register_execution_system(&self, app: &mut App);
@@ -167,5 +176,61 @@ impl AbilityRegistry {
         self.next_id += 1;
         self.name_to_id.insert(name.to_string(), id);
         id
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct ActionRegistry {
+    name_to_id: HashMap<String, ActionTypeId>,
+    id_to_name: Vec<String>,
+    handlers: Vec<Box<dyn ActionHandler>>,
+    param_name_to_id: HashMap<String, ParamId>,
+    param_id_to_name: Vec<String>,
+}
+
+impl ActionRegistry {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn register(&mut self, handler: Box<dyn ActionHandler>) -> ActionTypeId {
+        let name = handler.name().to_string();
+        let id = ActionTypeId(self.handlers.len() as u32);
+        self.name_to_id.insert(name.clone(), id);
+        self.id_to_name.push(name);
+        self.handlers.push(handler);
+        id
+    }
+
+    pub fn get_id(&self, name: &str) -> Option<ActionTypeId> {
+        self.name_to_id.get(name).copied()
+    }
+
+    #[allow(dead_code)]
+    pub fn get_name(&self, id: ActionTypeId) -> Option<&str> {
+        self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
+    }
+
+    pub fn get(&self, id: ActionTypeId) -> Option<&dyn ActionHandler> {
+        self.handlers.get(id.0 as usize).map(|h| h.as_ref())
+    }
+
+    pub fn get_or_insert_param_id(&mut self, name: &str) -> ParamId {
+        if let Some(&id) = self.param_name_to_id.get(name) {
+            return id;
+        }
+        let id = ParamId(self.param_id_to_name.len() as u32);
+        self.param_name_to_id.insert(name.to_string(), id);
+        self.param_id_to_name.push(name.to_string());
+        id
+    }
+
+    pub fn get_param_id(&self, name: &str) -> Option<ParamId> {
+        self.param_name_to_id.get(name).copied()
+    }
+
+    #[allow(dead_code)]
+    pub fn get_param_name(&self, id: ParamId) -> Option<&str> {
+        self.param_id_to_name.get(id.0 as usize).map(|s| s.as_str())
     }
 }

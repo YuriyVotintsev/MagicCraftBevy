@@ -1,17 +1,19 @@
+use std::sync::Arc;
+use std::f32::consts::PI;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use std::f32::consts::PI;
 
-use crate::abilities::registry::{EffectHandler, EffectRegistry};
+use crate::abilities::registry::{ActionHandler, ActionRegistry};
 use crate::abilities::AttachedTo;
-use crate::abilities::events::ExecuteEffectEvent;
+use crate::abilities::AbilitySource;
+use crate::abilities::events::ExecuteActionEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
 use crate::Faction;
 use crate::GameState;
 
-use super::spawn_projectile::{Projectile, Pierce};
+use super::spawn_projectile::Pierce;
 
 const DEFAULT_ORB_COUNT: i32 = 3;
 const DEFAULT_ORB_RADIUS: f32 = 80.0;
@@ -25,17 +27,17 @@ pub struct OrbitingMovement {
     pub current_angle: f32,
 }
 
-fn execute_orbiting_effect(
+fn execute_orbiting_action(
     mut commands: Commands,
-    mut effect_events: MessageReader<ExecuteEffectEvent>,
-    effect_registry: Res<EffectRegistry>,
+    mut action_events: MessageReader<ExecuteActionEvent>,
+    action_registry: Res<ActionRegistry>,
     stats_query: Query<&ComputedStats>,
 ) {
-    for event in effect_events.read() {
-        let Some(handler_id) = effect_registry.get_id("spawn_orbiting") else {
+    for event in action_events.read() {
+        let Some(handler_id) = action_registry.get_id("spawn_orbiting") else {
             continue;
         };
-        if event.effect.effect_type != handler_id {
+        if event.action.action_type != handler_id {
             continue;
         }
 
@@ -46,26 +48,21 @@ fn execute_orbiting_effect(
             .unwrap_or_default();
 
         let count = event
-            .effect
-            .get_i32("count", &caster_stats, &effect_registry)
+            .action
+            .get_i32("count", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_ORB_COUNT);
         let radius = event
-            .effect
-            .get_f32("radius", &caster_stats, &effect_registry)
+            .action
+            .get_f32("radius", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_ORB_RADIUS);
         let angular_speed = event
-            .effect
-            .get_f32("angular_speed", &caster_stats, &effect_registry)
+            .action
+            .get_f32("angular_speed", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_ORB_ANGULAR_SPEED);
         let size = event
-            .effect
-            .get_f32("size", &caster_stats, &effect_registry)
+            .action
+            .get_f32("size", &caster_stats, &action_registry)
             .unwrap_or(DEFAULT_ORB_SIZE);
-        let on_hit_effects = event
-            .effect
-            .get_effect_list("on_hit", &effect_registry)
-            .cloned()
-            .unwrap_or_default();
 
         let orb_layers = match event.context.caster_faction {
             Faction::Player => CollisionLayers::new(
@@ -85,10 +82,11 @@ fn execute_orbiting_effect(
 
             commands.spawn((
                 Name::new("Orb"),
-                Projectile {
-                    on_hit_effects: on_hit_effects.clone(),
-                    context: event.context.clone(),
-                },
+                AbilitySource::new(
+                    event.action.clone(),
+                    event.context.caster,
+                    event.context.caster_faction,
+                ),
                 Pierce::Infinite,
                 OrbitingMovement {
                     radius,
@@ -116,7 +114,7 @@ fn execute_orbiting_effect(
 #[derive(Default)]
 pub struct SpawnOrbitingHandler;
 
-impl EffectHandler for SpawnOrbitingHandler {
+impl ActionHandler for SpawnOrbitingHandler {
     fn name(&self) -> &'static str {
         "spawn_orbiting"
     }
@@ -124,7 +122,7 @@ impl EffectHandler for SpawnOrbitingHandler {
     fn register_execution_system(&self, app: &mut App) {
         app.add_systems(
             Update,
-            execute_orbiting_effect
+            execute_orbiting_action
                 .in_set(GameSet::AbilityExecution)
                 .run_if(in_state(GameState::Playing)),
         );
@@ -156,4 +154,4 @@ fn update_orbiting_positions(
     }
 }
 
-register_effect!(SpawnOrbitingHandler);
+register_action!(SpawnOrbitingHandler);

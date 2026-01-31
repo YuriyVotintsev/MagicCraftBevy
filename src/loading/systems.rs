@@ -1,9 +1,13 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
+use std::sync::Arc;
+use std::collections::HashMap;
+
 use crate::abilities::{
     AbilityDef, AbilityDefRaw, AbilityRegistry, TriggerDef, TriggerDefRaw, TriggerRegistry,
-    EffectDef, EffectDefRaw, EffectRegistry, ParamValue, ParamValueRaw,
+    ActionDef, ActionDefRaw, ActionRegistry,
+    ParamValue, ParamValueRaw,
 };
 use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;
@@ -144,7 +148,7 @@ pub fn check_content_loaded(
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
     mut trigger_registry: ResMut<TriggerRegistry>,
-    mut effect_registry: ResMut<EffectRegistry>,
+    mut action_registry: ResMut<ActionRegistry>,
     mut ability_registry: ResMut<AbilityRegistry>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForContent {
@@ -212,7 +216,7 @@ pub fn check_content_loaded(
                     &stat_registry,
                     &mut ability_registry,
                     &mut trigger_registry,
-                    &mut effect_registry,
+                    &mut action_registry,
                 );
                 info!("Registered ability: {}", ability_asset.0.id);
                 ability_registry.register(ability_def);
@@ -239,7 +243,8 @@ pub fn finalize_loading(
 fn resolve_param_value(
     raw: &ParamValueRaw,
     stat_registry: &StatRegistry,
-    effect_registry: &mut EffectRegistry,
+    trigger_registry: &mut TriggerRegistry,
+    action_registry: &mut ActionRegistry,
 ) -> ParamValue {
     match raw {
         ParamValueRaw::Float(v) => ParamValue::Float(*v),
@@ -248,64 +253,96 @@ fn resolve_param_value(
         ParamValueRaw::String(v) => ParamValue::String(v.clone()),
         ParamValueRaw::Stat(name) => {
             let stat_id = stat_registry.get(name)
-                .unwrap_or_else(|| panic!("Effect param references unknown stat '{}'", name));
+                .unwrap_or_else(|| panic!("Param references unknown stat '{}'", name));
             ParamValue::Stat(stat_id)
         }
-        ParamValueRaw::Effect(raw_effect) => {
-            let effect = resolve_effect_def(raw_effect, stat_registry, effect_registry);
-            ParamValue::Effect(Box::new(effect))
+        ParamValueRaw::Action(raw_action) => {
+            let action = resolve_action_def(raw_action, stat_registry, trigger_registry, action_registry);
+            ParamValue::Action(action)
         }
-        ParamValueRaw::EffectList(raw_effects) => {
-            let effects = raw_effects
+        ParamValueRaw::ActionList(raw_actions) => {
+            let actions = raw_actions
                 .iter()
-                .map(|e| resolve_effect_def(e, stat_registry, effect_registry))
+                .map(|a| resolve_action_def(a, stat_registry, trigger_registry, action_registry))
                 .collect();
-            ParamValue::EffectList(effects)
+            ParamValue::ActionList(actions)
         }
     }
 }
 
-fn resolve_effect_def(
-    raw: &EffectDefRaw,
+fn resolve_action_def(
+    raw: &ActionDefRaw,
     stat_registry: &StatRegistry,
-    effect_registry: &mut EffectRegistry,
-) -> EffectDef {
-    let effect_type = effect_registry.get_id(&raw.effect_type)
-        .unwrap_or_else(|| panic!("Unknown effect type '{}'", raw.effect_type));
+    trigger_registry: &mut TriggerRegistry,
+    action_registry: &mut ActionRegistry,
+) -> Arc<ActionDef> {
+    let (name, params_raw, triggers_raw) = match raw {
+        ActionDefRaw::Full(n, p, t) => (n, p.clone(), t.clone()),
+        ActionDefRaw::NoTriggers(n, p) => (n, p.clone(), vec![]),
+        ActionDefRaw::NoParams(n, t) => (n, HashMap::new(), t.clone()),
+        ActionDefRaw::OnlyName(n) => (n, HashMap::new(), vec![]),
+    };
 
-    let params = raw
-        .params
+    let action_type = action_registry.get_id(name)
+        .unwrap_or_else(|| panic!("Unknown action type '{}'", name));
+
+    let params = params_raw
         .iter()
         .map(|(name, value)| {
-            let param_id = effect_registry.get_or_insert_param_id(name);
-            let resolved_value = resolve_param_value(value, stat_registry, effect_registry);
-            (param_id, resolved_value)
+            let param_id = action_registry.get_or_insert_param_id(name);
+            let resolved = resolve_param_value(value, stat_registry, trigger_registry, action_registry);
+            (param_id, resolved)
         })
         .collect();
 
-    EffectDef { effect_type, params }
+    let triggers = triggers_raw
+        .iter()
+        .map(|t| resolve_trigger_def(t, stat_registry, trigger_registry, action_registry))
+        .collect();
+
+    Arc::new(ActionDef {
+        action_type,
+        params,
+        triggers,
+    })
 }
+
 
 fn resolve_trigger_def(
     raw: &TriggerDefRaw,
     stat_registry: &StatRegistry,
     trigger_registry: &mut TriggerRegistry,
-    effect_registry: &mut EffectRegistry,
-) -> TriggerDef {
-    let trigger_type = trigger_registry.get_id(&raw.trigger_type)
-        .unwrap_or_else(|| panic!("Unknown trigger type '{}'", raw.trigger_type));
+    action_registry: &mut ActionRegistry,
+) -> Arc<TriggerDef> {
+    let (name, params_raw, actions_raw) = match raw {
+        TriggerDefRaw::Full(n, p, a) => (n, p.clone(), a.clone()),
+        TriggerDefRaw::NoActions(n, p) => (n, p.clone(), vec![]),
+        TriggerDefRaw::NoParams(n, a) => (n, HashMap::new(), a.clone()),
+        TriggerDefRaw::OnlyName(n) => (n, HashMap::new(), vec![]),
+    };
 
-    let params = raw
-        .params
+    let trigger_type = trigger_registry.get_id(name)
+        .unwrap_or_else(|| panic!("Unknown trigger type '{}'", name));
+
+    let params = params_raw
         .iter()
         .map(|(name, value)| {
             let param_id = trigger_registry.get_or_insert_param_id(name);
-            let resolved_value = resolve_param_value(value, stat_registry, effect_registry);
+            let resolved_value = resolve_param_value(value, stat_registry, trigger_registry, action_registry);
             (param_id, resolved_value)
         })
         .collect();
 
-    TriggerDef { trigger_type, params }
+    let actions = actions_raw
+        .iter()
+        .map(|a| resolve_action_def(a, stat_registry, trigger_registry, action_registry))
+        .collect();
+
+    Arc::new(TriggerDef {
+        trigger_type,
+        params,
+        actions,
+    })
 }
 
 fn resolve_ability_def(
@@ -313,17 +350,11 @@ fn resolve_ability_def(
     stat_registry: &StatRegistry,
     ability_registry: &mut AbilityRegistry,
     trigger_registry: &mut TriggerRegistry,
-    effect_registry: &mut EffectRegistry,
+    action_registry: &mut ActionRegistry,
 ) -> AbilityDef {
     let id = ability_registry.allocate_id(&raw.id);
 
-    let trigger = resolve_trigger_def(&raw.trigger, stat_registry, trigger_registry, effect_registry);
+    let trigger = resolve_trigger_def(&raw.trigger, stat_registry, trigger_registry, action_registry);
 
-    let effects = raw
-        .effects
-        .iter()
-        .map(|e| resolve_effect_def(e, stat_registry, effect_registry))
-        .collect();
-
-    AbilityDef { id, trigger, effects }
+    AbilityDef { id, trigger }
 }
