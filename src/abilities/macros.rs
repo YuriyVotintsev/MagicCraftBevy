@@ -29,14 +29,21 @@ macro_rules! register_node {
 
 #[macro_export]
 macro_rules! collect_nodes {
-    ($($module:ident),* $(,)?) => {
-        $(pub mod $module;)*
+    (
+        with_params: [$($with_params:ident),* $(,)?],
+        no_params: [$($no_params:ident),* $(,)?]
+    ) => {
+        $(pub mod $with_params;)*
+        $(pub mod $no_params;)*
 
         #[derive(Debug, Clone)]
         #[allow(non_camel_case_types)]
         pub enum NodeParams {
             $(
-                $module($module::__NodeParams),
+                $with_params($with_params::__NodeParams),
+            )*
+            $(
+                $no_params($no_params::__NodeParams),
             )*
         }
 
@@ -49,20 +56,27 @@ macro_rules! collect_nodes {
                 use $crate::abilities::ParseNodeParams;
                 match name {
                     $(
-                        $module::__NODE_NAME => {
-                            Self::$module($module::__NodeParams::parse(raw, stat_registry))
+                        $with_params::__NODE_NAME => {
+                            Self::$with_params($with_params::__NodeParams::parse(raw, stat_registry))
+                        }
+                    )*
+                    $(
+                        $no_params::__NODE_NAME => {
+                            Self::$no_params($no_params::__NodeParams::parse(raw, stat_registry))
                         }
                     )*
                     _ => panic!("Unknown node type: {}", name),
                 }
             }
 
+            // Only generate unwrap methods for handlers with params
             $(
                 paste::paste! {
-                    pub fn [<unwrap_ $module>](&self) -> &$module::__NodeParams {
+                    #[inline]
+                    pub fn [<unwrap_ $with_params>](&self) -> &$with_params::__NodeParams {
                         match self {
-                            Self::$module(p) => p,
-                            _ => unreachable!("node_type check guarantees {} params", stringify!($module)),
+                            Self::$with_params(p) => p,
+                            _ => unreachable!("node_type check guarantees {} params", stringify!($with_params)),
                         }
                     }
                 }
@@ -73,7 +87,8 @@ macro_rules! collect_nodes {
             app: &mut ::bevy::prelude::App,
             registry: &mut $crate::abilities::NodeRegistry,
         ) {
-            $($module::__register_node(app, registry);)*
+            $($with_params::__register_node(app, registry);)*
+            $($no_params::__register_node(app, registry);)*
         }
     };
 }
