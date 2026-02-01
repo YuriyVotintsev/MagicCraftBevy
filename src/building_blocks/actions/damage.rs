@@ -49,7 +49,7 @@ fn execute_damage_action(
             continue;
         }
 
-        let params = node_def.params.expect_action().expect_damage();
+        let params = node_def.params.unwrap_action().unwrap_damage();
 
         let Some(Target::Entity(target)) = event.context.target else {
             continue;

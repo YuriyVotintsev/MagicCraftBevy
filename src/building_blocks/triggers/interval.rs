@@ -127,7 +127,7 @@ impl NodeHandler for IntervalHandler {
         params: &NodeParams,
         _registry: &NodeRegistry,
     ) {
-        let p = params.expect_trigger().expect_interval();
+        let p = params.unwrap_trigger().unwrap_interval();
         let interval = p.interval.clone();
         let skip_first = p.skip_first;
 

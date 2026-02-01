@@ -67,7 +67,7 @@ fn execute_dash_action(
             continue;
         }
 
-        let params = node_def.params.expect_action().expect_dash();
+        let params = node_def.params.unwrap_action().unwrap_dash();
 
         let caster_stats = stats_query
             .get(event.context.caster)

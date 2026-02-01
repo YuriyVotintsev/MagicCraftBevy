@@ -59,10 +59,10 @@ macro_rules! collect_nodes {
 
             $(
                 paste::paste! {
-                    pub fn [<expect_ $module>](&self) -> &$module::__NodeParams {
+                    pub fn [<unwrap_ $module>](&self) -> &$module::__NodeParams {
                         match self {
                             Self::$module(p) => p,
-                            _ => panic!("Expected {} params", stringify!($module)),
+                            _ => unreachable!("node_type check guarantees {} params", stringify!($module)),
                         }
                     }
                 }

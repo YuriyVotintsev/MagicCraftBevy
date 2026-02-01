@@ -120,7 +120,7 @@ impl NodeHandler for WhileHeldHandler {
         params: &NodeParams,
         _registry: &NodeRegistry,
     ) {
-        let p = params.expect_trigger().expect_while_held();
+        let p = params.unwrap_trigger().unwrap_while_held();
         let cooldown = p.cooldown.clone();
 
         commands

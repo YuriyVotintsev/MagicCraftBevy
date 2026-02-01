@@ -26,17 +26,19 @@ impl NodeParams {
         }
     }
 
-    pub fn expect_trigger(&self) -> &crate::building_blocks::triggers::NodeParams {
+    #[inline]
+    pub fn unwrap_trigger(&self) -> &crate::building_blocks::triggers::NodeParams {
         match self {
             Self::Trigger(p) => p,
-            _ => panic!("Expected Trigger params"),
+            _ => unreachable!("node_type check guarantees Trigger params"),
         }
     }
 
-    pub fn expect_action(&self) -> &crate::building_blocks::actions::NodeParams {
+    #[inline]
+    pub fn unwrap_action(&self) -> &crate::building_blocks::actions::NodeParams {
         match self {
             Self::Action(p) => p,
-            _ => panic!("Expected Action params"),
+            _ => unreachable!("node_type check guarantees Action params"),
         }
     }
 }

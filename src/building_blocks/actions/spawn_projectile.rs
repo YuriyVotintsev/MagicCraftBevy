@@ -79,7 +79,7 @@ fn execute_spawn_projectile_action(
             continue;
         }
 
-        let params = node_def.params.expect_action().expect_spawn_projectile();
+        let params = node_def.params.unwrap_action().unwrap_spawn_projectile();
 
         let caster_stats = stats_query
             .get(event.context.caster)

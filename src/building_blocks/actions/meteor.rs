@@ -89,7 +89,7 @@ fn execute_meteor_action(
             continue;
         }
 
-        let params = node_def.params.expect_action().expect_meteor();
+        let params = node_def.params.unwrap_action().unwrap_meteor();
 
         let caster_stats = stats_query
             .get(event.context.caster)
