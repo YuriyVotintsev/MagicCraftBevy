@@ -353,7 +353,6 @@ fn resolve_node_def(
     let params = resolve_node_params(kind, &name, &params_raw, stat_registry);
 
     builder.add_node(NodeDef {
-        kind,
         node_type,
         params,
         children,

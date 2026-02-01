@@ -24,7 +24,6 @@ impl std::fmt::Display for NodeKind {
 
 #[derive(Debug, Clone)]
 pub struct NodeDef {
-    pub kind: NodeKind,
     pub node_type: NodeTypeId,
     pub params: NodeParams,
     pub children: Vec<NodeDefId>,
@@ -90,10 +89,6 @@ impl NodeRegistry {
 
     pub fn get_kind(&self, id: NodeTypeId) -> NodeKind {
         self.kinds[id.0 as usize]
-    }
-
-    pub fn get(&self, id: NodeTypeId) -> Option<&dyn NodeHandler> {
-        self.handlers.get(id.0 as usize).map(|h| h.as_ref())
     }
 }
 

@@ -26,7 +26,7 @@ macro_rules! collect_nodes {
         $(pub mod $no_params;)*
 
         #[derive(Debug, Clone)]
-        #[allow(non_camel_case_types)]
+        #[allow(non_camel_case_types, dead_code)]
         pub enum NodeParams {
             $(
                 $with_params($with_params::__NodeParams),
@@ -36,6 +36,7 @@ macro_rules! collect_nodes {
             )*
         }
 
+        #[allow(dead_code)]
         impl NodeParams {
             pub fn parse(
                 name: &str,

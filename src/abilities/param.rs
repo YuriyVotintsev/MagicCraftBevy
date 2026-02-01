@@ -41,15 +41,6 @@ impl ParamValue {
             Self::Expr(expr) => expr.evaluate(&Modifiers::default(), stats) as i32,
         }
     }
-
-    pub fn as_bool(&self) -> bool {
-        match self {
-            Self::Bool(v) => *v,
-            Self::Int(v) => *v != 0,
-            Self::Float(v) => *v != 0.0,
-            Self::Stat(_) | Self::Expr(_) => false,
-        }
-    }
 }
 
 pub trait ParseNodeParams: Send + Sync + 'static {
@@ -57,6 +48,7 @@ pub trait ParseNodeParams: Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct NoParams;
 
 impl ParseNodeParams for NoParams {
