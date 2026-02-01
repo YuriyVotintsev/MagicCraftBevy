@@ -1,6 +1,6 @@
 (
     id: "dash",
-    trigger: ("on_input", [
+    activator: ("on_input", [
         ("dash", {
             "speed": Float(1500.0),
             "duration": Float(0.2),

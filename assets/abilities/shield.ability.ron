@@ -1,6 +1,6 @@
 (
     id: "shield",
-    trigger: ("on_input", [
+    activator: ("on_input", [
         ("shield", {
             "duration": Float(0.5),
             "radius": Float(100.0),

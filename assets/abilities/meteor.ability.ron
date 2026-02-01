@@ -1,6 +1,6 @@
 (
     id: "meteor",
-    trigger: ("interval", {"interval": Float(3.0)}, [
+    activator: ("interval", {"interval": Float(3.0)}, [
         ("spawn_meteor", {
             "search_radius": Float(700.0),
             "damage_radius": Float(80.0),

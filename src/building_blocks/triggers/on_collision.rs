@@ -40,16 +40,6 @@ impl NodeHandler for OnCollisionTriggerHandler {
     fn kind(&self) -> NodeKind {
         NodeKind::Trigger
     }
-
-    fn add_to_entity(
-        &self,
-        _commands: &mut Commands,
-        _entity: Entity,
-        _ability_id: AbilityId,
-        _params: &NodeParams,
-        _registry: &NodeRegistry,
-    ) {
-    }
 }
 
 pub fn register_systems(app: &mut App) {

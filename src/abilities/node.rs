@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::ids::{NodeTypeId, NodeDefId, AbilityId};
 use super::param::ParamValueRaw;
 use super::params::NodeParams;
+use super::activators::{AbilityInstance, spawn_activator};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NodeKind {
@@ -52,17 +53,6 @@ impl NodeDefRaw {
 pub trait NodeHandler: Send + Sync + 'static {
     fn name(&self) -> &'static str;
     fn kind(&self) -> NodeKind;
-
-    fn add_to_entity(
-        &self,
-        _commands: &mut Commands,
-        _entity: Entity,
-        _ability_id: AbilityId,
-        _params: &NodeParams,
-        _registry: &NodeRegistry,
-    ) {
-        panic!("{} is not a Trigger node and cannot be added to entity", self.name());
-    }
 }
 
 #[derive(Resource, Default)]
@@ -109,33 +99,23 @@ impl NodeRegistry {
 
 pub fn attach_ability(
     commands: &mut Commands,
-    entity: Entity,
+    owner: Entity,
     ability_id: AbilityId,
     ability_registry: &AbilityRegistry,
-    node_registry: &NodeRegistry,
 ) {
     let Some(ability_def) = ability_registry.get(ability_id) else {
         return;
     };
 
-    let Some(root_node) = ability_def.get_node(ability_def.root_node) else {
-        return;
-    };
+    let mut entity_commands = commands.spawn((
+        AbilityInstance { ability_id, owner },
+        Name::new(format!("Ability_{:?}", ability_id)),
+    ));
 
-    let Some(handler) = node_registry.get(root_node.node_type) else {
-        warn!(
-            "Unknown node type: {:?}",
-            root_node.node_type
-        );
-        return;
-    };
-
-    handler.add_to_entity(
-        commands,
-        entity,
-        ability_id,
-        &root_node.params,
-        node_registry,
+    spawn_activator(
+        &mut entity_commands,
+        &ability_def.activator_type,
+        &ability_def.activator_params,
     );
 }
 

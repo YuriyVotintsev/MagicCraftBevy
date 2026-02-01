@@ -1,6 +1,6 @@
 (
     id: "orbiting_orbs",
-    trigger: ("every_frame", [
+    activator: ("every_frame", [
         ("spawn_orbiting", {
             "count": Int(3),
             "radius": Float(80.0),

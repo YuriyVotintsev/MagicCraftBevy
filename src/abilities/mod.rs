@@ -7,6 +7,8 @@ mod ability_def;
 mod components;
 pub mod events;
 mod dispatcher;
+pub mod activators;
+mod cleanup;
 
 #[macro_use]
 mod macros;
@@ -22,6 +24,7 @@ pub use ability_def::{AbilityDef, AbilityDefRaw};
 pub use components::{AbilityInputs, InputState, AbilitySource};
 pub use ids::NodeDefId;
 pub use node::attach_ability;
+pub use activators::{AbilityInstance, ActivatorParams};
 
 use bevy::prelude::*;
 
@@ -45,6 +48,8 @@ impl Plugin for AbilityPlugin {
         app.init_resource::<Messages<ExecuteNodeEvent>>();
         app.init_resource::<Messages<NodeTriggerEvent>>();
 
+        activators::register_all(app);
+
         let mut node_registry = NodeRegistry::new();
         triggers::register_all(app, &mut node_registry);
         actions::register_all(app, &mut node_registry);
@@ -61,8 +66,10 @@ impl Plugin for AbilityPlugin {
 
         app.add_systems(
             Update,
-            clear_ability_inputs
-                .before(GameSet::Input)
+            (
+                clear_ability_inputs.before(GameSet::Input),
+                cleanup::cleanup_orphaned_abilities,
+            )
                 .run_if(in_state(WavePhase::Combat)),
         );
 

@@ -8,6 +8,7 @@ use crate::abilities::{
     NodeDef, NodeDefRaw, NodeKind, NodeRegistry, NodeParams,
     ParamValueRaw,
     NodeDefId,
+    activators::{ActivatorParams, interval::IntervalParams, while_held::WhileHeldParams},
 };
 use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;
@@ -255,9 +256,10 @@ impl AbilityBuilder {
         id
     }
 
-    fn build(self, root_node: NodeDefId) -> AbilityDef {
+    fn build(self, activator_type: String, activator_params: ActivatorParams, root_actions: Vec<NodeDefId>) -> AbilityDef {
         let mut ability = AbilityDef::new();
-        ability.set_root_node(root_node);
+        ability.set_activator(activator_type, activator_params);
+        ability.set_root_actions(root_actions);
         for node in self.nodes {
             ability.add_node(node);
         }
@@ -274,24 +276,36 @@ fn resolve_ability_def(
     ability_registry.allocate_id(&raw.id);
     let mut builder = AbilityBuilder::new();
 
-    let root_node_id = resolve_node_def(
-        &raw.root_node,
-        None,
-        stat_registry,
-        node_registry,
-        &mut builder,
-    );
+    let (activator_type, params_raw, children_raw) = raw.activator.clone().destructure();
 
-    if let Some(root_def) = builder.nodes.last() {
-        if root_def.kind != NodeKind::Trigger {
-            panic!(
-                "Ability '{}' root node must be a Trigger, but got {}",
-                raw.id, root_def.kind
-            );
-        }
+    let valid_activators = ["on_input", "interval", "while_held", "every_frame"];
+    if !valid_activators.contains(&activator_type.as_str()) {
+        panic!("Invalid activator type '{}' in ability '{}'", activator_type, raw.id);
     }
 
-    builder.build(root_node_id)
+    let activator_params = parse_activator_params(&activator_type, &params_raw, stat_registry);
+
+    let mut root_nodes = Vec::new();
+    for child_raw in children_raw {
+        let node_id = resolve_node_def(&child_raw, None, stat_registry, node_registry, &mut builder);
+        root_nodes.push(node_id);
+    }
+
+    builder.build(activator_type, activator_params, root_nodes)
+}
+
+fn parse_activator_params(
+    activator_type: &str,
+    params_raw: &HashMap<String, ParamValueRaw>,
+    stat_registry: &StatRegistry,
+) -> ActivatorParams {
+    match activator_type {
+        "on_input" => ActivatorParams::OnInput,
+        "every_frame" => ActivatorParams::EveryFrame,
+        "interval" => ActivatorParams::Interval(IntervalParams::parse(params_raw, stat_registry)),
+        "while_held" => ActivatorParams::WhileHeld(WhileHeldParams::parse(params_raw, stat_registry)),
+        _ => panic!("Unknown activator type: {}", activator_type),
+    }
 }
 
 fn resolve_node_params(

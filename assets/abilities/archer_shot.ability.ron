@@ -1,6 +1,6 @@
 (
     id: "archer_shot",
-    trigger: ("on_input", [
+    activator: ("on_input", [
         ("spawn_projectile", {
             "speed": Float(400.0),
             "size": Float(8.0),

@@ -15,14 +15,10 @@ pub fn node_ability_dispatcher(
             continue;
         };
 
-        let Some(root_node) = ability_def.get_node(ability_def.root_node) else {
-            continue;
-        };
-
-        for &child_id in &root_node.children {
+        for &node_id in &ability_def.root_action_nodes {
             execute_events.write(ExecuteNodeEvent {
                 ability_id: event.ability_id,
-                node_id: child_id,
+                node_id,
                 context: event.context.clone(),
             });
         }

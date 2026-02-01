@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
-use crate::abilities::{AbilityInputs, AbilityRegistry, NodeRegistry, InputState, attach_ability};
+use crate::abilities::{AbilityInputs, AbilityRegistry, InputState, attach_ability};
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
@@ -57,7 +57,6 @@ fn spawn_player(
     calculators: Res<StatCalculators>,
     selected_spells: Res<SelectedSpells>,
     ability_registry: Res<AbilityRegistry>,
-    node_registry: Res<NodeRegistry>,
 ) {
     let player_def = &player_def_res.0;
 
@@ -124,13 +123,13 @@ fn spawn_player(
     )).id();
 
     if let Some(active_id) = selected_spells.active {
-        attach_ability(&mut commands, entity, active_id, &ability_registry, &node_registry);
+        attach_ability(&mut commands, entity, active_id, &ability_registry);
     }
     if let Some(passive_id) = selected_spells.passive {
-        attach_ability(&mut commands, entity, passive_id, &ability_registry, &node_registry);
+        attach_ability(&mut commands, entity, passive_id, &ability_registry);
     }
     if let Some(defensive_id) = selected_spells.defensive {
-        attach_ability(&mut commands, entity, defensive_id, &ability_registry, &node_registry);
+        attach_ability(&mut commands, entity, defensive_id, &ability_registry);
     }
 }
 

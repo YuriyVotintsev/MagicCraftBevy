@@ -1,6 +1,6 @@
 (
     id: "flamethrower",
-    trigger: ("while_held", {"cooldown": Float(0.03)}, [
+    activator: ("while_held", {"interval": Float(0.03)}, [
         ("spawn_projectile", {
             "speed": Float(600.0),
             "spread": Float(18.0),

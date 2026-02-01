@@ -2,17 +2,19 @@ use serde::{Deserialize, Serialize};
 
 use super::ids::{NodeDefId, NodeTypeId};
 use super::node::{NodeDef, NodeDefRaw};
+use super::activators::ActivatorParams;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbilityDefRaw {
     pub id: String,
-    #[serde(alias = "trigger")]
-    pub root_node: NodeDefRaw,
+    pub activator: NodeDefRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct AbilityDef {
-    pub root_node: NodeDefId,
+    pub activator_type: String,
+    pub activator_params: ActivatorParams,
+    pub root_action_nodes: Vec<NodeDefId>,
     nodes: Vec<NodeDef>,
 }
 
@@ -23,7 +25,9 @@ impl AbilityDef {
 
     pub fn new() -> Self {
         Self {
-            root_node: NodeDefId(0),
+            activator_type: String::new(),
+            activator_params: ActivatorParams::OnInput,
+            root_action_nodes: vec![],
             nodes: vec![],
         }
     }
@@ -34,8 +38,13 @@ impl AbilityDef {
         id
     }
 
-    pub fn set_root_node(&mut self, id: NodeDefId) {
-        self.root_node = id;
+    pub fn set_activator(&mut self, type_name: String, params: ActivatorParams) {
+        self.activator_type = type_name;
+        self.activator_params = params;
+    }
+
+    pub fn set_root_actions(&mut self, roots: Vec<NodeDefId>) {
+        self.root_action_nodes = roots;
     }
 
     pub fn has_trigger(&self, node_id: NodeDefId, trigger_type: NodeTypeId) -> bool {
