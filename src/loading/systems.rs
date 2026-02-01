@@ -282,7 +282,7 @@ fn resolve_ability_def(
 
     let (activator_type, params_raw, children_raw) = raw.activator.clone().destructure();
 
-    let valid_activators = ["on_input", "interval", "while_held", "every_frame"];
+    let valid_activators = ["on_input", "interval", "while_held", "once"];
     if !valid_activators.contains(&activator_type.as_str()) {
         panic!("Invalid activator type '{}' in ability '{}'", activator_type, raw.id);
     }
@@ -305,7 +305,7 @@ fn parse_activator_params(
 ) -> ActivatorParams {
     match activator_type {
         "on_input" => ActivatorParams::OnInput,
-        "every_frame" => ActivatorParams::EveryFrame,
+        "once" => ActivatorParams::Once,
         "interval" => ActivatorParams::Interval(IntervalParams::parse(params_raw, stat_registry)),
         "while_held" => ActivatorParams::WhileHeld(WhileHeldParams::parse(params_raw, stat_registry)),
         _ => panic!("Unknown activator type: {}", activator_type),
