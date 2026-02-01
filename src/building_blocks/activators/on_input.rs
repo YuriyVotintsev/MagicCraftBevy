@@ -1,11 +1,23 @@
 use bevy::prelude::*;
+use magic_craft_macros::GenerateRaw;
+
 use crate::register_activator;
 use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target, AbilityInputs, AbilityInstance};
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
 
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[activator]
+pub struct OnInputParams;
+
 #[derive(Component, Default)]
 pub struct OnInputActivator;
+
+impl OnInputActivator {
+    pub fn from_params(_params: &OnInputParams) -> Self {
+        Self
+    }
+}
 
 fn on_input_system(
     mut trigger_events: MessageWriter<TriggerAbilityEvent>,
@@ -43,4 +55,4 @@ pub fn register_systems(app: &mut App) {
     );
 }
 
-register_activator!(OnInputActivator, params: (), name: "on_input");
+register_activator!(OnInputParams, OnInputActivator);

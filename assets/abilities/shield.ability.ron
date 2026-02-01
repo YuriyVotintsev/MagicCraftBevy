@@ -1,9 +1,9 @@
 (
     id: "shield",
-    activator: ("on_input", [
-        ("shield", {
-            "duration": Float(0.5),
-            "radius": Float(100.0),
-        }),
-    ]),
+    activator: OnInputParams((children: [
+        ShieldParams((
+            duration: Some(Float(0.5)),
+            radius: Some(Float(100.0)),
+        ))
+    ]))
 )

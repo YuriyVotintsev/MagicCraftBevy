@@ -1,39 +1,27 @@
-use std::collections::HashMap;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::register_node;
+use magic_craft_macros::GenerateRaw;
 
+use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
-use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
-use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::events::ExecuteNodeEvent;
+use crate::building_blocks::actions::ActionParams;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::wave::InvulnerableStack;
 use crate::Faction;
 use crate::GameState;
 
-pub const SHIELD: &str = "shield";
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[node(kind = Action)]
 pub struct ShieldParams {
+    #[raw(default = 0.5)]
     pub duration: ParamValue,
+    #[raw(default = 100.0)]
     pub radius: ParamValue,
-}
-
-impl ParseNodeParams for ShieldParams {
-    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
-        Self {
-            duration: raw.get("duration")
-                .map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(0.5)),
-            radius: raw.get("radius")
-                .map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(100.0)),
-        }
-    }
 }
 
 #[derive(Component)]
@@ -58,8 +46,8 @@ fn execute_shield_action(
     mut cached_id: Local<Option<NodeTypeId>>,
 ) {
     let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id(SHIELD)
-            .expect("shield handler not registered")
+        node_registry.get_id("ShieldParams")
+            .expect("ShieldParams not registered")
     });
 
     for event in action_events.read() {
@@ -74,7 +62,9 @@ fn execute_shield_action(
             continue;
         }
 
-        let params = node_def.params.unwrap_action().unwrap_shield();
+        let ActionParams::ShieldParams(params) = node_def.params.unwrap_action() else {
+            continue;
+        };
 
         let caster_stats = stats_query
             .get(event.context.caster)
@@ -109,19 +99,6 @@ fn execute_shield_action(
             },
             Transform::from_translation(event.context.source.as_point().unwrap_or(Vec3::ZERO).with_z(0.5)),
         ));
-    }
-}
-
-#[derive(Default)]
-pub struct ShieldHandler;
-
-impl NodeHandler for ShieldHandler {
-    fn name(&self) -> &'static str {
-        SHIELD
-    }
-
-    fn kind(&self) -> NodeKind {
-        NodeKind::Action
     }
 }
 
@@ -189,4 +166,4 @@ fn update_shield_visual(
     }
 }
 
-register_node!(ShieldHandler, params: ShieldParams, name: SHIELD, systems: register_systems);
+register_node!(ShieldParams);

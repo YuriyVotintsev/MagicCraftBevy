@@ -1,14 +1,18 @@
 (
     id: "meteor",
-    activator: ("interval", {"interval": Float(3.0)}, [
-        ("spawn_meteor", {
-            "search_radius": Float(700.0),
-            "damage_radius": Float(80.0),
-            "fall_duration": Float(0.5),
-        }, [
-            ("on_area", [
-                ("damage", {"amount": Stat("physical_damage")}),
-            ]),
-        ]),
-    ]),
+    activator: IntervalParams((
+        interval: Some(Float(3.0)),
+        children: [
+            MeteorParams((
+                search_radius: Some(Float(700.0)),
+                damage_radius: Some(Float(80.0)),
+                fall_duration: Some(Float(0.5)),
+                children: [
+                    OnAreaParams((children: [
+                        DamageParams((amount: Some(Stat("physical_damage"))))
+                    ]))
+                ]
+            ))
+        ]
+    ))
 )

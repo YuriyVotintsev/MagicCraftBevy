@@ -1,6 +1,10 @@
-use crate::collect_nodes;
+use crate::collect_action_nodes;
 
-collect_nodes! {
-    with_params: [spawn_projectile, orbiting, damage, dash, meteor, shield],
-    no_params: []
-}
+collect_action_nodes!([
+    spawn_projectile,
+    orbiting,
+    damage,
+    dash,
+    meteor,
+    shield,
+]);

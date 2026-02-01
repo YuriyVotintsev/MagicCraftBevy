@@ -1,13 +1,14 @@
 (
     id: "archer_shot",
-    activator: ("on_input", [
-        ("spawn_projectile", {
-            "speed": Float(400.0),
-            "size": Float(8.0),
-        }, [
-            ("on_collision", [
-                ("damage", {"amount": Stat("physical_damage")}),
-            ]),
-        ]),
-    ]),
+    activator: OnInputParams((children: [
+        SpawnProjectileParams((
+            speed: Some(Float(400.0)),
+            size: Some(Float(8.0)),
+            children: [
+                OnCollisionParams((children: [
+                    DamageParams((amount: Some(Stat("physical_damage"))))
+                ]))
+            ]
+        ))
+    ]))
 )

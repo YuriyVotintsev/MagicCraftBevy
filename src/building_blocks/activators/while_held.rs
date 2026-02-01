@@ -1,25 +1,17 @@
 use bevy::prelude::*;
-use std::collections::HashMap;
+use magic_craft_macros::GenerateRaw;
+
 use crate::register_activator;
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
+use crate::abilities::param::ParamValue;
 use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target, AbilityInputs, AbilityInstance};
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::ComputedStats;
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[activator]
 pub struct WhileHeldParams {
     pub interval: ParamValue,
-}
-
-impl WhileHeldParams {
-    pub fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
-        Self {
-            interval: raw.get("interval")
-                .map(|v| resolve_param_value(v, stat_registry))
-                .expect("while_held requires 'interval' parameter"),
-        }
-    }
 }
 
 #[derive(Component)]
@@ -29,7 +21,7 @@ pub struct WhileHeldActivator {
 }
 
 impl WhileHeldActivator {
-    pub fn from_params_impl(params: &WhileHeldParams) -> Self {
+    pub fn from_params(params: &WhileHeldParams) -> Self {
         Self {
             interval: params.interval.clone(),
             timer: 0.0,
@@ -85,4 +77,4 @@ pub fn register_systems(app: &mut App) {
     );
 }
 
-register_activator!(WhileHeldActivator, params: WhileHeldParams, name: "while_held");
+register_activator!(WhileHeldParams, WhileHeldActivator);

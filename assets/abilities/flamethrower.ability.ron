@@ -1,16 +1,20 @@
 (
     id: "flamethrower",
-    activator: ("while_held", {"interval": Float(0.03)}, [
-        ("spawn_projectile", {
-            "speed": Float(600.0),
-            "spread": Float(18.0),
-            "lifetime": Float(0.6),
-            "start_size": Float(8.0),
-            "end_size": Float(25.0),
-        }, [
-            ("on_collision", [
-                ("damage", {"amount": Float(1.0)}),
-            ]),
-        ]),
-    ]),
+    activator: WhileHeldParams((
+        interval: Some(Float(0.03)),
+        children: [
+            SpawnProjectileParams((
+                speed: Some(Float(600.0)),
+                spread: Some(Float(18.0)),
+                lifetime: Some(Float(0.6)),
+                start_size: Some(Float(8.0)),
+                end_size: Some(Float(25.0)),
+                children: [
+                    OnCollisionParams((children: [
+                        DamageParams((amount: Some(Float(1.0))))
+                    ]))
+                ]
+            ))
+        ]
+    ))
 )

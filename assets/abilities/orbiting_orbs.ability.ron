@@ -1,15 +1,16 @@
 (
     id: "orbiting_orbs",
-    activator: ("once", [
-        ("spawn_orbiting", {
-            "count": Int(3),
-            "radius": Float(80.0),
-            "angular_speed": Float(3.0),
-            "size": Float(20.0),
-        }, [
-            ("on_collision", [
-                ("damage", {"amount": Stat("physical_damage")}),
-            ]),
-        ]),
-    ]),
+    activator: OnceParams((children: [
+        OrbitingParams((
+            count: Some(Int(3)),
+            radius: Some(Float(80.0)),
+            angular_speed: Some(Float(3.0)),
+            size: Some(Float(20.0)),
+            children: [
+                OnCollisionParams((children: [
+                    DamageParams((amount: Some(Stat("physical_damage"))))
+                ]))
+            ]
+        ))
+    ]))
 )

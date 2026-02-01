@@ -18,9 +18,8 @@ pub use crate::building_blocks::actions;
 pub use crate::building_blocks::activators;
 
 pub use context::{AbilityContext, Target};
-pub use param::{ParamValue, ParamValueRaw, ParseNodeParams, NoParams, resolve_param_value};
-pub use params::NodeParams;
-pub use node::{NodeDef, NodeDefRaw, NodeKind, NodeRegistry, AbilityRegistry};
+pub use param::{ParamValue, ParamValueRaw, resolve_param_value};
+pub use node::{NodeDef, NodeKind, NodeRegistry, AbilityRegistry};
 pub use ability_def::{AbilityDef, AbilityDefRaw};
 pub use components::{AbilityInputs, InputState, AbilitySource};
 pub use ids::NodeDefId;

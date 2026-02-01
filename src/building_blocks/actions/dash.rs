@@ -1,38 +1,28 @@
-use std::collections::HashMap;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::register_node;
+use magic_craft_macros::GenerateRaw;
 
+use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
-use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
-use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::Target;
+use crate::building_blocks::actions::ActionParams;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::wave::InvulnerableStack;
 use crate::MovementLocked;
 use crate::GameState;
 
-pub const DASH: &str = "dash";
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[node(kind = Action)]
 pub struct DashParams {
+    #[raw(default = 1500.0)]
     pub speed: ParamValue,
+    #[raw(default = 0.2)]
     pub duration: ParamValue,
-}
-
-impl ParseNodeParams for DashParams {
-    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
-        Self {
-            speed: raw.get("speed").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(1500.0)),
-            duration: raw.get("duration").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(0.2)),
-        }
-    }
 }
 
 #[derive(Component)]
@@ -56,8 +46,8 @@ fn execute_dash_action(
     mut cached_id: Local<Option<NodeTypeId>>,
 ) {
     let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id(DASH)
-            .expect("dash handler not registered")
+        node_registry.get_id("DashParams")
+            .expect("DashParams not registered")
     });
 
     for event in action_events.read() {
@@ -72,7 +62,9 @@ fn execute_dash_action(
             continue;
         }
 
-        let params = node_def.params.unwrap_action().unwrap_dash();
+        let ActionParams::DashParams(params) = node_def.params.unwrap_action() else {
+            continue;
+        };
 
         let caster_stats = stats_query
             .get(event.context.caster)
@@ -119,19 +111,6 @@ fn execute_dash_action(
     }
 }
 
-#[derive(Default)]
-pub struct DashHandler;
-
-impl NodeHandler for DashHandler {
-    fn name(&self) -> &'static str {
-        DASH
-    }
-
-    fn kind(&self) -> NodeKind {
-        NodeKind::Action
-    }
-}
-
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
@@ -170,4 +149,4 @@ fn update_dashing(
     }
 }
 
-register_node!(DashHandler, params: DashParams, name: DASH, systems: register_systems);
+register_node!(DashParams);

@@ -1,48 +1,36 @@
-use std::collections::HashMap;
 use std::f32::consts::PI;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::register_node;
+use magic_craft_macros::GenerateRaw;
 
+use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
-use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
-use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::AbilitySource;
 use crate::common::AttachedTo;
+use crate::building_blocks::actions::ActionParams;
 use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::Faction;
 use crate::GameState;
 
 use super::spawn_projectile::Pierce;
 
-pub const SPAWN_ORBITING: &str = "spawn_orbiting";
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[node(kind = Action)]
 pub struct OrbitingParams {
+    #[raw(default = 3.0)]
     pub count: ParamValue,
+    #[raw(default = 80.0)]
     pub radius: ParamValue,
+    #[raw(default = 3.0)]
     pub angular_speed: ParamValue,
+    #[raw(default = 20.0)]
     pub size: ParamValue,
-}
-
-impl ParseNodeParams for OrbitingParams {
-    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
-        Self {
-            count: raw.get("count").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(3.0)),
-            radius: raw.get("radius").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(80.0)),
-            angular_speed: raw.get("angular_speed").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(3.0)),
-            size: raw.get("size").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(20.0)),
-        }
-    }
 }
 
 #[derive(Component)]
@@ -61,8 +49,8 @@ fn execute_orbiting_action(
     mut cached_id: Local<Option<NodeTypeId>>,
 ) {
     let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id(SPAWN_ORBITING)
-            .expect("spawn_orbiting handler not registered")
+        node_registry.get_id("OrbitingParams")
+            .expect("OrbitingParams not registered")
     });
 
     for event in action_events.read() {
@@ -77,7 +65,9 @@ fn execute_orbiting_action(
             continue;
         }
 
-        let params = node_def.params.unwrap_action().unwrap_orbiting();
+        let ActionParams::OrbitingParams(params) = node_def.params.unwrap_action() else {
+            continue;
+        };
 
         let caster_stats = stats_query
             .get(event.context.caster)
@@ -141,19 +131,6 @@ fn execute_orbiting_action(
     }
 }
 
-#[derive(Default)]
-pub struct SpawnOrbitingHandler;
-
-impl NodeHandler for SpawnOrbitingHandler {
-    fn name(&self) -> &'static str {
-        SPAWN_ORBITING
-    }
-
-    fn kind(&self) -> NodeKind {
-        NodeKind::Action
-    }
-}
-
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
@@ -185,4 +162,4 @@ fn update_orbiting_positions(
     }
 }
 
-register_node!(SpawnOrbitingHandler, params: OrbitingParams, name: SPAWN_ORBITING, systems: register_systems);
+register_node!(OrbitingParams);

@@ -3448,10 +3448,20 @@ dependencies = [
  "avian2d",
  "bevy",
  "bevy-inspector-egui",
+ "magic_craft_macros",
  "paste",
  "rand",
  "ron",
  "serde",
+]
+
+[[package]]
+name = "magic_craft_macros"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

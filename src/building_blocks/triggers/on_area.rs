@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use avian2d::prelude::*;
-use crate::register_node;
+use magic_craft_macros::GenerateRaw;
 
-use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
+use crate::register_node;
+use crate::abilities::node::NodeRegistry;
 use crate::abilities::ids::NodeTypeId;
-use crate::abilities::NoParams;
 use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::NodeTriggerEvent;
 use crate::abilities::{AbilityDef, AbilitySource};
@@ -12,7 +12,9 @@ use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
 
-pub const ON_AREA: &str = "on_area";
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[node(kind = Trigger)]
+pub struct OnAreaParams;
 
 #[derive(Component)]
 pub struct OnAreaTrigger {
@@ -30,21 +32,8 @@ impl OnAreaTrigger {
         registry: &NodeRegistry,
         radius: f32,
     ) -> Option<Self> {
-        let trigger_id = registry.get_id(ON_AREA)?;
+        let trigger_id = registry.get_id("OnAreaParams")?;
         ability_def.has_trigger(node_id, trigger_id).then_some(Self { radius })
-    }
-}
-
-#[derive(Default)]
-pub struct OnAreaTriggerHandler;
-
-impl NodeHandler for OnAreaTriggerHandler {
-    fn name(&self) -> &'static str {
-        ON_AREA
-    }
-
-    fn kind(&self) -> NodeKind {
-        NodeKind::Trigger
     }
 }
 
@@ -61,8 +50,8 @@ fn on_area_trigger_system(
     mut cached_id: Local<Option<NodeTypeId>>,
 ) {
     let trigger_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id(ON_AREA)
-            .expect("on_area trigger not registered")
+        node_registry.get_id("OnAreaParams")
+            .expect("OnAreaParams not registered")
     });
 
     for (entity, trigger, source, transform) in &query {
@@ -97,4 +86,4 @@ fn on_area_trigger_system(
     }
 }
 
-register_node!(OnAreaTriggerHandler, params: NoParams, name: ON_AREA, systems: register_systems);
+register_node!(OnAreaParams);

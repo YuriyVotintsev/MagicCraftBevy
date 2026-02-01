@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 use crate::stats::{ComputedStats, Expression, ExpressionRaw, Modifiers, StatId, StatRegistry};
 
@@ -21,6 +20,13 @@ pub enum ParamValue {
     Expr(Expression),
 }
 
+impl Default for ParamValue {
+    fn default() -> Self {
+        Self::Float(0.0)
+    }
+}
+
+
 impl ParamValue {
     pub fn evaluate_f32(&self, stats: &ComputedStats) -> f32 {
         match self {
@@ -40,20 +46,6 @@ impl ParamValue {
             Self::Stat(stat_id) => stats.get(*stat_id) as i32,
             Self::Expr(expr) => expr.evaluate(&Modifiers::default(), stats) as i32,
         }
-    }
-}
-
-pub trait ParseNodeParams: Send + Sync + 'static {
-    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self;
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
-pub struct NoParams;
-
-impl ParseNodeParams for NoParams {
-    fn parse(_: &HashMap<String, ParamValueRaw>, _: &StatRegistry) -> Self {
-        Self
     }
 }
 

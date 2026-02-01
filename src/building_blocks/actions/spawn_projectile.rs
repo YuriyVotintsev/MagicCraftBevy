@@ -1,53 +1,38 @@
-use std::collections::HashMap;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
-use crate::register_node;
+use magic_craft_macros::GenerateRaw;
 use rand::Rng;
 
+use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
-use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
-use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::context::Target;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::AbilitySource;
+use crate::building_blocks::actions::ActionParams;
 use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::Faction;
 use crate::{Growing, Lifetime};
 use crate::GameState;
 
-pub const SPAWN_PROJECTILE: &str = "spawn_projectile";
-
-#[derive(Debug, Clone)]
-pub struct ProjectileParams {
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[node(kind = Action)]
+pub struct SpawnProjectileParams {
+    #[raw(default = 800.0)]
     pub speed: ParamValue,
+    #[raw(default = 15.0)]
     pub size: ParamValue,
+    #[raw(default = 0.0)]
     pub spread: ParamValue,
     pub lifetime: Option<ParamValue>,
     pub start_size: Option<ParamValue>,
     pub end_size: Option<ParamValue>,
     pub pierce: Option<ParamValue>,
-}
-
-impl ParseNodeParams for ProjectileParams {
-    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
-        Self {
-            speed: raw.get("speed").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(800.0)),
-            size: raw.get("size").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(15.0)),
-            spread: raw.get("spread").map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(0.0)),
-            lifetime: raw.get("lifetime").map(|v| resolve_param_value(v, stat_registry)),
-            start_size: raw.get("start_size").map(|v| resolve_param_value(v, stat_registry)),
-            end_size: raw.get("end_size").map(|v| resolve_param_value(v, stat_registry)),
-            pierce: raw.get("pierce").map(|v| resolve_param_value(v, stat_registry)),
-        }
-    }
 }
 
 #[derive(Component)]
@@ -68,8 +53,8 @@ fn execute_spawn_projectile_action(
     mut cached_id: Local<Option<NodeTypeId>>,
 ) {
     let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id(SPAWN_PROJECTILE)
-            .expect("spawn_projectile handler not registered")
+        node_registry.get_id("SpawnProjectileParams")
+            .expect("SpawnProjectileParams not registered")
     });
 
     for event in action_events.read() {
@@ -84,7 +69,9 @@ fn execute_spawn_projectile_action(
             continue;
         }
 
-        let params = node_def.params.unwrap_action().unwrap_spawn_projectile();
+        let ActionParams::SpawnProjectileParams(params) = node_def.params.unwrap_action() else {
+            continue;
+        };
 
         let caster_stats = stats_query
             .get(event.context.caster)
@@ -174,19 +161,6 @@ fn execute_spawn_projectile_action(
         if let Some(trigger) = OnCollisionTrigger::if_configured(ability_def, event.node_id, &node_registry) {
             entity_commands.insert(trigger);
         }
-    }
-}
-
-#[derive(Default)]
-pub struct SpawnProjectileHandler;
-
-impl NodeHandler for SpawnProjectileHandler {
-    fn name(&self) -> &'static str {
-        SPAWN_PROJECTILE
-    }
-
-    fn kind(&self) -> NodeKind {
-        NodeKind::Action
     }
 }
 
@@ -284,4 +258,4 @@ fn projectile_collision_physics(
     }
 }
 
-register_node!(SpawnProjectileHandler, params: ProjectileParams, name: SPAWN_PROJECTILE, systems: register_systems);
+register_node!(SpawnProjectileParams);

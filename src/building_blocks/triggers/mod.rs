@@ -1,6 +1,6 @@
-use crate::collect_nodes;
+use crate::collect_trigger_nodes;
 
-collect_nodes! {
-    with_params: [],
-    no_params: [on_collision, on_area]
-}
+collect_trigger_nodes!([
+    on_collision,
+    on_area,
+]);

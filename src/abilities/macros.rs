@@ -1,136 +1,251 @@
 #[macro_export]
 macro_rules! register_node {
-    ($handler:ty, params: $params:ty, name: $name:expr, systems: $systems:path) => {
+    ($params:ty) => {
         pub type __NodeParams = $params;
-        pub const __NODE_NAME: &str = $name;
+        paste::paste! {
+            pub type __NodeParamsRaw = [<$params Raw>];
+        }
 
-        pub fn __register_node(
-            app: &mut ::bevy::prelude::App,
-            registry: &mut $crate::abilities::NodeRegistry,
-        ) {
-            $systems(app);
-
-            let handler = <$handler>::default();
-            registry.register(Box::new(handler));
+        pub fn __register_node(app: &mut ::bevy::prelude::App) {
+            register_systems(app);
         }
     };
 }
 
 #[macro_export]
-macro_rules! collect_nodes {
-    (
-        with_params: [$($with_params:ident),* $(,)?],
-        no_params: [$($no_params:ident),* $(,)?]
-    ) => {
-        $(pub mod $with_params;)*
-        $(pub mod $no_params;)*
+macro_rules! collect_action_nodes {
+    ([$($module:ident),* $(,)?]) => {
+        $(pub mod $module;)*
 
-        #[derive(Debug, Clone)]
-        #[allow(non_camel_case_types, dead_code)]
-        pub enum NodeParams {
-            $(
-                $with_params($with_params::__NodeParams),
-            )*
-            $(
-                $no_params($no_params::__NodeParams),
-            )*
+        paste::paste! {
+            #[derive(Debug, Clone, serde::Deserialize)]
+            pub enum ActionParamsRaw {
+                $(
+                    [<$module:camel Params>]($module::__NodeParamsRaw),
+                )*
+            }
         }
 
-        #[allow(dead_code)]
-        impl NodeParams {
-            pub fn parse(
-                name: &str,
-                raw: &::std::collections::HashMap<String, $crate::abilities::ParamValueRaw>,
-                stat_registry: &$crate::stats::StatRegistry,
-            ) -> Self {
-                use $crate::abilities::ParseNodeParams;
-                match name {
-                    $(
-                        $with_params::__NODE_NAME => {
-                            Self::$with_params($with_params::__NodeParams::parse(raw, stat_registry))
-                        }
-                    )*
-                    $(
-                        $no_params::__NODE_NAME => {
-                            Self::$no_params($no_params::__NodeParams::parse(raw, stat_registry))
-                        }
-                    )*
-                    _ => panic!("Unknown node type: {}", name),
+        paste::paste! {
+            #[derive(Debug, Clone)]
+            pub enum ActionParams {
+                $(
+                    [<$module:camel Params>]($module::__NodeParams),
+                )*
+            }
+        }
+
+        impl ActionParamsRaw {
+            pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> ActionParams {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](p) => ActionParams::[<$module:camel Params>](p.resolve(stat_registry)),
+                        )*
+                    }
                 }
             }
 
-            // Only generate unwrap methods for handlers with params
-            $(
+            pub fn children(&self) -> &[crate::building_blocks::NodeParamsRaw] {
                 paste::paste! {
-                    #[inline]
-                    pub fn [<unwrap_ $with_params>](&self) -> &$with_params::__NodeParams {
-                        match self {
-                            Self::$with_params(p) => p,
-                            _ => unreachable!("node_type check guarantees {} params", stringify!($with_params)),
-                        }
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](p) => p.children(),
+                        )*
                     }
                 }
-            )*
+            }
+
+            pub fn name(&self) -> &'static str {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](_) => stringify!([<$module:camel Params>]),
+                        )*
+                    }
+                }
+            }
+        }
+
+        paste::paste! {
+            impl ActionParams {
+                $(
+                    #[inline]
+                    #[allow(dead_code)]
+                    pub fn [<unwrap_ $module>](&self) -> &$module::__NodeParams {
+                        match self {
+                            Self::[<$module:camel Params>](p) => p,
+                            _ => unreachable!("node_type check guarantees {} params", stringify!($module)),
+                        }
+                    }
+                )*
+            }
         }
 
         pub fn register_all(
             app: &mut ::bevy::prelude::App,
             registry: &mut $crate::abilities::NodeRegistry,
         ) {
-            $($with_params::__register_node(app, registry);)*
-            $($no_params::__register_node(app, registry);)*
+            paste::paste! {
+                $(
+                    $module::__register_node(app);
+                    let handler = $module::__NodeParams::default();
+                    registry.register(Box::new(handler));
+                )*
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! collect_trigger_nodes {
+    ([$($module:ident),* $(,)?]) => {
+        $(pub mod $module;)*
+
+        paste::paste! {
+            #[derive(Debug, Clone, serde::Deserialize)]
+            pub enum TriggerParamsRaw {
+                $(
+                    [<$module:camel Params>]($module::__NodeParamsRaw),
+                )*
+            }
+        }
+
+        paste::paste! {
+            #[derive(Debug, Clone)]
+            pub enum TriggerParams {
+                $(
+                    [<$module:camel Params>]($module::__NodeParams),
+                )*
+            }
+        }
+
+        impl TriggerParamsRaw {
+            pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> TriggerParams {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](p) => TriggerParams::[<$module:camel Params>](p.resolve(stat_registry)),
+                        )*
+                    }
+                }
+            }
+
+            pub fn children(&self) -> &[crate::building_blocks::NodeParamsRaw] {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](p) => p.children(),
+                        )*
+                    }
+                }
+            }
+
+            pub fn name(&self) -> &'static str {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](_) => stringify!([<$module:camel Params>]),
+                        )*
+                    }
+                }
+            }
+        }
+
+        pub fn register_all(
+            app: &mut ::bevy::prelude::App,
+            registry: &mut $crate::abilities::NodeRegistry,
+        ) {
+            paste::paste! {
+                $(
+                    $module::__register_node(app);
+                    let handler = $module::__NodeParams::default();
+                    registry.register(Box::new(handler));
+                )*
+            }
         }
     };
 }
 
 #[macro_export]
 macro_rules! register_activator {
-    ($component:ty, params: (), name: $name:expr) => {
-        pub type __ActivatorComponent = $component;
-        pub type __ActivatorParams = ();
-        pub const __ACTIVATOR_NAME: &str = $name;
-    };
-    ($component:ty, params: $params:ty, name: $name:expr) => {
-        pub type __ActivatorComponent = $component;
+    ($params:ty, $component:ty) => {
         pub type __ActivatorParams = $params;
-        pub const __ACTIVATOR_NAME: &str = $name;
+        paste::paste! {
+            pub type __ActivatorParamsRaw = [<$params Raw>];
+        }
+        pub type __ActivatorComponent = $component;
 
-        impl __ActivatorComponent {
-            pub fn from_params(params: &__ActivatorParams) -> Self {
-                Self::from_params_impl(params)
-            }
+        pub fn __register_activator(app: &mut ::bevy::prelude::App) {
+            register_systems(app);
         }
     };
 }
 
 #[macro_export]
 macro_rules! collect_activators {
-    (
-        with_params: [$($with_params:ident),* $(,)?],
-        no_params: [$($no_params:ident),* $(,)?]
-    ) => {
-        $(pub mod $with_params;)*
-        $(pub mod $no_params;)*
+    ([$($module:ident),* $(,)?]) => {
+        $(pub mod $module;)*
+
+        paste::paste! {
+            #[derive(Debug, Clone, serde::Deserialize)]
+            pub enum ActivatorParamsRaw {
+                $(
+                    [<$module:camel Params>]($module::__ActivatorParamsRaw),
+                )*
+            }
+        }
 
         paste::paste! {
             #[derive(Debug, Clone)]
             pub enum ActivatorParams {
                 $(
-                    [<$with_params:camel>]($with_params::__ActivatorParams),
+                    [<$module:camel Params>]($module::__ActivatorParams),
                 )*
-                $(
-                    [<$no_params:camel>],
-                )*
+            }
+        }
+
+        impl ActivatorParamsRaw {
+            pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> ActivatorParams {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](p) => ActivatorParams::[<$module:camel Params>](p.resolve(stat_registry)),
+                        )*
+                    }
+                }
+            }
+
+            #[allow(dead_code)]
+            pub fn name(&self) -> &'static str {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](_) => stringify!([<$module:camel Params>]),
+                        )*
+                    }
+                }
+            }
+
+            pub fn children(&self) -> &[crate::building_blocks::NodeParamsRaw] {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel Params>](p) => p.children(),
+                        )*
+                    }
+                }
             }
         }
 
         paste::paste! {
             impl ActivatorParams {
                 $(
-                    pub fn [<as_ $with_params>](&self) -> &$with_params::__ActivatorParams {
+                    #[allow(dead_code)]
+                    pub fn [<as_ $module>](&self) -> &$module::__ActivatorParams {
                         match self {
-                            Self::[<$with_params:camel>](p) => p,
-                            _ => panic!("Expected {} params", stringify!($with_params)),
+                            Self::[<$module:camel Params>](p) => p,
+                            _ => panic!("Expected {} params", stringify!($module)),
                         }
                     }
                 )*
@@ -139,35 +254,22 @@ macro_rules! collect_activators {
 
         pub fn spawn_activator(
             commands: &mut ::bevy::prelude::EntityCommands,
-            activator_type: &str,
             params: &ActivatorParams,
         ) {
-            match activator_type {
-                $(
-                    $with_params::__ACTIVATOR_NAME => {
-                        paste::paste! {
-                            let p = params.[<as_ $with_params>]();
-                            commands.insert($with_params::__ActivatorComponent::from_params(p));
+            paste::paste! {
+                match params {
+                    $(
+                        ActivatorParams::[<$module:camel Params>](p) => {
+                            commands.insert($module::__ActivatorComponent::from_params(p));
                         }
-                    }
-                )*
-                $(
-                    $no_params::__ACTIVATOR_NAME => {
-                        commands.insert($no_params::__ActivatorComponent::default());
-                    }
-                )*
-                unknown => {
-                    ::bevy::prelude::warn!("Unknown activator type: {}", unknown);
+                    )*
                 }
             }
         }
 
         pub fn register_all(app: &mut ::bevy::prelude::App) {
             $(
-                $with_params::register_systems(app);
-            )*
-            $(
-                $no_params::register_systems(app);
+                $module::__register_activator(app);
             )*
         }
     };

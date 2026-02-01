@@ -1,19 +1,13 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
-use std::collections::HashMap;
-
 use crate::abilities::{
     AbilityDef, AbilityDefRaw, AbilityRegistry,
-    NodeDef, NodeDefRaw, NodeKind, NodeRegistry, NodeParams,
-    ParamValueRaw,
+    NodeDef, NodeKind, NodeRegistry,
     NodeDefId,
     ActivatorParams,
 };
-use crate::building_blocks::activators::{
-    interval::IntervalParams,
-    while_held::WhileHeldParams,
-};
+use crate::building_blocks::{NodeParams, NodeParamsRaw};
 use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
@@ -260,9 +254,9 @@ impl AbilityBuilder {
         id
     }
 
-    fn build(self, activator_type: String, activator_params: ActivatorParams, root_actions: Vec<NodeDefId>) -> AbilityDef {
+    fn build(self, activator_params: ActivatorParams, root_actions: Vec<NodeDefId>) -> AbilityDef {
         let mut ability = AbilityDef::new();
-        ability.set_activator(activator_type, activator_params);
+        ability.set_activator(activator_params);
         ability.set_root_actions(root_actions);
         for node in self.nodes {
             ability.add_node(node);
@@ -280,57 +274,27 @@ fn resolve_ability_def(
     ability_registry.allocate_id(&raw.id);
     let mut builder = AbilityBuilder::new();
 
-    let (activator_type, params_raw, children_raw) = raw.activator.clone().destructure();
-
-    let valid_activators = ["on_input", "interval", "while_held", "once"];
-    if !valid_activators.contains(&activator_type.as_str()) {
-        panic!("Invalid activator type '{}' in ability '{}'", activator_type, raw.id);
-    }
-
-    let activator_params = parse_activator_params(&activator_type, &params_raw, stat_registry);
+    let activator_params = raw.activator.resolve(stat_registry);
 
     let mut root_nodes = Vec::new();
-    for child_raw in children_raw {
-        let node_id = resolve_node_def(&child_raw, None, stat_registry, node_registry, &mut builder);
+    for child_raw in raw.activator.children() {
+        let node_id = resolve_node_def(child_raw, None, stat_registry, node_registry, &mut builder);
         root_nodes.push(node_id);
     }
 
-    builder.build(activator_type, activator_params, root_nodes)
-}
-
-fn parse_activator_params(
-    activator_type: &str,
-    params_raw: &HashMap<String, ParamValueRaw>,
-    stat_registry: &StatRegistry,
-) -> ActivatorParams {
-    match activator_type {
-        "on_input" => ActivatorParams::OnInput,
-        "once" => ActivatorParams::Once,
-        "interval" => ActivatorParams::Interval(IntervalParams::parse(params_raw, stat_registry)),
-        "while_held" => ActivatorParams::WhileHeld(WhileHeldParams::parse(params_raw, stat_registry)),
-        _ => panic!("Unknown activator type: {}", activator_type),
-    }
-}
-
-fn resolve_node_params(
-    kind: NodeKind,
-    name: &str,
-    params_raw: &HashMap<String, ParamValueRaw>,
-    stat_registry: &StatRegistry,
-) -> NodeParams {
-    NodeParams::parse(kind, name, params_raw, stat_registry)
+    builder.build(activator_params, root_nodes)
 }
 
 fn resolve_node_def(
-    raw: &NodeDefRaw,
+    raw: &NodeParamsRaw,
     parent_kind: Option<NodeKind>,
     stat_registry: &StatRegistry,
     node_registry: &NodeRegistry,
     builder: &mut AbilityBuilder,
 ) -> NodeDefId {
-    let (name, params_raw, children_raw) = raw.clone().destructure();
+    let name = raw.name();
 
-    let node_type = node_registry.get_id(&name)
+    let node_type = node_registry.get_id(name)
         .unwrap_or_else(|| panic!("Unknown node type '{}'", name));
 
     let kind = node_registry.get_kind(node_type);
@@ -345,12 +309,19 @@ fn resolve_node_def(
         }
     }
 
-    let children: Vec<NodeDefId> = children_raw
+    let children: Vec<NodeDefId> = raw.children()
         .iter()
         .map(|c| resolve_node_def(c, Some(kind), stat_registry, node_registry, builder))
         .collect();
 
-    let params = resolve_node_params(kind, &name, &params_raw, stat_registry);
+    let params = match raw {
+        NodeParamsRaw::Action(action_raw) => {
+            NodeParams::Action(action_raw.resolve(stat_registry))
+        }
+        NodeParamsRaw::Trigger(trigger_raw) => {
+            NodeParams::Trigger(trigger_raw.resolve(stat_registry))
+        }
+    };
 
     builder.add_node(NodeDef {
         node_type,

@@ -1,45 +1,31 @@
-use std::collections::HashMap;
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use crate::register_node;
+use magic_craft_macros::GenerateRaw;
 
+use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
-use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
-use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::AbilitySource;
+use crate::building_blocks::actions::ActionParams;
 use crate::building_blocks::triggers::on_area::OnAreaTrigger;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::Faction;
 use crate::Lifetime;
 use crate::GameState;
 
-pub const SPAWN_METEOR: &str = "spawn_meteor";
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[node(kind = Action)]
 pub struct MeteorParams {
+    #[raw(default = 500.0)]
     pub search_radius: ParamValue,
+    #[raw(default = 80.0)]
     pub damage_radius: ParamValue,
+    #[raw(default = 0.5)]
     pub fall_duration: ParamValue,
-}
-
-impl ParseNodeParams for MeteorParams {
-    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
-        Self {
-            search_radius: raw.get("search_radius")
-                .map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(500.0)),
-            damage_radius: raw.get("damage_radius")
-                .map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(80.0)),
-            fall_duration: raw.get("fall_duration")
-                .map(|v| resolve_param_value(v, stat_registry))
-                .unwrap_or(ParamValue::Float(0.5)),
-        }
-    }
 }
 
 const METEOR_START_HEIGHT: f32 = 400.0;
@@ -78,8 +64,8 @@ fn execute_meteor_action(
     mut cached_id: Local<Option<NodeTypeId>>,
 ) {
     let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id(SPAWN_METEOR)
-            .expect("spawn_meteor handler not registered")
+        node_registry.get_id("MeteorParams")
+            .expect("MeteorParams not registered")
     });
 
     for event in action_events.read() {
@@ -94,7 +80,9 @@ fn execute_meteor_action(
             continue;
         }
 
-        let params = node_def.params.unwrap_action().unwrap_meteor();
+        let ActionParams::MeteorParams(params) = node_def.params.unwrap_action() else {
+            continue;
+        };
 
         let caster_stats = stats_query
             .get(event.context.caster)
@@ -122,19 +110,6 @@ fn execute_meteor_action(
             ),
             Transform::from_translation(event.context.source.as_point().unwrap_or(Vec3::ZERO)),
         ));
-    }
-}
-
-#[derive(Default)]
-pub struct SpawnMeteorHandler;
-
-impl NodeHandler for SpawnMeteorHandler {
-    fn name(&self) -> &'static str {
-        SPAWN_METEOR
-    }
-
-    fn kind(&self) -> NodeKind {
-        NodeKind::Action
     }
 }
 
@@ -261,4 +236,4 @@ fn meteor_falling_update(
     }
 }
 
-register_node!(SpawnMeteorHandler, params: MeteorParams, name: SPAWN_METEOR, systems: register_systems);
+register_node!(MeteorParams);

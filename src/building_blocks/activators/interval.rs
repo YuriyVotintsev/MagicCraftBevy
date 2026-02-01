@@ -1,32 +1,19 @@
 use bevy::prelude::*;
-use std::collections::HashMap;
+use magic_craft_macros::GenerateRaw;
+
 use crate::register_activator;
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
+use crate::abilities::param::ParamValue;
 use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target, AbilityInstance};
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::ComputedStats;
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[activator]
 pub struct IntervalParams {
     pub interval: ParamValue,
+    #[raw(default = false)]
     pub skip_first: bool,
-}
-
-impl IntervalParams {
-    pub fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
-        Self {
-            interval: raw.get("interval")
-                .map(|v| resolve_param_value(v, stat_registry))
-                .expect("interval requires 'interval' parameter"),
-            skip_first: raw.get("skip_first")
-                .and_then(|v| match v {
-                    ParamValueRaw::Bool(b) => Some(*b),
-                    _ => None,
-                })
-                .unwrap_or(false),
-        }
-    }
 }
 
 #[derive(Component)]
@@ -38,7 +25,7 @@ pub struct IntervalActivator {
 }
 
 impl IntervalActivator {
-    pub fn from_params_impl(params: &IntervalParams) -> Self {
+    pub fn from_params(params: &IntervalParams) -> Self {
         Self {
             interval: params.interval.clone(),
             timer: 0.0,
@@ -94,4 +81,4 @@ pub fn register_systems(app: &mut App) {
     );
 }
 
-register_activator!(IntervalActivator, params: IntervalParams, name: "interval");
+register_activator!(IntervalParams, IntervalActivator);

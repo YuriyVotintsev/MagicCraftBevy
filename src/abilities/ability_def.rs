@@ -1,18 +1,18 @@
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 
 use super::ids::{NodeDefId, NodeTypeId};
-use super::node::{NodeDef, NodeDefRaw};
+use super::node::NodeDef;
+use crate::building_blocks::activators::ActivatorParamsRaw;
 use super::ActivatorParams;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct AbilityDefRaw {
     pub id: String,
-    pub activator: NodeDefRaw,
+    pub activator: ActivatorParamsRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct AbilityDef {
-    pub activator_type: String,
     pub activator_params: ActivatorParams,
     pub root_action_nodes: Vec<NodeDefId>,
     nodes: Vec<NodeDef>,
@@ -25,8 +25,7 @@ impl AbilityDef {
 
     pub fn new() -> Self {
         Self {
-            activator_type: String::new(),
-            activator_params: ActivatorParams::OnInput,
+            activator_params: ActivatorParams::OnInputParams(crate::building_blocks::activators::on_input::OnInputParams),
             root_action_nodes: vec![],
             nodes: vec![],
         }
@@ -38,8 +37,7 @@ impl AbilityDef {
         id
     }
 
-    pub fn set_activator(&mut self, type_name: String, params: ActivatorParams) {
-        self.activator_type = type_name;
+    pub fn set_activator(&mut self, params: ActivatorParams) {
         self.activator_params = params;
     }
 

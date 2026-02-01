@@ -1,12 +1,24 @@
 use bevy::prelude::*;
+use magic_craft_macros::GenerateRaw;
+
 use crate::register_activator;
 use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target, AbilityInstance};
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
 
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[activator]
+pub struct OnceParams;
+
 #[derive(Component, Default)]
 pub struct OnceActivator {
     pub triggered: bool,
+}
+
+impl OnceActivator {
+    pub fn from_params(_params: &OnceParams) -> Self {
+        Self { triggered: false }
+    }
 }
 
 fn once_system(
@@ -46,4 +58,4 @@ pub fn register_systems(app: &mut App) {
     );
 }
 
-register_activator!(OnceActivator, params: (), name: "once");
+register_activator!(OnceParams, OnceActivator);

@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
 use avian2d::prelude::*;
-use crate::register_node;
+use magic_craft_macros::GenerateRaw;
 
-use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
+use crate::register_node;
+use crate::abilities::node::NodeRegistry;
 use crate::abilities::ids::NodeTypeId;
-use crate::abilities::NoParams;
 use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::NodeTriggerEvent;
 use crate::abilities::{AbilityDef, AbilitySource};
@@ -13,7 +13,9 @@ use crate::physics::Wall;
 use crate::schedule::GameSet;
 use crate::Faction;
 
-pub const ON_COLLISION: &str = "on_collision";
+#[derive(Debug, Clone, Default, GenerateRaw)]
+#[node(kind = Trigger)]
+pub struct OnCollisionParams;
 
 #[derive(Component)]
 pub struct OnCollisionTrigger;
@@ -24,21 +26,8 @@ impl OnCollisionTrigger {
         node_id: crate::abilities::ids::NodeDefId,
         registry: &NodeRegistry,
     ) -> Option<Self> {
-        let trigger_id = registry.get_id(ON_COLLISION)?;
+        let trigger_id = registry.get_id("OnCollisionParams")?;
         ability_def.has_trigger(node_id, trigger_id).then_some(Self)
-    }
-}
-
-#[derive(Default)]
-pub struct OnCollisionTriggerHandler;
-
-impl NodeHandler for OnCollisionTriggerHandler {
-    fn name(&self) -> &'static str {
-        ON_COLLISION
-    }
-
-    fn kind(&self) -> NodeKind {
-        NodeKind::Trigger
     }
 }
 
@@ -56,8 +45,8 @@ fn on_collision_trigger_system(
     mut cached_id: Local<Option<NodeTypeId>>,
 ) {
     let trigger_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id(ON_COLLISION)
-            .expect("on_collision trigger not registered")
+        node_registry.get_id("OnCollisionParams")
+            .expect("OnCollisionParams not registered")
     });
 
     let mut processed: HashSet<(Entity, Entity)> = HashSet::default();
@@ -111,4 +100,4 @@ fn on_collision_trigger_system(
     }
 }
 
-register_node!(OnCollisionTriggerHandler, params: NoParams, name: ON_COLLISION, systems: register_systems);
+register_node!(OnCollisionParams);

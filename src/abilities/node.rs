@@ -1,9 +1,7 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
-use serde::{Deserialize, Serialize};
 
 use super::ids::{NodeTypeId, NodeDefId, AbilityId};
-use super::param::ParamValueRaw;
 use super::params::NodeParams;
 use super::{AbilityInstance, spawn_activator};
 
@@ -11,6 +9,7 @@ use super::{AbilityInstance, spawn_activator};
 pub enum NodeKind {
     Trigger,
     Action,
+    Activator,
 }
 
 impl std::fmt::Display for NodeKind {
@@ -18,6 +17,7 @@ impl std::fmt::Display for NodeKind {
         match self {
             NodeKind::Trigger => write!(f, "Trigger"),
             NodeKind::Action => write!(f, "Action"),
+            NodeKind::Activator => write!(f, "Activator"),
         }
     }
 }
@@ -27,26 +27,6 @@ pub struct NodeDef {
     pub node_type: NodeTypeId,
     pub params: NodeParams,
     pub children: Vec<NodeDefId>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum NodeDefRaw {
-    Full(String, HashMap<String, ParamValueRaw>, Vec<NodeDefRaw>),
-    NoChildren(String, HashMap<String, ParamValueRaw>),
-    NoParams(String, Vec<NodeDefRaw>),
-    OnlyName(String),
-}
-
-impl NodeDefRaw {
-    pub fn destructure(self) -> (String, HashMap<String, ParamValueRaw>, Vec<NodeDefRaw>) {
-        match self {
-            NodeDefRaw::Full(n, p, c) => (n, p, c),
-            NodeDefRaw::NoChildren(n, p) => (n, p, vec![]),
-            NodeDefRaw::NoParams(n, c) => (n, HashMap::new(), c),
-            NodeDefRaw::OnlyName(n) => (n, HashMap::new(), vec![]),
-        }
-    }
 }
 
 pub trait NodeHandler: Send + Sync + 'static {
@@ -109,7 +89,6 @@ pub fn attach_ability(
 
     spawn_activator(
         &mut entity_commands,
-        &ability_def.activator_type,
         &ability_def.activator_params,
     );
 }
