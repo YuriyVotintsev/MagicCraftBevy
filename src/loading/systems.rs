@@ -8,7 +8,11 @@ use crate::abilities::{
     NodeDef, NodeDefRaw, NodeKind, NodeRegistry, NodeParams,
     ParamValueRaw,
     NodeDefId,
-    activators::{ActivatorParams, interval::IntervalParams, while_held::WhileHeldParams},
+    ActivatorParams,
+};
+use crate::building_blocks::activators::{
+    interval::IntervalParams,
+    while_held::WhileHeldParams,
 };
 use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;

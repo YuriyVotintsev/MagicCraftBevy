@@ -1,9 +1,8 @@
 use bevy::prelude::*;
-use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target};
+use crate::register_activator;
+use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target, AbilityInstance};
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
-
-use super::AbilityInstance;
 
 #[derive(Component, Default)]
 pub struct EveryFrameActivator {

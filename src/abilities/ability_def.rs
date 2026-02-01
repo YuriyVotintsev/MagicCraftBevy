@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use super::ids::{NodeDefId, NodeTypeId};
 use super::node::{NodeDef, NodeDefRaw};
-use super::activators::ActivatorParams;
+use super::ActivatorParams;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AbilityDefRaw {

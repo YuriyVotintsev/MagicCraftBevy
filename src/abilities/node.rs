@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use super::ids::{NodeTypeId, NodeDefId, AbilityId};
 use super::param::ParamValueRaw;
 use super::params::NodeParams;
-use super::activators::{AbilityInstance, spawn_activator};
+use super::{AbilityInstance, spawn_activator};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NodeKind {

@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use super::activators::AbilityInstance;
+use super::AbilityInstance;
 
 pub fn cleanup_orphaned_abilities(
     mut commands: Commands,

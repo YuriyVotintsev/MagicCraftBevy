@@ -1,4 +1,5 @@
 pub mod actions;
+pub mod activators;
 pub mod behaviours;
 pub mod transitions;
 pub mod triggers;

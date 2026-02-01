@@ -4,10 +4,10 @@ pub mod param;
 pub mod params;
 pub mod node;
 mod ability_def;
+mod activator_support;
 mod components;
 pub mod events;
 mod dispatcher;
-pub mod activators;
 mod cleanup;
 
 #[macro_use]
@@ -15,6 +15,7 @@ mod macros;
 
 pub use crate::building_blocks::triggers;
 pub use crate::building_blocks::actions;
+pub use crate::building_blocks::activators;
 
 pub use context::{AbilityContext, Target};
 pub use param::{ParamValue, ParamValueRaw, ParseNodeParams, NoParams, resolve_param_value};
@@ -24,7 +25,8 @@ pub use ability_def::{AbilityDef, AbilityDefRaw};
 pub use components::{AbilityInputs, InputState, AbilitySource};
 pub use ids::NodeDefId;
 pub use node::attach_ability;
-pub use activators::{AbilityInstance, ActivatorParams};
+pub use activator_support::AbilityInstance;
+pub use activators::{ActivatorParams, spawn_activator};
 
 use bevy::prelude::*;
 
