@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! register_node {
-    ($handler:ty, params: $params:ty, name: $name:expr) => {
+    ($handler:ty, params: $params:ty, name: $name:expr, systems: $systems:path) => {
         pub type __NodeParams = $params;
         pub const __NODE_NAME: &str = $name;
 
@@ -8,20 +8,9 @@ macro_rules! register_node {
             app: &mut ::bevy::prelude::App,
             registry: &mut $crate::abilities::NodeRegistry,
         ) {
-            use $crate::abilities::node::NodeHandler;
+            $systems(app);
+
             let handler = <$handler>::default();
-            let kind = <$handler as NodeHandler>::kind(&handler);
-
-            match kind {
-                $crate::abilities::NodeKind::Trigger => {
-                    <$handler as NodeHandler>::register_input_systems(&handler, app);
-                }
-                $crate::abilities::NodeKind::Action => {
-                    <$handler as NodeHandler>::register_execution_system(&handler, app);
-                    <$handler as NodeHandler>::register_behavior_systems(&handler, app);
-                }
-            }
-
             registry.register(Box::new(handler));
         }
     };

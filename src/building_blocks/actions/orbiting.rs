@@ -152,22 +152,19 @@ impl NodeHandler for SpawnOrbitingHandler {
     fn kind(&self) -> NodeKind {
         NodeKind::Action
     }
+}
 
-    fn register_execution_system(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            execute_orbiting_action
-                .in_set(GameSet::AbilityExecution)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
-
-    fn register_behavior_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            update_orbiting_positions.in_set(GameSet::AbilityExecution),
-        );
-    }
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        execute_orbiting_action
+            .in_set(GameSet::AbilityExecution)
+            .run_if(in_state(GameState::Playing)),
+    );
+    app.add_systems(
+        Update,
+        update_orbiting_positions.in_set(GameSet::AbilityExecution),
+    );
 }
 
 fn update_orbiting_positions(
@@ -188,4 +185,4 @@ fn update_orbiting_positions(
     }
 }
 
-register_node!(SpawnOrbitingHandler, params: OrbitingParams, name: SPAWN_ORBITING);
+register_node!(SpawnOrbitingHandler, params: OrbitingParams, name: SPAWN_ORBITING, systems: register_systems);

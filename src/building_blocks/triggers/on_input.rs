@@ -67,7 +67,6 @@ pub fn on_input_system(
 #[derive(Default)]
 pub struct OnInputHandler;
 
-
 impl NodeHandler for OnInputHandler {
     fn name(&self) -> &'static str {
         "on_input"
@@ -91,15 +90,15 @@ impl NodeHandler for OnInputHandler {
             .or_default()
             .and_modify(move |mut a| a.add(ability_id));
     }
-
-    fn register_input_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            on_input_system
-                .in_set(GameSet::AbilityActivation)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
 }
 
-register_node!(OnInputHandler, params: NoParams, name: "on_input");
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        on_input_system
+            .in_set(GameSet::AbilityActivation)
+            .run_if(in_state(GameState::Playing)),
+    );
+}
+
+register_node!(OnInputHandler, params: NoParams, name: "on_input", systems: register_systems);

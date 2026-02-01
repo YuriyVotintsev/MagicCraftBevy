@@ -188,22 +188,19 @@ impl NodeHandler for SpawnProjectileHandler {
     fn kind(&self) -> NodeKind {
         NodeKind::Action
     }
+}
 
-    fn register_execution_system(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            execute_spawn_projectile_action
-                .in_set(GameSet::AbilityExecution)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
-
-    fn register_behavior_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            projectile_collision_physics.in_set(GameSet::AbilityExecution),
-        );
-    }
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        execute_spawn_projectile_action
+            .in_set(GameSet::AbilityExecution)
+            .run_if(in_state(GameState::Playing)),
+    );
+    app.add_systems(
+        Update,
+        projectile_collision_physics.in_set(GameSet::AbilityExecution),
+    );
 }
 
 fn projectile_collision_physics(
@@ -287,4 +284,4 @@ fn projectile_collision_physics(
     }
 }
 
-register_node!(SpawnProjectileHandler, params: ProjectileParams, name: SPAWN_PROJECTILE);
+register_node!(SpawnProjectileHandler, params: ProjectileParams, name: SPAWN_PROJECTILE, systems: register_systems);

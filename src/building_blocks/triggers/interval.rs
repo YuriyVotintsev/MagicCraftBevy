@@ -138,14 +138,15 @@ impl NodeHandler for IntervalHandler {
             .and_modify(move |mut a| a.add(ability_id, interval, skip_first));
     }
 
-    fn register_input_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            interval_system
-                .in_set(GameSet::AbilityActivation)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
 }
 
-register_node!(IntervalHandler, params: IntervalParams, name: "interval");
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        interval_system
+            .in_set(GameSet::AbilityActivation)
+            .run_if(in_state(GameState::Playing)),
+    );
+}
+
+register_node!(IntervalHandler, params: IntervalParams, name: "interval", systems: register_systems);

@@ -63,16 +63,6 @@ pub trait NodeHandler: Send + Sync + 'static {
     ) {
         panic!("{} is not a Trigger node and cannot be added to entity", self.name());
     }
-
-    fn register_input_systems(&self, _app: &mut App) {
-        panic!("{} is not a Trigger node", self.name());
-    }
-
-    fn register_execution_system(&self, _app: &mut App) {
-        panic!("{} is not an Action node", self.name());
-    }
-
-    fn register_behavior_systems(&self, _app: &mut App) {}
 }
 
 #[derive(Resource, Default)]

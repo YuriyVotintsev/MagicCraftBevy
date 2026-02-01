@@ -130,14 +130,15 @@ impl NodeHandler for WhileHeldHandler {
             .and_modify(move |mut a| a.add(ability_id, cooldown));
     }
 
-    fn register_input_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            while_held_system
-                .in_set(GameSet::AbilityActivation)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
 }
 
-register_node!(WhileHeldHandler, params: WhileHeldParams, name: "while_held");
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        while_held_system
+            .in_set(GameSet::AbilityActivation)
+            .run_if(in_state(GameState::Playing)),
+    );
+}
+
+register_node!(WhileHeldHandler, params: WhileHeldParams, name: "while_held", systems: register_systems);

@@ -123,22 +123,19 @@ impl NodeHandler for ShieldHandler {
     fn kind(&self) -> NodeKind {
         NodeKind::Action
     }
+}
 
-    fn register_execution_system(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            execute_shield_action
-                .in_set(GameSet::AbilityExecution)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
-
-    fn register_behavior_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (update_shield, update_shield_visual).in_set(GameSet::AbilityExecution),
-        );
-    }
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        execute_shield_action
+            .in_set(GameSet::AbilityExecution)
+            .run_if(in_state(GameState::Playing)),
+    );
+    app.add_systems(
+        Update,
+        (update_shield, update_shield_visual).in_set(GameSet::AbilityExecution),
+    );
 }
 
 fn update_shield(
@@ -192,4 +189,4 @@ fn update_shield_visual(
     }
 }
 
-register_node!(ShieldHandler, params: ShieldParams, name: SHIELD);
+register_node!(ShieldHandler, params: ShieldParams, name: SHIELD, systems: register_systems);

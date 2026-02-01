@@ -136,22 +136,19 @@ impl NodeHandler for SpawnMeteorHandler {
     fn kind(&self) -> NodeKind {
         NodeKind::Action
     }
+}
 
-    fn register_execution_system(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            execute_meteor_action
-                .in_set(GameSet::AbilityExecution)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
-
-    fn register_behavior_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            (meteor_target_finder, meteor_falling_update).in_set(GameSet::AbilityExecution),
-        );
-    }
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        execute_meteor_action
+            .in_set(GameSet::AbilityExecution)
+            .run_if(in_state(GameState::Playing)),
+    );
+    app.add_systems(
+        Update,
+        (meteor_target_finder, meteor_falling_update).in_set(GameSet::AbilityExecution),
+    );
 }
 
 fn meteor_target_finder(
@@ -264,4 +261,4 @@ fn meteor_falling_update(
     }
 }
 
-register_node!(SpawnMeteorHandler, params: MeteorParams, name: SPAWN_METEOR);
+register_node!(SpawnMeteorHandler, params: MeteorParams, name: SPAWN_METEOR, systems: register_systems);

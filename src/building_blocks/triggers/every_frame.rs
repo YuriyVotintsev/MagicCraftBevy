@@ -68,7 +68,6 @@ pub fn every_frame_system(
 #[derive(Default)]
 pub struct EveryFrameHandler;
 
-
 impl NodeHandler for EveryFrameHandler {
     fn name(&self) -> &'static str {
         "every_frame"
@@ -92,15 +91,15 @@ impl NodeHandler for EveryFrameHandler {
             .or_default()
             .and_modify(move |mut a| a.add(ability_id));
     }
-
-    fn register_input_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            every_frame_system
-                .in_set(GameSet::AbilityActivation)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
 }
 
-register_node!(EveryFrameHandler, params: NoParams, name: "every_frame");
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        every_frame_system
+            .in_set(GameSet::AbilityActivation)
+            .run_if(in_state(GameState::Playing)),
+    );
+}
+
+register_node!(EveryFrameHandler, params: NoParams, name: "every_frame", systems: register_systems);

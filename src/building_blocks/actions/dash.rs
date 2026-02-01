@@ -130,22 +130,19 @@ impl NodeHandler for DashHandler {
     fn kind(&self) -> NodeKind {
         NodeKind::Action
     }
+}
 
-    fn register_execution_system(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            execute_dash_action
-                .in_set(GameSet::AbilityExecution)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
-
-    fn register_behavior_systems(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            update_dashing.in_set(GameSet::AbilityExecution),
-        );
-    }
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        execute_dash_action
+            .in_set(GameSet::AbilityExecution)
+            .run_if(in_state(GameState::Playing)),
+    );
+    app.add_systems(
+        Update,
+        update_dashing.in_set(GameSet::AbilityExecution),
+    );
 }
 
 fn update_dashing(
@@ -173,4 +170,4 @@ fn update_dashing(
     }
 }
 
-register_node!(DashHandler, params: DashParams, name: DASH);
+register_node!(DashHandler, params: DashParams, name: DASH, systems: register_systems);

@@ -82,15 +82,15 @@ impl NodeHandler for DamageHandler {
     fn kind(&self) -> NodeKind {
         NodeKind::Action
     }
-
-    fn register_execution_system(&self, app: &mut App) {
-        app.add_systems(
-            Update,
-            execute_damage_action
-                .in_set(GameSet::AbilityExecution)
-                .run_if(in_state(GameState::Playing)),
-        );
-    }
 }
 
-register_node!(DamageHandler, params: DamageParams, name: DAMAGE);
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        execute_damage_action
+            .in_set(GameSet::AbilityExecution)
+            .run_if(in_state(GameState::Playing)),
+    );
+}
+
+register_node!(DamageHandler, params: DamageParams, name: DAMAGE, systems: register_systems);
