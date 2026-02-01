@@ -7,6 +7,7 @@ use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ids::NodeTypeId;
 use crate::abilities::AbilitySource;
 use crate::common::AttachedTo;
 use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
@@ -18,6 +19,8 @@ use crate::Faction;
 use crate::GameState;
 
 use super::spawn_projectile::Pierce;
+
+pub const SPAWN_ORBITING: &str = "spawn_orbiting";
 
 #[derive(Debug, Clone)]
 pub struct OrbitingParams {
@@ -55,10 +58,12 @@ fn execute_orbiting_action(
     node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
+    mut cached_id: Local<Option<NodeTypeId>>,
 ) {
-    let Some(handler_id) = node_registry.get_id("spawn_orbiting") else {
-        return;
-    };
+    let handler_id = *cached_id.get_or_insert_with(|| {
+        node_registry.get_id(SPAWN_ORBITING)
+            .expect("spawn_orbiting handler not registered")
+    });
 
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
@@ -141,7 +146,7 @@ pub struct SpawnOrbitingHandler;
 
 impl NodeHandler for SpawnOrbitingHandler {
     fn name(&self) -> &'static str {
-        "spawn_orbiting"
+        SPAWN_ORBITING
     }
 
     fn kind(&self) -> NodeKind {
@@ -183,4 +188,4 @@ fn update_orbiting_positions(
     }
 }
 
-register_node!(SpawnOrbitingHandler, params: OrbitingParams, name: "spawn_orbiting");
+register_node!(SpawnOrbitingHandler, params: OrbitingParams, name: SPAWN_ORBITING);

@@ -6,6 +6,7 @@ use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ids::NodeTypeId;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::AbilitySource;
 use crate::building_blocks::triggers::on_area::OnAreaTrigger;
@@ -15,6 +16,8 @@ use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 use crate::Faction;
 use crate::Lifetime;
 use crate::GameState;
+
+pub const SPAWN_METEOR: &str = "spawn_meteor";
 
 #[derive(Debug, Clone)]
 pub struct MeteorParams {
@@ -72,10 +75,12 @@ fn execute_meteor_action(
     node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
+    mut cached_id: Local<Option<NodeTypeId>>,
 ) {
-    let Some(handler_id) = node_registry.get_id("spawn_meteor") else {
-        return;
-    };
+    let handler_id = *cached_id.get_or_insert_with(|| {
+        node_registry.get_id(SPAWN_METEOR)
+            .expect("spawn_meteor handler not registered")
+    });
 
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
@@ -125,7 +130,7 @@ pub struct SpawnMeteorHandler;
 
 impl NodeHandler for SpawnMeteorHandler {
     fn name(&self) -> &'static str {
-        "spawn_meteor"
+        SPAWN_METEOR
     }
 
     fn kind(&self) -> NodeKind {
@@ -259,4 +264,4 @@ fn meteor_falling_update(
     }
 }
 
-register_node!(SpawnMeteorHandler, params: MeteorParams, name: "spawn_meteor");
+register_node!(SpawnMeteorHandler, params: MeteorParams, name: SPAWN_METEOR);

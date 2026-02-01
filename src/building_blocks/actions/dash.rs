@@ -6,6 +6,7 @@ use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ids::NodeTypeId;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::Target;
 use crate::physics::GameLayer;
@@ -14,6 +15,8 @@ use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 use crate::wave::InvulnerableStack;
 use crate::MovementLocked;
 use crate::GameState;
+
+pub const DASH: &str = "dash";
 
 #[derive(Debug, Clone)]
 pub struct DashParams {
@@ -50,10 +53,12 @@ fn execute_dash_action(
     stats_query: Query<&ComputedStats>,
     mut invuln_query: Query<&mut InvulnerableStack>,
     collision_query: Query<&CollisionLayers>,
+    mut cached_id: Local<Option<NodeTypeId>>,
 ) {
-    let Some(handler_id) = node_registry.get_id("dash") else {
-        return;
-    };
+    let handler_id = *cached_id.get_or_insert_with(|| {
+        node_registry.get_id(DASH)
+            .expect("dash handler not registered")
+    });
 
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
@@ -119,7 +124,7 @@ pub struct DashHandler;
 
 impl NodeHandler for DashHandler {
     fn name(&self) -> &'static str {
-        "dash"
+        DASH
     }
 
     fn kind(&self) -> NodeKind {
@@ -168,4 +173,4 @@ fn update_dashing(
     }
 }
 
-register_node!(DashHandler, params: DashParams, name: "dash");
+register_node!(DashHandler, params: DashParams, name: DASH);

@@ -5,11 +5,14 @@ use crate::register_node;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ids::NodeTypeId;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::Target;
 use crate::stats::{ComputedStats, PendingDamage, DEFAULT_STATS, StatRegistry};
 use crate::schedule::GameSet;
 use crate::GameState;
+
+pub const DAMAGE: &str = "damage";
 
 #[derive(Debug, Clone)]
 pub struct DamageParams {
@@ -32,10 +35,12 @@ fn execute_damage_action(
     node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
+    mut cached_id: Local<Option<NodeTypeId>>,
 ) {
-    let Some(handler_id) = node_registry.get_id("damage") else {
-        return;
-    };
+    let handler_id = *cached_id.get_or_insert_with(|| {
+        node_registry.get_id(DAMAGE)
+            .expect("damage handler not registered")
+    });
 
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
@@ -71,7 +76,7 @@ pub struct DamageHandler;
 
 impl NodeHandler for DamageHandler {
     fn name(&self) -> &'static str {
-        "damage"
+        DAMAGE
     }
 
     fn kind(&self) -> NodeKind {
@@ -88,4 +93,4 @@ impl NodeHandler for DamageHandler {
     }
 }
 
-register_node!(DamageHandler, params: DamageParams, name: "damage");
+register_node!(DamageHandler, params: DamageParams, name: DAMAGE);

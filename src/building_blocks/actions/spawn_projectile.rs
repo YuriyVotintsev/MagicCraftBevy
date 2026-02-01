@@ -8,6 +8,7 @@ use rand::Rng;
 use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
+use crate::abilities::ids::NodeTypeId;
 use crate::abilities::context::Target;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::AbilitySource;
@@ -18,6 +19,8 @@ use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 use crate::Faction;
 use crate::{Growing, Lifetime};
 use crate::GameState;
+
+pub const SPAWN_PROJECTILE: &str = "spawn_projectile";
 
 #[derive(Debug, Clone)]
 pub struct ProjectileParams {
@@ -62,10 +65,12 @@ fn execute_spawn_projectile_action(
     node_registry: Res<NodeRegistry>,
     ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
+    mut cached_id: Local<Option<NodeTypeId>>,
 ) {
-    let Some(handler_id) = node_registry.get_id("spawn_projectile") else {
-        return;
-    };
+    let handler_id = *cached_id.get_or_insert_with(|| {
+        node_registry.get_id(SPAWN_PROJECTILE)
+            .expect("spawn_projectile handler not registered")
+    });
 
     for event in action_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
@@ -177,7 +182,7 @@ pub struct SpawnProjectileHandler;
 
 impl NodeHandler for SpawnProjectileHandler {
     fn name(&self) -> &'static str {
-        "spawn_projectile"
+        SPAWN_PROJECTILE
     }
 
     fn kind(&self) -> NodeKind {
@@ -282,4 +287,4 @@ fn projectile_collision_physics(
     }
 }
 
-register_node!(SpawnProjectileHandler, params: ProjectileParams, name: "spawn_projectile");
+register_node!(SpawnProjectileHandler, params: ProjectileParams, name: SPAWN_PROJECTILE);

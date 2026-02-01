@@ -1,6 +1,6 @@
 #[macro_export]
 macro_rules! register_node {
-    ($handler:ty, params: $params:ty, name: $name:literal) => {
+    ($handler:ty, params: $params:ty, name: $name:expr) => {
         pub type __NodeParams = $params;
         pub const __NODE_NAME: &str = $name;
 

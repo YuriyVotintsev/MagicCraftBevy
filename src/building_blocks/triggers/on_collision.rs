@@ -4,7 +4,7 @@ use avian2d::prelude::*;
 use crate::register_node;
 
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
-use crate::abilities::ids::AbilityId;
+use crate::abilities::ids::{AbilityId, NodeTypeId};
 use crate::abilities::{NodeParams, NoParams};
 use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::NodeTriggerEvent;
@@ -12,6 +12,8 @@ use crate::abilities::{AbilityDef, AbilitySource};
 use crate::physics::Wall;
 use crate::schedule::GameSet;
 use crate::Faction;
+
+pub const ON_COLLISION: &str = "on_collision";
 
 #[derive(Component)]
 pub struct OnCollisionTrigger;
@@ -22,7 +24,7 @@ impl OnCollisionTrigger {
         node_id: crate::abilities::ids::NodeDefId,
         registry: &NodeRegistry,
     ) -> Option<Self> {
-        let trigger_id = registry.get_id("on_collision")?;
+        let trigger_id = registry.get_id(ON_COLLISION)?;
         ability_def.has_trigger(node_id, trigger_id).then_some(Self)
     }
 }
@@ -32,7 +34,7 @@ pub struct OnCollisionTriggerHandler;
 
 impl NodeHandler for OnCollisionTriggerHandler {
     fn name(&self) -> &'static str {
-        "on_collision"
+        ON_COLLISION
     }
 
     fn kind(&self) -> NodeKind {
@@ -64,10 +66,12 @@ fn on_collision_trigger_system(
     target_query: Query<&Faction, Without<OnCollisionTrigger>>,
     wall_query: Query<(), With<Wall>>,
     node_registry: Res<NodeRegistry>,
+    mut cached_id: Local<Option<NodeTypeId>>,
 ) {
-    let Some(trigger_id) = node_registry.get_id("on_collision") else {
-        return;
-    };
+    let trigger_id = *cached_id.get_or_insert_with(|| {
+        node_registry.get_id(ON_COLLISION)
+            .expect("on_collision trigger not registered")
+    });
 
     let mut processed: HashSet<(Entity, Entity)> = HashSet::default();
 
@@ -120,4 +124,4 @@ fn on_collision_trigger_system(
     }
 }
 
-register_node!(OnCollisionTriggerHandler, params: NoParams, name: "on_collision");
+register_node!(OnCollisionTriggerHandler, params: NoParams, name: ON_COLLISION);
