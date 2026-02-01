@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-use crate::stats::{ComputedStats, Expression, ExpressionRaw, Modifiers, StatId};
+use crate::stats::{ComputedStats, Expression, ExpressionRaw, Modifiers, StatId, StatRegistry};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ParamValueRaw {
@@ -48,5 +49,31 @@ impl ParamValue {
             Self::Float(v) => *v != 0.0,
             Self::Stat(_) | Self::Expr(_) => false,
         }
+    }
+}
+
+pub trait ParseNodeParams: Send + Sync + 'static {
+    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self;
+}
+
+#[derive(Debug, Clone)]
+pub struct NoParams;
+
+impl ParseNodeParams for NoParams {
+    fn parse(_: &HashMap<String, ParamValueRaw>, _: &StatRegistry) -> Self {
+        Self
+    }
+}
+
+pub fn resolve_param_value(raw: &ParamValueRaw, stat_registry: &StatRegistry) -> ParamValue {
+    match raw {
+        ParamValueRaw::Float(v) => ParamValue::Float(*v),
+        ParamValueRaw::Int(v) => ParamValue::Int(*v),
+        ParamValueRaw::Bool(v) => ParamValue::Bool(*v),
+        ParamValueRaw::Stat(name) => {
+            let stat_id = stat_registry.get(name).unwrap_or_else(|| panic!("Unknown stat '{}'", name));
+            ParamValue::Stat(stat_id)
+        }
+        ParamValueRaw::Expr(expr) => ParamValue::Expr(expr.resolve(stat_registry)),
     }
 }

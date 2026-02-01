@@ -1,18 +1,43 @@
+use std::collections::HashMap;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use crate::register_node;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::AbilitySource;
 use crate::building_blocks::triggers::on_area::OnAreaTrigger;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 use crate::Faction;
 use crate::Lifetime;
 use crate::GameState;
+
+#[derive(Debug, Clone)]
+pub struct MeteorParams {
+    pub search_radius: ParamValue,
+    pub damage_radius: ParamValue,
+    pub fall_duration: ParamValue,
+}
+
+impl ParseNodeParams for MeteorParams {
+    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
+        Self {
+            search_radius: raw.get("search_radius")
+                .map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(500.0)),
+            damage_radius: raw.get("damage_radius")
+                .map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(80.0)),
+            fall_duration: raw.get("fall_duration")
+                .map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(0.5)),
+        }
+    }
+}
 
 const METEOR_START_HEIGHT: f32 = 400.0;
 const METEOR_SIZE: f32 = 40.0;
@@ -64,19 +89,15 @@ fn execute_meteor_action(
             continue;
         }
 
+        let params = node_def.params.expect_action().expect_meteor();
+
         let caster_stats = stats_query
             .get(event.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let search_radius = node_def
-            .get_f32("search_radius", &caster_stats, &node_registry)
-            .unwrap_or(500.0);
-        let damage_radius = node_def
-            .get_f32("damage_radius", &caster_stats, &node_registry)
-            .unwrap_or(80.0);
-        let fall_duration = node_def
-            .get_f32("fall_duration", &caster_stats, &node_registry)
-            .unwrap_or(0.5);
+        let search_radius = params.search_radius.evaluate_f32(&caster_stats);
+        let damage_radius = params.damage_radius.evaluate_f32(&caster_stats);
+        let fall_duration = params.fall_duration.evaluate_f32(&caster_stats);
 
         let has_area_trigger = OnAreaTrigger::if_configured(ability_def, event.node_id, &node_registry, damage_radius).is_some();
 
@@ -238,4 +259,4 @@ fn meteor_falling_update(
     }
 }
 
-register_node!(SpawnMeteorHandler);
+register_node!(SpawnMeteorHandler, params: MeteorParams, name: "spawn_meteor");

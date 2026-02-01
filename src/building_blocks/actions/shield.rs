@@ -1,19 +1,37 @@
+use std::collections::HashMap;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use crate::register_node;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 use crate::wave::InvulnerableStack;
 use crate::Faction;
 use crate::GameState;
 
-const DEFAULT_SHIELD_DURATION: f32 = 0.5;
-const DEFAULT_SHIELD_RADIUS: f32 = 100.0;
+#[derive(Debug, Clone)]
+pub struct ShieldParams {
+    pub duration: ParamValue,
+    pub radius: ParamValue,
+}
+
+impl ParseNodeParams for ShieldParams {
+    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
+        Self {
+            duration: raw.get("duration")
+                .map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(0.5)),
+            radius: raw.get("radius")
+                .map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(100.0)),
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct ShieldActive {
@@ -51,16 +69,14 @@ fn execute_shield_action(
             continue;
         }
 
+        let params = node_def.params.expect_action().expect_shield();
+
         let caster_stats = stats_query
             .get(event.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let duration = node_def
-            .get_f32("duration", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_SHIELD_DURATION);
-        let radius = node_def
-            .get_f32("radius", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_SHIELD_RADIUS);
+        let duration = params.duration.evaluate_f32(&caster_stats);
+        let radius = params.radius.evaluate_f32(&caster_stats);
 
         let caster = event.context.caster;
 
@@ -171,4 +187,4 @@ fn update_shield_visual(
     }
 }
 
-register_node!(ShieldHandler);
+register_node!(ShieldHandler, params: ShieldParams, name: "shield");

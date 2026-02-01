@@ -2,12 +2,12 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use crate::register_node;
 
-use crate::abilities::ids::{ParamId, AbilityId};
-use crate::abilities::param::ParamValue;
+use crate::abilities::ids::AbilityId;
+use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value, NodeParams};
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry, AbilityRegistry};
 use crate::abilities::{TriggerAbilityEvent, AbilityInputs, AbilityContext, Target};
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
+use crate::stats::{ComputedStats, StatRegistry};
 use crate::Faction;
 use crate::GameState;
 
@@ -29,6 +29,21 @@ impl WhileHeldTriggers {
             cooldown,
             timer: 0.0,
         });
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct WhileHeldParams {
+    pub cooldown: ParamValue,
+}
+
+impl ParseNodeParams for WhileHeldParams {
+    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
+        Self {
+            cooldown: raw.get("cooldown")
+                .map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(0.05)),
+        }
     }
 }
 
@@ -102,13 +117,12 @@ impl NodeHandler for WhileHeldHandler {
         commands: &mut Commands,
         entity: Entity,
         ability_id: AbilityId,
-        params: &HashMap<ParamId, ParamValue>,
-        registry: &NodeRegistry,
+        params: &NodeParams,
+        _registry: &NodeRegistry,
     ) {
-        let cooldown = registry
-            .get_param_id("cooldown")
-            .and_then(|id| params.get(&id).cloned())
-            .unwrap_or(ParamValue::Float(0.05));
+        let p = params.expect_trigger().expect_while_held();
+        let cooldown = p.cooldown.clone();
+
         commands
             .entity(entity)
             .entry::<WhileHeldTriggers>()
@@ -126,4 +140,4 @@ impl NodeHandler for WhileHeldHandler {
     }
 }
 
-register_node!(WhileHeldHandler);
+register_node!(WhileHeldHandler, params: WhileHeldParams, name: "while_held");

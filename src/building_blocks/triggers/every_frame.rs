@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use bevy::prelude::*;
 use crate::register_node;
 
-use crate::abilities::ids::{ParamId, AbilityId};
-use crate::abilities::param::ParamValue;
+use crate::abilities::ids::AbilityId;
+use crate::abilities::{NodeParams, NoParams};
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry, AbilityRegistry};
 use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target};
 use crate::schedule::GameSet;
@@ -84,7 +83,7 @@ impl NodeHandler for EveryFrameHandler {
         commands: &mut Commands,
         entity: Entity,
         ability_id: AbilityId,
-        _params: &HashMap<ParamId, ParamValue>,
+        _params: &NodeParams,
         _registry: &NodeRegistry,
     ) {
         commands
@@ -104,4 +103,4 @@ impl NodeHandler for EveryFrameHandler {
     }
 }
 
-register_node!(EveryFrameHandler);
+register_node!(EveryFrameHandler, params: NoParams, name: "every_frame");

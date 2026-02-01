@@ -1,9 +1,11 @@
+use std::collections::HashMap;
 use std::f32::consts::PI;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use crate::register_node;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::AbilitySource;
 use crate::common::AttachedTo;
@@ -11,16 +13,34 @@ use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 use crate::Faction;
 use crate::GameState;
 
 use super::spawn_projectile::Pierce;
 
-const DEFAULT_ORB_COUNT: i32 = 3;
-const DEFAULT_ORB_RADIUS: f32 = 80.0;
-const DEFAULT_ORB_ANGULAR_SPEED: f32 = 3.0;
-const DEFAULT_ORB_SIZE: f32 = 20.0;
+#[derive(Debug, Clone)]
+pub struct OrbitingParams {
+    pub count: ParamValue,
+    pub radius: ParamValue,
+    pub angular_speed: ParamValue,
+    pub size: ParamValue,
+}
+
+impl ParseNodeParams for OrbitingParams {
+    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
+        Self {
+            count: raw.get("count").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(3.0)),
+            radius: raw.get("radius").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(80.0)),
+            angular_speed: raw.get("angular_speed").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(3.0)),
+            size: raw.get("size").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(20.0)),
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct OrbitingMovement {
@@ -52,22 +72,16 @@ fn execute_orbiting_action(
             continue;
         }
 
+        let params = node_def.params.expect_action().expect_orbiting();
+
         let caster_stats = stats_query
             .get(event.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let count = node_def
-            .get_i32("count", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_ORB_COUNT);
-        let radius = node_def
-            .get_f32("radius", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_ORB_RADIUS);
-        let angular_speed = node_def
-            .get_f32("angular_speed", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_ORB_ANGULAR_SPEED);
-        let size = node_def
-            .get_f32("size", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_ORB_SIZE);
+        let count = params.count.evaluate_i32(&caster_stats);
+        let radius = params.radius.evaluate_f32(&caster_stats);
+        let angular_speed = params.angular_speed.evaluate_f32(&caster_stats);
+        let size = params.size.evaluate_f32(&caster_stats);
 
         let orb_layers = match event.context.caster_faction {
             Faction::Player => CollisionLayers::new(
@@ -169,4 +183,4 @@ fn update_orbiting_positions(
     }
 }
 
-register_node!(SpawnOrbitingHandler);
+register_node!(SpawnOrbitingHandler, params: OrbitingParams, name: "spawn_orbiting");

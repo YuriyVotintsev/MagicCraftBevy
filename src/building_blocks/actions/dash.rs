@@ -1,20 +1,36 @@
+use std::collections::HashMap;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use crate::register_node;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::Target;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 use crate::wave::InvulnerableStack;
 use crate::MovementLocked;
 use crate::GameState;
 
-const DEFAULT_DASH_SPEED: f32 = 1500.0;
-const DEFAULT_DASH_DURATION: f32 = 0.2;
+#[derive(Debug, Clone)]
+pub struct DashParams {
+    pub speed: ParamValue,
+    pub duration: ParamValue,
+}
+
+impl ParseNodeParams for DashParams {
+    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
+        Self {
+            speed: raw.get("speed").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(1500.0)),
+            duration: raw.get("duration").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(0.2)),
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct Dashing {
@@ -51,16 +67,14 @@ fn execute_dash_action(
             continue;
         }
 
+        let params = node_def.params.expect_action().expect_dash();
+
         let caster_stats = stats_query
             .get(event.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let speed = node_def
-            .get_f32("speed", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_DASH_SPEED);
-        let duration = node_def
-            .get_f32("duration", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_DASH_DURATION);
+        let speed = params.speed.evaluate_f32(&caster_stats);
+        let duration = params.duration.evaluate_f32(&caster_stats);
 
         let direction = match event.context.target {
             Some(Target::Direction(d)) => d.truncate().normalize_or_zero(),
@@ -154,4 +168,4 @@ fn update_dashing(
     }
 }
 
-register_node!(DashHandler);
+register_node!(DashHandler, params: DashParams, name: "dash");

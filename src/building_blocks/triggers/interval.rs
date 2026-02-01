@@ -2,10 +2,11 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use crate::register_node;
 
-use crate::abilities::ids::{ParamId, AbilityId};
-use crate::abilities::param::ParamValue;
+use crate::abilities::ids::AbilityId;
+use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value, NodeParams};
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
 use crate::abilities::{AbilityRegistry, AbilityContext, TriggerAbilityEvent, Target};
+use crate::stats::StatRegistry;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
 use crate::Faction;
@@ -31,6 +32,28 @@ impl IntervalTriggers {
             timer: 0.0,
             skip_first,
         });
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IntervalParams {
+    pub interval: ParamValue,
+    pub skip_first: bool,
+}
+
+impl ParseNodeParams for IntervalParams {
+    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
+        Self {
+            interval: raw.get("interval")
+                .map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(1.0)),
+            skip_first: raw.get("skip_first")
+                .and_then(|v| match v {
+                    ParamValueRaw::Bool(b) => Some(*b),
+                    _ => None,
+                })
+                .unwrap_or(true),
+        }
     }
 }
 
@@ -101,18 +124,13 @@ impl NodeHandler for IntervalHandler {
         commands: &mut Commands,
         entity: Entity,
         ability_id: AbilityId,
-        params: &HashMap<ParamId, ParamValue>,
-        registry: &NodeRegistry,
+        params: &NodeParams,
+        _registry: &NodeRegistry,
     ) {
-        let interval = registry
-            .get_param_id("interval")
-            .and_then(|id| params.get(&id).cloned())
-            .unwrap_or(ParamValue::Float(1.0));
-        let skip_first = registry
-            .get_param_id("skip_first")
-            .and_then(|id| params.get(&id))
-            .map(|v| v.as_bool())
-            .unwrap_or(true);
+        let p = params.expect_trigger().expect_interval();
+        let interval = p.interval.clone();
+        let skip_first = p.skip_first;
+
         commands
             .entity(entity)
             .entry::<IntervalTriggers>()
@@ -130,4 +148,4 @@ impl NodeHandler for IntervalHandler {
     }
 }
 
-register_node!(IntervalHandler);
+register_node!(IntervalHandler, params: IntervalParams, name: "interval");

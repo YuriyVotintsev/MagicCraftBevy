@@ -3,15 +3,14 @@ use avian2d::prelude::*;
 use crate::register_node;
 
 use crate::abilities::node::{NodeHandler, NodeKind, NodeRegistry};
-use crate::abilities::ids::{AbilityId, ParamId};
-use crate::abilities::param::ParamValue;
+use crate::abilities::ids::AbilityId;
+use crate::abilities::{NodeParams, NoParams};
 use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::NodeTriggerEvent;
 use crate::abilities::{AbilityDef, AbilitySource};
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
-use std::collections::HashMap;
 
 #[derive(Component)]
 pub struct OnAreaTrigger {
@@ -51,7 +50,7 @@ impl NodeHandler for OnAreaTriggerHandler {
         _commands: &mut Commands,
         _entity: Entity,
         _ability_id: AbilityId,
-        _params: &HashMap<ParamId, ParamValue>,
+        _params: &NodeParams,
         _registry: &NodeRegistry,
     ) {
     }
@@ -107,4 +106,4 @@ fn on_area_trigger_system(
     }
 }
 
-register_node!(OnAreaTriggerHandler);
+register_node!(OnAreaTriggerHandler, params: NoParams, name: "on_area");

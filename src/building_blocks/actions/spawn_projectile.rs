@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
@@ -5,6 +6,7 @@ use crate::register_node;
 use rand::Rng;
 
 use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::{ParamValue, ParamValueRaw, ParseNodeParams, resolve_param_value};
 use crate::abilities::node::{NodeHandler, NodeKind};
 use crate::abilities::context::Target;
 use crate::abilities::events::ExecuteNodeEvent;
@@ -12,13 +14,38 @@ use crate::abilities::AbilitySource;
 use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 use crate::Faction;
 use crate::{Growing, Lifetime};
 use crate::GameState;
 
-const DEFAULT_PROJECTILE_SPEED: f32 = 800.0;
-const DEFAULT_PROJECTILE_SIZE: f32 = 15.0;
+#[derive(Debug, Clone)]
+pub struct ProjectileParams {
+    pub speed: ParamValue,
+    pub size: ParamValue,
+    pub spread: ParamValue,
+    pub lifetime: Option<ParamValue>,
+    pub start_size: Option<ParamValue>,
+    pub end_size: Option<ParamValue>,
+    pub pierce: Option<ParamValue>,
+}
+
+impl ParseNodeParams for ProjectileParams {
+    fn parse(raw: &HashMap<String, ParamValueRaw>, stat_registry: &StatRegistry) -> Self {
+        Self {
+            speed: raw.get("speed").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(800.0)),
+            size: raw.get("size").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(15.0)),
+            spread: raw.get("spread").map(|v| resolve_param_value(v, stat_registry))
+                .unwrap_or(ParamValue::Float(0.0)),
+            lifetime: raw.get("lifetime").map(|v| resolve_param_value(v, stat_registry)),
+            start_size: raw.get("start_size").map(|v| resolve_param_value(v, stat_registry)),
+            end_size: raw.get("end_size").map(|v| resolve_param_value(v, stat_registry)),
+            pierce: raw.get("pierce").map(|v| resolve_param_value(v, stat_registry)),
+        }
+    }
+}
 
 #[derive(Component)]
 pub struct Projectile;
@@ -52,25 +79,19 @@ fn execute_spawn_projectile_action(
             continue;
         }
 
+        let params = node_def.params.expect_action().expect_spawn_projectile();
+
         let caster_stats = stats_query
             .get(event.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let speed = node_def
-            .get_f32("speed", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_PROJECTILE_SPEED);
-        let size = node_def
-            .get_f32("size", &caster_stats, &node_registry)
-            .unwrap_or(DEFAULT_PROJECTILE_SIZE);
-        let spread = node_def
-            .get_f32("spread", &caster_stats, &node_registry)
-            .unwrap_or(0.0);
-        let lifetime = node_def.get_f32("lifetime", &caster_stats, &node_registry);
-        let start_size = node_def.get_f32("start_size", &caster_stats, &node_registry);
-        let end_size = node_def.get_f32("end_size", &caster_stats, &node_registry);
-        let pierce = node_def
-            .get_i32("pierce", &caster_stats, &node_registry)
-            .map(|n| Pierce::Count(n as u32));
+        let speed = params.speed.evaluate_f32(&caster_stats);
+        let size = params.size.evaluate_f32(&caster_stats);
+        let spread = params.spread.evaluate_f32(&caster_stats);
+        let lifetime = params.lifetime.as_ref().map(|p| p.evaluate_f32(&caster_stats));
+        let start_size = params.start_size.as_ref().map(|p| p.evaluate_f32(&caster_stats));
+        let end_size = params.end_size.as_ref().map(|p| p.evaluate_f32(&caster_stats));
+        let pierce = params.pierce.as_ref().map(|p| Pierce::Count(p.evaluate_i32(&caster_stats) as u32));
 
         let base_direction = match event.context.target {
             Some(Target::Direction(d)) => d.truncate().normalize_or_zero(),
@@ -261,4 +282,4 @@ fn projectile_collision_physics(
     }
 }
 
-register_node!(SpawnProjectileHandler);
+register_node!(SpawnProjectileHandler, params: ProjectileParams, name: "spawn_projectile");

@@ -5,8 +5,8 @@ use std::collections::HashMap;
 
 use crate::abilities::{
     AbilityDef, AbilityDefRaw, AbilityRegistry,
-    NodeDef, NodeDefRaw, NodeKind, NodeRegistry,
-    ParamValue, ParamValueRaw,
+    NodeDef, NodeDefRaw, NodeKind, NodeRegistry, NodeParams,
+    ParamValueRaw,
     NodeDefId,
 };
 use crate::fsm::MobRegistry;
@@ -147,7 +147,7 @@ pub fn check_content_loaded(
     ability_assets: Res<Assets<AbilityDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
-    mut node_registry: ResMut<NodeRegistry>,
+    node_registry: Res<NodeRegistry>,
     mut ability_registry: ResMut<AbilityRegistry>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForContent {
@@ -214,7 +214,7 @@ pub fn check_content_loaded(
                     &ability_asset.0,
                     &stat_registry,
                     &mut ability_registry,
-                    &mut node_registry,
+                    &node_registry,
                 );
                 info!("Registered ability: {}", ability_asset.0.id);
                 ability_registry.register(ability_def);
@@ -269,7 +269,7 @@ fn resolve_ability_def(
     raw: &AbilityDefRaw,
     stat_registry: &StatRegistry,
     ability_registry: &mut AbilityRegistry,
-    node_registry: &mut NodeRegistry,
+    node_registry: &NodeRegistry,
 ) -> AbilityDef {
     ability_registry.allocate_id(&raw.id);
     let mut builder = AbilityBuilder::new();
@@ -295,35 +295,19 @@ fn resolve_ability_def(
 }
 
 fn resolve_node_params(
+    kind: NodeKind,
+    name: &str,
     params_raw: &HashMap<String, ParamValueRaw>,
     stat_registry: &StatRegistry,
-    node_registry: &mut NodeRegistry,
-) -> HashMap<crate::abilities::ids::ParamId, ParamValue> {
-    params_raw
-        .iter()
-        .map(|(name, value)| {
-            let param_id = node_registry.get_or_insert_param_id(name);
-            let resolved = match value {
-                ParamValueRaw::Float(v) => ParamValue::Float(*v),
-                ParamValueRaw::Int(v) => ParamValue::Int(*v),
-                ParamValueRaw::Bool(v) => ParamValue::Bool(*v),
-                ParamValueRaw::Stat(name) => {
-                    let stat_id = stat_registry.get(name)
-                        .unwrap_or_else(|| panic!("Param references unknown stat '{}'", name));
-                    ParamValue::Stat(stat_id)
-                }
-                ParamValueRaw::Expr(expr) => ParamValue::Expr(expr.resolve(stat_registry)),
-            };
-            (param_id, resolved)
-        })
-        .collect()
+) -> NodeParams {
+    NodeParams::parse(kind, name, params_raw, stat_registry)
 }
 
 fn resolve_node_def(
     raw: &NodeDefRaw,
     parent_kind: Option<NodeKind>,
     stat_registry: &StatRegistry,
-    node_registry: &mut NodeRegistry,
+    node_registry: &NodeRegistry,
     builder: &mut AbilityBuilder,
 ) -> NodeDefId {
     let (name, params_raw, children_raw) = raw.clone().destructure();
@@ -348,7 +332,7 @@ fn resolve_node_def(
         .map(|c| resolve_node_def(c, Some(kind), stat_registry, node_registry, builder))
         .collect();
 
-    let params = resolve_node_params(&params_raw, stat_registry, node_registry);
+    let params = resolve_node_params(kind, &name, &params_raw, stat_registry);
 
     builder.add_node(NodeDef {
         kind,
