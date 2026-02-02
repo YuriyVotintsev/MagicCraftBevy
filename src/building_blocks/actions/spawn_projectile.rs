@@ -6,12 +6,17 @@ use rand::Rng;
 
 use crate::register_node;
 use crate::abilities::NodeRegistry;
+use crate::abilities::AbilityRegistry;
 use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::context::Target;
 use crate::abilities::AbilitySource;
+use crate::abilities::events::ActionEventBase;
 use crate::building_blocks::actions::ExecuteSpawnProjectileEvent;
 use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
+use crate::building_blocks::triggers::on_area::OnAreaTrigger;
+use crate::building_blocks::triggers::TriggerParams;
+use crate::building_blocks::NodeParams;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
@@ -32,6 +37,9 @@ pub struct SpawnProjectileParams {
     pub start_size: Option<ParamValue>,
     pub end_size: Option<ParamValue>,
     pub pierce: Option<ParamValue>,
+    pub color: Option<[f32; 4]>,
+    #[raw(default = true)]
+    pub collisions: bool,
 }
 
 #[derive(Component)]
@@ -43,16 +51,42 @@ pub enum Pierce {
     Infinite,
 }
 
+fn find_on_area_params<'a>(
+    ability_registry: &'a AbilityRegistry,
+    base: &ActionEventBase,
+) -> Option<&'a crate::building_blocks::triggers::on_area::OnAreaParams> {
+    let ability = ability_registry.get(base.ability_id)?;
+    let action_node = ability.get_node(base.node_id)?;
+    for &child_id in &action_node.children {
+        let child = ability.get_node(child_id)?;
+        if let NodeParams::Trigger(TriggerParams::OnAreaParams(params)) = &child.params {
+            return Some(params);
+        }
+    }
+    None
+}
+
+#[derive(Default)]
+struct CachedTriggerIds {
+    collision_id: Option<NodeTypeId>,
+    area_id: Option<NodeTypeId>,
+}
+
 fn execute_spawn_projectile_action(
     mut commands: Commands,
     mut action_events: MessageReader<ExecuteSpawnProjectileEvent>,
     node_registry: Res<NodeRegistry>,
+    ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
-    mut cached_collision_id: Local<Option<NodeTypeId>>,
+    mut cached_ids: Local<CachedTriggerIds>,
 ) {
-    let collision_id = *cached_collision_id.get_or_insert_with(|| {
+    let collision_id = *cached_ids.collision_id.get_or_insert_with(|| {
         node_registry.get_id("OnCollisionParams")
             .expect("OnCollisionParams not registered")
+    });
+    let area_id = *cached_ids.area_id.get_or_insert_with(|| {
+        node_registry.get_id("OnAreaParams")
+            .expect("OnAreaParams not registered")
     });
 
     for event in action_events.read() {
@@ -89,16 +123,9 @@ fn execute_spawn_projectile_action(
         let velocity = direction * speed;
         let initial_size = start_size.unwrap_or(size);
 
-        let projectile_layers = match event.base.context.caster_faction {
-            Faction::Player => CollisionLayers::new(
-                GameLayer::PlayerProjectile,
-                [GameLayer::Enemy, GameLayer::Wall],
-            ),
-            Faction::Enemy => CollisionLayers::new(
-                GameLayer::EnemyProjectile,
-                [GameLayer::Player, GameLayer::Wall],
-            ),
-        };
+        let sprite_color = event.params.color
+            .map(|c| Color::srgba(c[0], c[1], c[2], c[3]))
+            .unwrap_or(Color::srgb(1.0, 0.5, 0.0));
 
         let mut entity_commands = commands.spawn((
             Name::new("Projectile"),
@@ -112,17 +139,29 @@ fn execute_spawn_projectile_action(
             event.base.context.caster_faction,
             Collider::circle(initial_size / 2.0),
             Sensor,
-            CollisionEventsEnabled,
             RigidBody::Kinematic,
             LinearVelocity(velocity),
-            projectile_layers,
             Sprite {
-                color: Color::srgb(1.0, 0.5, 0.0),
+                color: sprite_color,
                 custom_size: Some(Vec2::splat(initial_size)),
                 ..default()
             },
             Transform::from_translation(event.base.context.source.as_point().unwrap_or(Vec3::ZERO)),
         ));
+
+        if event.params.collisions {
+            let projectile_layers = match event.base.context.caster_faction {
+                Faction::Player => CollisionLayers::new(
+                    GameLayer::PlayerProjectile,
+                    [GameLayer::Enemy, GameLayer::Wall],
+                ),
+                Faction::Enemy => CollisionLayers::new(
+                    GameLayer::EnemyProjectile,
+                    [GameLayer::Player, GameLayer::Wall],
+                ),
+            };
+            entity_commands.insert((CollisionEventsEnabled, projectile_layers));
+        }
 
         if let Some(pierce) = pierce {
             entity_commands.insert(pierce);
@@ -143,6 +182,14 @@ fn execute_spawn_projectile_action(
 
         if event.base.child_triggers.contains(&collision_id) {
             entity_commands.insert(OnCollisionTrigger);
+        }
+
+        if event.base.child_triggers.contains(&area_id) {
+            if let Some(on_area_params) = find_on_area_params(&ability_registry, &event.base) {
+                let radius = on_area_params.radius.evaluate_f32(&caster_stats);
+                let interval = on_area_params.interval.as_ref().map(|i| i.evaluate_f32(&caster_stats));
+                entity_commands.insert(OnAreaTrigger::with_interval(radius, interval));
+            }
         }
     }
 }

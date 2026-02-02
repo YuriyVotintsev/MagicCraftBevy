@@ -8,22 +8,33 @@ use crate::abilities::ids::NodeTypeId;
 use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::NodeTriggerEvent;
 use crate::abilities::AbilitySource;
+use crate::abilities::ParamValue;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
 
 #[derive(Debug, Clone, Default, GenerateRaw)]
 #[node(kind = Trigger)]
-pub struct OnAreaParams;
+pub struct OnAreaParams {
+    #[raw(default = 100.0)]
+    pub radius: ParamValue,
+    pub interval: Option<ParamValue>,
+}
 
 #[derive(Component)]
 pub struct OnAreaTrigger {
     pub radius: f32,
+    pub interval: Option<f32>,
+    pub timer: f32,
 }
 
 impl OnAreaTrigger {
     pub fn new(radius: f32) -> Self {
-        Self { radius }
+        Self { radius, interval: None, timer: 0.0 }
+    }
+
+    pub fn with_interval(radius: f32, interval: Option<f32>) -> Self {
+        Self { radius, interval, timer: 0.0 }
     }
 }
 
@@ -33,7 +44,8 @@ pub fn register_systems(app: &mut App) {
 
 fn on_area_trigger_system(
     mut commands: Commands,
-    query: Query<(Entity, &OnAreaTrigger, &AbilitySource, &Transform)>,
+    time: Res<Time>,
+    mut query: Query<(Entity, &mut OnAreaTrigger, &AbilitySource, &Transform)>,
     mut trigger_events: MessageWriter<NodeTriggerEvent>,
     spatial_query: SpatialQuery,
     node_registry: Res<NodeRegistry>,
@@ -44,7 +56,18 @@ fn on_area_trigger_system(
             .expect("OnAreaParams not registered")
     });
 
-    for (entity, trigger, source, transform) in &query {
+    let dt = time.delta_secs();
+
+    for (entity, mut trigger, source, transform) in &mut query {
+        trigger.timer += dt;
+
+        if let Some(interval) = trigger.interval {
+            if trigger.timer < interval {
+                continue;
+            }
+            trigger.timer = 0.0;
+        }
+
         let position = transform.translation.truncate();
 
         let target_layer = match source.caster_faction {
@@ -72,7 +95,9 @@ fn on_area_trigger_system(
             });
         }
 
-        commands.entity(entity).remove::<OnAreaTrigger>();
+        if trigger.interval.is_none() {
+            commands.entity(entity).remove::<OnAreaTrigger>();
+        }
     }
 }
 

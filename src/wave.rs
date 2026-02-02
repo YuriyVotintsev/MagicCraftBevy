@@ -6,8 +6,11 @@ use crate::stats::{death_system, DeathEvent};
 use crate::Faction;
 use crate::GameState;
 
-const BASE_ENEMIES: u32 = 5;
+const BASE_ENEMIES: u32 = 10;
 const ENEMIES_PER_WAVE: u32 = 3;
+const BASE_CONCURRENT: u32 = 5;
+const CONCURRENT_PER_WAVE: u32 = 1;
+const SPAWN_THRESHOLD: u32 = 2;
 const WAVE_REWARD: u32 = 10;
 const SHOP_DELAY: f32 = 2.0;
 
@@ -26,6 +29,7 @@ pub struct WaveState {
     pub spawned_count: u32,
     pub killed_count: u32,
     pub target_count: u32,
+    pub max_concurrent: u32,
 }
 
 impl Default for WaveState {
@@ -35,6 +39,7 @@ impl Default for WaveState {
             spawned_count: 0,
             killed_count: 0,
             target_count: BASE_ENEMIES,
+            max_concurrent: BASE_CONCURRENT,
         }
     }
 }
@@ -42,6 +47,14 @@ impl Default for WaveState {
 impl WaveState {
     fn calculate_target(wave: u32) -> u32 {
         BASE_ENEMIES + (wave - 1) * ENEMIES_PER_WAVE
+    }
+
+    fn calculate_max_concurrent(wave: u32) -> u32 {
+        BASE_CONCURRENT + (wave - 1) * CONCURRENT_PER_WAVE
+    }
+
+    pub fn spawn_threshold() -> u32 {
+        SPAWN_THRESHOLD
     }
 }
 
@@ -170,6 +183,7 @@ fn start_next_wave(
     wave_state.spawned_count = 0;
     wave_state.killed_count = 0;
     wave_state.target_count = WaveState::calculate_target(wave_state.current_wave);
+    wave_state.max_concurrent = WaveState::calculate_max_concurrent(wave_state.current_wave);
 
     if let Ok(player_entity) = player_query.single() {
         if let Ok(mut stack) = invuln_query.get_mut(player_entity) {

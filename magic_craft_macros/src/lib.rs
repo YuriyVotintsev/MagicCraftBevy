@@ -130,6 +130,21 @@ fn is_bool_type(ty: &Type) -> bool {
     false
 }
 
+fn is_generic_option(ty: &Type) -> bool {
+    if let Type::Path(type_path) = ty {
+        if let Some(segment) = type_path.path.segments.last() {
+            if segment.ident == "Option" {
+                if let PathArguments::AngleBracketed(args) = &segment.arguments {
+                    if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
+                        return !is_param_value_type(inner_ty);
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
 #[proc_macro_derive(GenerateRaw, attributes(node, activator, raw))]
 pub fn derive_generate_raw(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
@@ -230,6 +245,15 @@ fn generate_for_named_struct(
 
             resolve_fields.push(quote! {
                 #field_name: #resolve_expr
+            });
+        } else if is_generic_option(field_ty) {
+            raw_fields.push(quote! {
+                #[serde(default)]
+                pub #field_name: #field_ty
+            });
+
+            resolve_fields.push(quote! {
+                #field_name: self.#field_name.clone()
             });
         } else {
             raw_fields.push(quote! {

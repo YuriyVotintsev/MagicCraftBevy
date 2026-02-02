@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::GameState;
+use crate::Faction;
 use crate::abilities::AbilityRegistry;
 use crate::fsm::{spawn_mob, BehaviourRegistry, MobRegistry, TransitionRegistry};
 use crate::physics::{GameLayer, Wall};
@@ -17,35 +18,39 @@ pub const ARENA_WIDTH: f32 = 1920.0;
 pub const ARENA_HEIGHT: f32 = 1080.0;
 pub const BORDER_THICKNESS: f32 = 10.0;
 
-const SLIME_SPAWN_INTERVAL: f32 = 1.5;
-const SLIME_SIZE: f32 = 30.0;
+const MARKER_SIZE: f32 = 30.0;
+const MARKER_DURATION: f32 = 2.0;
 
-#[derive(Resource)]
-struct SlimeSpawnTimer(Timer);
+#[derive(Component)]
+struct SpawnMarker {
+    timer: Timer,
+    mob_name: String,
+}
 
 pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(SlimeSpawnTimer(Timer::from_seconds(
-            SLIME_SPAWN_INTERVAL,
-            TimerMode::Repeating,
-        )))
-        .add_systems(Startup, (setup_camera, spawn_arena))
-        .add_systems(OnEnter(GameState::Playing), reset_spawn_timer)
-        .add_systems(
-            Update,
-            spawn_enemies.run_if(in_state(WavePhase::Combat)),
-        )
-        .add_systems(
-            PostUpdate,
-            camera_follow.run_if(in_state(GameState::Playing)),
-        );
+        app.add_systems(Startup, (setup_camera, spawn_arena))
+            .add_systems(OnEnter(GameState::Playing), cleanup_spawn_markers)
+            .add_systems(OnExit(WavePhase::Combat), cleanup_spawn_markers)
+            .add_systems(
+                Update,
+                (spawn_markers, process_spawn_markers)
+                    .chain()
+                    .run_if(in_state(WavePhase::Combat)),
+            )
+            .add_systems(
+                PostUpdate,
+                camera_follow.run_if(in_state(GameState::Playing)),
+            );
     }
 }
 
-fn reset_spawn_timer(mut timer: ResMut<SlimeSpawnTimer>) {
-    timer.0.reset();
+fn cleanup_spawn_markers(mut commands: Commands, markers: Query<Entity, With<SpawnMarker>>) {
+    for entity in markers.iter() {
+        commands.entity(entity).despawn();
+    }
 }
 
 fn setup_camera(mut commands: Commands) {
@@ -143,12 +148,72 @@ fn camera_follow(
     camera_transform.translation.y = player_transform.translation.y;
 }
 
-fn spawn_enemies(
+fn spawn_markers(
+    mut commands: Commands,
+    wave_state: Res<WaveState>,
+    enemies_query: Query<&Faction>,
+    markers_query: Query<(), With<SpawnMarker>>,
+) {
+    let alive_enemies = enemies_query.iter().filter(|f| **f == Faction::Enemy).count() as u32;
+    let active_markers = markers_query.iter().count() as u32;
+
+    if alive_enemies > WaveState::spawn_threshold() {
+        return;
+    }
+
+    let remaining_to_spawn = wave_state
+        .target_count
+        .saturating_sub(wave_state.spawned_count)
+        .saturating_sub(active_markers);
+    if remaining_to_spawn == 0 {
+        return;
+    }
+
+    let can_spawn = wave_state
+        .max_concurrent
+        .saturating_sub(alive_enemies)
+        .saturating_sub(active_markers);
+    let to_spawn = can_spawn.min(remaining_to_spawn);
+
+    if to_spawn == 0 {
+        return;
+    }
+
+    let mut rng = rand::rng();
+    let half_width = ARENA_WIDTH / 2.0 - MARKER_SIZE / 2.0;
+    let half_height = ARENA_HEIGHT / 2.0 - MARKER_SIZE / 2.0;
+
+    for _ in 0..to_spawn {
+        let x = rng.random_range(-half_width..half_width);
+        let y = rng.random_range(-half_height..half_height);
+        let mob_name = if rng.random_bool(0.5) {
+            "slime"
+        } else {
+            "archer"
+        };
+
+        commands.spawn((
+            Name::new("SpawnMarker"),
+            SpawnMarker {
+                timer: Timer::from_seconds(MARKER_DURATION, TimerMode::Once),
+                mob_name: mob_name.to_string(),
+            },
+            Sprite {
+                color: Color::srgb(1.0, 0.9, 0.2),
+                custom_size: Some(Vec2::splat(MARKER_SIZE)),
+                ..default()
+            },
+            Transform::from_xyz(x, y, 0.5),
+        ));
+    }
+}
+
+fn process_spawn_markers(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
-    mut timer: ResMut<SlimeSpawnTimer>,
+    mut markers_query: Query<(Entity, &mut SpawnMarker, &Transform)>,
     mob_registry: Res<MobRegistry>,
     stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
@@ -157,37 +222,34 @@ fn spawn_enemies(
     transition_registry: Res<TransitionRegistry>,
     mut wave_state: ResMut<WaveState>,
 ) {
-    if wave_state.spawned_count >= wave_state.target_count {
-        return;
-    }
+    for (marker_entity, mut marker, transform) in markers_query.iter_mut() {
+        if marker.timer.tick(time.delta()).just_finished() {
+            let pos = Vec3::new(
+                transform.translation.x,
+                transform.translation.y,
+                1.0,
+            );
 
-    if timer.0.tick(time.delta()).just_finished() {
-        let mut rng = rand::rng();
-        let half_width = ARENA_WIDTH / 2.0 - SLIME_SIZE / 2.0;
-        let half_height = ARENA_HEIGHT / 2.0 - SLIME_SIZE / 2.0;
-
-        let x = rng.random_range(-half_width..half_width);
-        let y = rng.random_range(-half_height..half_height);
-
-        let mob_name = if rng.random_bool(0.5) { "slime" } else { "archer" };
-
-        if let Some(entity) = spawn_mob(
-            &mut commands,
-            &mut meshes,
-            &mut materials,
-            &mob_registry,
-            &stat_registry,
-            &calculators,
-            &ability_registry,
-            &behaviour_registry,
-            &transition_registry,
-            mob_name,
-            Vec3::new(x, y, 1.0),
-        ) {
-            if let Ok(mut entity_commands) = commands.get_entity(entity) {
-                entity_commands.insert(WaveEnemy);
+            if let Some(entity) = spawn_mob(
+                &mut commands,
+                &mut meshes,
+                &mut materials,
+                &mob_registry,
+                &stat_registry,
+                &calculators,
+                &ability_registry,
+                &behaviour_registry,
+                &transition_registry,
+                &marker.mob_name,
+                pos,
+            ) {
+                if let Ok(mut entity_commands) = commands.get_entity(entity) {
+                    entity_commands.insert(WaveEnemy);
+                }
+                wave_state.spawned_count += 1;
             }
-            wave_state.spawned_count += 1;
+
+            commands.entity(marker_entity).despawn();
         }
     }
 }
