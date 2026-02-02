@@ -8,7 +8,7 @@ use crate::abilities::node::NodeRegistry;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::NodeTriggerEvent;
-use crate::abilities::{AbilityDef, AbilitySource};
+use crate::abilities::AbilitySource;
 use crate::physics::Wall;
 use crate::schedule::GameSet;
 use crate::Faction;
@@ -19,17 +19,6 @@ pub struct OnCollisionParams;
 
 #[derive(Component)]
 pub struct OnCollisionTrigger;
-
-impl OnCollisionTrigger {
-    pub fn if_configured(
-        ability_def: &AbilityDef,
-        node_id: crate::abilities::ids::NodeDefId,
-        registry: &NodeRegistry,
-    ) -> Option<Self> {
-        let trigger_id = registry.get_id("OnCollisionParams")?;
-        ability_def.has_trigger(node_id, trigger_id).then_some(Self)
-    }
-}
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(Update, on_collision_trigger_system.in_set(GameSet::AbilityExecution));

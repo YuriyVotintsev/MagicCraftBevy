@@ -7,7 +7,7 @@ use crate::abilities::node::NodeRegistry;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::context::{AbilityContext, Target};
 use crate::abilities::events::NodeTriggerEvent;
-use crate::abilities::{AbilityDef, AbilitySource};
+use crate::abilities::AbilitySource;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
@@ -24,16 +24,6 @@ pub struct OnAreaTrigger {
 impl OnAreaTrigger {
     pub fn new(radius: f32) -> Self {
         Self { radius }
-    }
-
-    pub fn if_configured(
-        ability_def: &AbilityDef,
-        node_id: crate::abilities::ids::NodeDefId,
-        registry: &NodeRegistry,
-        radius: f32,
-    ) -> Option<Self> {
-        let trigger_id = registry.get_id("OnAreaParams")?;
-        ability_def.has_trigger(node_id, trigger_id).then_some(Self { radius })
     }
 }
 

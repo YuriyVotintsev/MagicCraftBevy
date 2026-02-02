@@ -5,13 +5,12 @@ use magic_craft_macros::GenerateRaw;
 use rand::Rng;
 
 use crate::register_node;
-use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::NodeRegistry;
 use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::context::Target;
-use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::AbilitySource;
-use crate::building_blocks::actions::ActionParams;
+use crate::building_blocks::actions::ExecuteSpawnProjectileEvent;
 use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
@@ -46,46 +45,30 @@ pub enum Pierce {
 
 fn execute_spawn_projectile_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteNodeEvent>,
+    mut action_events: MessageReader<ExecuteSpawnProjectileEvent>,
     node_registry: Res<NodeRegistry>,
-    ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
-    mut cached_id: Local<Option<NodeTypeId>>,
+    mut cached_collision_id: Local<Option<NodeTypeId>>,
 ) {
-    let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id("SpawnProjectileParams")
-            .expect("SpawnProjectileParams not registered")
+    let collision_id = *cached_collision_id.get_or_insert_with(|| {
+        node_registry.get_id("OnCollisionParams")
+            .expect("OnCollisionParams not registered")
     });
 
     for event in action_events.read() {
-        let Some(ability_def) = ability_registry.get(event.ability_id) else {
-            continue;
-        };
-        let Some(node_def) = ability_def.get_node(event.node_id) else {
-            continue;
-        };
-
-        if node_def.node_type != handler_id {
-            continue;
-        }
-
-        let ActionParams::SpawnProjectileParams(params) = node_def.params.unwrap_action() else {
-            continue;
-        };
-
         let caster_stats = stats_query
-            .get(event.context.caster)
+            .get(event.base.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let speed = params.speed.evaluate_f32(&caster_stats);
-        let size = params.size.evaluate_f32(&caster_stats);
-        let spread = params.spread.evaluate_f32(&caster_stats);
-        let lifetime = params.lifetime.as_ref().map(|p| p.evaluate_f32(&caster_stats));
-        let start_size = params.start_size.as_ref().map(|p| p.evaluate_f32(&caster_stats));
-        let end_size = params.end_size.as_ref().map(|p| p.evaluate_f32(&caster_stats));
-        let pierce = params.pierce.as_ref().map(|p| Pierce::Count(p.evaluate_i32(&caster_stats) as u32));
+        let speed = event.params.speed.evaluate_f32(&caster_stats);
+        let size = event.params.size.evaluate_f32(&caster_stats);
+        let spread = event.params.spread.evaluate_f32(&caster_stats);
+        let lifetime = event.params.lifetime.as_ref().map(|p| p.evaluate_f32(&caster_stats));
+        let start_size = event.params.start_size.as_ref().map(|p| p.evaluate_f32(&caster_stats));
+        let end_size = event.params.end_size.as_ref().map(|p| p.evaluate_f32(&caster_stats));
+        let pierce = event.params.pierce.as_ref().map(|p| Pierce::Count(p.evaluate_i32(&caster_stats) as u32));
 
-        let base_direction = match event.context.target {
+        let base_direction = match event.base.context.target {
             Some(Target::Direction(d)) => d.truncate().normalize_or_zero(),
             _ => Vec2::X,
         };
@@ -106,7 +89,7 @@ fn execute_spawn_projectile_action(
         let velocity = direction * speed;
         let initial_size = start_size.unwrap_or(size);
 
-        let projectile_layers = match event.context.caster_faction {
+        let projectile_layers = match event.base.context.caster_faction {
             Faction::Player => CollisionLayers::new(
                 GameLayer::PlayerProjectile,
                 [GameLayer::Enemy, GameLayer::Wall],
@@ -121,12 +104,12 @@ fn execute_spawn_projectile_action(
             Name::new("Projectile"),
             Projectile,
             AbilitySource::new(
-                event.ability_id,
-                event.node_id,
-                event.context.caster,
-                event.context.caster_faction,
+                event.base.ability_id,
+                event.base.node_id,
+                event.base.context.caster,
+                event.base.context.caster_faction,
             ),
-            event.context.caster_faction,
+            event.base.context.caster_faction,
             Collider::circle(initial_size / 2.0),
             Sensor,
             CollisionEventsEnabled,
@@ -138,7 +121,7 @@ fn execute_spawn_projectile_action(
                 custom_size: Some(Vec2::splat(initial_size)),
                 ..default()
             },
-            Transform::from_translation(event.context.source.as_point().unwrap_or(Vec3::ZERO)),
+            Transform::from_translation(event.base.context.source.as_point().unwrap_or(Vec3::ZERO)),
         ));
 
         if let Some(pierce) = pierce {
@@ -158,8 +141,8 @@ fn execute_spawn_projectile_action(
             }
         }
 
-        if let Some(trigger) = OnCollisionTrigger::if_configured(ability_def, event.node_id, &node_registry) {
-            entity_commands.insert(trigger);
+        if event.base.child_triggers.contains(&collision_id) {
+            entity_commands.insert(OnCollisionTrigger);
         }
     }
 }

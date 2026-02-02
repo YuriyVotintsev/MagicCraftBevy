@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use magic_craft_macros::GenerateRaw;
 
 use crate::register_activator;
-use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target, AbilityInputs, AbilityInstance};
+use crate::abilities::{ActivateAbilityEvent, AbilityContext, Target, AbilityInputs, AbilityInstance};
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
 
@@ -20,7 +20,7 @@ impl OnInputActivator {
 }
 
 fn on_input_system(
-    mut trigger_events: MessageWriter<TriggerAbilityEvent>,
+    mut trigger_events: MessageWriter<ActivateAbilityEvent>,
     ability_query: Query<(&AbilityInstance, &OnInputActivator)>,
     owner_query: Query<(&AbilityInputs, &Transform, &Faction)>,
 ) {
@@ -39,7 +39,7 @@ fn on_input_system(
             Some(Target::Direction(input.direction)),
         );
 
-        trigger_events.write(TriggerAbilityEvent {
+        trigger_events.write(ActivateAbilityEvent {
             ability_id: instance.ability_id,
             context: ctx,
         });

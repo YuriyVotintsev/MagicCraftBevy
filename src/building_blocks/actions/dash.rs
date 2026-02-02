@@ -3,12 +3,9 @@ use bevy::prelude::*;
 use magic_craft_macros::GenerateRaw;
 
 use crate::register_node;
-use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::ParamValue;
-use crate::abilities::ids::NodeTypeId;
-use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::Target;
-use crate::building_blocks::actions::ActionParams;
+use crate::building_blocks::actions::ExecuteDashEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
@@ -37,43 +34,20 @@ pub struct PreDashLayers(pub CollisionLayers);
 
 fn execute_dash_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteNodeEvent>,
-    node_registry: Res<NodeRegistry>,
-    ability_registry: Res<AbilityRegistry>,
+    mut action_events: MessageReader<ExecuteDashEvent>,
     stats_query: Query<&ComputedStats>,
     mut invuln_query: Query<&mut InvulnerableStack>,
     collision_query: Query<&CollisionLayers>,
-    mut cached_id: Local<Option<NodeTypeId>>,
 ) {
-    let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id("DashParams")
-            .expect("DashParams not registered")
-    });
-
     for event in action_events.read() {
-        let Some(ability_def) = ability_registry.get(event.ability_id) else {
-            continue;
-        };
-        let Some(node_def) = ability_def.get_node(event.node_id) else {
-            continue;
-        };
-
-        if node_def.node_type != handler_id {
-            continue;
-        }
-
-        let ActionParams::DashParams(params) = node_def.params.unwrap_action() else {
-            continue;
-        };
-
         let caster_stats = stats_query
-            .get(event.context.caster)
+            .get(event.base.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let speed = params.speed.evaluate_f32(&caster_stats);
-        let duration = params.duration.evaluate_f32(&caster_stats);
+        let speed = event.params.speed.evaluate_f32(&caster_stats);
+        let duration = event.params.duration.evaluate_f32(&caster_stats);
 
-        let direction = match event.context.target {
+        let direction = match event.base.context.target {
             Some(Target::Direction(d)) => d.truncate().normalize_or_zero(),
             _ => Vec2::ZERO,
         };
@@ -82,7 +56,7 @@ fn execute_dash_action(
             continue;
         }
 
-        let caster = event.context.caster;
+        let caster = event.base.context.caster;
 
         let current_layers = collision_query
             .get(caster)

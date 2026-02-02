@@ -3,7 +3,7 @@ use magic_craft_macros::GenerateRaw;
 
 use crate::register_activator;
 use crate::abilities::param::ParamValue;
-use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target, AbilityInputs, AbilityInstance};
+use crate::abilities::{ActivateAbilityEvent, AbilityContext, Target, AbilityInputs, AbilityInstance};
 use crate::stats::ComputedStats;
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
@@ -31,7 +31,7 @@ impl WhileHeldActivator {
 
 fn while_held_system(
     time: Res<Time>,
-    mut trigger_events: MessageWriter<TriggerAbilityEvent>,
+    mut trigger_events: MessageWriter<ActivateAbilityEvent>,
     mut ability_query: Query<(&AbilityInstance, &mut WhileHeldActivator)>,
     owner_query: Query<(&AbilityInputs, &Transform, &Faction, &ComputedStats)>,
 ) {
@@ -59,7 +59,7 @@ fn while_held_system(
             Some(Target::Direction(input.direction)),
         );
 
-        trigger_events.write(TriggerAbilityEvent {
+        trigger_events.write(ActivateAbilityEvent {
             ability_id: instance.ability_id,
             context: ctx,
         });

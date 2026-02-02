@@ -3,12 +3,11 @@ use bevy::prelude::*;
 use magic_craft_macros::GenerateRaw;
 
 use crate::register_node;
-use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::NodeRegistry;
 use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
-use crate::abilities::events::ExecuteNodeEvent;
 use crate::abilities::AbilitySource;
-use crate::building_blocks::actions::ActionParams;
+use crate::building_blocks::actions::ExecuteMeteorEvent;
 use crate::building_blocks::triggers::on_area::OnAreaTrigger;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
@@ -57,42 +56,26 @@ pub struct MeteorExplosion;
 
 fn execute_meteor_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteNodeEvent>,
+    mut action_events: MessageReader<ExecuteMeteorEvent>,
     node_registry: Res<NodeRegistry>,
-    ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
-    mut cached_id: Local<Option<NodeTypeId>>,
+    mut cached_area_id: Local<Option<NodeTypeId>>,
 ) {
-    let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id("MeteorParams")
-            .expect("MeteorParams not registered")
+    let area_id = *cached_area_id.get_or_insert_with(|| {
+        node_registry.get_id("OnAreaParams")
+            .expect("OnAreaParams not registered")
     });
 
     for event in action_events.read() {
-        let Some(ability_def) = ability_registry.get(event.ability_id) else {
-            continue;
-        };
-        let Some(node_def) = ability_def.get_node(event.node_id) else {
-            continue;
-        };
-
-        if node_def.node_type != handler_id {
-            continue;
-        }
-
-        let ActionParams::MeteorParams(params) = node_def.params.unwrap_action() else {
-            continue;
-        };
-
         let caster_stats = stats_query
-            .get(event.context.caster)
+            .get(event.base.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let search_radius = params.search_radius.evaluate_f32(&caster_stats);
-        let damage_radius = params.damage_radius.evaluate_f32(&caster_stats);
-        let fall_duration = params.fall_duration.evaluate_f32(&caster_stats);
+        let search_radius = event.params.search_radius.evaluate_f32(&caster_stats);
+        let damage_radius = event.params.damage_radius.evaluate_f32(&caster_stats);
+        let fall_duration = event.params.fall_duration.evaluate_f32(&caster_stats);
 
-        let has_area_trigger = OnAreaTrigger::if_configured(ability_def, event.node_id, &node_registry, damage_radius).is_some();
+        let has_area_trigger = event.base.child_triggers.contains(&area_id);
 
         commands.spawn((
             Name::new("MeteorRequest"),
@@ -103,12 +86,12 @@ fn execute_meteor_action(
                 has_area_trigger,
             },
             AbilitySource::new(
-                event.ability_id,
-                event.node_id,
-                event.context.caster,
-                event.context.caster_faction,
+                event.base.ability_id,
+                event.base.node_id,
+                event.base.context.caster,
+                event.base.context.caster_faction,
             ),
-            Transform::from_translation(event.context.source.as_point().unwrap_or(Vec3::ZERO)),
+            Transform::from_translation(event.base.context.source.as_point().unwrap_or(Vec3::ZERO)),
         ));
     }
 }

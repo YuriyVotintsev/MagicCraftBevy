@@ -3,7 +3,7 @@ use magic_craft_macros::GenerateRaw;
 
 use crate::register_activator;
 use crate::abilities::param::ParamValue;
-use crate::abilities::{TriggerAbilityEvent, AbilityContext, Target, AbilityInstance};
+use crate::abilities::{ActivateAbilityEvent, AbilityContext, Target, AbilityInstance};
 use crate::stats::ComputedStats;
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
@@ -37,7 +37,7 @@ impl IntervalActivator {
 
 fn interval_system(
     time: Res<Time>,
-    mut trigger_events: MessageWriter<TriggerAbilityEvent>,
+    mut trigger_events: MessageWriter<ActivateAbilityEvent>,
     mut ability_query: Query<(&AbilityInstance, &mut IntervalActivator)>,
     owner_query: Query<(&Transform, &Faction, &ComputedStats)>,
 ) {
@@ -63,7 +63,7 @@ fn interval_system(
             None,
         );
 
-        trigger_events.write(TriggerAbilityEvent {
+        trigger_events.write(ActivateAbilityEvent {
             ability_id: instance.ability_id,
             context: ctx,
         });

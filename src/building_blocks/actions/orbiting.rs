@@ -4,14 +4,13 @@ use bevy::prelude::*;
 use magic_craft_macros::GenerateRaw;
 
 use crate::register_node;
-use crate::abilities::{AbilityRegistry, NodeRegistry};
+use crate::abilities::NodeRegistry;
 use crate::abilities::ParamValue;
 use crate::abilities::ids::NodeTypeId;
 use crate::abilities::AbilitySource;
 use crate::common::AttachedTo;
-use crate::building_blocks::actions::ActionParams;
+use crate::building_blocks::actions::ExecuteOrbitingEvent;
 use crate::building_blocks::triggers::on_collision::OnCollisionTrigger;
-use crate::abilities::events::ExecuteNodeEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
@@ -42,43 +41,27 @@ pub struct OrbitingMovement {
 
 fn execute_orbiting_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteNodeEvent>,
+    mut action_events: MessageReader<ExecuteOrbitingEvent>,
     node_registry: Res<NodeRegistry>,
-    ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
-    mut cached_id: Local<Option<NodeTypeId>>,
+    mut cached_collision_id: Local<Option<NodeTypeId>>,
 ) {
-    let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id("OrbitingParams")
-            .expect("OrbitingParams not registered")
+    let collision_id = *cached_collision_id.get_or_insert_with(|| {
+        node_registry.get_id("OnCollisionParams")
+            .expect("OnCollisionParams not registered")
     });
 
     for event in action_events.read() {
-        let Some(ability_def) = ability_registry.get(event.ability_id) else {
-            continue;
-        };
-        let Some(node_def) = ability_def.get_node(event.node_id) else {
-            continue;
-        };
-
-        if node_def.node_type != handler_id {
-            continue;
-        }
-
-        let ActionParams::OrbitingParams(params) = node_def.params.unwrap_action() else {
-            continue;
-        };
-
         let caster_stats = stats_query
-            .get(event.context.caster)
+            .get(event.base.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let count = params.count.evaluate_i32(&caster_stats);
-        let radius = params.radius.evaluate_f32(&caster_stats);
-        let angular_speed = params.angular_speed.evaluate_f32(&caster_stats);
-        let size = params.size.evaluate_f32(&caster_stats);
+        let count = event.params.count.evaluate_i32(&caster_stats);
+        let radius = event.params.radius.evaluate_f32(&caster_stats);
+        let angular_speed = event.params.angular_speed.evaluate_f32(&caster_stats);
+        let size = event.params.size.evaluate_f32(&caster_stats);
 
-        let orb_layers = match event.context.caster_faction {
+        let orb_layers = match event.base.context.caster_faction {
             Faction::Player => CollisionLayers::new(
                 GameLayer::PlayerProjectile,
                 [GameLayer::Enemy, GameLayer::Wall],
@@ -89,19 +72,21 @@ fn execute_orbiting_action(
             ),
         };
 
+        let has_collision = event.base.child_triggers.contains(&collision_id);
+
         for i in 0..count {
             let angle = 2.0 * PI * (i as f32) / (count as f32);
             let offset = Vec2::new(angle.cos(), angle.sin()) * radius;
-            let source_point = event.context.source.as_point().unwrap_or(Vec3::ZERO);
+            let source_point = event.base.context.source.as_point().unwrap_or(Vec3::ZERO);
             let position = source_point + offset.extend(0.0);
 
             let mut entity = commands.spawn((
                 Name::new("Orb"),
                 AbilitySource::new(
-                    event.ability_id,
-                    event.node_id,
-                    event.context.caster,
-                    event.context.caster_faction,
+                    event.base.ability_id,
+                    event.base.node_id,
+                    event.base.context.caster,
+                    event.base.context.caster_faction,
                 ),
                 Pierce::Infinite,
                 OrbitingMovement {
@@ -109,8 +94,8 @@ fn execute_orbiting_action(
                     angular_speed,
                     current_angle: angle,
                 },
-                AttachedTo { owner: event.context.caster },
-                event.context.caster_faction,
+                AttachedTo { owner: event.base.context.caster },
+                event.base.context.caster_faction,
                 Collider::circle(size / 2.0),
                 Sensor,
                 CollisionEventsEnabled,
@@ -124,8 +109,8 @@ fn execute_orbiting_action(
                 Transform::from_translation(position),
             ));
 
-            if let Some(trigger) = OnCollisionTrigger::if_configured(ability_def, event.node_id, &node_registry) {
-                entity.insert(trigger);
+            if has_collision {
+                entity.insert(OnCollisionTrigger);
             }
         }
     }

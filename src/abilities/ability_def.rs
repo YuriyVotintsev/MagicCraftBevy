@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-use super::ids::{NodeDefId, NodeTypeId};
+use super::ids::NodeDefId;
 use super::node::NodeDef;
 use crate::building_blocks::activators::ActivatorParamsRaw;
 use super::ActivatorParams;
@@ -43,17 +43,5 @@ impl AbilityDef {
 
     pub fn set_root_actions(&mut self, roots: Vec<NodeDefId>) {
         self.root_action_nodes = roots;
-    }
-
-    pub fn has_trigger(&self, node_id: NodeDefId, trigger_type: NodeTypeId) -> bool {
-        let Some(node) = self.get_node(node_id) else {
-            return false;
-        };
-
-        node.children.iter().any(|&child_id| {
-            self.get_node(child_id)
-                .map(|n| n.node_type == trigger_type)
-                .unwrap_or(false)
-        })
     }
 }

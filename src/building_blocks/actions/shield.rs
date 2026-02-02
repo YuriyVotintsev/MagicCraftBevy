@@ -3,11 +3,8 @@ use bevy::prelude::*;
 use magic_craft_macros::GenerateRaw;
 
 use crate::register_node;
-use crate::abilities::{AbilityRegistry, NodeRegistry};
 use crate::abilities::ParamValue;
-use crate::abilities::ids::NodeTypeId;
-use crate::abilities::events::ExecuteNodeEvent;
-use crate::building_blocks::actions::ActionParams;
+use crate::building_blocks::actions::ExecuteShieldEvent;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
@@ -38,48 +35,25 @@ pub struct ShieldVisual {
 
 fn execute_shield_action(
     mut commands: Commands,
-    mut action_events: MessageReader<ExecuteNodeEvent>,
-    node_registry: Res<NodeRegistry>,
-    ability_registry: Res<AbilityRegistry>,
+    mut action_events: MessageReader<ExecuteShieldEvent>,
     stats_query: Query<&ComputedStats>,
     mut invuln_query: Query<&mut InvulnerableStack>,
-    mut cached_id: Local<Option<NodeTypeId>>,
 ) {
-    let handler_id = *cached_id.get_or_insert_with(|| {
-        node_registry.get_id("ShieldParams")
-            .expect("ShieldParams not registered")
-    });
-
     for event in action_events.read() {
-        let Some(ability_def) = ability_registry.get(event.ability_id) else {
-            continue;
-        };
-        let Some(node_def) = ability_def.get_node(event.node_id) else {
-            continue;
-        };
-
-        if node_def.node_type != handler_id {
-            continue;
-        }
-
-        let ActionParams::ShieldParams(params) = node_def.params.unwrap_action() else {
-            continue;
-        };
-
         let caster_stats = stats_query
-            .get(event.context.caster)
+            .get(event.base.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
-        let duration = params.duration.evaluate_f32(&caster_stats);
-        let radius = params.radius.evaluate_f32(&caster_stats);
+        let duration = event.params.duration.evaluate_f32(&caster_stats);
+        let radius = event.params.radius.evaluate_f32(&caster_stats);
 
-        let caster = event.context.caster;
+        let caster = event.base.context.caster;
 
         if let Ok(mut entity_commands) = commands.get_entity(caster) {
             entity_commands.insert(ShieldActive {
                 timer: Timer::from_seconds(duration, TimerMode::Once),
                 radius,
-                owner_faction: event.context.caster_faction,
+                owner_faction: event.base.context.caster_faction,
             });
 
             if let Ok(mut stack) = invuln_query.get_mut(caster) {
@@ -97,7 +71,7 @@ fn execute_shield_action(
                 custom_size: Some(Vec2::splat(radius * 2.0)),
                 ..default()
             },
-            Transform::from_translation(event.context.source.as_point().unwrap_or(Vec3::ZERO).with_z(0.5)),
+            Transform::from_translation(event.base.context.source.as_point().unwrap_or(Vec3::ZERO).with_z(0.5)),
         ));
     }
 }

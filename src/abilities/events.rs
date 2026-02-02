@@ -4,16 +4,17 @@ use super::context::AbilityContext;
 use crate::abilities::ids::{AbilityId, NodeDefId, NodeTypeId};
 
 #[derive(Message, Clone)]
-pub struct TriggerAbilityEvent {
+pub struct ActivateAbilityEvent {
     pub ability_id: AbilityId,
     pub context: AbilityContext,
 }
 
-#[derive(Message, Clone)]
-pub struct ExecuteNodeEvent {
+#[derive(Clone)]
+pub struct ActionEventBase {
     pub ability_id: AbilityId,
     pub node_id: NodeDefId,
     pub context: AbilityContext,
+    pub child_triggers: Vec<NodeTypeId>,
 }
 
 #[derive(Message, Clone)]

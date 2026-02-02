@@ -33,7 +33,7 @@ use crate::schedule::GameSet;
 use crate::wave::WavePhase;
 use crate::game_state::GameState;
 
-pub use events::{TriggerAbilityEvent, ExecuteNodeEvent, NodeTriggerEvent};
+pub use events::{ActivateAbilityEvent, NodeTriggerEvent};
 
 fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {
     for mut inputs in &mut query {
@@ -45,9 +45,9 @@ pub struct AbilityPlugin;
 
 impl Plugin for AbilityPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Messages<TriggerAbilityEvent>>();
-        app.init_resource::<Messages<ExecuteNodeEvent>>();
+        app.init_resource::<Messages<ActivateAbilityEvent>>();
         app.init_resource::<Messages<NodeTriggerEvent>>();
+        actions::init_action_messages(app);
 
         activators::register_all(app);
 

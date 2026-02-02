@@ -82,6 +82,44 @@ macro_rules! collect_action_nodes {
             }
         }
 
+        paste::paste! {
+            $(
+                #[derive(::bevy::prelude::Message, Clone)]
+                pub struct [<Execute $module:camel Event>] {
+                    pub base: $crate::abilities::events::ActionEventBase,
+                    pub params: $module::__NodeParams,
+                }
+            )*
+
+            #[derive(::bevy::ecs::system::SystemParam)]
+            pub struct ActionEventWriters<'w> {
+                $(
+                    $module: ::bevy::prelude::MessageWriter<'w, [<Execute $module:camel Event>]>,
+                )*
+            }
+
+            impl ActionEventWriters<'_> {
+                pub fn dispatch(&mut self, base: $crate::abilities::events::ActionEventBase, params: &ActionParams) {
+                    match params {
+                        $(
+                            ActionParams::[<$module:camel Params>](p) => {
+                                self.$module.write([<Execute $module:camel Event>] {
+                                    base,
+                                    params: p.clone(),
+                                });
+                            }
+                        )*
+                    }
+                }
+            }
+
+            pub fn init_action_messages(app: &mut ::bevy::prelude::App) {
+                $(
+                    app.init_resource::<::bevy::prelude::Messages<[<Execute $module:camel Event>]>>();
+                )*
+            }
+        }
+
         pub fn register_all(
             app: &mut ::bevy::prelude::App,
             registry: &mut $crate::abilities::NodeRegistry,
