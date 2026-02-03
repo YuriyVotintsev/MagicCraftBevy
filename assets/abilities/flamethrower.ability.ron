@@ -7,7 +7,7 @@
             Velocity((speed: Float(600.0), spread: Some(Float(18.0)))),
             Lifetime((Float(0.6))),
             Growing((start_size: Float(8.0), end_size: Float(25.0))),
-            Collider((shape: Circle(Float(8.0)))),
+            Collider((shape: Circle(Float(16.0)))),
             Sprite((color: (1.0, 0.3, 0.0, 1.0), shape: Circle)),
             OnCollision((entities: [
                 (components: [DamagePayload((amount: Float(1.0)))])

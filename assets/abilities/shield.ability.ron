@@ -6,7 +6,7 @@
             FollowCaster(()),
             Lifetime((Float(0.5))),
             Sprite((color: (0.3, 0.5, 1.0, 0.3), size: Some(Float(200.0)), shape: Circle)),
-            DestroyEnemyProjectiles((radius: Float(100.0))),
+            DestroyEnemyProjectiles((size: Float(200.0))),
         ])
     ]
 )

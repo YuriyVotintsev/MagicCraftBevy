@@ -3,12 +3,12 @@
     abilities: ["archer_shot"],
     visual: (
         shape: Triangle,
-        size: 30.0,
+        size: 60.0,
         color: (0.8, 0.3, 0.3),
     ),
     collider: (
         shape: Circle,
-        size: 30.0,
+        size: 60.0,
     ),
     base_stats: {
         "movement_speed_base": 80.0,

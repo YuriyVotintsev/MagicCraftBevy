@@ -14,7 +14,7 @@ use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub radius: ParamValueRaw,
+    pub size: ParamValueRaw,
     #[serde(default)]
     pub interval: Option<ParamValueRaw>,
     pub entities: Vec<crate::abilities::entity_def::EntityDefRaw>,
@@ -22,7 +22,7 @@ pub struct DefRaw {
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub radius: ParamValue,
+    pub size: ParamValue,
     pub interval: Option<ParamValue>,
     pub entities: Vec<EntityDef>,
 }
@@ -30,7 +30,7 @@ pub struct Def {
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &StatRegistry) -> Def {
         Def {
-            radius: resolve_param_value(&self.radius, stat_registry),
+            size: resolve_param_value(&self.size, stat_registry),
             interval: self.interval.as_ref().map(|i| resolve_param_value(i, stat_registry)),
             entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
         }
@@ -39,17 +39,17 @@ impl DefRaw {
 
 #[derive(Component)]
 pub struct OnAreaTrigger {
-    pub radius: f32,
+    pub size: f32,
     pub interval: Option<f32>,
     pub timer: f32,
     pub entities: Vec<EntityDef>,
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let radius = def.radius.evaluate_f32(ctx.stats);
+    let size = def.size.evaluate_f32(ctx.stats);
     let interval = def.interval.as_ref().map(|i| i.evaluate_f32(ctx.stats));
     commands.insert(OnAreaTrigger {
-        radius,
+        size,
         interval,
         timer: 0.0,
         entities: def.entities.clone(),
@@ -87,7 +87,7 @@ fn on_area_trigger_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(target_layer);
-        let shape = Collider::circle(trigger.radius);
+        let shape = Collider::circle(trigger.size / 2.0);
         let hits = spatial_query.shape_intersections(&shape, position, 0.0, &filter);
 
         let caster_stats = stats_query

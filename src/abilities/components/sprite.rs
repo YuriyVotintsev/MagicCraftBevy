@@ -64,7 +64,7 @@ pub fn spawn(
         }
         SpriteShape::Circle => {
             commands.insert((
-                CircleSprite { color, radius: size / 2.0 },
+                CircleSprite { color, size },
                 Transform::from_translation(position),
             ));
         }
@@ -74,7 +74,7 @@ pub fn spawn(
 #[derive(Component)]
 pub struct CircleSprite {
     pub color: Color,
-    pub radius: f32,
+    pub size: f32,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -103,7 +103,7 @@ fn spawn_circle_visuals(
         commands.entity(entity).insert((
             Mesh2d(circle_mesh.0.clone()),
             MeshMaterial2d(material),
-            Transform::default().with_scale(Vec3::splat(circle.radius)),
+            Transform::default().with_scale(Vec3::splat(circle.size / 2.0)),
         ));
     }
 }

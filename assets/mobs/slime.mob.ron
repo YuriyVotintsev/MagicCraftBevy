@@ -3,12 +3,12 @@
     abilities: [],
     visual: (
         shape: Circle,
-        size: 30.0,
+        size: 60.0,
         color: (0.2, 0.8, 0.2),
     ),
     collider: (
         shape: Circle,
-        size: 30.0,
+        size: 60.0,
     ),
     base_stats: {
         "movement_speed_base": 100.0,

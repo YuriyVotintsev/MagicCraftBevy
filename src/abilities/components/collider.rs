@@ -40,8 +40,8 @@ impl DefRaw {
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let collider = match &def.shape {
         Shape::Circle(r) => {
-            let radius = r.evaluate_f32(ctx.stats);
-            Collider::circle(radius)
+            let size = r.evaluate_f32(ctx.stats);
+            Collider::circle(size / 2.0)
         }
     };
 

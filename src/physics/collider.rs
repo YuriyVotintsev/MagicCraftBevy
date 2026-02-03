@@ -17,7 +17,7 @@ impl Default for ColliderDef {
     fn default() -> Self {
         Self {
             shape: ColliderShape::Circle,
-            size: 30.0,
+            size: 60.0,
         }
     }
 }

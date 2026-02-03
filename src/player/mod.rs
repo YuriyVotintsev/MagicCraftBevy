@@ -80,7 +80,7 @@ fn spawn_player(
         .unwrap_or(100.0);
 
     let collider = match player_def.collider.shape {
-        ColliderShape::Circle => Collider::circle(player_def.collider.size),
+        ColliderShape::Circle => Collider::circle(player_def.collider.size / 2.0),
         ColliderShape::Rectangle => {
             Collider::rectangle(player_def.collider.size, player_def.collider.size)
         }

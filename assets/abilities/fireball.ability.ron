@@ -5,7 +5,7 @@
         (components: [
             Projectile(()),
             Velocity((speed: Expr(Add(Stat("projectile_speed"), Constant(100.0))))),
-            Collider((shape: Circle(Float(15.0)))),
+            Collider((shape: Circle(Float(30.0)))),
             Sprite((color: (1.0, 0.5, 0.0, 1.0))),
             OnCollision((entities: [
                 (components: [DamagePayload((amount: Stat("physical_damage")))])

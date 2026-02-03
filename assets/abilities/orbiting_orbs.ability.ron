@@ -6,7 +6,7 @@
             count: Some(Int(3)),
             components: [
                 Orbiting((radius: Float(80.0), angular_speed: Float(3.0))),
-                Collider((shape: Circle(Float(10.0)))),
+                Collider((shape: Circle(Float(20.0)))),
                 Sprite((color: (0.3, 0.7, 1.0, 1.0), shape: Circle)),
                 Pierce(()),
                 OnCollision((entities: [

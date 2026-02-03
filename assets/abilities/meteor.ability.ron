@@ -3,7 +3,7 @@
     activator: Interval((interval: Float(3.0))),
     entities: [
         (components: [
-            FindNearestEnemy((radius: Float(700.0))),
+            FindNearestEnemy((size: Float(1400.0))),
             OnFound((entities: [
                 (components: [
                     Sprite((color: (1.0, 0.3, 0.0, 0.3), shape: Circle)),
@@ -14,7 +14,7 @@
                         (components: [
                             Sprite((color: (1.0, 0.7, 0.3, 1.0), shape: Circle)),
                             Lifetime((Float(0.3))),
-                            OnArea((radius: Float(80.0), entities: [
+                            OnArea((size: Float(160.0), entities: [
                                 (components: [DamagePayload((amount: Stat("physical_damage")))])
                             ]))
                         ])

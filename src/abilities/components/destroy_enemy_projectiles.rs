@@ -12,30 +12,30 @@ use crate::GameState;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub radius: ParamValueRaw,
+    pub size: ParamValueRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub radius: ParamValue,
+    pub size: ParamValue,
 }
 
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
-            radius: resolve_param_value(&self.radius, stat_registry),
+            size: resolve_param_value(&self.size, stat_registry),
         }
     }
 }
 
 #[derive(Component)]
 pub struct DestroyEnemyProjectiles {
-    pub radius: f32,
+    pub size: f32,
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let radius = def.radius.evaluate_f32(ctx.stats);
-    commands.insert(DestroyEnemyProjectiles { radius });
+    let size = def.size.evaluate_f32(ctx.stats);
+    commands.insert(DestroyEnemyProjectiles { size });
 }
 
 pub fn register_systems(app: &mut App) {
@@ -61,7 +61,7 @@ fn destroy_enemy_projectiles_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(projectile_layer);
-        let shape = Collider::circle(destroyer.radius);
+        let shape = Collider::circle(destroyer.size / 2.0);
         let hits = spatial_query.shape_intersections(&shape, position, 0.0, &filter);
 
         for proj_entity in hits {

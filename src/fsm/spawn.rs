@@ -32,11 +32,11 @@ pub fn spawn_mob(
     let mob_def = mob_registry.get(mob_name)?;
 
     let mesh = match mob_def.visual.shape {
-        Shape::Circle => meshes.add(Circle::new(mob_def.visual.size)),
+        Shape::Circle => meshes.add(Circle::new(mob_def.visual.size / 2.0)),
         Shape::Rectangle => {
             meshes.add(Rectangle::new(mob_def.visual.size, mob_def.visual.size))
         }
-        Shape::Triangle => meshes.add(RegularPolygon::new(mob_def.visual.size, 3)),
+        Shape::Triangle => meshes.add(RegularPolygon::new(mob_def.visual.size / 2.0, 3)),
     };
     let color = Color::srgb(
         mob_def.visual.color[0],
@@ -64,7 +64,7 @@ pub fn spawn_mob(
         .unwrap_or(100.0);
 
     let collider = match mob_def.collider.shape {
-        ColliderShape::Circle => Collider::circle(mob_def.collider.size),
+        ColliderShape::Circle => Collider::circle(mob_def.collider.size / 2.0),
         ColliderShape::Rectangle => {
             Collider::rectangle(mob_def.collider.size, mob_def.collider.size)
         }

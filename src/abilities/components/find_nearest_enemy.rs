@@ -13,33 +13,33 @@ use crate::stats::StatRegistry;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub radius: ParamValueRaw,
+    pub size: ParamValueRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub radius: ParamValue,
+    pub size: ParamValue,
 }
 
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &StatRegistry) -> Def {
         Def {
-            radius: resolve_param_value(&self.radius, stat_registry),
+            size: resolve_param_value(&self.size, stat_registry),
         }
     }
 }
 
 #[derive(Component)]
 pub struct FindNearestEnemy {
-    pub radius: f32,
+    pub size: f32,
 }
 
 #[derive(Component)]
 pub struct FoundTarget(pub Entity, pub Vec3);
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let radius = def.radius.evaluate_f32(ctx.stats);
-    commands.insert(FindNearestEnemy { radius });
+    let size = def.size.evaluate_f32(ctx.stats);
+    commands.insert(FindNearestEnemy { size });
 }
 
 pub fn register_systems(app: &mut App) {
@@ -69,7 +69,7 @@ fn find_nearest_enemy_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(target_layer);
-        let shape = Collider::circle(finder.radius);
+        let shape = Collider::circle(finder.size / 2.0);
         let hits = spatial_query.shape_intersections(&shape, caster_pos, 0.0, &filter);
 
         let target = hits
