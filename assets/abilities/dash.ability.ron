@@ -1,9 +1,7 @@
 (
     id: "dash",
-    activator: OnInputParams((children: [
-        DashParams((
-            speed: Some(Float(1500.0)),
-            duration: Some(Float(0.2)),
-        ))
-    ]))
+    activator: OnInput(()),
+    entities: [
+        (components: [Dash((speed: Float(1500.0), duration: Float(0.2)))])
+    ]
 )

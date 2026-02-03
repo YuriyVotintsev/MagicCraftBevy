@@ -1,20 +1,17 @@
 (
     id: "flamethrower",
-    activator: WhileHeldParams((
-        interval: Some(Float(0.03)),
-        children: [
-            SpawnProjectileParams((
-                speed: Some(Float(600.0)),
-                spread: Some(Float(18.0)),
-                lifetime: Some(Float(0.6)),
-                start_size: Some(Float(8.0)),
-                end_size: Some(Float(25.0)),
-                children: [
-                    OnCollisionParams((children: [
-                        DamageParams((amount: Some(Float(1.0))))
-                    ]))
-                ]
-            ))
-        ]
-    ))
+    activator: WhileHeld((interval: Float(0.03))),
+    entities: [
+        (components: [
+            Projectile(()),
+            Velocity((speed: Float(600.0), spread: Some(Float(18.0)))),
+            Lifetime((Float(0.6))),
+            Growing((start_size: Float(8.0), end_size: Float(25.0))),
+            Collider((shape: Circle(Float(8.0)))),
+            Sprite((color: (1.0, 0.3, 0.0, 1.0), shape: Circle)),
+            OnCollision((entities: [
+                (components: [DamagePayload((amount: Float(1.0)))])
+            ]))
+        ])
+    ]
 )

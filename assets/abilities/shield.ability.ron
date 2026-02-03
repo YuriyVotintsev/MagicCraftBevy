@@ -1,9 +1,12 @@
 (
     id: "shield",
-    activator: OnInputParams((children: [
-        ShieldParams((
-            duration: Some(Float(0.5)),
-            radius: Some(Float(100.0)),
-        ))
-    ]))
+    activator: OnInput(()),
+    entities: [
+        (components: [
+            FollowCaster(()),
+            Lifetime((Float(0.5))),
+            Sprite((color: (0.3, 0.5, 1.0, 0.3), size: Some(Float(200.0)), shape: Circle)),
+            DestroyEnemyProjectiles((radius: Float(100.0))),
+        ])
+    ]
 )

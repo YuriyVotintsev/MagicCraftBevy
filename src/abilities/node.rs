@@ -1,76 +1,8 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
 
-use super::ids::{NodeTypeId, NodeDefId, AbilityId};
-use super::params::NodeParams;
+use super::ids::AbilityId;
 use super::{AbilityInstance, spawn_activator};
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum NodeKind {
-    Trigger,
-    Action,
-    Activator,
-}
-
-impl std::fmt::Display for NodeKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            NodeKind::Trigger => write!(f, "Trigger"),
-            NodeKind::Action => write!(f, "Action"),
-            NodeKind::Activator => write!(f, "Activator"),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct NodeDef {
-    pub node_type: NodeTypeId,
-    pub params: NodeParams,
-    pub children: Vec<NodeDefId>,
-}
-
-pub trait NodeHandler: Send + Sync + 'static {
-    fn name(&self) -> &'static str;
-    fn kind(&self) -> NodeKind;
-}
-
-#[derive(Resource, Default)]
-pub struct NodeRegistry {
-    name_to_id: HashMap<String, NodeTypeId>,
-    id_to_name: Vec<String>,
-    handlers: Vec<Box<dyn NodeHandler>>,
-    kinds: Vec<NodeKind>,
-}
-
-impl NodeRegistry {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    pub fn register(&mut self, handler: Box<dyn NodeHandler>) -> NodeTypeId {
-        let name = handler.name().to_string();
-        if self.name_to_id.contains_key(&name) {
-            panic!("Handler with name '{}' already registered", name);
-        }
-        let kind = handler.kind();
-        let id = NodeTypeId(self.handlers.len() as u32);
-
-        self.name_to_id.insert(name.clone(), id);
-        self.id_to_name.push(name);
-        self.kinds.push(kind);
-        self.handlers.push(handler);
-
-        id
-    }
-
-    pub fn get_id(&self, name: &str) -> Option<NodeTypeId> {
-        self.name_to_id.get(name).copied()
-    }
-
-    pub fn get_kind(&self, id: NodeTypeId) -> NodeKind {
-        self.kinds[id.0 as usize]
-    }
-}
 
 pub fn attach_ability(
     commands: &mut Commands,

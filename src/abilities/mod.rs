@@ -1,39 +1,37 @@
 pub mod ids;
 pub mod context;
 pub mod param;
-pub mod params;
 pub mod node;
 mod ability_def;
 mod activator_support;
-mod components;
+mod core_components;
+pub mod entity_def;
 pub mod events;
-mod dispatcher;
+pub mod spawn;
+mod spawner;
 mod cleanup;
 
 #[macro_use]
 mod macros;
 
-pub use crate::building_blocks::triggers;
-pub use crate::building_blocks::actions;
+pub mod components;
+
 pub use crate::building_blocks::activators;
 
 pub use context::{AbilityContext, Target};
-pub use param::{ParamValue, ParamValueRaw, resolve_param_value};
-pub use node::{NodeDef, NodeKind, NodeRegistry, AbilityRegistry};
+pub use param::{ParamValueRaw, resolve_param_value};
+pub use node::AbilityRegistry;
 pub use ability_def::{AbilityDef, AbilityDefRaw};
-pub use components::{AbilityInputs, InputState, AbilitySource};
-pub use ids::NodeDefId;
+pub use core_components::{AbilityInputs, InputState, AbilitySource};
 pub use node::attach_ability;
 pub use activator_support::AbilityInstance;
 pub use activators::{ActivatorParams, spawn_activator};
 
 use bevy::prelude::*;
 
-use crate::schedule::GameSet;
 use crate::wave::WavePhase;
-use crate::game_state::GameState;
 
-pub use events::{ActivateAbilityEvent, NodeTriggerEvent};
+pub use events::ActivateAbilityEvent;
 
 fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {
     for mut inputs in &mut query {
@@ -46,29 +44,18 @@ pub struct AbilityPlugin;
 impl Plugin for AbilityPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Messages<ActivateAbilityEvent>>();
-        app.init_resource::<Messages<NodeTriggerEvent>>();
-        actions::init_action_messages(app);
 
         activators::register_all(app);
 
-        let mut node_registry = NodeRegistry::new();
-        triggers::register_all(app, &mut node_registry);
-        actions::register_all(app, &mut node_registry);
+        app.init_resource::<AbilityRegistry>();
 
-        app.insert_resource(node_registry)
-            .init_resource::<AbilityRegistry>();
-
-        app.add_systems(
-            Update,
-            (dispatcher::node_ability_dispatcher, dispatcher::node_trigger_dispatcher)
-                .in_set(GameSet::AbilityActivation)
-                .run_if(in_state(GameState::Playing)),
-        );
+        spawner::register_spawner_systems(app);
+        components::register_component_systems(app);
 
         app.add_systems(
             Update,
             (
-                clear_ability_inputs.before(GameSet::Input),
+                clear_ability_inputs.before(crate::schedule::GameSet::Input),
                 cleanup::cleanup_orphaned_abilities,
             )
                 .run_if(in_state(WavePhase::Combat)),

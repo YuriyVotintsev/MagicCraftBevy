@@ -1,30 +1,22 @@
 (
     id: "caustic_arrow",
-    activator: OnInputParams((children: [
-        SpawnProjectileParams((
-            speed: Some(Float(600.0)),
-            size: Some(Float(12.0)),
-            color: Some([0.2, 0.8, 0.2, 1.0]),
-            children: [
-                OnCollisionParams((children: [
-                    SpawnProjectileParams((
-                        speed: Some(Float(0.0)),
-                        size: Some(Float(100.0)),
-                        lifetime: Some(Float(4.0)),
-                        collisions: Some(false),
-                        color: Some([0.1, 0.6, 0.1, 0.4]),
-                        children: [
-                            OnAreaParams((
-                                radius: Some(Float(50.0)),
-                                interval: Some(Float(0.5)),
-                                children: [
-                                    DamageParams((amount: Some(Float(5.0))))
-                                ]
-                            ))
-                        ]
-                    ))
-                ]))
-            ]
-        ))
-    ]))
+    activator: OnInput(()),
+    entities: [
+        (components: [
+            Projectile(()),
+            Velocity((speed: Float(600.0))),
+            Collider((shape: Circle(Float(12.0)))),
+            Sprite((color: (0.2, 0.8, 0.2, 1.0))),
+            OnCollision((entities: [
+                (components: [
+                    Stationary(()),
+                    Lifetime((Float(4.0))),
+                    Sprite((color: (0.1, 0.6, 0.1, 0.4), size: Some(Float(160.0)), shape: Circle)),
+                    OnArea((radius: Float(80.0), interval: Some(Float(0.5)), entities: [
+                        (components: [DamagePayload((amount: Float(5.0)))])
+                    ]))
+                ])
+            ]))
+        ])
+    ]
 )

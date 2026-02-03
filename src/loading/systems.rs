@@ -1,13 +1,7 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
-use crate::abilities::{
-    AbilityDef, AbilityDefRaw, AbilityRegistry,
-    NodeDef, NodeKind, NodeRegistry,
-    NodeDefId,
-    ActivatorParams,
-};
-use crate::building_blocks::{NodeParams, NodeParamsRaw};
+use crate::abilities::{AbilityRegistry, AbilityDefRaw};
 use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
@@ -146,7 +140,6 @@ pub fn check_content_loaded(
     ability_assets: Res<Assets<AbilityDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
-    node_registry: Res<NodeRegistry>,
     mut ability_registry: ResMut<AbilityRegistry>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForContent {
@@ -209,12 +202,7 @@ pub fn check_content_loaded(
         for handle in &folder.handles {
             let typed_handle: Handle<AbilityDefAsset> = handle.clone().typed();
             if let Some(ability_asset) = ability_assets.get(typed_handle.id()) {
-                let ability_def = resolve_ability_def(
-                    &ability_asset.0,
-                    &stat_registry,
-                    &mut ability_registry,
-                    &node_registry,
-                );
+                let ability_def = resolve_ability_def(&ability_asset.0, &stat_registry, &mut ability_registry);
                 info!("Registered ability: {}", ability_asset.0.id);
                 ability_registry.register(ability_def);
             }
@@ -237,95 +225,11 @@ pub fn finalize_loading(
     next_state.set(crate::GameState::MainMenu);
 }
 
-struct AbilityBuilder {
-    nodes: Vec<NodeDef>,
-}
-
-impl AbilityBuilder {
-    fn new() -> Self {
-        Self {
-            nodes: vec![],
-        }
-    }
-
-    fn add_node(&mut self, def: NodeDef) -> NodeDefId {
-        let id = NodeDefId(self.nodes.len() as u32);
-        self.nodes.push(def);
-        id
-    }
-
-    fn build(self, activator_params: ActivatorParams, root_actions: Vec<NodeDefId>) -> AbilityDef {
-        let mut ability = AbilityDef::new();
-        ability.set_activator(activator_params);
-        ability.set_root_actions(root_actions);
-        for node in self.nodes {
-            ability.add_node(node);
-        }
-        ability
-    }
-}
-
 fn resolve_ability_def(
     raw: &AbilityDefRaw,
     stat_registry: &StatRegistry,
     ability_registry: &mut AbilityRegistry,
-    node_registry: &NodeRegistry,
-) -> AbilityDef {
+) -> crate::abilities::AbilityDef {
     ability_registry.allocate_id(&raw.id);
-    let mut builder = AbilityBuilder::new();
-
-    let activator_params = raw.activator.resolve(stat_registry);
-
-    let mut root_nodes = Vec::new();
-    for child_raw in raw.activator.children() {
-        let node_id = resolve_node_def(child_raw, None, stat_registry, node_registry, &mut builder);
-        root_nodes.push(node_id);
-    }
-
-    builder.build(activator_params, root_nodes)
-}
-
-fn resolve_node_def(
-    raw: &NodeParamsRaw,
-    parent_kind: Option<NodeKind>,
-    stat_registry: &StatRegistry,
-    node_registry: &NodeRegistry,
-    builder: &mut AbilityBuilder,
-) -> NodeDefId {
-    let name = raw.name();
-
-    let node_type = node_registry.get_id(name)
-        .unwrap_or_else(|| panic!("Unknown node type '{}'", name));
-
-    let kind = node_registry.get_kind(node_type);
-
-    if let Some(parent_kind) = parent_kind {
-        if kind == parent_kind {
-            panic!(
-                "Invalid ability structure at '{}': {} cannot be a child of {}.\n\
-                 Nodes must alternate: Trigger → Action → Trigger → Action",
-                name, kind, parent_kind
-            );
-        }
-    }
-
-    let children: Vec<NodeDefId> = raw.children()
-        .iter()
-        .map(|c| resolve_node_def(c, Some(kind), stat_registry, node_registry, builder))
-        .collect();
-
-    let params = match raw {
-        NodeParamsRaw::Action(action_raw) => {
-            NodeParams::Action(action_raw.resolve(stat_registry))
-        }
-        NodeParamsRaw::Trigger(trigger_raw) => {
-            NodeParams::Trigger(trigger_raw.resolve(stat_registry))
-        }
-    };
-
-    builder.add_node(NodeDef {
-        node_type,
-        params,
-        children,
-    })
+    raw.resolve(stat_registry)
 }
