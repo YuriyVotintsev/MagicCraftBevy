@@ -6,14 +6,12 @@
             FindNearestEnemy((radius: Float(700.0))),
             OnFound((entities: [
                 (components: [
-                    Stationary(()),
                     Sprite((color: (1.0, 0.3, 0.0, 0.3), shape: Circle)),
                     Lifetime((Float(0.8)))
                 ]),
                 (components: [
                     Falling((height: Float(400.0), duration: Float(0.5), entities: [
                         (components: [
-                            Stationary(()),
                             Sprite((color: (1.0, 0.7, 0.3, 1.0), shape: Circle)),
                             Lifetime((Float(0.3))),
                             OnArea((radius: Float(80.0), entities: [

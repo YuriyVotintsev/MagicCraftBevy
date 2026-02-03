@@ -53,12 +53,15 @@ pub fn register_systems(app: &mut App) {
 
 fn find_nearest_enemy_system(
     mut commands: Commands,
-    query: Query<(Entity, &FindNearestEnemy, &AbilitySource, &Transform), Without<FoundTarget>>,
+    query: Query<(Entity, &FindNearestEnemy, &AbilitySource), Without<FoundTarget>>,
     spatial_query: SpatialQuery,
-    transforms: Query<&Transform, Without<FindNearestEnemy>>,
+    transforms: Query<&Transform>,
 ) {
-    for (entity, finder, source, caster_transform) in &query {
-        let caster_pos = caster_transform.translation.truncate();
+    for (entity, finder, source) in &query {
+        let caster_pos = transforms
+            .get(source.caster)
+            .map(|t| t.translation.truncate())
+            .unwrap_or(Vec2::ZERO);
 
         let target_layer = match source.caster_faction {
             Faction::Player => GameLayer::Enemy,

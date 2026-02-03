@@ -1,6 +1,5 @@
 collect_components!([
     projectile,
-    stationary,
     velocity,
     lifetime,
     pierce,

@@ -51,10 +51,10 @@ pub fn register_systems(app: &mut App) {
 
 fn on_found_trigger_system(
     mut commands: Commands,
-    query: Query<(Entity, &OnFoundTrigger, &FoundTarget, &AbilitySource, &Transform)>,
+    query: Query<(Entity, &OnFoundTrigger, &FoundTarget, &AbilitySource)>,
     stats_query: Query<&ComputedStats>,
 ) {
-    for (entity, trigger, found, source, transform) in &query {
+    for (entity, trigger, found, source) in &query {
         let caster_stats = stats_query
             .get(source.caster)
             .unwrap_or(&DEFAULT_STATS);
@@ -63,7 +63,7 @@ fn on_found_trigger_system(
             ability_id: source.ability_id,
             caster: source.caster,
             caster_faction: source.caster_faction,
-            source: Target::Point(transform.translation),
+            source: Target::Point(found.1),
             target: Some(Target::Point(found.1)),
             stats: caster_stats,
             index: 0,
