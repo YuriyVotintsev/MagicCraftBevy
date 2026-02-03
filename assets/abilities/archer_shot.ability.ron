@@ -5,8 +5,9 @@
         (components: [
             Projectile(()),
             Velocity((speed: Float(400.0))),
-            Collider((shape: Circle(Float(16.0)))),
-            Sprite((color: (1.0, 0.5, 0.0, 1.0))),
+            Size((Float(16.0))),
+            Collider((shape: Circle)),
+            Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
             OnCollision((entities: [
                 (components: [DamagePayload((amount: Stat("physical_damage")))])
             ]))

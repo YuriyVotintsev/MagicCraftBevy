@@ -38,13 +38,8 @@ impl DefRaw {
     }
 }
 
-pub fn spawn(
-    commands: &mut EntityCommands,
-    def: &Def,
-    ctx: &SpawnContext,
-) {
+pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let color = Color::srgba(def.color.0, def.color.1, def.color.2, def.color.3);
-    let size = def.size.as_ref().map(|s| s.evaluate_f32(ctx.stats)).unwrap_or(20.0);
 
     let position = match ctx.source {
         Target::Point(p) => p,
@@ -53,6 +48,7 @@ pub fn spawn(
 
     match def.shape {
         SpriteShape::Square => {
+            let size = def.size.as_ref().map(|s| s.evaluate_f32(ctx.stats)).unwrap_or(20.0);
             commands.insert((
                 Sprite {
                     color,
@@ -64,7 +60,7 @@ pub fn spawn(
         }
         SpriteShape::Circle => {
             commands.insert((
-                CircleSprite { color, size },
+                CircleSprite { color },
                 Transform::from_translation(position),
             ));
         }
@@ -74,7 +70,6 @@ pub fn spawn(
 #[derive(Component)]
 pub struct CircleSprite {
     pub color: Color,
-    pub size: f32,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -103,7 +98,6 @@ fn spawn_circle_visuals(
         commands.entity(entity).insert((
             Mesh2d(circle_mesh.0.clone()),
             MeshMaterial2d(material),
-            Transform::default().with_scale(Vec3::splat(circle.size / 2.0)),
         ));
     }
 }

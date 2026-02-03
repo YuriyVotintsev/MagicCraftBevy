@@ -1,4 +1,3 @@
-use avian2d::prelude::*;
 use bevy::prelude::*;
 
 #[derive(Component)]
@@ -28,16 +27,16 @@ pub fn tick_lifetime(
     }
 }
 
-pub fn tick_growing(
-    time: Res<Time>,
-    mut query: Query<(&mut Growing, &mut Sprite, &mut Collider)>,
-) {
+pub fn tick_growing(time: Res<Time>, mut query: Query<(&mut Growing, &mut Transform)>) {
     let dt = time.delta_secs();
-    for (mut growing, mut sprite, mut collider) in &mut query {
+    for (mut growing, mut transform) in &mut query {
+        if growing.duration <= 0.0 {
+            transform.scale = Vec3::splat(growing.start_size / 2.0);
+            continue;
+        }
         growing.elapsed += dt;
         let t = (growing.elapsed / growing.duration).clamp(0.0, 1.0);
         let size = growing.start_size + (growing.end_size - growing.start_size) * t;
-        sprite.custom_size = Some(Vec2::splat(size));
-        *collider = Collider::circle(size / 2.0);
+        transform.scale = Vec3::splat(size / 2.0);
     }
 }

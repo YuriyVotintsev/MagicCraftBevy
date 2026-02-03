@@ -2,19 +2,18 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
 use crate::abilities::spawn::SpawnContext;
 use crate::physics::GameLayer;
 use crate::Faction;
 
 #[derive(Debug, Clone, Deserialize)]
 pub enum ShapeRaw {
-    Circle(ParamValueRaw),
+    Circle,
 }
 
 #[derive(Debug, Clone)]
 pub enum Shape {
-    Circle(ParamValue),
+    Circle,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -28,21 +27,18 @@ pub struct Def {
 }
 
 impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
+    pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
             shape: match &self.shape {
-                ShapeRaw::Circle(r) => Shape::Circle(resolve_param_value(r, stat_registry)),
+                ShapeRaw::Circle => Shape::Circle,
             },
         }
     }
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let collider = match &def.shape {
-        Shape::Circle(r) => {
-            let size = r.evaluate_f32(ctx.stats);
-            Collider::circle(size / 2.0)
-        }
+    let collider = match def.shape {
+        Shape::Circle => Collider::circle(1.0),
     };
 
     let layers = match ctx.caster_faction {

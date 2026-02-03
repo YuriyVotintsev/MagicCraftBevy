@@ -5,12 +5,14 @@
         (components: [
             Projectile(()),
             Velocity((speed: Float(600.0))),
-            Collider((shape: Circle(Float(24.0)))),
-            Sprite((color: (0.2, 0.8, 0.2, 1.0))),
+            Size((Float(24.0))),
+            Collider((shape: Circle)),
+            Sprite((color: (0.2, 0.8, 0.2, 1.0), shape: Circle)),
             OnCollision((entities: [
                 (components: [
                     Lifetime((Float(4.0))),
-                    Sprite((color: (0.1, 0.6, 0.1, 0.4), size: Some(Float(160.0)), shape: Circle)),
+                    Size((Float(160.0))),
+                    Sprite((color: (0.1, 0.6, 0.1, 0.4), shape: Circle)),
                     OnArea((size: Float(160.0), interval: Some(Float(0.5)), entities: [
                         (components: [DamagePayload((amount: Float(5.0)))])
                     ]))

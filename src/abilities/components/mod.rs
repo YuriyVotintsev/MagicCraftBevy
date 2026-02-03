@@ -4,6 +4,7 @@ collect_components!([
     lifetime,
     pierce,
     growing,
+    size,
     collider,
     sprite,
     damage_payload,
