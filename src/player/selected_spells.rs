@@ -22,7 +22,7 @@ impl SpellSlot {
 
     pub fn choices(&self) -> &'static [&'static str] {
         match self {
-            SpellSlot::Active => &["fireball", "flamethrower", "caustic_arrow"],
+            SpellSlot::Active => &["fireball", "flamethrower", "caustic_arrow", "galvanic_hammer"],
             SpellSlot::Passive => &["meteor", "orbiting_orbs"],
             SpellSlot::Defensive => &["dash", "shield"],
         }

@@ -18,4 +18,5 @@ collect_components!([
     on_expire,
     follow_caster,
     destroy_enemy_projectiles,
+    boomerang,
 ]);

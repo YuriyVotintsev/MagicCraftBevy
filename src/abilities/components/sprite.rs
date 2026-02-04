@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
 use crate::abilities::spawn::SpawnContext;
 use crate::abilities::Target;
 
@@ -16,23 +15,19 @@ pub enum SpriteShape {
 pub struct DefRaw {
     pub color: (f32, f32, f32, f32),
     #[serde(default)]
-    pub size: Option<ParamValueRaw>,
-    #[serde(default)]
     pub shape: SpriteShape,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
     pub color: (f32, f32, f32, f32),
-    pub size: Option<ParamValue>,
     pub shape: SpriteShape,
 }
 
 impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
+    pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
             color: self.color,
-            size: self.size.as_ref().map(|s| resolve_param_value(s, stat_registry)),
             shape: self.shape,
         }
     }
@@ -48,11 +43,10 @@ pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
 
     match def.shape {
         SpriteShape::Square => {
-            let size = def.size.as_ref().map(|s| s.evaluate_f32(ctx.stats)).unwrap_or(20.0);
             commands.insert((
                 Sprite {
                     color,
-                    custom_size: Some(Vec2::splat(size)),
+                    custom_size: Some(Vec2::ONE),
                     ..default()
                 },
                 Transform::from_translation(position),
