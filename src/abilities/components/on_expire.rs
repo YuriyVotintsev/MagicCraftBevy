@@ -6,7 +6,7 @@ use crate::abilities::Target;
 use crate::abilities::AbilitySource;
 use crate::abilities::entity_def::EntityDef;
 use crate::schedule::GameSet;
-use crate::Lifetime;
+use super::lifetime::Lifetime;
 use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
 
 #[derive(Debug, Clone, Deserialize)]

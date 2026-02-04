@@ -1,7 +1,6 @@
 mod abilities;
 mod arena;
 mod common;
-mod components;
 mod faction;
 mod fsm;
 mod game_state;
@@ -16,7 +15,6 @@ mod stats;
 mod ui;
 mod wave;
 
-pub use components::{Growing, Lifetime};
 pub use faction::Faction;
 pub use game_state::GameState;
 pub use movement::MovementLocked;
@@ -27,7 +25,6 @@ use bevy::prelude::*;
 use abilities::AbilityPlugin;
 use arena::ArenaPlugin;
 use common::CommonPlugin;
-use components::{tick_growing, tick_lifetime};
 use fsm::FsmPlugin;
 use loading::LoadingPlugin;
 use building_blocks::MobAiPlugin;
@@ -148,10 +145,6 @@ fn main() {
                 .run_if(in_state(GameState::Playing)),
         )
         .configure_sets(PostUpdate, PostGameSet.run_if(in_state(GameState::Playing)))
-        .add_systems(
-            Update,
-            (tick_lifetime, tick_growing).in_set(GameSet::AbilityExecution),
-        )
         .add_systems(
             Update,
             ApplyDeferred
