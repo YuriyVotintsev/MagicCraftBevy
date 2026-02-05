@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use magic_craft_macros::GenerateRaw;
 
 use crate::register_activator;
-use crate::abilities::{ActivateAbilityEvent, AbilityContext, Target, AbilityInstance};
+use crate::abilities::{ActivateAbilityEvent, AbilityContext, TargetInfo, ProvidedFields, AbilityInstance};
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
 
@@ -21,6 +21,11 @@ impl OnceActivator {
     }
 }
 
+pub fn provided_fields() -> ProvidedFields {
+    ProvidedFields::SOURCE_ENTITY
+        .union(ProvidedFields::SOURCE_POSITION)
+}
+
 fn once_system(
     mut trigger_events: MessageWriter<ActivateAbilityEvent>,
     mut ability_query: Query<(&AbilityInstance, &mut OnceActivator)>,
@@ -33,11 +38,14 @@ fn once_system(
             continue;
         };
 
+        let source = TargetInfo::from_entity_and_position(instance.owner, transform.translation.truncate());
+        let target = TargetInfo::EMPTY;
+
         let ctx = AbilityContext::new(
             instance.owner,
             *faction,
-            Target::Point(transform.translation),
-            None,
+            source,
+            target,
         );
 
         trigger_events.write(ActivateAbilityEvent {

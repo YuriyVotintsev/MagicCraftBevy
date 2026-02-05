@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
 use crate::abilities::spawn::SpawnContext;
 use crate::schedule::GameSet;
 use crate::GameState;
@@ -10,23 +12,28 @@ use super::lifetime::Lifetime;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub start_size: ParamValueRaw,
-    pub end_size: ParamValueRaw,
+    pub start_size: ScalarExprRaw,
+    pub end_size: ScalarExprRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub start_size: ParamValue,
-    pub end_size: ParamValue,
+    pub start_size: ScalarExpr,
+    pub end_size: ScalarExpr,
 }
 
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
-            start_size: resolve_param_value(&self.start_size, stat_registry),
-            end_size: resolve_param_value(&self.end_size, stat_registry),
+            start_size: self.start_size.resolve(stat_registry),
+            end_size: self.end_size.resolve(stat_registry),
         }
     }
+}
+
+pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    let fields = raw.start_size.required_fields().union(raw.end_size.required_fields());
+    (fields, None)
 }
 
 #[derive(Component)]
@@ -44,8 +51,9 @@ pub struct GrowingParams {
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let start_size = def.start_size.evaluate_f32(ctx.stats);
-    let end_size = def.end_size.evaluate_f32(ctx.stats);
+    let eval_ctx = ctx.eval_context();
+    let start_size = def.start_size.eval(&eval_ctx);
+    let end_size = def.end_size.eval(&eval_ctx);
     commands.insert(Growing {
         start_size,
         end_size,

@@ -1,6 +1,8 @@
 pub mod ids;
 pub mod context;
-pub mod param;
+pub mod expr;
+pub mod expr_parser;
+pub mod eval_context;
 pub mod node;
 mod ability_def;
 mod activator_support;
@@ -18,8 +20,7 @@ pub mod components;
 
 pub use crate::building_blocks::activators;
 
-pub use context::{AbilityContext, Target};
-pub use param::{ParamValueRaw, resolve_param_value};
+pub use context::{AbilityContext, TargetInfo, ProvidedFields};
 pub use node::AbilityRegistry;
 pub use ability_def::{AbilityDef, AbilityDefRaw};
 pub use core_components::{AbilityInputs, InputState, AbilitySource};

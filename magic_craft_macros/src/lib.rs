@@ -64,25 +64,25 @@ fn expr_to_tokens(expr: &Expr) -> TokenStream2 {
     }
 }
 
-fn is_option_param_value(ty: &Type) -> bool {
+fn is_scalar_expr_type(ty: &Type) -> bool {
     if let Type::Path(type_path) = ty {
         if let Some(segment) = type_path.path.segments.last() {
-            if segment.ident == "Option" {
-                if let PathArguments::AngleBracketed(args) = &segment.arguments {
-                    if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
-                        return is_param_value_type(inner_ty);
-                    }
-                }
-            }
+            return segment.ident == "ScalarExpr";
         }
     }
     false
 }
 
-fn is_param_value_type(ty: &Type) -> bool {
+fn is_option_scalar_expr(ty: &Type) -> bool {
     if let Type::Path(type_path) = ty {
         if let Some(segment) = type_path.path.segments.last() {
-            return segment.ident == "ParamValue";
+            if segment.ident == "Option" {
+                if let PathArguments::AngleBracketed(args) = &segment.arguments {
+                    if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
+                        return is_scalar_expr_type(inner_ty);
+                    }
+                }
+            }
         }
     }
     false
@@ -103,7 +103,7 @@ fn is_generic_option(ty: &Type) -> bool {
             if segment.ident == "Option" {
                 if let PathArguments::AngleBracketed(args) = &segment.arguments {
                     if let Some(GenericArgument::Type(inner_ty)) = args.args.first() {
-                        return !is_param_value_type(inner_ty);
+                        return !is_scalar_expr_type(inner_ty);
                     }
                 }
             }
@@ -161,36 +161,36 @@ fn generate_for_named_struct(
         let field_ty = &field.ty;
         let default_value = parse_raw_default(&field.attrs);
 
-        if is_param_value_type(field_ty) {
+        if is_scalar_expr_type(field_ty) {
             if let Some(default) = default_value {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::abilities::ParamValueRaw>
+                    pub #field_name: Option<crate::abilities::expr::ScalarExprRaw>
                 });
 
                 resolve_fields.push(quote! {
                     #field_name: self.#field_name.as_ref()
-                        .map(|v| crate::abilities::resolve_param_value(v, stat_registry))
-                        .unwrap_or(crate::abilities::ParamValue::Float(#default as f32))
+                        .map(|v| v.resolve(stat_registry))
+                        .unwrap_or(crate::abilities::expr::ScalarExpr::Literal(#default as f32))
                 });
             } else {
                 raw_fields.push(quote! {
-                    pub #field_name: crate::abilities::ParamValueRaw
+                    pub #field_name: crate::abilities::expr::ScalarExprRaw
                 });
 
                 resolve_fields.push(quote! {
-                    #field_name: crate::abilities::resolve_param_value(&self.#field_name, stat_registry)
+                    #field_name: self.#field_name.resolve(stat_registry)
                 });
             }
-        } else if is_option_param_value(field_ty) {
+        } else if is_option_scalar_expr(field_ty) {
             raw_fields.push(quote! {
                 #[serde(default)]
-                pub #field_name: Option<crate::abilities::ParamValueRaw>
+                pub #field_name: Option<crate::abilities::expr::ScalarExprRaw>
             });
 
             resolve_fields.push(quote! {
                 #field_name: self.#field_name.as_ref()
-                    .map(|v| crate::abilities::resolve_param_value(v, stat_registry))
+                    .map(|v| v.resolve(stat_registry))
             });
         } else if is_bool_type(field_ty) {
             raw_fields.push(quote! {

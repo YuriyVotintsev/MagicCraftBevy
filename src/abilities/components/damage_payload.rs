@@ -1,39 +1,45 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::eval_context::EvalContext;
+use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
 use crate::abilities::spawn::SpawnContext;
-use crate::abilities::Target;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, PendingDamage, DEFAULT_STATS};
 use crate::GameState;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub amount: ParamValueRaw,
+    pub amount: ScalarExprRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub amount: ParamValue,
+    pub amount: ScalarExpr,
 }
 
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
-            amount: resolve_param_value(&self.amount, stat_registry),
+            amount: self.amount.resolve(stat_registry),
         }
     }
 }
 
+pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    (raw.amount.required_fields(), None)
+}
+
 #[derive(Component)]
 pub struct DamagePayload {
-    pub amount: ParamValue,
+    pub amount: ScalarExpr,
     pub target: Entity,
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    if let Some(Target::Entity(target)) = ctx.target {
+    if let Some(target) = ctx.target.entity {
         commands.insert(DamagePayload {
             amount: def.amount.clone(),
             target,
@@ -59,7 +65,7 @@ fn process_damage_payloads(
         let caster_stats = stats_query
             .get(source.caster)
             .unwrap_or(&DEFAULT_STATS);
-        let amount = payload.amount.evaluate_f32(caster_stats);
+        let amount = payload.amount.eval(&EvalContext::stats_only(caster_stats));
 
         if let Ok(mut target_commands) = commands.get_entity(payload.target) {
             target_commands.insert(PendingDamage(amount));

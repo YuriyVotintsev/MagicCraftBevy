@@ -12,7 +12,7 @@ mod systems;
 pub use calculators::StatCalculators;
 pub use computed_stats::{ComputedStats, DEFAULT_STATS};
 pub use dirty_stats::DirtyStats;
-pub use expression::{Expression, ExpressionRaw};
+pub use expression::Expression;
 pub use health::Dead;
 pub use health::{death_system, DeathEvent, Health};
 pub use modifiers::Modifiers;

@@ -2,35 +2,39 @@ use bevy::prelude::*;
 
 use crate::Faction;
 use crate::stats::ComputedStats;
-use super::ids::AbilityId;
-use super::context::Target;
+use super::context::TargetInfo;
+use super::eval_context::EvalContext;
 use super::entity_def::EntityDef;
-use super::AbilitySource;
+use super::{AbilitySource, ids::AbilityId};
 
 pub struct SpawnContext<'a> {
     pub ability_id: AbilityId,
     pub caster: Entity,
+    pub caster_position: Vec2,
     pub caster_faction: Faction,
-    pub source: Target,
-    pub target: Option<Target>,
+    pub source: TargetInfo,
+    pub target: TargetInfo,
     pub stats: &'a ComputedStats,
     pub index: usize,
     pub count: usize,
 }
 
-#[derive(Component, Clone)]
-pub struct AbilityContextComponent {
-    pub source: Target,
-    pub target: Option<Target>,
+impl<'a> SpawnContext<'a> {
+    pub fn eval_context(&self) -> EvalContext<'a> {
+        EvalContext {
+            caster: TargetInfo::from_entity_and_position(self.caster, self.caster_position),
+            source: self.source,
+            target: self.target,
+            stats: self.stats,
+            index: self.index,
+            count: self.count,
+        }
+    }
 }
 
 pub fn spawn_entity(commands: &mut Commands, entity_def: &EntityDef, ctx: &SpawnContext) -> Entity {
     let mut ec = commands.spawn((
         AbilitySource::new(ctx.ability_id, ctx.caster, ctx.caster_faction),
-        AbilityContextComponent {
-            source: ctx.source,
-            target: ctx.target,
-        },
         ctx.caster_faction,
     ));
 
@@ -44,7 +48,7 @@ pub fn spawn_entity(commands: &mut Commands, entity_def: &EntityDef, ctx: &Spawn
 pub fn spawn_entity_def(commands: &mut Commands, entity_def: &EntityDef, ctx: &SpawnContext) -> Vec<Entity> {
     let count = entity_def.count
         .as_ref()
-        .map(|c| c.evaluate_i32(ctx.stats).max(1) as usize)
+        .map(|c| c.eval(&ctx.eval_context()).max(1.0) as usize)
         .unwrap_or(1);
 
     let mut entities = Vec::with_capacity(count);
@@ -52,6 +56,7 @@ pub fn spawn_entity_def(commands: &mut Commands, entity_def: &EntityDef, ctx: &S
         let spawn_ctx = SpawnContext {
             ability_id: ctx.ability_id,
             caster: ctx.caster,
+            caster_position: ctx.caster_position,
             caster_faction: ctx.caster_faction,
             source: ctx.source,
             target: ctx.target,
@@ -62,8 +67,4 @@ pub fn spawn_entity_def(commands: &mut Commands, entity_def: &EntityDef, ctx: &S
         entities.push(spawn_entity(commands, entity_def, &spawn_ctx));
     }
     entities
-}
-
-pub fn spawn_entities(commands: &mut Commands, entity_defs: &[EntityDef], ctx: &SpawnContext) -> Vec<Entity> {
-    entity_defs.iter().flat_map(|def| spawn_entity_def(commands, def, ctx)).collect()
 }

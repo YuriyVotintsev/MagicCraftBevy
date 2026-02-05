@@ -2,6 +2,8 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use serde::Deserialize;
 
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
 use crate::abilities::spawn::SpawnContext;
 use crate::physics::GameLayer;
 use crate::Faction;
@@ -34,6 +36,10 @@ impl DefRaw {
             },
         }
     }
+}
+
+pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    (ProvidedFields::NONE, None)
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {

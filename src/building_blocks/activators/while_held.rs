@@ -2,8 +2,9 @@ use bevy::prelude::*;
 use magic_craft_macros::GenerateRaw;
 
 use crate::register_activator;
-use crate::abilities::param::ParamValue;
-use crate::abilities::{ActivateAbilityEvent, AbilityContext, Target, AbilityInputs, AbilityInstance};
+use crate::abilities::expr::ScalarExpr;
+use crate::abilities::eval_context::EvalContext;
+use crate::abilities::{ActivateAbilityEvent, AbilityContext, TargetInfo, ProvidedFields, AbilityInputs, AbilityInstance};
 use crate::stats::ComputedStats;
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
@@ -11,12 +12,12 @@ use crate::{Faction, GameState};
 #[derive(Debug, Clone, Default, GenerateRaw)]
 #[activator]
 pub struct WhileHeldParams {
-    pub interval: ParamValue,
+    pub interval: ScalarExpr,
 }
 
 #[derive(Component)]
 pub struct WhileHeldActivator {
-    pub interval: ParamValue,
+    pub interval: ScalarExpr,
     pub timer: f32,
 }
 
@@ -27,6 +28,12 @@ impl WhileHeldActivator {
             timer: 0.0,
         }
     }
+}
+
+pub fn provided_fields() -> ProvidedFields {
+    ProvidedFields::SOURCE_ENTITY
+        .union(ProvidedFields::SOURCE_POSITION)
+        .union(ProvidedFields::TARGET_DIRECTION)
 }
 
 fn while_held_system(
@@ -52,11 +59,14 @@ fn while_held_system(
         activator.timer -= delta;
         if activator.timer > 0.0 { continue }
 
+        let source = TargetInfo::from_entity_and_position(instance.owner, transform.translation.truncate());
+        let target = TargetInfo::from_direction(input.direction.truncate());
+
         let ctx = AbilityContext::new(
             instance.owner,
             *faction,
-            Target::Point(transform.translation),
-            Some(Target::Direction(input.direction)),
+            source,
+            target,
         );
 
         trigger_events.write(ActivateAbilityEvent {
@@ -64,7 +74,7 @@ fn while_held_system(
             context: ctx,
         });
 
-        activator.timer = activator.interval.evaluate_f32(stats);
+        activator.timer = activator.interval.eval(&EvalContext::stats_only(stats));
     }
 }
 

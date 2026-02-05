@@ -1,21 +1,27 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
 use crate::abilities::spawn::SpawnContext;
 use crate::schedule::GameSet;
 use crate::GameState;
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw(pub ParamValueRaw);
+pub struct DefRaw(pub ScalarExprRaw);
 
 #[derive(Debug, Clone)]
-pub struct Def(pub ParamValue);
+pub struct Def(pub ScalarExpr);
 
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def(resolve_param_value(&self.0, stat_registry))
+        Def(self.0.resolve(stat_registry))
     }
+}
+
+pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    (raw.0.required_fields(), None)
 }
 
 #[derive(Component)]
@@ -24,7 +30,7 @@ pub struct Lifetime {
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let remaining = def.0.evaluate_f32(ctx.stats);
+    let remaining = def.0.eval(&ctx.eval_context());
     commands.insert(Lifetime { remaining });
 }
 

@@ -2,7 +2,9 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
 use crate::abilities::spawn::SpawnContext;
 use crate::common::AttachedTo;
 use crate::schedule::GameSet;
@@ -10,20 +12,24 @@ use crate::GameState;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub max_distance: ParamValueRaw,
+    pub max_distance: ScalarExprRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub max_distance: ParamValue,
+    pub max_distance: ScalarExpr,
 }
 
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
-            max_distance: resolve_param_value(&self.max_distance, stat_registry),
+            max_distance: self.max_distance.resolve(stat_registry),
         }
     }
+}
+
+pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    (raw.max_distance.required_fields(), None)
 }
 
 #[derive(Component)]
@@ -35,8 +41,8 @@ pub struct BoomerangMovement {
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let max_distance = def.max_distance.evaluate_f32(ctx.stats);
-    let source_pos = ctx.source.as_point().unwrap_or(Vec3::ZERO);
+    let max_distance = def.max_distance.eval(&ctx.eval_context());
+    let source_pos = ctx.source.position.map(|p| p.extend(0.0)).unwrap_or(Vec3::ZERO);
 
     commands.insert((
         BoomerangMovement {

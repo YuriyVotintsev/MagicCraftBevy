@@ -4,12 +4,12 @@
     entities: [
         (components: [
             Projectile(()),
-            Velocity((speed: Float(400.0))),
-            Size((Float(16.0))),
+            Velocity((speed: "400.0")),
+            Size(("16.0")),
             Collider((shape: Circle)),
             Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
             OnCollision((entities: [
-                (components: [DamagePayload((amount: Stat("physical_damage")))])
+                (components: [DamagePayload((amount: "stat(physical_damage)"))])
             ]))
         ])
     ]

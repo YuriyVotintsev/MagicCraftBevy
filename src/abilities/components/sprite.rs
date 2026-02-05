@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::expr::{VecExpr, VecExprRaw};
 use crate::abilities::spawn::SpawnContext;
-use crate::abilities::Target;
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
 pub enum SpriteShape {
@@ -16,29 +18,39 @@ pub struct DefRaw {
     pub color: (f32, f32, f32, f32),
     #[serde(default)]
     pub shape: SpriteShape,
+    #[serde(default)]
+    pub position: Option<VecExprRaw>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
     pub color: (f32, f32, f32, f32),
     pub shape: SpriteShape,
+    pub position: Option<VecExpr>,
 }
 
 impl DefRaw {
-    pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry) -> Def {
+    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
             color: self.color,
             shape: self.shape,
+            position: self.position.as_ref().map(|p| p.resolve(stat_registry)),
         }
     }
+}
+
+pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    let fields = raw.position.as_ref().map(|p| p.required_fields()).unwrap_or(ProvidedFields::NONE);
+    (fields, None)
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let color = Color::srgba(def.color.0, def.color.1, def.color.2, def.color.3);
 
-    let position = match ctx.source {
-        Target::Point(p) => p,
-        _ => Vec3::ZERO,
+    let eval_ctx = ctx.eval_context();
+    let position = match &def.position {
+        Some(pos_expr) => pos_expr.eval(&eval_ctx).extend(0.0),
+        None => ctx.source.position.map(|p| p.extend(0.0)).unwrap_or(Vec3::ZERO),
     };
 
     match def.shape {

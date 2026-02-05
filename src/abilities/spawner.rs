@@ -13,6 +13,7 @@ pub fn ability_spawner(
     mut activate_events: MessageReader<ActivateAbilityEvent>,
     ability_registry: Res<AbilityRegistry>,
     stats_query: Query<&ComputedStats>,
+    transform_query: Query<&Transform>,
 ) {
     for event in activate_events.read() {
         let Some(ability_def) = ability_registry.get(event.ability_id) else {
@@ -23,9 +24,15 @@ pub fn ability_spawner(
             .get(event.context.caster)
             .unwrap_or(&DEFAULT_STATS);
 
+        let caster_pos = transform_query
+            .get(event.context.caster)
+            .map(|t| t.translation.truncate())
+            .unwrap_or(Vec2::ZERO);
+
         let ctx = SpawnContext {
             ability_id: event.ability_id,
             caster: event.context.caster,
+            caster_position: caster_pos,
             caster_faction: event.context.caster_faction,
             source: event.context.source,
             target: event.context.target,

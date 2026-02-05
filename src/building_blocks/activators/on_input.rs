@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use magic_craft_macros::GenerateRaw;
 
 use crate::register_activator;
-use crate::abilities::{ActivateAbilityEvent, AbilityContext, Target, AbilityInputs, AbilityInstance};
+use crate::abilities::{ActivateAbilityEvent, AbilityContext, TargetInfo, ProvidedFields, AbilityInputs, AbilityInstance};
 use crate::schedule::GameSet;
 use crate::{Faction, GameState};
 
@@ -19,6 +19,12 @@ impl OnInputActivator {
     }
 }
 
+pub fn provided_fields() -> ProvidedFields {
+    ProvidedFields::SOURCE_ENTITY
+        .union(ProvidedFields::SOURCE_POSITION)
+        .union(ProvidedFields::TARGET_DIRECTION)
+}
+
 fn on_input_system(
     mut trigger_events: MessageWriter<ActivateAbilityEvent>,
     ability_query: Query<(&AbilityInstance, &OnInputActivator)>,
@@ -32,11 +38,14 @@ fn on_input_system(
         let Some(input) = inputs.get(instance.ability_id) else { continue };
         if !input.just_pressed { continue }
 
+        let source = TargetInfo::from_entity_and_position(instance.owner, transform.translation.truncate());
+        let target = TargetInfo::from_direction(input.direction.truncate());
+
         let ctx = AbilityContext::new(
             instance.owner,
             *faction,
-            Target::Point(transform.translation),
-            Some(Target::Direction(input.direction)),
+            source,
+            target,
         );
 
         trigger_events.write(ActivateAbilityEvent {

@@ -3,39 +3,56 @@ use bevy::prelude::*;
 use rand::Rng;
 use serde::Deserialize;
 
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::expr::{ScalarExpr, ScalarExprRaw, VecExpr, VecExprRaw};
 use crate::abilities::spawn::SpawnContext;
-use crate::abilities::Target;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub speed: ParamValueRaw,
+    pub speed: ScalarExprRaw,
     #[serde(default)]
-    pub spread: Option<ParamValueRaw>,
+    pub spread: Option<ScalarExprRaw>,
+    #[serde(default)]
+    pub direction: Option<VecExprRaw>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub speed: ParamValue,
-    pub spread: Option<ParamValue>,
+    pub speed: ScalarExpr,
+    pub spread: Option<ScalarExpr>,
+    pub direction: Option<VecExpr>,
 }
 
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
-            speed: resolve_param_value(&self.speed, stat_registry),
-            spread: self.spread.as_ref().map(|s| resolve_param_value(s, stat_registry)),
+            speed: self.speed.resolve(stat_registry),
+            spread: self.spread.as_ref().map(|s| s.resolve(stat_registry)),
+            direction: self.direction.as_ref().map(|d| d.resolve(stat_registry)),
         }
     }
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let speed = def.speed.evaluate_f32(ctx.stats);
-    let spread = def.spread.as_ref().map(|s| s.evaluate_f32(ctx.stats)).unwrap_or(0.0);
+pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    let mut fields = raw.speed.required_fields();
+    if let Some(ref spread) = raw.spread {
+        fields = fields.union(spread.required_fields());
+    }
+    if let Some(ref direction) = raw.direction {
+        fields = fields.union(direction.required_fields());
+    }
+    (fields, None)
+}
 
-    let base_direction = match ctx.target {
-        Some(Target::Direction(d)) => d.truncate().normalize_or_zero(),
-        _ => Vec2::X,
+pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+    let eval_ctx = ctx.eval_context();
+    let speed = def.speed.eval(&eval_ctx);
+    let spread = def.spread.as_ref().map(|s| s.eval(&eval_ctx)).unwrap_or(0.0);
+
+    let base_direction = match &def.direction {
+        Some(dir_expr) => dir_expr.eval(&eval_ctx).normalize_or_zero(),
+        None => ctx.target.direction.unwrap_or(Vec2::X),
     };
 
     let direction = if spread > 0.0 {

@@ -31,6 +31,19 @@ macro_rules! collect_components {
                     }
                 }
             }
+
+            pub fn required_fields_and_nested(&self) -> (
+                crate::abilities::context::ProvidedFields,
+                Option<(crate::abilities::context::ProvidedFields, &[crate::abilities::entity_def::EntityDefRaw])>,
+            ) {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel>](raw) => $module::required_fields_and_nested(raw),
+                        )*
+                    }
+                }
+            }
         }
 
         impl ComponentDef {
@@ -64,6 +77,10 @@ macro_rules! register_activator {
 
         pub fn __register_activator(app: &mut ::bevy::prelude::App) {
             register_systems(app);
+        }
+
+        pub fn __provided_fields() -> crate::abilities::context::ProvidedFields {
+            provided_fields()
         }
     };
 }
@@ -108,6 +125,16 @@ macro_rules! collect_activators {
                     match self {
                         $(
                             Self::[<$module:camel>](_) => stringify!([<$module:camel>]),
+                        )*
+                    }
+                }
+            }
+
+            pub fn provided_fields(&self) -> crate::abilities::context::ProvidedFields {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$module:camel>](_) => $module::__provided_fields(),
                         )*
                     }
                 }

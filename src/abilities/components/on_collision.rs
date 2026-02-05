@@ -3,21 +3,22 @@ use bevy::platform::collections::HashSet;
 use avian2d::prelude::*;
 use serde::Deserialize;
 
+use crate::abilities::context::{ProvidedFields, TargetInfo};
+use crate::abilities::entity_def::EntityDefRaw;
 use crate::abilities::spawn::SpawnContext;
-use crate::abilities::Target;
 use crate::abilities::AbilitySource;
 use crate::abilities::entity_def::EntityDef;
 use crate::physics::Wall;
 use crate::schedule::GameSet;
 use crate::Faction;
-use crate::stats::{ComputedStats, DEFAULT_STATS, StatRegistry};
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 
 use super::pierce::Pierce;
 use super::projectile::Projectile;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub entities: Vec<crate::abilities::entity_def::EntityDefRaw>,
+    pub entities: Vec<EntityDefRaw>,
 }
 
 #[derive(Debug, Clone)]
@@ -26,11 +27,24 @@ pub struct Def {
 }
 
 impl DefRaw {
-    pub fn resolve(&self, stat_registry: &StatRegistry) -> Def {
+    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
             entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
         }
     }
+}
+
+pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    let provided = ProvidedFields::SOURCE_ENTITY
+        .union(ProvidedFields::SOURCE_POSITION)
+        .union(ProvidedFields::TARGET_ENTITY)
+        .union(ProvidedFields::TARGET_POSITION);
+    let nested = if raw.entities.is_empty() {
+        None
+    } else {
+        Some((provided, raw.entities.as_slice()))
+    };
+    (ProvidedFields::NONE, nested)
 }
 
 #[derive(Component)]
@@ -57,9 +71,10 @@ fn on_collision_trigger_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
     hittable_query: Query<(&AbilitySource, &Faction, &Transform, &OnCollisionTrigger)>,
-    target_query: Query<&Faction, Without<OnCollisionTrigger>>,
+    target_query: Query<(&Faction, &Transform), Without<OnCollisionTrigger>>,
     wall_query: Query<(), With<Wall>>,
     stats_query: Query<&ComputedStats>,
+    transforms: Query<&Transform>,
 ) {
     let mut processed: HashSet<(Entity, Entity)> = HashSet::default();
 
@@ -85,10 +100,10 @@ fn on_collision_trigger_system(
             continue;
         }
 
-        let Ok((source, hittable_faction, transform, trigger)) = hittable_query.get(hittable_entity) else {
+        let Ok((source, hittable_faction, hittable_transform, trigger)) = hittable_query.get(hittable_entity) else {
             continue;
         };
-        let Ok(target_faction) = target_query.get(other_entity) else {
+        let Ok((target_faction, target_transform)) = target_query.get(other_entity) else {
             continue;
         };
 
@@ -100,12 +115,23 @@ fn on_collision_trigger_system(
             .get(source.caster)
             .unwrap_or(&DEFAULT_STATS);
 
+        let caster_pos = transforms.get(source.caster)
+            .map(|t| t.translation.truncate())
+            .unwrap_or(Vec2::ZERO);
+
+        let source_pos = hittable_transform.translation.truncate();
+        let target_pos = target_transform.translation.truncate();
+
+        let source_info = TargetInfo::from_entity_and_position(hittable_entity, source_pos);
+        let target_info = TargetInfo::from_entity_and_position(other_entity, target_pos);
+
         let spawn_ctx = SpawnContext {
             ability_id: source.ability_id,
             caster: source.caster,
+            caster_position: caster_pos,
             caster_faction: source.caster_faction,
-            source: Target::Point(transform.translation),
-            target: Some(Target::Entity(other_entity)),
+            source: source_info,
+            target: target_info,
             stats: caster_stats,
             index: 0,
             count: 1,

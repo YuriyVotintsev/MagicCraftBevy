@@ -2,9 +2,10 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::abilities::param::{ParamValue, ParamValueRaw, resolve_param_value};
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
 use crate::abilities::spawn::SpawnContext;
-use crate::abilities::Target;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::wave::InvulnerableStack;
@@ -13,23 +14,28 @@ use crate::GameState;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub speed: ParamValueRaw,
-    pub duration: ParamValueRaw,
+    pub speed: ScalarExprRaw,
+    pub duration: ScalarExprRaw,
 }
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub speed: ParamValue,
-    pub duration: ParamValue,
+    pub speed: ScalarExpr,
+    pub duration: ScalarExpr,
 }
 
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
-            speed: resolve_param_value(&self.speed, stat_registry),
-            duration: resolve_param_value(&self.duration, stat_registry),
+            speed: self.speed.resolve(stat_registry),
+            duration: self.duration.resolve(stat_registry),
         }
     }
+}
+
+pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    let fields = raw.speed.required_fields().union(raw.duration.required_fields());
+    (fields, None)
 }
 
 #[derive(Component)]
@@ -51,13 +57,11 @@ pub struct Dashing {
 pub struct PreDashLayers(pub CollisionLayers);
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let speed = def.speed.evaluate_f32(ctx.stats);
-    let duration = def.duration.evaluate_f32(ctx.stats);
+    let eval_ctx = ctx.eval_context();
+    let speed = def.speed.eval(&eval_ctx);
+    let duration = def.duration.eval(&eval_ctx);
 
-    let direction = match ctx.target {
-        Some(Target::Direction(d)) => d.truncate().normalize_or_zero(),
-        _ => Vec2::ZERO,
-    };
+    let direction = ctx.target.direction.unwrap_or(Vec2::ZERO);
 
     if direction != Vec2::ZERO {
         commands.insert(DashRequest {

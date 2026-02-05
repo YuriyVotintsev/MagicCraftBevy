@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
+use crate::abilities::context::ProvidedFields;
+use crate::abilities::entity_def::EntityDefRaw;
 use crate::abilities::spawn::SpawnContext;
 use crate::common::AttachedTo;
 use crate::schedule::GameSet;
@@ -18,11 +20,15 @@ impl DefRaw {
     }
 }
 
+pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
+    (ProvidedFields::NONE, None)
+}
+
 #[derive(Component)]
 pub struct FollowCaster;
 
 pub fn spawn(commands: &mut EntityCommands, _def: &Def, ctx: &SpawnContext) {
-    let source_pos = ctx.source.as_point().unwrap_or(Vec3::ZERO);
+    let source_pos = ctx.source.position.map(|p| p.extend(0.0)).unwrap_or(Vec3::ZERO);
     commands.insert((
         FollowCaster,
         AttachedTo { owner: ctx.caster },
