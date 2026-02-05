@@ -4,15 +4,15 @@
         OnInput((entities: [
             (components: [
                 Projectile(()),
-                Speed(("600.0")),
+                Speed((value: "600.0")),
                 Straight(()),
-                Size(("24.0")),
+                Size((value: "24.0")),
                 Collider((shape: Circle)),
                 Sprite((color: (0.2, 0.8, 0.2, 1.0), shape: Circle)),
                 OnCollision((entities: [
                     (components: [
-                        Lifetime(("4.0")),
-                        Size(("160.0")),
+                        Lifetime((remaining: "4.0")),
+                        Size((value: "160.0")),
                         Sprite((color: (0.1, 0.6, 0.1, 0.4), shape: Circle)),
                         OnArea((size: "160.0", interval: Some("0.5"), entities: [
                             (components: [DamagePayload((amount: "5.0"))])

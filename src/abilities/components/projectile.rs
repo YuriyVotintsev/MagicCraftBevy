@@ -1,31 +1,15 @@
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::spawn::SpawnContext;
-
-#[derive(Debug, Clone, Deserialize, Default)]
-pub struct DefRaw;
-
-#[derive(Debug, Clone, Default)]
-pub struct Def;
-
-impl DefRaw {
-    pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def
-    }
-}
-
-pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    (ProvidedFields::NONE, None)
-}
-
-#[derive(Component)]
+#[ability_component]
 pub struct Projectile;
 
-pub fn insert_component(commands: &mut EntityCommands, _def: &Def, _ctx: &SpawnContext) {
-    commands.insert((Name::new("Projectile"), Projectile));
+pub fn register_systems(app: &mut App) {
+    app.add_systems(PostUpdate, init_projectile);
 }
 
-pub fn register_systems(_app: &mut App) {}
+fn init_projectile(mut commands: Commands, query: Query<Entity, Added<Projectile>>) {
+    for entity in &query {
+        commands.entity(entity).insert(Name::new("Projectile"));
+    }
+}

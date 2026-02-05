@@ -1,49 +1,21 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
-use crate::abilities::spawn::SpawnContext;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::wave::InvulnerableStack;
 use crate::MovementLocked;
 use crate::GameState;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub speed: ScalarExprRaw,
-    pub duration: ScalarExprRaw,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
+#[ability_component]
+pub struct Dash {
     pub speed: ScalarExpr,
     pub duration: ScalarExpr,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            speed: self.speed.resolve(stat_registry),
-            duration: self.duration.resolve(stat_registry),
-        }
-    }
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let fields = raw.speed.required_fields().union(raw.duration.required_fields());
-    (fields, None)
-}
-
-#[derive(Component)]
-pub struct Dash {
-    pub speed: f32,
-    pub duration: f32,
-    pub direction: Vec2,
-    pub caster: Entity,
+    #[default_expr("target.direction")]
+    pub direction: VecExpr,
+    #[default_expr("caster.entity")]
+    pub caster: EntityExpr,
 }
 
 #[derive(Component)]
@@ -55,23 +27,6 @@ pub struct Dashing {
 
 #[derive(Component)]
 pub struct PreDashLayers(pub CollisionLayers);
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let eval_ctx = ctx.eval_context();
-    let speed = def.speed.eval(&eval_ctx);
-    let duration = def.duration.eval(&eval_ctx);
-
-    let direction = ctx.target.direction.unwrap_or(Vec2::ZERO);
-
-    if direction != Vec2::ZERO {
-        commands.insert(Dash {
-            speed,
-            duration,
-            direction,
-            caster: ctx.caster,
-        });
-    }
-}
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -90,6 +45,11 @@ fn apply_dash_requests(
     collision_query: Query<&CollisionLayers>,
 ) {
     for (entity, request) in &query {
+        if request.direction == Vec2::ZERO {
+            commands.entity(entity).despawn();
+            continue;
+        }
+
         let current_layers = collision_query
             .get(request.caster)
             .copied()

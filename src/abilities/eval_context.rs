@@ -11,6 +11,7 @@ pub struct EvalContext<'a> {
 }
 
 impl<'a> EvalContext<'a> {
+    #[allow(dead_code)]
     pub fn stats_only(stats: &'a ComputedStats) -> Self {
         Self {
             caster: TargetInfo::EMPTY,

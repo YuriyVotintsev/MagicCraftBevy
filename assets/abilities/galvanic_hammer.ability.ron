@@ -4,9 +4,9 @@
         OnInput((entities: [
             (components: [
                 Projectile(()),
-                Speed(("500.0")),
+                Speed((value: "500.0")),
                 Boomerang((max_distance: "300.0")),
-                Size(("60.0")),
+                Size((value: "60.0")),
                 Collider((shape: Circle)),
                 Sprite((color: (0.6, 0.8, 1.0, 1.0), shape: Square)),
                 Pierce(()),

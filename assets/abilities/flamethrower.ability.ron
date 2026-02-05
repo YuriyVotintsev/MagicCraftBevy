@@ -4,9 +4,9 @@
         WhileHeld((interval: "0.03", entities: [
             (components: [
                 Projectile(()),
-                Speed(("600.0")),
+                Speed((value: "600.0")),
                 Straight((spread: Some("18.0"))),
-                Lifetime(("0.6")),
+                Lifetime((remaining: "0.6")),
                 Growing((start_size: "8.0", end_size: "25.0")),
                 Collider((shape: Circle)),
                 Sprite((color: (1.0, 0.3, 0.0, 1.0), shape: Circle)),

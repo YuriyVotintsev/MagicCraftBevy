@@ -1,59 +1,19 @@
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::{EntityDef, EntityDefRaw};
 use crate::abilities::spawn::SpawnContext;
 use crate::abilities::{AbilitySource, TargetInfo};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::GameState;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    #[serde(default)]
-    pub entities: Vec<EntityDefRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
+#[ability_component(SOURCE_ENTITY, SOURCE_POSITION)]
+pub struct Once {
     pub entities: Vec<EntityDef>,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
-        }
-    }
-}
-
-pub fn provided_fields() -> ProvidedFields {
-    ProvidedFields::SOURCE_ENTITY
-        .union(ProvidedFields::SOURCE_POSITION)
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let nested = if raw.entities.is_empty() {
-        None
-    } else {
-        Some((provided_fields(), raw.entities.as_slice()))
-    };
-    (ProvidedFields::NONE, nested)
 }
 
 #[derive(Component)]
-pub struct Once {
-    pub triggered: bool,
-    pub entities: Vec<EntityDef>,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(Once {
-        triggered: false,
-        entities: def.entities.clone(),
-    });
-}
+pub struct OnceTriggered;
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -66,13 +26,11 @@ pub fn register_systems(app: &mut App) {
 
 fn once_system(
     mut commands: Commands,
-    mut ability_query: Query<(Entity, &AbilitySource, &mut Once)>,
+    ability_query: Query<(Entity, &AbilitySource, &Once), Without<OnceTriggered>>,
     owner_query: Query<&Transform>,
     stats_query: Query<&ComputedStats>,
 ) {
-    for (_entity, source, mut once) in &mut ability_query {
-        if once.triggered { continue }
-
+    for (entity, source, once) in &ability_query {
         let Ok(transform) = owner_query.get(source.caster) else {
             continue;
         };
@@ -100,6 +58,6 @@ fn once_system(
             crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx);
         }
 
-        once.triggered = true;
+        commands.entity(entity).insert(OnceTriggered);
     }
 }

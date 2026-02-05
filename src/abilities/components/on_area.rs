@@ -1,102 +1,63 @@
 use bevy::prelude::*;
 use avian2d::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::{ProvidedFields, TargetInfo};
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
+use crate::abilities::context::TargetInfo;
 use crate::abilities::spawn::SpawnContext;
 use crate::abilities::AbilitySource;
-use crate::abilities::entity_def::EntityDef;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub size: ScalarExprRaw,
-    #[serde(default)]
-    pub interval: Option<ScalarExprRaw>,
-    pub entities: Vec<EntityDefRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
+#[ability_component(SOURCE_ENTITY, SOURCE_POSITION, TARGET_ENTITY, TARGET_POSITION)]
+pub struct OnArea {
     pub size: ScalarExpr,
     pub interval: Option<ScalarExpr>,
     pub entities: Vec<EntityDef>,
 }
 
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            size: self.size.resolve(stat_registry),
-            interval: self.interval.as_ref().map(|i| i.resolve(stat_registry)),
-            entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
-        }
-    }
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let mut fields = raw.size.required_fields();
-    if let Some(ref interval) = raw.interval {
-        fields = fields.union(interval.required_fields());
-    }
-    let provided = ProvidedFields::SOURCE_ENTITY
-        .union(ProvidedFields::SOURCE_POSITION)
-        .union(ProvidedFields::TARGET_ENTITY)
-        .union(ProvidedFields::TARGET_POSITION);
-    let nested = if raw.entities.is_empty() {
-        None
-    } else {
-        Some((provided, raw.entities.as_slice()))
-    };
-    (fields, nested)
-}
-
-#[derive(Component)]
-pub struct OnArea {
-    pub size: f32,
-    pub interval: Option<f32>,
+#[derive(Component, Default)]
+pub struct OnAreaTimer {
     pub timer: f32,
-    pub entities: Vec<EntityDef>,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let eval_ctx = ctx.eval_context();
-    let size = def.size.eval(&eval_ctx);
-    let interval = def.interval.as_ref().map(|i| i.eval(&eval_ctx));
-    commands.insert(OnArea {
-        size,
-        interval,
-        timer: 0.0,
-        entities: def.entities.clone(),
-    });
 }
 
 pub fn register_systems(app: &mut App) {
-    app.add_systems(Update, on_area_trigger_system.in_set(GameSet::AbilityExecution));
+    app.add_systems(
+        Update,
+        (init_on_area_timer, on_area_trigger_system)
+            .chain()
+            .in_set(GameSet::AbilityExecution),
+    );
+}
+
+fn init_on_area_timer(
+    mut commands: Commands,
+    query: Query<Entity, Added<OnArea>>,
+) {
+    for entity in &query {
+        commands.entity(entity).insert(OnAreaTimer::default());
+    }
 }
 
 fn on_area_trigger_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut OnArea, &AbilitySource, &Transform)>,
+    mut query: Query<(Entity, &OnArea, &mut OnAreaTimer, &AbilitySource, &Transform)>,
     spatial_query: SpatialQuery,
     stats_query: Query<&ComputedStats>,
     target_transforms: Query<&Transform>,
 ) {
     let dt = time.delta_secs();
 
-    for (entity, mut trigger, source, transform) in &mut query {
-        trigger.timer += dt;
+    for (entity, trigger, mut timer, source, transform) in &mut query {
+        timer.timer += dt;
 
         if let Some(interval) = trigger.interval {
-            if trigger.timer < interval {
+            if timer.timer < interval {
                 continue;
             }
-            trigger.timer = 0.0;
+            timer.timer = 0.0;
         }
 
         let position = transform.translation.truncate();

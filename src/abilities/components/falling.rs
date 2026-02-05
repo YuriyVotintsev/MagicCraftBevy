@@ -1,112 +1,60 @@
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::{ProvidedFields, TargetInfo};
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::expr::{ScalarExpr, ScalarExprRaw, VecExpr, VecExprRaw};
+use crate::abilities::context::TargetInfo;
 use crate::abilities::spawn::SpawnContext;
 use crate::abilities::AbilitySource;
-use crate::abilities::entity_def::EntityDef;
 use crate::schedule::GameSet;
 use crate::GameState;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub height: ScalarExprRaw,
-    pub duration: ScalarExprRaw,
-    #[serde(default)]
-    pub target: Option<VecExprRaw>,
-    #[serde(default)]
-    pub entities: Vec<EntityDefRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
+#[ability_component(SOURCE_POSITION)]
+pub struct Falling {
     pub height: ScalarExpr,
     pub duration: ScalarExpr,
-    pub target: Option<VecExpr>,
+    #[default_expr("target.position")]
+    pub target_position: VecExpr,
+    #[default_expr("caster.position")]
+    pub caster_position: VecExpr,
     pub entities: Vec<EntityDef>,
 }
 
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            height: self.height.resolve(stat_registry),
-            duration: self.duration.resolve(stat_registry),
-            target: self.target.as_ref().map(|t| t.resolve(stat_registry)),
-            entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
-        }
-    }
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let mut fields = raw.height.required_fields().union(raw.duration.required_fields());
-    if let Some(ref target) = raw.target {
-        fields = fields.union(target.required_fields());
-    }
-    let provided = ProvidedFields::SOURCE_POSITION;
-    let nested = if raw.entities.is_empty() {
-        None
-    } else {
-        Some((provided, raw.entities.as_slice()))
-    };
-    (fields, nested)
-}
-
-#[derive(Component)]
-pub struct Falling {
-    pub target_position: Vec2,
-    pub height: f32,
-    pub duration: f32,
+#[derive(Component, Default)]
+pub struct FallingProgress {
     pub elapsed: f32,
-    pub caster_position: Vec2,
-    pub entities: Vec<EntityDef>,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let eval_ctx = ctx.eval_context();
-    let height = def.height.eval(&eval_ctx);
-    let duration = def.duration.eval(&eval_ctx);
-
-    let target_position = match &def.target {
-        Some(target_expr) => target_expr.eval(&eval_ctx),
-        None => ctx.target.position
-            .or(ctx.source.position)
-            .unwrap_or(Vec2::ZERO),
-    };
-
-    commands.insert(Falling {
-        target_position,
-        height,
-        duration,
-        elapsed: 0.0,
-        caster_position: ctx.caster_position,
-        entities: def.entities.clone(),
-    });
 }
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
-        update_falling_projectiles
+        (init_falling_progress, update_falling_projectiles)
+            .chain()
             .in_set(GameSet::AbilityExecution)
             .run_if(in_state(GameState::Playing)),
     );
 }
 
+fn init_falling_progress(
+    mut commands: Commands,
+    query: Query<Entity, (With<Falling>, Without<FallingProgress>)>,
+) {
+    for entity in &query {
+        commands.entity(entity).insert(FallingProgress::default());
+    }
+}
+
 fn update_falling_projectiles(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut Falling, &AbilitySource, &mut Transform)>,
+    mut query: Query<(Entity, &Falling, &mut FallingProgress, &AbilitySource, &mut Transform)>,
     stats_query: Query<&ComputedStats>,
     transforms: Query<&Transform, Without<Falling>>,
 ) {
     let dt = time.delta_secs();
 
-    for (entity, mut falling, source, mut transform) in &mut query {
-        falling.elapsed += dt;
-        let t = (falling.elapsed / falling.duration).clamp(0.0, 1.0);
+    for (entity, falling, mut progress, source, mut transform) in &mut query {
+        progress.elapsed += dt;
+        let t = (progress.elapsed / falling.duration).clamp(0.0, 1.0);
         let eased_t = t * t;
 
         let start_y = falling.target_position.y + falling.height;

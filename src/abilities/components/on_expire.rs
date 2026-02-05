@@ -1,52 +1,16 @@
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::{ProvidedFields, TargetInfo};
-use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::context::TargetInfo;
 use crate::abilities::spawn::SpawnContext;
 use crate::abilities::AbilitySource;
-use crate::abilities::entity_def::EntityDef;
 use crate::schedule::GameSet;
 use super::lifetime::Lifetime;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub entities: Vec<EntityDefRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
-    pub entities: Vec<EntityDef>,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
-        }
-    }
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let provided = ProvidedFields::SOURCE_POSITION;
-    let nested = if raw.entities.is_empty() {
-        None
-    } else {
-        Some((provided, raw.entities.as_slice()))
-    };
-    (ProvidedFields::NONE, nested)
-}
-
-#[derive(Component)]
+#[ability_component(SOURCE_POSITION)]
 pub struct OnExpire {
     pub entities: Vec<EntityDef>,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(OnExpire {
-        entities: def.entities.clone(),
-    });
 }
 
 pub fn register_systems(app: &mut App) {

@@ -1,35 +1,12 @@
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::spawn::SpawnContext;
 use crate::common::AttachedTo;
 use crate::schedule::GameSet;
 use crate::GameState;
 
-#[derive(Debug, Clone, Deserialize, Default)]
-pub struct DefRaw {}
-
-#[derive(Debug, Clone)]
-pub struct Def;
-
-impl DefRaw {
-    pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def
-    }
-}
-
-pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    (ProvidedFields::NONE, None)
-}
-
-#[derive(Component)]
+#[ability_component]
 pub struct FollowCaster;
-
-pub fn insert_component(commands: &mut EntityCommands, _def: &Def, _ctx: &SpawnContext) {
-    commands.insert(FollowCaster);
-}
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(

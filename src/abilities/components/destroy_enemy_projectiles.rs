@@ -1,47 +1,16 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
-use crate::abilities::spawn::SpawnContext;
 use crate::abilities::AbilitySource;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub size: ScalarExprRaw,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
-    pub size: ScalarExpr,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            size: self.size.resolve(stat_registry),
-        }
-    }
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    (raw.size.required_fields(), None)
-}
-
-#[derive(Component)]
+#[ability_component]
 pub struct DestroyEnemyProjectiles {
-    pub size: f32,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let size = def.size.eval(&ctx.eval_context());
-    commands.insert(DestroyEnemyProjectiles { size });
+    pub size: ScalarExpr,
 }
 
 pub fn register_systems(app: &mut App) {

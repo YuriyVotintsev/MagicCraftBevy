@@ -1,64 +1,16 @@
-use std::f32::consts::PI;
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
-use crate::abilities::spawn::SpawnContext;
 use crate::common::AttachedTo;
 use crate::schedule::GameSet;
 use crate::GameState;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub radius: ScalarExprRaw,
-    pub angular_speed: ScalarExprRaw,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
+#[ability_component]
+pub struct Orbiting {
     pub radius: ScalarExpr,
     pub angular_speed: ScalarExpr,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            radius: self.radius.resolve(stat_registry),
-            angular_speed: self.angular_speed.resolve(stat_registry),
-        }
-    }
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let fields = raw.radius.required_fields().union(raw.angular_speed.required_fields());
-    (fields, None)
-}
-
-#[derive(Component)]
-pub struct Orbiting {
-    pub radius: f32,
-    pub angular_speed: f32,
-    pub current_angle: f32,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let eval_ctx = ctx.eval_context();
-    let radius = def.radius.eval(&eval_ctx);
-    let angular_speed = def.angular_speed.eval(&eval_ctx);
-
-    let initial_angle = if ctx.count > 1 {
-        2.0 * PI * (ctx.index as f32) / (ctx.count as f32)
-    } else {
-        0.0
-    };
-
-    commands.insert(Orbiting {
-        radius,
-        angular_speed,
-        current_angle: initial_angle,
-    });
+    #[default_expr("6.28318 * index / count")]
+    pub current_angle: ScalarExpr,
 }
 
 pub fn register_systems(app: &mut App) {

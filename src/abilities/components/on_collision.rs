@@ -1,13 +1,11 @@
 use bevy::prelude::*;
 use bevy::platform::collections::HashSet;
 use avian2d::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::{ProvidedFields, TargetInfo};
-use crate::abilities::entity_def::EntityDefRaw;
+use crate::abilities::context::TargetInfo;
 use crate::abilities::spawn::SpawnContext;
 use crate::abilities::AbilitySource;
-use crate::abilities::entity_def::EntityDef;
 use crate::physics::Wall;
 use crate::schedule::GameSet;
 use crate::Faction;
@@ -16,46 +14,9 @@ use crate::stats::{ComputedStats, DEFAULT_STATS};
 use super::pierce::Pierce;
 use super::projectile::Projectile;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub entities: Vec<EntityDefRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
-    pub entities: Vec<EntityDef>,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
-        }
-    }
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let provided = ProvidedFields::SOURCE_ENTITY
-        .union(ProvidedFields::SOURCE_POSITION)
-        .union(ProvidedFields::TARGET_ENTITY)
-        .union(ProvidedFields::TARGET_POSITION);
-    let nested = if raw.entities.is_empty() {
-        None
-    } else {
-        Some((provided, raw.entities.as_slice()))
-    };
-    (ProvidedFields::NONE, nested)
-}
-
-#[derive(Component)]
+#[ability_component(SOURCE_ENTITY, SOURCE_POSITION, TARGET_ENTITY, TARGET_POSITION)]
 pub struct OnCollision {
     pub entities: Vec<EntityDef>,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(OnCollision {
-        entities: def.entities.clone(),
-    });
 }
 
 pub fn register_systems(app: &mut App) {
@@ -173,8 +134,7 @@ fn projectile_collision_physics(
         if wall_query.contains(other_entity) {
             let has_pierce_infinite = pierce_query
                 .get(projectile_entity)
-                .map(|p| matches!(*p, Pierce::Infinite))
-                .unwrap_or(false);
+                .is_ok_and(|p| p.count.is_none());
 
             if !has_pierce_infinite {
                 if let Ok(mut entity_commands) = commands.get_entity(projectile_entity) {
@@ -202,15 +162,12 @@ fn projectile_collision_physics(
 
         let should_despawn = match pierce_query.get_mut(projectile_entity) {
             Err(_) => true,
-            Ok(pierce) => match pierce.into_inner() {
-                Pierce::Infinite => false,
-                Pierce::Count(n) => {
-                    if *n <= 1 {
-                        true
-                    } else {
-                        *n -= 1;
-                        false
-                    }
+            Ok(mut pierce) => match pierce.count {
+                None => false,
+                Some(n) if n <= 1.0 => true,
+                Some(n) => {
+                    pierce.count = Some(n - 1.0);
+                    false
                 }
             },
         };

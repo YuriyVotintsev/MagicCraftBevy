@@ -70,22 +70,34 @@ Abilities use trait registries for extensibility:
 ```
 RON файл              →  ECS Component
 ──────────────────────────────────────
-Speed((...))          →  Speed
-Straight((...))       →  Straight
-Collider((...))       →  Collider
-Sprite((...))         →  Sprite
-OnCollision((...))    →  OnCollision
-Falling((...))        →  Falling
-Dash((...))           →  Dash
+Speed((value: "400")) →  Speed { value: f32 }
+Straight(())          →  Straight { spread: f32, direction: Vec2 }
+Collider((shape: Circle)) →  Collider { shape: Shape }
+OnCollision((entities: [...])) →  OnCollision { entities: Vec<EntityDef> }
 ```
 
-**2. spawn() — only creates the component**
+**2. Use `#[ability_component]` macro**
 
-| Allowed in spawn() | NOT allowed in spawn() |
-|--------------------|------------------------|
-| Evaluate expressions | Any logic |
-| Create ECS component | Add other components (Transform, RigidBody, etc.) |
-| | Calculate derived values |
+The macro generates `DefRaw`, `Def`, Component struct, and `insert_component()`:
+```rust
+#[ability_component]
+pub struct Straight {
+    #[raw(default = 0)]
+    pub spread: ScalarExpr,           // → f32 in Component
+    #[default_expr("target.direction")]
+    pub direction: VecExpr,           // → Vec2 in Component
+}
+```
+
+Field type mapping:
+| Def type | Component type | Notes |
+|----------|---------------|-------|
+| `ScalarExpr` | `f32` | Evaluated at spawn |
+| `VecExpr` | `Vec2` | Evaluated at spawn |
+| `EntityExpr` | `Entity` | Evaluated at spawn |
+| `Option<ScalarExpr>` | `Option<f32>` | Optional expression |
+| `Vec<EntityDef>` | `Vec<EntityDef>` | Cloned |
+| Other types | Same type | Cloned with `#[serde(default)]` if has `#[raw(default = ...)]` |
 
 **3. Added<T> systems handle dynamic initialization**
 ```rust
@@ -96,13 +108,28 @@ fn init_straight(
     for (entity, speed, straight) in &query {
         commands.entity(entity).insert((
             RigidBody::Kinematic,
-            LinearVelocity(straight.direction * speed.0),
+            LinearVelocity(straight.direction * speed.value),
         ));
     }
 }
 ```
 
-**4. Naming conventions**
+**4. Runtime state in separate components**
+```rust
+#[ability_component]
+pub struct Growing {
+    pub start_size: ScalarExpr,
+    pub end_size: ScalarExpr,
+}
+
+#[derive(Component, Default)]
+pub struct GrowingProgress {  // Separate runtime state
+    pub elapsed: f32,
+    pub duration: f32,
+}
+```
+
+**5. Naming conventions**
 - No `Trigger` suffix: `OnCollision` not `OnCollisionTrigger`
 - No `Request` suffix: `Dash` not `DashRequest`
 - No `Projectile` suffix: `Falling` not `FallingProjectile`
@@ -134,10 +161,19 @@ src/
 
 **Add new ability component:**
 1. Create `component_name.rs` in `abilities/components/`
-2. Define `DefRaw`, `Def`, `Component` structs
-3. Implement `spawn()` — only insert the component
-4. If needs Transform/RigidBody/etc — add `init_component` system with `Added<Component>` query
-5. Register in `abilities/components/mod.rs` via `collect_components!` macro
+2. Define struct with `#[ability_component]` macro:
+   ```rust
+   #[ability_component]
+   pub struct MyComponent {
+       pub damage: ScalarExpr,              // Required field
+       #[raw(default = false)]
+       pub enabled: bool,                   // Optional with default
+       #[default_expr("target.direction")]
+       pub direction: VecExpr,              // Optional with expression default
+   }
+   ```
+3. If needs Transform/RigidBody/etc — add `init_component` system with `Added<Component>` query
+4. Register in `abilities/components/mod.rs` via `collect_components!` macro
 
 **Add new ability type:**
 1. Implement `Trigger` or `EffectExecutor` trait in `abilities/triggers/` or `abilities/effects/`

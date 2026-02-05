@@ -1,10 +1,6 @@
 use bevy::prelude::{Sprite as BevySprite, *};
+use magic_craft_macros::ability_component;
 use serde::Deserialize;
-
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::expr::{VecExpr, VecExprRaw};
-use crate::abilities::spawn::SpawnContext;
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
 pub enum SpriteShape {
@@ -13,54 +9,13 @@ pub enum SpriteShape {
     Circle,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub color: (f32, f32, f32, f32),
-    #[serde(default)]
-    pub shape: SpriteShape,
-    #[serde(default)]
-    pub position: Option<VecExprRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
-    pub color: (f32, f32, f32, f32),
-    pub shape: SpriteShape,
-    pub position: Option<VecExpr>,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            color: self.color,
-            shape: self.shape,
-            position: self.position.as_ref().map(|p| p.resolve(stat_registry)),
-        }
-    }
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let fields = raw.position.as_ref().map(|p| p.required_fields()).unwrap_or(ProvidedFields::NONE);
-    (fields, None)
-}
-
-#[derive(Component)]
+#[ability_component]
 pub struct Sprite {
-    pub color: Color,
+    pub color: (f32, f32, f32, f32),
+    #[raw(default = SpriteShape::Square)]
     pub shape: SpriteShape,
-    pub position: Option<Vec2>,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let color = Color::srgba(def.color.0, def.color.1, def.color.2, def.color.3);
-
-    let eval_ctx = ctx.eval_context();
-    let position = match &def.position {
-        Some(pos_expr) => Some(pos_expr.eval(&eval_ctx)),
-        None => ctx.source.position,
-    };
-
-    commands.insert(Sprite { color, shape: def.shape, position });
+    #[default_expr("source.position")]
+    pub position: VecExpr,
 }
 
 #[derive(Component)]
@@ -78,14 +33,14 @@ fn init_sprite(
     query: Query<(Entity, &Sprite), Added<Sprite>>,
 ) {
     for (entity, sprite) in &query {
-        let transform = Transform::from_translation(
-            sprite.position.unwrap_or(Vec2::ZERO).extend(0.0)
-        );
+        let color = Color::srgba(sprite.color.0, sprite.color.1, sprite.color.2, sprite.color.3);
+        let transform = Transform::from_translation(sprite.position.extend(0.0));
+
         match sprite.shape {
             SpriteShape::Square => {
                 commands.entity(entity).insert((
                     BevySprite {
-                        color: sprite.color,
+                        color,
                         custom_size: Some(Vec2::ONE),
                         ..default()
                     },
@@ -93,7 +48,7 @@ fn init_sprite(
                 ));
             }
             SpriteShape::Circle => {
-                commands.entity(entity).insert((CircleSprite { color: sprite.color }, transform));
+                commands.entity(entity).insert((CircleSprite { color }, transform));
             }
         }
     }

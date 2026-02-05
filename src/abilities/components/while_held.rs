@@ -1,87 +1,52 @@
 use bevy::prelude::*;
-use serde::Deserialize;
+use magic_craft_macros::ability_component;
 
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::{EntityDef, EntityDefRaw};
-use crate::abilities::eval_context::EvalContext;
-use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
 use crate::abilities::spawn::SpawnContext;
 use crate::abilities::{AbilityInputs, AbilitySource, TargetInfo};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::GameState;
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub interval: ScalarExprRaw,
-    #[serde(default)]
-    pub entities: Vec<EntityDefRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
-    pub interval: ScalarExpr,
-    pub entities: Vec<EntityDef>,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            interval: self.interval.resolve(stat_registry),
-            entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
-        }
-    }
-}
-
-pub fn provided_fields() -> ProvidedFields {
-    ProvidedFields::SOURCE_ENTITY
-        .union(ProvidedFields::SOURCE_POSITION)
-        .union(ProvidedFields::TARGET_DIRECTION)
-}
-
-pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let nested = if raw.entities.is_empty() {
-        None
-    } else {
-        Some((provided_fields(), raw.entities.as_slice()))
-    };
-    (raw.interval.required_fields(), nested)
-}
-
-#[derive(Component)]
+#[ability_component(SOURCE_ENTITY, SOURCE_POSITION, TARGET_DIRECTION)]
 pub struct WhileHeld {
     pub interval: ScalarExpr,
-    pub timer: f32,
     pub entities: Vec<EntityDef>,
 }
 
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(WhileHeld {
-        interval: def.interval.clone(),
-        timer: 0.0,
-        entities: def.entities.clone(),
-    });
+#[derive(Component, Default)]
+pub struct WhileHeldTimer {
+    pub timer: f32,
 }
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
-        while_held_system
+        (init_while_held_timer, while_held_system)
+            .chain()
             .in_set(GameSet::AbilityActivation)
             .run_if(in_state(GameState::Playing)),
     );
 }
 
+fn init_while_held_timer(
+    mut commands: Commands,
+    query: Query<Entity, Added<WhileHeld>>,
+) {
+    for entity in &query {
+        commands.entity(entity).insert(WhileHeldTimer::default());
+    }
+}
+
 fn while_held_system(
     time: Res<Time>,
     mut commands: Commands,
-    mut ability_query: Query<(Entity, &AbilitySource, &mut WhileHeld)>,
+    mut ability_query: Query<(&AbilitySource, &WhileHeld, &mut WhileHeldTimer)>,
     owner_query: Query<(&AbilityInputs, &Transform)>,
     stats_query: Query<&ComputedStats>,
 ) {
     let delta = time.delta_secs();
 
-    for (_entity, source, mut while_held) in &mut ability_query {
+    for (source, while_held, mut timer) in &mut ability_query {
         let Ok((inputs, transform)) = owner_query.get(source.caster) else {
             continue;
         };
@@ -89,12 +54,12 @@ fn while_held_system(
         let Some(input) = inputs.get(source.ability_id) else { continue };
 
         if !input.pressed {
-            while_held.timer = 0.0;
+            timer.timer = 0.0;
             continue;
         }
 
-        while_held.timer -= delta;
-        if while_held.timer > 0.0 { continue }
+        timer.timer -= delta;
+        if timer.timer > 0.0 { continue }
 
         let caster_stats = stats_query
             .get(source.caster)
@@ -119,6 +84,6 @@ fn while_held_system(
             crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx);
         }
 
-        while_held.timer = while_held.interval.eval(&EvalContext::stats_only(caster_stats));
+        timer.timer = while_held.interval;
     }
 }

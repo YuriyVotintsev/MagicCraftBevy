@@ -394,3 +394,36 @@ impl<'de> Deserialize<'de> for EntityExprRaw {
     }
 }
 
+pub fn parse_required_fields(expr_str: &str) -> super::context::ProvidedFields {
+    match parse_expr_string(expr_str) {
+        Ok(TypedExpr::Scalar(e)) => e.required_fields(),
+        Ok(TypedExpr::Vec2(e)) => e.required_fields(),
+        Ok(TypedExpr::Entity(e)) => e.required_fields(),
+        Err(e) => panic!("Failed to parse default expression '{}': {}", expr_str, e),
+    }
+}
+
+pub fn parse_and_resolve_scalar(expr_str: &str, reg: &StatRegistry) -> ScalarExpr {
+    match parse_expr_string(expr_str) {
+        Ok(TypedExpr::Scalar(e)) => e.resolve(reg),
+        Ok(_) => panic!("Expected scalar expression, got different type: '{}'", expr_str),
+        Err(e) => panic!("Failed to parse scalar expression '{}': {}", expr_str, e),
+    }
+}
+
+pub fn parse_and_resolve_vec(expr_str: &str, reg: &StatRegistry) -> VecExpr {
+    match parse_expr_string(expr_str) {
+        Ok(TypedExpr::Vec2(e)) => e.resolve(reg),
+        Ok(_) => panic!("Expected vec2 expression, got different type: '{}'", expr_str),
+        Err(e) => panic!("Failed to parse vec2 expression '{}': {}", expr_str, e),
+    }
+}
+
+pub fn parse_and_resolve_entity(expr_str: &str, reg: &StatRegistry) -> EntityExpr {
+    match parse_expr_string(expr_str) {
+        Ok(TypedExpr::Entity(e)) => e.resolve(reg),
+        Ok(_) => panic!("Expected entity expression, got different type: '{}'", expr_str),
+        Err(e) => panic!("Failed to parse entity expression '{}': {}", expr_str, e),
+    }
+}
+

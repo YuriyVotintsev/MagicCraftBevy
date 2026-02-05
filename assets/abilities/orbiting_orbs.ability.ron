@@ -6,7 +6,7 @@
                 count: Some("3"),
                 components: [
                     Orbiting((radius: "80.0", angular_speed: "3.0")),
-                    Size(("20.0")),
+                    Size((value: "20.0")),
                     Collider((shape: Circle)),
                     Sprite((color: (0.3, 0.7, 1.0, 1.0), shape: Circle)),
                     Pierce(()),

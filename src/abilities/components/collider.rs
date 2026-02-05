@@ -1,54 +1,19 @@
 use avian2d::prelude::{Collider as AvianCollider, *};
 use bevy::prelude::*;
+use magic_craft_macros::ability_component;
 use serde::Deserialize;
 
-use crate::abilities::context::ProvidedFields;
-use crate::abilities::entity_def::EntityDefRaw;
-use crate::abilities::spawn::SpawnContext;
 use crate::physics::GameLayer;
 use crate::Faction;
 
-#[derive(Debug, Clone, Deserialize)]
-pub enum ShapeRaw {
-    Circle,
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 pub enum Shape {
     Circle,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub struct DefRaw {
-    pub shape: ShapeRaw,
-}
-
-#[derive(Debug, Clone)]
-pub struct Def {
-    pub shape: Shape,
-}
-
-impl DefRaw {
-    pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry) -> Def {
-        Def {
-            shape: match &self.shape {
-                ShapeRaw::Circle => Shape::Circle,
-            },
-        }
-    }
-}
-
-pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    (ProvidedFields::NONE, None)
-}
-
-#[derive(Component)]
+#[ability_component]
 pub struct Collider {
     pub shape: Shape,
-}
-
-pub fn insert_component(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(Collider { shape: def.shape.clone() });
 }
 
 pub fn register_systems(app: &mut App) {
