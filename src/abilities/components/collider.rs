@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian2d::prelude::{Collider as AvianCollider, *};
 use bevy::prelude::*;
 use serde::Deserialize;
 
@@ -43,12 +43,12 @@ pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(Pro
 }
 
 #[derive(Component)]
-pub struct AbilityCollider {
+pub struct Collider {
     pub shape: Shape,
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(AbilityCollider { shape: def.shape.clone() });
+    commands.insert(Collider { shape: def.shape.clone() });
 }
 
 pub fn register_systems(app: &mut App) {
@@ -57,11 +57,11 @@ pub fn register_systems(app: &mut App) {
 
 fn init_collider(
     mut commands: Commands,
-    query: Query<(Entity, &AbilityCollider, &crate::abilities::AbilitySource), Added<AbilityCollider>>,
+    query: Query<(Entity, &Collider, &crate::abilities::AbilitySource), Added<Collider>>,
 ) {
     for (entity, collider, source) in &query {
         let avian_collider = match collider.shape {
-            Shape::Circle => Collider::circle(1.0),
+            Shape::Circle => AvianCollider::circle(1.0),
         };
 
         let layers = match source.caster_faction {

@@ -64,6 +64,50 @@ Abilities use trait registries for extensibility:
 - **DirtyStats**: Tracks which stats need recalculation (optimization)
 - **Raw→Processed types**: `*Raw` types use strings for Ron deserialization, converted to typed IDs at load time
 
+### Ability Component Design Rules
+
+**1. RON name = ECS component (1:1 mapping)**
+```
+RON файл              →  ECS Component
+──────────────────────────────────────
+Speed((...))          →  Speed
+Straight((...))       →  Straight
+Collider((...))       →  Collider
+Sprite((...))         →  Sprite
+OnCollision((...))    →  OnCollision
+Falling((...))        →  Falling
+Dash((...))           →  Dash
+```
+
+**2. spawn() — only creates the component**
+
+| Allowed in spawn() | NOT allowed in spawn() |
+|--------------------|------------------------|
+| Evaluate expressions | Any logic |
+| Create ECS component | Add other components (Transform, RigidBody, etc.) |
+| | Calculate derived values |
+
+**3. Added<T> systems handle dynamic initialization**
+```rust
+fn init_straight(
+    mut commands: Commands,
+    query: Query<(Entity, &Speed, &Straight), Added<Straight>>,
+) {
+    for (entity, speed, straight) in &query {
+        commands.entity(entity).insert((
+            RigidBody::Kinematic,
+            LinearVelocity(straight.direction * speed.0),
+        ));
+    }
+}
+```
+
+**4. Naming conventions**
+- No `Trigger` suffix: `OnCollision` not `OnCollisionTrigger`
+- No `Request` suffix: `Dash` not `DashRequest`
+- No `Projectile` suffix: `Falling` not `FallingProjectile`
+- Use `as` for conflicts: `use bevy::prelude::{Sprite as BevySprite, *}`
+
 ## Key Directories
 
 ```
@@ -87,6 +131,13 @@ src/
 - **Bash tool:** Only for actual terminal operations (git, cargo, npm, etc.)
 
 ## Common Development Tasks
+
+**Add new ability component:**
+1. Create `component_name.rs` in `abilities/components/`
+2. Define `DefRaw`, `Def`, `Component` structs
+3. Implement `spawn()` — only insert the component
+4. If needs Transform/RigidBody/etc — add `init_component` system with `Added<Component>` query
+5. Register in `abilities/components/mod.rs` via `collect_components!` macro
 
 **Add new ability type:**
 1. Implement `Trigger` or `EffectExecutor` trait in `abilities/triggers/` or `abilities/effects/`

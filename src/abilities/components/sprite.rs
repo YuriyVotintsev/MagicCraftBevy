@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::prelude::{Sprite as BevySprite, *};
 use serde::Deserialize;
 
 use crate::abilities::context::ProvidedFields;
@@ -45,7 +45,7 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 }
 
 #[derive(Component)]
-pub struct AbilitySprite {
+pub struct Sprite {
     pub color: Color,
     pub shape: SpriteShape,
     pub position: Option<Vec2>,
@@ -60,7 +60,7 @@ pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
         None => ctx.source.position,
     };
 
-    commands.insert(AbilitySprite { color, shape: def.shape, position });
+    commands.insert(Sprite { color, shape: def.shape, position });
 }
 
 #[derive(Component)]
@@ -75,7 +75,7 @@ pub fn register_systems(app: &mut App) {
 
 fn init_sprite(
     mut commands: Commands,
-    query: Query<(Entity, &AbilitySprite), Added<AbilitySprite>>,
+    query: Query<(Entity, &Sprite), Added<Sprite>>,
 ) {
     for (entity, sprite) in &query {
         let transform = Transform::from_translation(
@@ -84,7 +84,7 @@ fn init_sprite(
         match sprite.shape {
             SpriteShape::Square => {
                 commands.entity(entity).insert((
-                    Sprite {
+                    BevySprite {
                         color: sprite.color,
                         custom_size: Some(Vec2::ONE),
                         ..default()
