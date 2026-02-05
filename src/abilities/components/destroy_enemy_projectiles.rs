@@ -39,7 +39,7 @@ pub struct DestroyEnemyProjectiles {
     pub size: f32,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let size = def.size.eval(&ctx.eval_context());
     commands.insert(DestroyEnemyProjectiles { size });
 }

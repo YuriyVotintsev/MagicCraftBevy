@@ -1,7 +1,5 @@
 use bevy::prelude::*;
 
-use crate::Faction;
-
 #[derive(Debug, Clone, Copy, Default)]
 pub struct TargetInfo {
     pub entity: Option<Entity>,
@@ -37,25 +35,6 @@ impl TargetInfo {
             entity: None,
             position: None,
             direction: Some(direction),
-        }
-    }
-}
-
-#[derive(Clone)]
-pub struct AbilityContext {
-    pub caster: Entity,
-    pub caster_faction: Faction,
-    pub source: TargetInfo,
-    pub target: TargetInfo,
-}
-
-impl AbilityContext {
-    pub fn new(caster: Entity, caster_faction: Faction, source: TargetInfo, target: TargetInfo) -> Self {
-        Self {
-            caster,
-            caster_faction,
-            source,
-            target,
         }
     }
 }

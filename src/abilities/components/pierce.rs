@@ -36,7 +36,7 @@ pub enum Pierce {
     Infinite,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let pierce = match &def.count {
         Some(param) => Pierce::Count(param.eval(&ctx.eval_context()) as u32),
         None => Pierce::Infinite,

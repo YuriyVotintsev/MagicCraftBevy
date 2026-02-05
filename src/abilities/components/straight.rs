@@ -52,7 +52,7 @@ pub struct Straight {
     pub direction: Vec2,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
     let spread = def.spread.as_ref().map(|s| s.eval(&eval_ctx)).unwrap_or(0.0);
 

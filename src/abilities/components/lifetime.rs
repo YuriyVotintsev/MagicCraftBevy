@@ -29,7 +29,7 @@ pub struct Lifetime {
     pub remaining: f32,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let remaining = def.0.eval(&ctx.eval_context());
     commands.insert(Lifetime { remaining });
 }

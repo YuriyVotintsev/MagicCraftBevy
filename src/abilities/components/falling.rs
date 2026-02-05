@@ -64,7 +64,7 @@ pub struct Falling {
     pub entities: Vec<EntityDef>,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
     let height = def.height.eval(&eval_ctx);
     let duration = def.duration.eval(&eval_ctx);

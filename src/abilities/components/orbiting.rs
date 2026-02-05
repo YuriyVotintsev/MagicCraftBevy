@@ -43,7 +43,7 @@ pub struct Orbiting {
     pub current_angle: f32,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
     let radius = def.radius.eval(&eval_ctx);
     let angular_speed = def.angular_speed.eval(&eval_ctx);

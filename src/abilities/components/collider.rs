@@ -47,7 +47,7 @@ pub struct Collider {
     pub shape: Shape,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
     commands.insert(Collider { shape: def.shape.clone() });
 }
 

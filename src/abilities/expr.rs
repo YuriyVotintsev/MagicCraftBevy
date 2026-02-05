@@ -102,6 +102,7 @@ pub enum EntityExprRaw {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum EntityExpr {
     CasterEntity,
     SourceEntity,
@@ -239,6 +240,7 @@ impl VecExprRaw {
     }
 }
 
+#[allow(dead_code)]
 impl EntityExprRaw {
     pub fn resolve(&self, _reg: &StatRegistry) -> EntityExpr {
         match self {
@@ -318,6 +320,7 @@ impl VecExpr {
     }
 }
 
+#[allow(dead_code)]
 impl EntityExpr {
     pub fn eval(&self, ctx: &EvalContext) -> Option<Entity> {
         match self {

@@ -42,7 +42,7 @@ pub struct FindNearestEnemy {
 #[derive(Component)]
 pub struct FoundTarget(pub Entity, pub Vec3);
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let size = def.size.eval(&ctx.eval_context());
     commands.insert(FindNearestEnemy { size });
 }

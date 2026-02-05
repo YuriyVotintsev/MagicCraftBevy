@@ -39,7 +39,7 @@ pub fn spawn_entity(commands: &mut Commands, entity_def: &EntityDef, ctx: &Spawn
     ));
 
     for component in &entity_def.components {
-        component.spawn(&mut ec, ctx);
+        component.insert_component(&mut ec, ctx);
     }
 
     ec.id()

@@ -63,7 +63,7 @@ pub struct OnArea {
     pub entities: Vec<EntityDef>,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
     let size = def.size.eval(&eval_ctx);
     let interval = def.interval.as_ref().map(|i| i.eval(&eval_ctx));

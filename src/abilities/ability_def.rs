@@ -1,36 +1,50 @@
 use serde::Deserialize;
 
-use crate::building_blocks::activators::ActivatorParamsRaw;
-use super::entity_def::{EntityDef, EntityDefRaw};
-use super::ActivatorParams;
+use super::components::{ComponentDef, ComponentDefRaw};
+use super::entity_def::EntityDefRaw;
 use super::context::ProvidedFields;
 use crate::stats::StatRegistry;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct AbilityDefRaw {
     pub id: String,
-    pub activator: ActivatorParamsRaw,
-    #[serde(default)]
-    pub entities: Vec<EntityDefRaw>,
+    pub components: Vec<ComponentDefRaw>,
 }
 
 #[derive(Debug, Clone)]
 pub struct AbilityDef {
-    pub activator_params: ActivatorParams,
-    pub entities: Vec<EntityDef>,
+    pub components: Vec<ComponentDef>,
 }
 
 impl AbilityDefRaw {
     pub fn resolve(&self, stat_registry: &StatRegistry) -> AbilityDef {
-        let activator_provided = self.activator.provided_fields();
+        let has_activator = self.components.iter().any(|c| c.is_activator());
+        if !has_activator {
+            panic!("Ability '{}': must have at least one activator component", self.id);
+        }
 
-        for entity_raw in &self.entities {
-            validate_entity_fields(&self.id, activator_provided, entity_raw);
+        for component in &self.components {
+            if !component.is_activator() {
+                panic!(
+                    "Ability '{}': non-activator components must be nested inside activator's entities",
+                    self.id
+                );
+            }
+        }
+
+        for component in &self.components {
+            let activator_provided = component.provided_fields();
+            let (_, nested) = component.required_fields_and_nested();
+
+            if let Some((_, nested_entities)) = nested {
+                for entity_raw in nested_entities {
+                    validate_entity_fields(&self.id, activator_provided, entity_raw);
+                }
+            }
         }
 
         AbilityDef {
-            activator_params: self.activator.resolve(stat_registry),
-            entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
+            components: self.components.iter().map(|c| c.resolve(stat_registry)).collect(),
         }
     }
 }

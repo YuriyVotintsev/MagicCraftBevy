@@ -44,7 +44,7 @@ pub struct Growing {
     pub elapsed: f32,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
     let start_size = def.start_size.eval(&eval_ctx);
     let end_size = def.end_size.eval(&eval_ctx);

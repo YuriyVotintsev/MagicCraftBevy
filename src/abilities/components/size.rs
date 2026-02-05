@@ -25,7 +25,7 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 #[derive(Component)]
 pub struct Size(pub f32);
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let size = def.0.eval(&ctx.eval_context());
     commands.insert(Size(size));
 }

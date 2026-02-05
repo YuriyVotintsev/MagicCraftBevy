@@ -38,7 +38,7 @@ pub struct DamagePayload {
     pub target: Entity,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     if let Some(target) = ctx.target.entity {
         commands.insert(DamagePayload {
             amount: def.amount.clone(),

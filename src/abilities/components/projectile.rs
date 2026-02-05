@@ -24,7 +24,7 @@ pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(Pro
 #[derive(Component)]
 pub struct Projectile;
 
-pub fn spawn(commands: &mut EntityCommands, _def: &Def, _ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, _def: &Def, _ctx: &SpawnContext) {
     commands.insert((Name::new("Projectile"), Projectile));
 }
 

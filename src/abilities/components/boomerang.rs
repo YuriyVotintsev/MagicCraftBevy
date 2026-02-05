@@ -51,7 +51,7 @@ pub struct Boomerang {
     pub returning: bool,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
     let max_distance = def.max_distance.eval(&eval_ctx);
 

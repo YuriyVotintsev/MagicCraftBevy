@@ -1,12 +1,18 @@
 use std::collections::HashMap;
 use bevy::prelude::*;
 
+use crate::Faction;
+use crate::stats::DEFAULT_STATS;
+use super::context::TargetInfo;
 use super::ids::AbilityId;
-use super::{AbilityInstance, spawn_activator};
+use super::activator_support::AbilityEntity;
+use super::spawn::SpawnContext;
+use super::AbilitySource;
 
 pub fn attach_ability(
     commands: &mut Commands,
     owner: Entity,
+    owner_faction: Faction,
     ability_id: AbilityId,
     ability_registry: &AbilityRegistry,
 ) {
@@ -15,14 +21,26 @@ pub fn attach_ability(
     };
 
     let mut entity_commands = commands.spawn((
-        AbilityInstance { ability_id, owner },
+        AbilitySource::new(ability_id, owner, owner_faction),
+        AbilityEntity,
         Name::new(format!("Ability_{:?}", ability_id)),
     ));
 
-    spawn_activator(
-        &mut entity_commands,
-        &ability_def.activator_params,
-    );
+    let ctx = SpawnContext {
+        ability_id,
+        caster: owner,
+        caster_position: Vec2::ZERO,
+        caster_faction: owner_faction,
+        source: TargetInfo::EMPTY,
+        target: TargetInfo::EMPTY,
+        stats: &DEFAULT_STATS,
+        index: 0,
+        count: 1,
+    };
+
+    for component in &ability_def.components {
+        component.insert_component(&mut entity_commands, &ctx);
+    }
 }
 
 #[derive(Resource, Default)]

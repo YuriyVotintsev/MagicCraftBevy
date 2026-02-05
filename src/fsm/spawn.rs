@@ -104,7 +104,7 @@ pub fn spawn_mob(
 
     for ability_name in &mob_def.abilities {
         if let Some(ability_id) = ability_registry.get_id(ability_name) {
-            attach_ability(commands, entity, ability_id, ability_registry);
+            attach_ability(commands, entity, Faction::Enemy, ability_id, ability_registry);
         }
     }
 

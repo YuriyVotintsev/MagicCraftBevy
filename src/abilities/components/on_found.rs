@@ -47,7 +47,7 @@ pub struct OnFound {
     pub entities: Vec<EntityDef>,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
     commands.insert(OnFound {
         entities: def.entities.clone(),
     });

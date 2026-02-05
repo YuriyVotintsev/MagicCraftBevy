@@ -52,7 +52,7 @@ pub struct OnCollision {
     pub entities: Vec<EntityDef>,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
     commands.insert(OnCollision {
         entities: def.entities.clone(),
     });

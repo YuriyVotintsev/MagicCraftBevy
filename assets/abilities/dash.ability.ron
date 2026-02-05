@@ -1,7 +1,8 @@
 (
     id: "dash",
-    activator: OnInput(()),
-    entities: [
-        (components: [Dash((speed: "1500.0", duration: "0.2"))])
+    components: [
+        OnInput((entities: [
+            (components: [Dash((speed: "1500.0", duration: "0.2"))])
+        ]))
     ]
 )

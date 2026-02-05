@@ -1,17 +1,18 @@
 (
     id: "archer_shot",
-    activator: OnInput(()),
-    entities: [
-        (components: [
-            Projectile(()),
-            Speed(("400.0")),
-            Straight(()),
-            Size(("16.0")),
-            Collider((shape: Circle)),
-            Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
-            OnCollision((entities: [
-                (components: [DamagePayload((amount: "stat(physical_damage)"))])
-            ]))
-        ])
+    components: [
+        OnInput((entities: [
+            (components: [
+                Projectile(()),
+                Speed(("400.0")),
+                Straight(()),
+                Size(("16.0")),
+                Collider((shape: Circle)),
+                Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
+                OnCollision((entities: [
+                    (components: [DamagePayload((amount: "stat(physical_damage)"))])
+                ]))
+            ])
+        ]))
     ]
 )

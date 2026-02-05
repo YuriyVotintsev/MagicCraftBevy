@@ -123,13 +123,13 @@ fn spawn_player(
     )).id();
 
     if let Some(active_id) = selected_spells.active {
-        attach_ability(&mut commands, entity, active_id, &ability_registry);
+        attach_ability(&mut commands, entity, Faction::Player, active_id, &ability_registry);
     }
     if let Some(passive_id) = selected_spells.passive {
-        attach_ability(&mut commands, entity, passive_id, &ability_registry);
+        attach_ability(&mut commands, entity, Faction::Player, passive_id, &ability_registry);
     }
     if let Some(defensive_id) = selected_spells.defensive {
-        attach_ability(&mut commands, entity, defensive_id, &ability_registry);
+        attach_ability(&mut commands, entity, Faction::Player, defensive_id, &ability_registry);
     }
 }
 

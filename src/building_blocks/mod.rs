@@ -1,4 +1,3 @@
-pub mod activators;
 pub mod behaviours;
 pub mod transitions;
 

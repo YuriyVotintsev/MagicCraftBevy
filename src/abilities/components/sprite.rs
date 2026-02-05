@@ -51,7 +51,7 @@ pub struct Sprite {
     pub position: Option<Vec2>,
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
+pub fn insert_component(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let color = Color::srgba(def.color.0, def.color.1, def.color.2, def.color.3);
 
     let eval_ctx = ctx.eval_context();
