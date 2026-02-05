@@ -27,22 +27,30 @@ pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(Pro
 #[derive(Component)]
 pub struct FollowCaster;
 
-pub fn spawn(commands: &mut EntityCommands, _def: &Def, ctx: &SpawnContext) {
-    let source_pos = ctx.source.position.map(|p| p.extend(0.0)).unwrap_or(Vec3::ZERO);
-    commands.insert((
-        FollowCaster,
-        AttachedTo { owner: ctx.caster },
-        Transform::from_translation(source_pos),
-    ));
+pub fn spawn(commands: &mut EntityCommands, _def: &Def, _ctx: &SpawnContext) {
+    commands.insert(FollowCaster);
 }
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
-        follow_caster_system
+        (init_follow_caster, follow_caster_system)
+            .chain()
             .in_set(GameSet::AbilityExecution)
             .run_if(in_state(GameState::Playing)),
     );
+}
+
+fn init_follow_caster(
+    mut commands: Commands,
+    query: Query<(Entity, &crate::abilities::AbilitySource), Added<FollowCaster>>,
+) {
+    for (entity, source) in &query {
+        commands.entity(entity).insert((
+            AttachedTo { owner: source.caster },
+            Transform::default(),
+        ));
+    }
 }
 
 fn follow_caster_system(

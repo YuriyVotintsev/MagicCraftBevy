@@ -44,33 +44,23 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
     (fields, None)
 }
 
+#[derive(Component)]
+pub struct AbilitySprite {
+    pub color: Color,
+    pub shape: SpriteShape,
+    pub position: Option<Vec2>,
+}
+
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let color = Color::srgba(def.color.0, def.color.1, def.color.2, def.color.3);
 
     let eval_ctx = ctx.eval_context();
     let position = match &def.position {
-        Some(pos_expr) => pos_expr.eval(&eval_ctx).extend(0.0),
-        None => ctx.source.position.map(|p| p.extend(0.0)).unwrap_or(Vec3::ZERO),
+        Some(pos_expr) => Some(pos_expr.eval(&eval_ctx)),
+        None => ctx.source.position,
     };
 
-    match def.shape {
-        SpriteShape::Square => {
-            commands.insert((
-                Sprite {
-                    color,
-                    custom_size: Some(Vec2::ONE),
-                    ..default()
-                },
-                Transform::from_translation(position),
-            ));
-        }
-        SpriteShape::Circle => {
-            commands.insert((
-                CircleSprite { color },
-                Transform::from_translation(position),
-            ));
-        }
-    }
+    commands.insert(AbilitySprite { color, shape: def.shape, position });
 }
 
 #[derive(Component)]
@@ -80,7 +70,33 @@ pub struct CircleSprite {
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(Startup, setup_circle_mesh);
-    app.add_systems(PostUpdate, spawn_circle_visuals);
+    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals).chain());
+}
+
+fn init_sprite(
+    mut commands: Commands,
+    query: Query<(Entity, &AbilitySprite), Added<AbilitySprite>>,
+) {
+    for (entity, sprite) in &query {
+        let transform = Transform::from_translation(
+            sprite.position.unwrap_or(Vec2::ZERO).extend(0.0)
+        );
+        match sprite.shape {
+            SpriteShape::Square => {
+                commands.entity(entity).insert((
+                    Sprite {
+                        color: sprite.color,
+                        custom_size: Some(Vec2::ONE),
+                        ..default()
+                    },
+                    transform,
+                ));
+            }
+            SpriteShape::Circle => {
+                commands.entity(entity).insert((CircleSprite { color: sprite.color }, transform));
+            }
+        }
+    }
 }
 
 #[derive(Resource)]

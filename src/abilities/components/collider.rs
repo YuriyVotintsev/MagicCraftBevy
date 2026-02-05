@@ -42,23 +42,39 @@ pub fn required_fields_and_nested(_raw: &DefRaw) -> (ProvidedFields, Option<(Pro
     (ProvidedFields::NONE, None)
 }
 
-pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
-    let collider = match def.shape {
-        Shape::Circle => Collider::circle(1.0),
-    };
-
-    let layers = match ctx.caster_faction {
-        Faction::Player => CollisionLayers::new(
-            GameLayer::PlayerProjectile,
-            [GameLayer::Enemy, GameLayer::Wall],
-        ),
-        Faction::Enemy => CollisionLayers::new(
-            GameLayer::EnemyProjectile,
-            [GameLayer::Player, GameLayer::Wall],
-        ),
-    };
-
-    commands.insert((collider, Sensor, CollisionEventsEnabled, layers));
+#[derive(Component)]
+pub struct AbilityCollider {
+    pub shape: Shape,
 }
 
-pub fn register_systems(_app: &mut App) {}
+pub fn spawn(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
+    commands.insert(AbilityCollider { shape: def.shape.clone() });
+}
+
+pub fn register_systems(app: &mut App) {
+    app.add_systems(PostUpdate, init_collider);
+}
+
+fn init_collider(
+    mut commands: Commands,
+    query: Query<(Entity, &AbilityCollider, &crate::abilities::AbilitySource), Added<AbilityCollider>>,
+) {
+    for (entity, collider, source) in &query {
+        let avian_collider = match collider.shape {
+            Shape::Circle => Collider::circle(1.0),
+        };
+
+        let layers = match source.caster_faction {
+            Faction::Player => CollisionLayers::new(
+                GameLayer::PlayerProjectile,
+                [GameLayer::Enemy, GameLayer::Wall],
+            ),
+            Faction::Enemy => CollisionLayers::new(
+                GameLayer::EnemyProjectile,
+                [GameLayer::Player, GameLayer::Wall],
+            ),
+        };
+
+        commands.entity(entity).insert((avian_collider, Sensor, CollisionEventsEnabled, layers));
+    }
+}

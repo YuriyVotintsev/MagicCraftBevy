@@ -39,12 +39,12 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 }
 
 #[derive(Component)]
-pub struct OnExpireTrigger {
+pub struct OnExpire {
     pub entities: Vec<EntityDef>,
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(OnExpireTrigger {
+    commands.insert(OnExpire {
         entities: def.entities.clone(),
     });
 }
@@ -55,7 +55,7 @@ pub fn register_systems(app: &mut App) {
 
 fn on_expire_trigger_system(
     mut commands: Commands,
-    query: Query<(Entity, &OnExpireTrigger, &AbilitySource, &Transform, &Lifetime)>,
+    query: Query<(Entity, &OnExpire, &AbilitySource, &Transform, &Lifetime)>,
     stats_query: Query<&ComputedStats>,
     transforms: Query<&Transform>,
 ) {
@@ -91,6 +91,6 @@ fn on_expire_trigger_system(
             crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx);
         }
 
-        commands.entity(entity).remove::<OnExpireTrigger>();
+        commands.entity(entity).remove::<OnExpire>();
     }
 }

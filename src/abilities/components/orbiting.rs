@@ -37,7 +37,7 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 }
 
 #[derive(Component)]
-pub struct OrbitingMovement {
+pub struct Orbiting {
     pub radius: f32,
     pub angular_speed: f32,
     pub current_angle: f32,
@@ -54,34 +54,43 @@ pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
         0.0
     };
 
-    let offset = Vec2::new(initial_angle.cos(), initial_angle.sin()) * radius;
-    let source_pos = ctx.source.position.map(|p| p.extend(0.0)).unwrap_or(Vec3::ZERO);
-    let position = source_pos + offset.extend(0.0);
-
-    commands.insert((
-        OrbitingMovement {
-            radius,
-            angular_speed,
-            current_angle: initial_angle,
-        },
-        AttachedTo { owner: ctx.caster },
-        Transform::from_translation(position),
-    ));
+    commands.insert(Orbiting {
+        radius,
+        angular_speed,
+        current_angle: initial_angle,
+    });
 }
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
-        update_orbiting_positions
+        (init_orbiting, update_orbiting_positions)
+            .chain()
             .in_set(GameSet::AbilityExecution)
             .run_if(in_state(GameState::Playing)),
     );
 }
 
+fn init_orbiting(
+    mut commands: Commands,
+    query: Query<(Entity, &Orbiting, &crate::abilities::AbilitySource), Added<Orbiting>>,
+    transforms: Query<&Transform>,
+) {
+    for (entity, orbiting, source) in &query {
+        let owner_pos = transforms.get(source.caster).map(|t| t.translation).unwrap_or_default();
+        let offset = Vec2::new(orbiting.current_angle.cos(), orbiting.current_angle.sin()) * orbiting.radius;
+        let position = owner_pos + offset.extend(0.0);
+        commands.entity(entity).insert((
+            AttachedTo { owner: source.caster },
+            Transform::from_translation(position),
+        ));
+    }
+}
+
 fn update_orbiting_positions(
     time: Res<Time>,
-    owner_query: Query<&Transform, Without<OrbitingMovement>>,
-    mut orb_query: Query<(&AttachedTo, &mut OrbitingMovement, &mut Transform)>,
+    owner_query: Query<&Transform, Without<Orbiting>>,
+    mut orb_query: Query<(&AttachedTo, &mut Orbiting, &mut Transform)>,
 ) {
     for (attached, mut orbiting, mut transform) in &mut orb_query {
         orbiting.current_angle += orbiting.angular_speed * time.delta_secs();

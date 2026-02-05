@@ -56,7 +56,7 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 }
 
 #[derive(Component)]
-pub struct OnAreaTrigger {
+pub struct OnArea {
     pub size: f32,
     pub interval: Option<f32>,
     pub timer: f32,
@@ -67,7 +67,7 @@ pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
     let size = def.size.eval(&eval_ctx);
     let interval = def.interval.as_ref().map(|i| i.eval(&eval_ctx));
-    commands.insert(OnAreaTrigger {
+    commands.insert(OnArea {
         size,
         interval,
         timer: 0.0,
@@ -82,7 +82,7 @@ pub fn register_systems(app: &mut App) {
 fn on_area_trigger_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut OnAreaTrigger, &AbilitySource, &Transform)>,
+    mut query: Query<(Entity, &mut OnArea, &AbilitySource, &Transform)>,
     spatial_query: SpatialQuery,
     stats_query: Query<&ComputedStats>,
     target_transforms: Query<&Transform>,
@@ -144,7 +144,7 @@ fn on_area_trigger_system(
         }
 
         if trigger.interval.is_none() {
-            commands.entity(entity).remove::<OnAreaTrigger>();
+            commands.entity(entity).remove::<OnArea>();
         }
     }
 }

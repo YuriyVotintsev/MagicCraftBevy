@@ -55,7 +55,7 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 }
 
 #[derive(Component)]
-pub struct FallingProjectile {
+pub struct Falling {
     pub target_position: Vec2,
     pub height: f32,
     pub duration: f32,
@@ -76,7 +76,7 @@ pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
             .unwrap_or(Vec2::ZERO),
     };
 
-    commands.insert(FallingProjectile {
+    commands.insert(Falling {
         target_position,
         height,
         duration,
@@ -98,9 +98,9 @@ pub fn register_systems(app: &mut App) {
 fn update_falling_projectiles(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut FallingProjectile, &AbilitySource, &mut Transform)>,
+    mut query: Query<(Entity, &mut Falling, &AbilitySource, &mut Transform)>,
     stats_query: Query<&ComputedStats>,
-    transforms: Query<&Transform, Without<FallingProjectile>>,
+    transforms: Query<&Transform, Without<Falling>>,
 ) {
     let dt = time.delta_secs();
 

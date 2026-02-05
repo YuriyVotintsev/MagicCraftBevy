@@ -39,7 +39,7 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 }
 
 #[derive(Component)]
-pub struct DashRequest {
+pub struct Dash {
     pub speed: f32,
     pub duration: f32,
     pub direction: Vec2,
@@ -64,7 +64,7 @@ pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let direction = ctx.target.direction.unwrap_or(Vec2::ZERO);
 
     if direction != Vec2::ZERO {
-        commands.insert(DashRequest {
+        commands.insert(Dash {
             speed,
             duration,
             direction,
@@ -85,7 +85,7 @@ pub fn register_systems(app: &mut App) {
 
 fn apply_dash_requests(
     mut commands: Commands,
-    query: Query<(Entity, &DashRequest)>,
+    query: Query<(Entity, &Dash)>,
     mut invuln_query: Query<&mut InvulnerableStack>,
     collision_query: Query<&CollisionLayers>,
 ) {

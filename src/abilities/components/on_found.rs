@@ -43,12 +43,12 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 }
 
 #[derive(Component)]
-pub struct OnFoundTrigger {
+pub struct OnFound {
     pub entities: Vec<EntityDef>,
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(OnFoundTrigger {
+    commands.insert(OnFound {
         entities: def.entities.clone(),
     });
 }
@@ -64,7 +64,7 @@ pub fn register_systems(app: &mut App) {
 
 fn on_found_trigger_system(
     mut commands: Commands,
-    query: Query<(Entity, &OnFoundTrigger, &FoundTarget, &AbilitySource)>,
+    query: Query<(Entity, &OnFound, &FoundTarget, &AbilitySource)>,
     stats_query: Query<&ComputedStats>,
     transforms: Query<&Transform>,
 ) {

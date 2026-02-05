@@ -44,12 +44,6 @@ pub struct Growing {
     pub elapsed: f32,
 }
 
-#[derive(Component)]
-pub struct GrowingParams {
-    pub start_size: f32,
-    pub end_size: f32,
-}
-
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
     let start_size = def.start_size.eval(&eval_ctx);
@@ -60,7 +54,6 @@ pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
         duration: 0.0,
         elapsed: 0.0,
     });
-    commands.insert(GrowingParams { start_size, end_size });
 }
 
 pub fn register_systems(app: &mut App) {
@@ -88,12 +81,10 @@ fn tick_growing(time: Res<Time>, mut query: Query<(&mut Growing, &mut Transform)
 }
 
 fn sync_growing_with_lifetime(
-    mut query: Query<(&mut Growing, &GrowingParams, &Lifetime), Changed<Lifetime>>,
+    mut query: Query<(&mut Growing, &Lifetime), Changed<Lifetime>>,
 ) {
-    for (mut growing, params, lifetime) in &mut query {
+    for (mut growing, lifetime) in &mut query {
         if growing.duration == 0.0 {
-            growing.start_size = params.start_size;
-            growing.end_size = params.end_size;
             growing.duration = lifetime.remaining;
         }
     }

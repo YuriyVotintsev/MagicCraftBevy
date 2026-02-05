@@ -4,7 +4,7 @@
     entities: [
         (components: [
             Projectile(()),
-            Velocity((speed: "500.0")),
+            Speed(("500.0")),
             Boomerang((max_distance: "300.0")),
             Size(("60.0")),
             Collider((shape: Circle)),

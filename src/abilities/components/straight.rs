@@ -7,10 +7,13 @@ use crate::abilities::context::ProvidedFields;
 use crate::abilities::entity_def::EntityDefRaw;
 use crate::abilities::expr::{ScalarExpr, ScalarExprRaw, VecExpr, VecExprRaw};
 use crate::abilities::spawn::SpawnContext;
+use crate::schedule::GameSet;
+use crate::GameState;
+
+use super::speed::Speed;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct DefRaw {
-    pub speed: ScalarExprRaw,
     #[serde(default)]
     pub spread: Option<ScalarExprRaw>,
     #[serde(default)]
@@ -19,7 +22,6 @@ pub struct DefRaw {
 
 #[derive(Debug, Clone)]
 pub struct Def {
-    pub speed: ScalarExpr,
     pub spread: Option<ScalarExpr>,
     pub direction: Option<VecExpr>,
 }
@@ -27,7 +29,6 @@ pub struct Def {
 impl DefRaw {
     pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
         Def {
-            speed: self.speed.resolve(stat_registry),
             spread: self.spread.as_ref().map(|s| s.resolve(stat_registry)),
             direction: self.direction.as_ref().map(|d| d.resolve(stat_registry)),
         }
@@ -35,24 +36,29 @@ impl DefRaw {
 }
 
 pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(ProvidedFields, &[EntityDefRaw])>) {
-    let mut fields = raw.speed.required_fields();
+    let mut fields = ProvidedFields::NONE;
     if let Some(ref spread) = raw.spread {
         fields = fields.union(spread.required_fields());
     }
-    if let Some(ref direction) = raw.direction {
-        fields = fields.union(direction.required_fields());
+    match &raw.direction {
+        Some(dir) => fields = fields.union(dir.required_fields()),
+        None => fields = fields.union(ProvidedFields::TARGET_DIRECTION),
     }
     (fields, None)
 }
 
+#[derive(Component)]
+pub struct Straight {
+    pub direction: Vec2,
+}
+
 pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
     let eval_ctx = ctx.eval_context();
-    let speed = def.speed.eval(&eval_ctx);
     let spread = def.spread.as_ref().map(|s| s.eval(&eval_ctx)).unwrap_or(0.0);
 
     let base_direction = match &def.direction {
         Some(dir_expr) => dir_expr.eval(&eval_ctx).normalize_or_zero(),
-        None => ctx.target.direction.unwrap_or(Vec2::X),
+        None => ctx.target.direction.expect("Straight requires target.direction when direction field is not specified"),
     };
 
     let direction = if spread > 0.0 {
@@ -68,8 +74,26 @@ pub fn spawn(commands: &mut EntityCommands, def: &Def, ctx: &SpawnContext) {
         base_direction
     };
 
-    let velocity = direction * speed;
-    commands.insert((RigidBody::Kinematic, LinearVelocity(velocity)));
+    commands.insert(Straight { direction });
 }
 
-pub fn register_systems(_app: &mut App) {}
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        init_straight
+            .in_set(GameSet::AbilityExecution)
+            .run_if(in_state(GameState::Playing)),
+    );
+}
+
+fn init_straight(
+    mut commands: Commands,
+    query: Query<(Entity, &Speed, &Straight), Added<Straight>>,
+) {
+    for (entity, speed, straight) in &query {
+        commands.entity(entity).insert((
+            RigidBody::Kinematic,
+            LinearVelocity(straight.direction * speed.0),
+        ));
+    }
+}

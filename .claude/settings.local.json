@@ -29,7 +29,8 @@
       "WebFetch(domain:lib.rs)",
       "Bash(cat:*)",
       "Bash(tree:*)",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(git mv:*)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"

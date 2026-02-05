@@ -1,6 +1,7 @@
 collect_components!([
     projectile,
-    velocity,
+    speed,
+    straight,
     lifetime,
     pierce,
     growing,

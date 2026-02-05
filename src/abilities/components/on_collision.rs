@@ -48,12 +48,12 @@ pub fn required_fields_and_nested(raw: &DefRaw) -> (ProvidedFields, Option<(Prov
 }
 
 #[derive(Component)]
-pub struct OnCollisionTrigger {
+pub struct OnCollision {
     pub entities: Vec<EntityDef>,
 }
 
 pub fn spawn(commands: &mut EntityCommands, def: &Def, _ctx: &SpawnContext) {
-    commands.insert(OnCollisionTrigger {
+    commands.insert(OnCollision {
         entities: def.entities.clone(),
     });
 }
@@ -70,8 +70,8 @@ pub fn register_systems(app: &mut App) {
 fn on_collision_trigger_system(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
-    hittable_query: Query<(&AbilitySource, &Faction, &Transform, &OnCollisionTrigger)>,
-    target_query: Query<(&Faction, &Transform), Without<OnCollisionTrigger>>,
+    hittable_query: Query<(&AbilitySource, &Faction, &Transform, &OnCollision)>,
+    target_query: Query<(&Faction, &Transform), Without<OnCollision>>,
     wall_query: Query<(), With<Wall>>,
     stats_query: Query<&ComputedStats>,
     transforms: Query<&Transform>,
