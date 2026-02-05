@@ -42,7 +42,9 @@ impl Plugin for StatsPlugin {
             .add_message::<DamageEvent>()
             .add_systems(
                 PreUpdate,
-                systems::recalculate_stats.run_if(not(in_state(GameState::Loading))),
+                (systems::mark_dirty_on_modifier_change, systems::recalculate_stats)
+                    .chain()
+                    .run_if(not(in_state(GameState::Loading))),
             )
             .add_systems(
                 Update,

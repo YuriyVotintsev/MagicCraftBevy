@@ -1,11 +1,12 @@
 (
     id: "orbiting_orbs",
     components: [
-        Once((entities: [
+        Persistent((entities: [
             (
                 count: Some("3"),
                 components: [
-                    Orbiting((radius: "80.0", angular_speed: "3.0")),
+                    Recalculate(()),
+                    Orbiting((radius: "80.0", angular_speed: "stat(movement_speed) / 100.0")),
                     Size((value: "20.0")),
                     Collider((shape: Circle)),
                     Sprite((color: (0.3, 0.7, 1.0, 1.0), shape: Circle)),

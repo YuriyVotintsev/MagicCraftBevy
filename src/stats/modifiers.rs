@@ -64,7 +64,6 @@ impl Modifiers {
         self.list.iter()
     }
 
-    #[allow(dead_code)]
     pub fn affected_stats(&self) -> impl Iterator<Item = StatId> + '_ {
         let mut seen = HashSet::new();
         self.list.iter().filter_map(move |m| {

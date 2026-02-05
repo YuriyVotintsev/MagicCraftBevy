@@ -260,6 +260,22 @@ impl EntityExprRaw {
 }
 
 impl ScalarExpr {
+    pub fn uses_stats(&self) -> bool {
+        match self {
+            Self::Literal(_) | Self::Index | Self::Count => false,
+            Self::Stat(_) => true,
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::Div(a, b)
+            | Self::Min(a, b)
+            | Self::Max(a, b) => a.uses_stats() || b.uses_stats(),
+            Self::Neg(a) => a.uses_stats(),
+            Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.uses_stats(),
+            Self::Distance(a, b) | Self::Dot(a, b) => a.uses_stats() || b.uses_stats(),
+        }
+    }
+
     pub fn eval(&self, ctx: &EvalContext) -> f32 {
         match self {
             Self::Literal(v) => *v,
@@ -294,6 +310,20 @@ impl ScalarExpr {
 }
 
 impl VecExpr {
+    pub fn uses_stats(&self) -> bool {
+        match self {
+            Self::CasterPos | Self::SourcePos | Self::SourceDir
+            | Self::TargetPos | Self::TargetDir => false,
+            Self::Add(a, b) | Self::Sub(a, b) => a.uses_stats() || b.uses_stats(),
+            Self::Scale(v, s) => v.uses_stats() || s.uses_stats(),
+            Self::Normalize(v) => v.uses_stats(),
+            Self::Rotate(v, a) => v.uses_stats() || a.uses_stats(),
+            Self::Lerp(a, b, t) => a.uses_stats() || b.uses_stats() || t.uses_stats(),
+            Self::Vec2Expr(x, y) => x.uses_stats() || y.uses_stats(),
+            Self::FromAngle(a) => a.uses_stats(),
+        }
+    }
+
     pub fn eval(&self, ctx: &EvalContext) -> Vec2 {
         match self {
             Self::CasterPos => ctx.caster.position.unwrap_or(Vec2::ZERO),

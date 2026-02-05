@@ -181,6 +181,40 @@ fn is_option_vec_expr(ty: &Type) -> bool {
     false
 }
 
+fn get_update_code(field_name: &syn::Ident, ty: &Type) -> Option<TokenStream2> {
+    if is_scalar_expr_type(ty) {
+        Some(quote! {
+            if def.#field_name.uses_stats() {
+                comp.#field_name = def.#field_name.eval(&eval_ctx);
+            }
+        })
+    } else if is_vec_expr_type(ty) {
+        Some(quote! {
+            if def.#field_name.uses_stats() {
+                comp.#field_name = def.#field_name.eval(&eval_ctx);
+            }
+        })
+    } else if is_option_scalar_expr(ty) {
+        Some(quote! {
+            if let Some(ref expr) = def.#field_name {
+                if expr.uses_stats() {
+                    comp.#field_name = Some(expr.eval(&eval_ctx));
+                }
+            }
+        })
+    } else if is_option_vec_expr(ty) {
+        Some(quote! {
+            if let Some(ref expr) = def.#field_name {
+                if expr.uses_stats() {
+                    comp.#field_name = Some(expr.eval(&eval_ctx));
+                }
+            }
+        })
+    } else {
+        None
+    }
+}
+
 fn is_bool_type(ty: &Type) -> bool {
     if let Type::Path(type_path) = ty {
         if let Some(segment) = type_path.path.segments.last() {
@@ -809,6 +843,9 @@ fn generate_ability_component_unit(
         pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, _def: &Def, _ctx: &crate::abilities::spawn::SpawnContext) {
             commands.insert(#component_name);
         }
+
+        pub fn update_component(_entity: bevy::prelude::Entity, _def: &Def, _ctx: &crate::abilities::spawn::SpawnContext, _world: &mut bevy::prelude::World) {
+        }
     };
 
     output.into()
@@ -827,6 +864,7 @@ fn generate_ability_component_named(
 
     let mut component_fields = Vec::new();
     let mut insert_fields = Vec::new();
+    let mut update_stmts = Vec::new();
 
     for field in &fields.named {
         let field_name = field.ident.as_ref().unwrap();
@@ -837,6 +875,10 @@ fn generate_ability_component_named(
 
         if is_entities {
             entities_field_name = Some(field_name.clone());
+        }
+
+        if let Some(update_code) = get_update_code(field_name, field_ty) {
+            update_stmts.push(update_code);
         }
 
         if is_scalar_expr_type(field_ty) {
@@ -1150,6 +1192,13 @@ fn generate_ability_component_named(
             commands.insert(#component_name {
                 #(#insert_fields,)*
             });
+        }
+
+        pub fn update_component(entity: bevy::prelude::Entity, def: &Def, ctx: &crate::abilities::spawn::SpawnContext, world: &mut bevy::prelude::World) {
+            let eval_ctx = ctx.eval_context();
+            if let Some(mut comp) = world.get_mut::<#component_name>(entity) {
+                #(#update_stmts)*
+            }
         }
     };
 

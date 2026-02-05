@@ -5,7 +5,13 @@ use crate::stats::ComputedStats;
 use super::context::TargetInfo;
 use super::eval_context::EvalContext;
 use super::entity_def::EntityDef;
+use super::components::ComponentDef;
 use super::{AbilitySource, ids::AbilityId};
+
+#[derive(Component, Clone)]
+pub struct StoredComponentDefs {
+    pub defs: Vec<ComponentDef>,
+}
 
 pub struct SpawnContext<'a> {
     pub ability_id: AbilityId,
@@ -38,8 +44,16 @@ pub fn spawn_entity(commands: &mut Commands, entity_def: &EntityDef, ctx: &Spawn
         ctx.caster_faction,
     ));
 
+    let has_recalculate = entity_def.components.iter().any(|c| matches!(c, ComponentDef::Recalculate(_)));
+
     for component in &entity_def.components {
         component.insert_component(&mut ec, ctx);
+    }
+
+    if has_recalculate {
+        ec.insert(StoredComponentDefs {
+            defs: entity_def.components.clone(),
+        });
     }
 
     ec.id()

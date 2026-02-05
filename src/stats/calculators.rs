@@ -107,7 +107,6 @@ impl StatCalculators {
         result
     }
 
-    #[allow(dead_code)]
     pub fn invalidate(&self, stat: StatId, dirty: &mut DirtyStats) {
         dirty.mark(stat);
         let idx = stat.0 as usize;

@@ -102,6 +102,19 @@ macro_rules! collect_components {
                 }
             }
 
+            pub fn update_component(&self, entity: ::bevy::prelude::Entity, ctx: &super::spawn::SpawnContext, world: &mut ::bevy::prelude::World) {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$activator:camel>](def) => $activator::update_component(entity, def, ctx, world),
+                        )*
+                        $(
+                            Self::[<$component:camel>](def) => $component::update_component(entity, def, ctx, world),
+                        )*
+                    }
+                }
+            }
+
             #[allow(dead_code)]
             pub fn is_activator(&self) -> bool {
                 paste::paste! {
