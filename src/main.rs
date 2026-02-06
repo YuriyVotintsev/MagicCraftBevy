@@ -132,6 +132,7 @@ fn main() {
             (
                 GameSet::Input,
                 GameSet::MobAI,
+                GameSet::Spawning,
                 GameSet::AbilityActivation,
                 GameSet::AbilityExecution,
                 GameSet::Damage,
@@ -141,6 +142,12 @@ fn main() {
                 .run_if(in_state(GameState::Playing)),
         )
         .configure_sets(PostUpdate, PostGameSet.run_if(in_state(GameState::Playing)))
+        .add_systems(
+            Update,
+            ApplyDeferred
+                .after(GameSet::Spawning)
+                .before(GameSet::AbilityActivation),
+        )
         .add_systems(
             Update,
             ApplyDeferred

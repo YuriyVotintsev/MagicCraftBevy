@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::abilities::components::health::Health;
 use crate::money::PlayerMoney;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::stats::{death_system, DeathEvent};
@@ -31,9 +32,6 @@ pub struct WaveState {
     pub target_count: u32,
     pub max_concurrent: u32,
 }
-
-#[derive(Component)]
-pub struct WaveMarker;
 
 impl Default for WaveState {
     fn default() -> Self {
@@ -139,7 +137,7 @@ fn track_wave_kills(
 fn check_wave_completion(
     mut commands: Commands,
     wave_state: Res<WaveState>,
-    enemies_query: Query<&Faction>,
+    enemies_query: Query<&Faction, With<Health>>,
     player_query: Query<Entity, With<crate::player::Player>>,
     mut invuln_query: Query<&mut InvulnerableStack>,
     mut next_phase: ResMut<NextState<WavePhase>>,

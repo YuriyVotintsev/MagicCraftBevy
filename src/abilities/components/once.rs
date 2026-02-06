@@ -4,7 +4,7 @@ use magic_craft_macros::ability_component;
 use crate::abilities::{AbilityRegistry, AbilitySource, TargetInfo};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, StatCalculators, StatRegistry, DEFAULT_STATS};
-use crate::wave::{WaveEnemy, WaveMarker, WavePhase};
+use crate::wave::{WaveEnemy, WavePhase};
 use crate::GameState;
 
 #[ability_component(SOURCE_ENTITY, SOURCE_POSITION)]
@@ -28,7 +28,7 @@ fn once_system(
     mut commands: Commands,
     ability_query: Query<(Entity, &AbilitySource, &Once), Without<OnceTriggered>>,
     owner_query: Query<&Transform>,
-    wave_marker_query: Query<(), With<WaveMarker>>,
+    wave_enemy_query: Query<(), With<WaveEnemy>>,
     stats_query: Query<&ComputedStats>,
     stat_registry: Option<Res<StatRegistry>>,
     calculators: Option<Res<StatCalculators>>,
@@ -40,7 +40,7 @@ fn once_system(
             continue;
         };
 
-        let is_wave_spawn = wave_marker_query.contains(caster_entity);
+        let is_wave_spawn = wave_enemy_query.contains(caster_entity);
 
         let caster_stats = stats_query
             .get(caster_entity)

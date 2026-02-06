@@ -13,7 +13,7 @@ pub struct Spawn {
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
-        init_spawn.in_set(GameSet::AbilityExecution),
+        init_spawn.in_set(GameSet::Spawning),
     );
 }
 

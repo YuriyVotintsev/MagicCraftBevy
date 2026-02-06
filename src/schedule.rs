@@ -4,6 +4,7 @@ use bevy::prelude::*;
 pub enum GameSet {
     Input,
     MobAI,
+    Spawning,
     AbilityActivation,
     AbilityExecution,
     Damage,

@@ -7,7 +7,8 @@ use crate::Faction;
 use crate::abilities::{AbilityRegistry, attach_ability};
 use crate::abilities::components::health::Health;
 use crate::physics::{GameLayer, Wall};
-use crate::wave::{WaveEnemy, WaveMarker, WavePhase, WaveState};
+use crate::schedule::GameSet;
+use crate::wave::{WaveEnemy, WavePhase, WaveState};
 
 #[cfg(not(feature = "headless"))]
 pub const WINDOW_WIDTH: f32 = 1280.0;
@@ -37,6 +38,7 @@ impl Plugin for ArenaPlugin {
                 Update,
                 (spawn_markers, process_spawn_markers, tag_wave_enemies)
                     .chain()
+                    .in_set(GameSet::Spawning)
                     .run_if(in_state(WavePhase::Combat)),
             )
             .add_systems(
@@ -151,7 +153,7 @@ fn spawn_markers(
     mut commands: Commands,
     wave_state: Res<WaveState>,
     markers_query: Query<(), With<SpawnMarker>>,
-    enemies_query: Query<&Faction>,
+    enemies_query: Query<&Faction, With<Health>>,
 ) {
     let alive_enemies = enemies_query.iter().filter(|f| **f == Faction::Enemy).count() as u32;
     let active_markers = markers_query.iter().count() as u32;
@@ -223,7 +225,7 @@ fn process_spawn_markers(
             }
 
             commands.entity(marker_entity).remove::<(Sprite, SpawnMarker)>();
-            commands.entity(marker_entity).insert((WaveMarker, DespawnOnExit(WavePhase::Combat)));
+            commands.entity(marker_entity).insert((WaveEnemy, DespawnOnExit(WavePhase::Combat)));
         }
     }
 }
