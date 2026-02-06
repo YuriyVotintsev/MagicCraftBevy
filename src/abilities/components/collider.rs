@@ -14,6 +14,8 @@ pub enum Shape {
 #[ability_component]
 pub struct Collider {
     pub shape: Shape,
+    #[raw(default = true)]
+    pub sensor: bool,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -22,24 +24,37 @@ pub fn register_systems(app: &mut App) {
 
 fn init_collider(
     mut commands: Commands,
-    query: Query<(Entity, &Collider, &crate::abilities::AbilitySource), Added<Collider>>,
+    query: Query<(Entity, &Collider, &Faction), Added<Collider>>,
 ) {
-    for (entity, collider, source) in &query {
+    for (entity, collider, faction) in &query {
         let avian_collider = match collider.shape {
             Shape::Circle => AvianCollider::circle(1.0),
         };
 
-        let layers = match source.caster_faction {
-            Faction::Player => CollisionLayers::new(
-                GameLayer::PlayerProjectile,
-                [GameLayer::Enemy, GameLayer::Wall],
-            ),
-            Faction::Enemy => CollisionLayers::new(
-                GameLayer::EnemyProjectile,
-                [GameLayer::Player, GameLayer::Wall],
-            ),
-        };
-
-        commands.entity(entity).insert((avian_collider, Sensor, CollisionEventsEnabled, layers));
+        if collider.sensor {
+            let layers = match faction {
+                Faction::Player => CollisionLayers::new(
+                    GameLayer::PlayerProjectile,
+                    [GameLayer::Enemy, GameLayer::Wall],
+                ),
+                Faction::Enemy => CollisionLayers::new(
+                    GameLayer::EnemyProjectile,
+                    [GameLayer::Player, GameLayer::Wall],
+                ),
+            };
+            commands.entity(entity).insert((avian_collider, Sensor, CollisionEventsEnabled, layers));
+        } else {
+            let layers = match faction {
+                Faction::Player => CollisionLayers::new(
+                    GameLayer::Player,
+                    [GameLayer::Enemy, GameLayer::EnemyProjectile, GameLayer::Wall, GameLayer::Player],
+                ),
+                Faction::Enemy => CollisionLayers::new(
+                    GameLayer::Enemy,
+                    [GameLayer::Player, GameLayer::PlayerProjectile, GameLayer::Wall, GameLayer::Enemy],
+                ),
+            };
+            commands.entity(entity).insert((avian_collider, CollisionEventsEnabled, layers));
+        }
     }
 }

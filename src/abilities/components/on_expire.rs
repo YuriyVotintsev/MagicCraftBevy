@@ -52,7 +52,7 @@ fn on_expire_trigger_system(
         };
 
         for entity_def in &trigger.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx);
+            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx, None, None, None);
         }
 
         commands.entity(entity).remove::<OnExpire>();

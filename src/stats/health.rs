@@ -46,5 +46,3 @@ pub fn cleanup_dead(mut commands: Commands, query: Query<Entity, With<Dead>>) {
         }
     }
 }
-
-

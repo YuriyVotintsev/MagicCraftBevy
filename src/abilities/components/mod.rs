@@ -29,5 +29,12 @@ collect_components!(
         destroy_enemy_projectiles,
         boomerang,
         recalculate,
+        health,
+        dynamic_body,
+        move_toward,
+        keep_distance,
+        use_abilities,
+        when_near,
+        after_time,
     ]
 );

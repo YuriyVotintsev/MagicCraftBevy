@@ -104,7 +104,7 @@ fn spawn_persistent_entities(
 
     let mut spawned = Vec::new();
     for entity_def in &persistent.entities {
-        spawned.extend(crate::abilities::spawn::spawn_entity_def(commands, entity_def, &spawn_ctx));
+        spawned.extend(crate::abilities::spawn::spawn_entity_def(commands, entity_def, &spawn_ctx, None, None, None));
     }
     spawned
 }

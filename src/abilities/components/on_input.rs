@@ -55,7 +55,7 @@ fn on_input_system(
         };
 
         for entity_def in &on_input.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx);
+            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx, None, None, None);
         }
     }
 }

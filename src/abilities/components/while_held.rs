@@ -81,7 +81,7 @@ fn while_held_system(
         };
 
         for entity_def in &while_held.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx);
+            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx, None, None, None);
         }
 
         timer.timer = while_held.interval;

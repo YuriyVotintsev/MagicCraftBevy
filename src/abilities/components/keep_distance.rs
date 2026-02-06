@@ -1,25 +1,24 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use magic_craft_macros::ability_component;
 
 use crate::player::Player;
 use crate::stats::{ComputedStats, StatRegistry};
 
-#[derive(Component)]
+#[ability_component]
 pub struct KeepDistance {
-    pub min_distance: f32,
-    pub max_distance: f32,
+    pub min: ScalarExpr,
+    pub max: ScalarExpr,
 }
 
-impl KeepDistance {
-    pub fn new(min_distance: f32, max_distance: f32) -> Self {
-        Self {
-            min_distance,
-            max_distance,
-        }
-    }
+pub fn register_systems(app: &mut App) {
+    app.add_systems(
+        Update,
+        keep_distance_system.in_set(crate::schedule::GameSet::MobAI),
+    );
 }
 
-pub fn keep_distance_system(
+fn keep_distance_system(
     stat_registry: Res<StatRegistry>,
     mut query: Query<(&Transform, &mut LinearVelocity, &ComputedStats, &KeepDistance)>,
     player: Query<&Transform, (With<Player>, Without<KeepDistance>)>,
@@ -35,9 +34,9 @@ pub fn keep_distance_system(
         let to_player = (player_pos - transform.translation).truncate();
         let distance = to_player.length();
 
-        velocity.0 = if distance < keep_dist.min_distance {
+        velocity.0 = if distance < keep_dist.min {
             -to_player.normalize_or_zero() * speed
-        } else if distance > keep_dist.max_distance {
+        } else if distance > keep_dist.max {
             to_player.normalize_or_zero() * speed
         } else {
             Vec2::ZERO

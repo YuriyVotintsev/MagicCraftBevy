@@ -4,7 +4,6 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 
 use crate::abilities::AbilityDefRaw;
-use crate::fsm::MobDef;
 use crate::player::player_def::PlayerDef;
 use crate::stats::loader::{CalculatorDefRaw, StatDefRaw};
 
@@ -18,9 +17,6 @@ pub struct StatsConfigAsset {
 pub struct PlayerDefAsset(pub PlayerDef);
 
 #[derive(Asset, TypePath)]
-pub struct MobDefAsset(pub MobDef);
-
-#[derive(Asset, TypePath)]
 pub struct AbilityDefAsset(pub AbilityDefRaw);
 
 #[derive(Default, TypePath)]
@@ -28,9 +24,6 @@ pub struct StatsConfigLoader;
 
 #[derive(Default, TypePath)]
 pub struct PlayerDefLoader;
-
-#[derive(Default, TypePath)]
-pub struct MobDefLoader;
 
 #[derive(Default, TypePath)]
 pub struct AbilityDefLoader;
@@ -87,29 +80,6 @@ impl AssetLoader for PlayerDefLoader {
 
     fn extensions(&self) -> &[&str] {
         &["player.ron"]
-    }
-}
-
-impl AssetLoader for MobDefLoader {
-    type Asset = MobDefAsset;
-    type Settings = ();
-    type Error = anyhow::Error;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).await?;
-        let content = std::str::from_utf8(&bytes)?;
-        let mob_def: MobDef = ron::from_str(content)?;
-        Ok(MobDefAsset(mob_def))
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["mob.ron"]
     }
 }
 

@@ -2,9 +2,9 @@ use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::abilities::spawn::SpawnContext;
-use crate::abilities::{AbilitySource, TargetInfo};
+use crate::abilities::{AbilityRegistry, AbilitySource, TargetInfo};
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::{ComputedStats, StatCalculators, StatRegistry, DEFAULT_STATS};
 use crate::GameState;
 
 #[ability_component(SOURCE_ENTITY, SOURCE_POSITION)]
@@ -29,6 +29,9 @@ fn once_system(
     ability_query: Query<(Entity, &AbilitySource, &Once), Without<OnceTriggered>>,
     owner_query: Query<&Transform>,
     stats_query: Query<&ComputedStats>,
+    stat_registry: Option<Res<StatRegistry>>,
+    calculators: Option<Res<StatCalculators>>,
+    ability_registry: Res<AbilityRegistry>,
 ) {
     for (entity, source, once) in &ability_query {
         let Ok(transform) = owner_query.get(source.caster) else {
@@ -55,7 +58,14 @@ fn once_system(
         };
 
         for entity_def in &once.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx);
+            crate::abilities::spawn::spawn_entity_def(
+                &mut commands,
+                entity_def,
+                &spawn_ctx,
+                stat_registry.as_deref(),
+                calculators.as_deref(),
+                Some(&ability_registry),
+            );
         }
 
         commands.entity(entity).insert(OnceTriggered);

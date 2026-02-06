@@ -84,7 +84,7 @@ fn update_falling_projectiles(
             };
 
             for entity_def in &falling.entities {
-                crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx);
+                crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx, None, None, None);
             }
 
             commands.entity(entity).despawn();

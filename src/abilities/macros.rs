@@ -128,6 +128,19 @@ macro_rules! collect_components {
                     }
                 }
             }
+
+            pub fn remove_component(&self, commands: &mut ::bevy::prelude::EntityCommands) {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$activator:camel>](_) => $activator::remove_component(commands),
+                        )*
+                        $(
+                            Self::[<$component:camel>](_) => $component::remove_component(commands),
+                        )*
+                    }
+                }
+            }
         }
 
         pub fn register_component_systems(app: &mut ::bevy::prelude::App) {

@@ -2,18 +2,16 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::abilities::{AbilityRegistry, AbilityDefRaw};
-use crate::fsm::MobRegistry;
 use crate::player::PlayerDefResource;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
-use super::assets::{AbilityDefAsset, MobDefAsset, PlayerDefAsset, StatsConfigAsset};
+use super::assets::{AbilityDefAsset, PlayerDefAsset, StatsConfigAsset};
 
 #[derive(Resource, Default)]
 pub struct LoadingState {
     pub phase: LoadingPhase,
     pub stats_handle: Option<Handle<StatsConfigAsset>>,
     pub player_handle: Option<Handle<PlayerDefAsset>>,
-    pub mobs_folder: Option<Handle<LoadedFolder>>,
     pub abilities_folder: Option<Handle<LoadedFolder>>,
 }
 
@@ -124,7 +122,6 @@ pub fn check_stats_loaded(
 
     loading_state.player_handle = Some(asset_server.load("player.player.ron"));
 
-    loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
     loading_state.abilities_folder = Some(asset_server.load_folder("abilities"));
 
     loading_state.phase = LoadingPhase::WaitingForContent;
@@ -136,7 +133,6 @@ pub fn check_content_loaded(
     mut loading_state: ResMut<LoadingState>,
     asset_server: Res<AssetServer>,
     player_assets: Res<Assets<PlayerDefAsset>>,
-    mob_assets: Res<Assets<MobDefAsset>>,
     ability_assets: Res<Assets<AbilityDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
@@ -160,16 +156,6 @@ pub fn check_content_loaded(
         return;
     }
 
-    let Some(mobs_folder_handle) = &loading_state.mobs_folder else {
-        return;
-    };
-    if !matches!(
-        asset_server.get_load_state(mobs_folder_handle.id()),
-        Some(LoadState::Loaded)
-    ) {
-        return;
-    }
-
     let Some(abilities_folder_handle) = &loading_state.abilities_folder else {
         return;
     };
@@ -185,18 +171,6 @@ pub fn check_content_loaded(
     let player_def = player_assets.get(player_handle.id())
         .expect("Player definition asset not loaded");
     commands.insert_resource(PlayerDefResource(player_def.0.clone()));
-
-    let mut mob_registry = MobRegistry::new();
-    if let Some(folder) = folders.get(mobs_folder_handle.id()) {
-        for handle in &folder.handles {
-            let typed_handle: Handle<MobDefAsset> = handle.clone().typed();
-            if let Some(mob_asset) = mob_assets.get(typed_handle.id()) {
-                info!("Registered mob: {}", mob_asset.0.name);
-                mob_registry.insert(mob_asset.0.clone());
-            }
-        }
-    }
-    commands.insert_resource(mob_registry);
 
     if let Some(folder) = folders.get(abilities_folder_handle.id()) {
         for handle in &folder.handles {

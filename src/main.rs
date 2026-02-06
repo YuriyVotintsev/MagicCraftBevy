@@ -5,7 +5,6 @@ mod faction;
 mod fsm;
 mod game_state;
 mod loading;
-mod building_blocks;
 mod money;
 mod movement;
 mod physics;
@@ -27,7 +26,6 @@ use arena::ArenaPlugin;
 use common::CommonPlugin;
 use fsm::FsmPlugin;
 use loading::LoadingPlugin;
-use building_blocks::MobAiPlugin;
 use player::PlayerPlugin;
 use schedule::{GameSet, PostGameSet};
 use stats::StatsPlugin;
@@ -160,7 +158,6 @@ fn main() {
             StatsPlugin,
             AbilityPlugin,
             FsmPlugin,
-            MobAiPlugin,
             UiPlugin,
             WavePlugin,
         ))

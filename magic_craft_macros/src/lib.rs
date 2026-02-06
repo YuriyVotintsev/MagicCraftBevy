@@ -846,6 +846,10 @@ fn generate_ability_component_unit(
 
         pub fn update_component(_entity: bevy::prelude::Entity, _def: &Def, _ctx: &crate::abilities::spawn::SpawnContext, _world: &mut bevy::prelude::World) {
         }
+
+        pub fn remove_component(commands: &mut bevy::prelude::EntityCommands) {
+            commands.remove::<#component_name>();
+        }
     };
 
     output.into()
@@ -1199,6 +1203,10 @@ fn generate_ability_component_named(
             if let Some(mut comp) = world.get_mut::<#component_name>(entity) {
                 #(#update_stmts)*
             }
+        }
+
+        pub fn remove_component(commands: &mut bevy::prelude::EntityCommands) {
+            commands.remove::<#component_name>();
         }
     };
 

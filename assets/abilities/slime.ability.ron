@@ -1,0 +1,30 @@
+(
+    id: "slime",
+    components: [
+        Once((entities: [
+            (
+                base_stats: {"movement_speed_base": 100.0, "max_life_base": 50.0},
+                components: [
+                    Size((value: "60.0")),
+                    Sprite((color: (0.2, 0.8, 0.2, 1.0), shape: Circle)),
+                    Collider((shape: Circle, sensor: Some(false))),
+                    DynamicBody(()),
+                    Health((max: "stat(max_life)")),
+                ],
+                states: Some((
+                    initial: "chase",
+                    states: {
+                        "chase": (
+                            components: [MoveToward(())],
+                            transitions: [WhenNear((to: "attack", distance: "50.0"))],
+                        ),
+                        "attack": (
+                            components: [],
+                            transitions: [AfterTime((to: "chase", duration: "1.0"))],
+                        ),
+                    }
+                ))
+            )
+        ]))
+    ]
+)

@@ -4,10 +4,9 @@ use rand::Rng;
 
 use crate::GameState;
 use crate::Faction;
-use crate::abilities::AbilityRegistry;
-use crate::fsm::{spawn_mob, BehaviourRegistry, MobRegistry, TransitionRegistry};
+use crate::abilities::{AbilityRegistry, attach_ability};
+use crate::abilities::components::health::Health;
 use crate::physics::{GameLayer, Wall};
-use crate::stats::{StatCalculators, StatRegistry};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 
 #[cfg(not(feature = "headless"))]
@@ -24,7 +23,7 @@ const MARKER_DURATION: f32 = 2.0;
 #[derive(Component)]
 struct SpawnMarker {
     timer: Timer,
-    mob_name: String,
+    ability_name: String,
 }
 
 pub struct ArenaPlugin;
@@ -36,7 +35,7 @@ impl Plugin for ArenaPlugin {
             .add_systems(OnExit(WavePhase::Combat), cleanup_spawn_markers)
             .add_systems(
                 Update,
-                (spawn_markers, process_spawn_markers)
+                (spawn_markers, process_spawn_markers, tag_wave_enemies)
                     .chain()
                     .run_if(in_state(WavePhase::Combat)),
             )
@@ -186,7 +185,7 @@ fn spawn_markers(
     for _ in 0..to_spawn {
         let x = rng.random_range(-half_width..half_width);
         let y = rng.random_range(-half_height..half_height);
-        let mob_name = if rng.random_bool(0.5) {
+        let ability_name = if rng.random_bool(0.5) {
             "slime"
         } else {
             "archer"
@@ -196,7 +195,7 @@ fn spawn_markers(
             Name::new("SpawnMarker"),
             SpawnMarker {
                 timer: Timer::from_seconds(MARKER_DURATION, TimerMode::Once),
-                mob_name: mob_name.to_string(),
+                ability_name: ability_name.to_string(),
             },
             Sprite {
                 color: Color::srgb(1.0, 0.9, 0.2),
@@ -210,46 +209,36 @@ fn spawn_markers(
 
 fn process_spawn_markers(
     mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     time: Res<Time>,
     mut markers_query: Query<(Entity, &mut SpawnMarker, &Transform)>,
-    mob_registry: Res<MobRegistry>,
-    stat_registry: Res<StatRegistry>,
-    calculators: Res<StatCalculators>,
     ability_registry: Res<AbilityRegistry>,
-    behaviour_registry: Res<BehaviourRegistry>,
-    transition_registry: Res<TransitionRegistry>,
     mut wave_state: ResMut<WaveState>,
 ) {
-    for (marker_entity, mut marker, transform) in markers_query.iter_mut() {
+    for (marker_entity, mut marker, _transform) in markers_query.iter_mut() {
         if marker.timer.tick(time.delta()).just_finished() {
-            let pos = Vec3::new(
-                transform.translation.x,
-                transform.translation.y,
-                1.0,
-            );
-
-            if let Some(entity) = spawn_mob(
-                &mut commands,
-                &mut meshes,
-                &mut materials,
-                &mob_registry,
-                &stat_registry,
-                &calculators,
-                &ability_registry,
-                &behaviour_registry,
-                &transition_registry,
-                &marker.mob_name,
-                pos,
-            ) {
-                if let Ok(mut entity_commands) = commands.get_entity(entity) {
-                    entity_commands.insert(WaveEnemy);
-                }
+            if let Some(ability_id) = ability_registry.get_id(&marker.ability_name) {
+                attach_ability(&mut commands, marker_entity, Faction::Enemy, ability_id, &ability_registry);
                 wave_state.spawned_count += 1;
             }
 
-            commands.entity(marker_entity).despawn();
+            commands.entity(marker_entity).remove::<Sprite>();
+            commands.entity(marker_entity).remove::<SpawnMarker>();
+        }
+    }
+}
+
+fn tag_wave_enemies(
+    mut commands: Commands,
+    query: Query<Entity, (Added<Health>, With<Faction>)>,
+    faction_query: Query<&Faction>,
+) {
+    for entity in &query {
+        let Ok(faction) = faction_query.get(entity) else { continue };
+        if *faction == Faction::Enemy {
+            commands.entity(entity).insert((
+                WaveEnemy,
+                DespawnOnExit(WavePhase::Combat),
+            ));
         }
     }
 }

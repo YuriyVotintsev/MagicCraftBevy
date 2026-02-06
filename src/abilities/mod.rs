@@ -10,6 +10,7 @@ mod core_components;
 pub mod entity_def;
 pub mod spawn;
 mod cleanup;
+pub mod state;
 
 #[macro_use]
 mod macros;
@@ -45,6 +46,7 @@ impl Plugin for AbilityPlugin {
             (
                 clear_ability_inputs.before(crate::schedule::GameSet::Input),
                 cleanup::cleanup_orphaned_abilities,
+                state::state_transition_system.in_set(crate::schedule::GameSet::MobAI),
             )
                 .run_if(in_state(WavePhase::Combat)),
         );

@@ -7,6 +7,7 @@ pub enum SpriteShape {
     #[default]
     Square,
     Circle,
+    Triangle,
 }
 
 #[ability_component]
@@ -23,9 +24,14 @@ pub struct CircleSprite {
     pub color: Color,
 }
 
+#[derive(Component)]
+pub struct TriangleSprite {
+    pub color: Color,
+}
+
 pub fn register_systems(app: &mut App) {
-    app.add_systems(Startup, setup_circle_mesh);
-    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals).chain());
+    app.add_systems(Startup, (setup_circle_mesh, setup_triangle_mesh));
+    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals, spawn_triangle_visuals).chain());
 }
 
 fn init_sprite(
@@ -49,6 +55,9 @@ fn init_sprite(
             }
             SpriteShape::Circle => {
                 commands.entity(entity).insert((CircleSprite { color }, transform));
+            }
+            SpriteShape::Triangle => {
+                commands.entity(entity).insert((TriangleSprite { color }, transform));
             }
         }
     }
@@ -74,6 +83,31 @@ fn spawn_circle_visuals(
         let material = materials.add(ColorMaterial::from_color(circle.color));
         commands.entity(entity).insert((
             Mesh2d(circle_mesh.0.clone()),
+            MeshMaterial2d(material),
+        ));
+    }
+}
+
+#[derive(Resource)]
+struct TriangleMeshHandle(Handle<Mesh>);
+
+fn setup_triangle_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
+    let mesh = meshes.add(RegularPolygon::new(1.0, 3));
+    commands.insert_resource(TriangleMeshHandle(mesh));
+}
+
+fn spawn_triangle_visuals(
+    mut commands: Commands,
+    query: Query<(Entity, &TriangleSprite), Without<Mesh2d>>,
+    triangle_mesh: Option<Res<TriangleMeshHandle>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    let Some(triangle_mesh) = triangle_mesh else { return };
+
+    for (entity, triangle) in &query {
+        let material = materials.add(ColorMaterial::from_color(triangle.color));
+        commands.entity(entity).insert((
+            Mesh2d(triangle_mesh.0.clone()),
             MeshMaterial2d(material),
         ));
     }
