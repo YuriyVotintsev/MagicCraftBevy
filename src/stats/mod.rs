@@ -13,11 +13,11 @@ pub use calculators::StatCalculators;
 pub use computed_stats::{ComputedStats, DEFAULT_STATS};
 pub use dirty_stats::DirtyStats;
 pub use expression::Expression;
-pub use health::Dead;
-pub use health::{death_system, DeathEvent, Health};
+pub use health::{Dead, death_system, DeathEvent};
 pub use modifiers::Modifiers;
 pub use pending_damage::PendingDamage;
 
+use crate::abilities::components::health::Health;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::Faction;
 use crate::GameState;

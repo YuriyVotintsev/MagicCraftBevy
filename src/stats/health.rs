@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::abilities::components::health::Health;
 
 #[derive(Component)]
 pub struct Dead;
@@ -9,28 +10,13 @@ pub struct DeathEvent {
     pub entity: Entity,
 }
 
-#[derive(Component)]
-pub struct Health {
-    pub current: f32,
-}
-
-impl Health {
-    pub fn new(max: f32) -> Self {
-        Self { current: max }
-    }
-
-    pub fn is_dead(&self) -> bool {
-        self.current <= 0.0
-    }
-}
-
 pub fn death_system(
     mut commands: Commands,
     mut death_events: MessageWriter<DeathEvent>,
     query: Query<(Entity, &Health), (Changed<Health>, Without<Dead>)>,
 ) {
     for (entity, health) in &query {
-        if health.is_dead() {
+        if health.current <= 0.0 {
             death_events.write(DeathEvent { entity });
             if let Ok(mut entity_commands) = commands.get_entity(entity) {
                 entity_commands.insert(Dead);

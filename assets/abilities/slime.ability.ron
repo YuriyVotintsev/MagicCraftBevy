@@ -9,7 +9,7 @@
                     Sprite((color: (0.2, 0.8, 0.2, 1.0), shape: Circle)),
                     Collider((shape: Circle, sensor: Some(false))),
                     DynamicBody(()),
-                    Health((max: "stat(max_life)")),
+                    Health(()),
                 ],
                 states: Some((
                     initial: "chase",

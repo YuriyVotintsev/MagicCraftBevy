@@ -11,8 +11,9 @@ use crate::abilities::{AbilityInputs, AbilityRegistry, InputState, attach_abilit
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
+use crate::abilities::components::health::Health;
 use crate::stats::{
-    ComputedStats, DeathEvent, DirtyStats, Health, Modifiers, StatCalculators, StatId, StatRegistry,
+    ComputedStats, DeathEvent, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry,
     death_system,
 };
 use crate::wave::WavePhase;
@@ -107,7 +108,7 @@ fn spawn_player(
             modifiers,
             computed,
             dirty,
-            Health::new(max_life),
+            Health { current: max_life },
             AbilityInputs::new(),
             Sprite {
                 color: Color::srgb(

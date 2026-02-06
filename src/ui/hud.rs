@@ -2,7 +2,8 @@ use bevy::prelude::*;
 
 use crate::money::PlayerMoney;
 use crate::player::Player;
-use crate::stats::{ComputedStats, Health, StatRegistry};
+use crate::abilities::components::health::Health;
+use crate::stats::{ComputedStats, StatRegistry};
 use crate::wave::WaveState;
 use crate::GameState;
 

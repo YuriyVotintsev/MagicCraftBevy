@@ -37,7 +37,8 @@ pub struct AbilityPlugin;
 
 impl Plugin for AbilityPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<AbilityRegistry>();
+        app.init_resource::<AbilityRegistry>()
+            .add_message::<state::StateTransition>();
 
         components::register_component_systems(app);
 

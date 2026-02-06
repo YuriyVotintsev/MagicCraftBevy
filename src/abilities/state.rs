@@ -8,6 +8,12 @@ use super::entity_def::StatesBlock;
 use super::spawn::SpawnContext;
 use super::AbilitySource;
 
+#[derive(Message)]
+pub struct StateTransition {
+    pub entity: Entity,
+    pub to: String,
+}
+
 #[derive(Component)]
 pub struct CurrentState(pub String);
 
@@ -16,7 +22,7 @@ pub struct StoredStatesBlock(pub StatesBlock);
 
 pub fn state_transition_system(
     mut commands: Commands,
-    mut events: MessageReader<crate::fsm::StateTransition>,
+    mut events: MessageReader<StateTransition>,
     mut query: Query<(
         &mut CurrentState,
         &StoredStatesBlock,

@@ -33,12 +33,12 @@ fn init_after_time_timer(
 fn after_time_system(
     time: Res<Time>,
     mut query: Query<(Entity, &AfterTime, &mut AfterTimeTimer)>,
-    mut events: MessageWriter<crate::fsm::StateTransition>,
+    mut events: MessageWriter<crate::abilities::state::StateTransition>,
 ) {
     for (entity, after_time, mut timer) in &mut query {
         timer.elapsed += time.delta_secs();
         if timer.elapsed >= after_time.duration {
-            events.write(crate::fsm::StateTransition {
+            events.write(crate::abilities::state::StateTransition {
                 entity,
                 to: after_time.to.clone(),
             });

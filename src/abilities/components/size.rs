@@ -8,7 +8,7 @@ pub struct Size {
 }
 
 pub fn register_systems(app: &mut App) {
-    app.add_systems(PostUpdate, sync_size_to_scale);
+    app.add_systems(Last, sync_size_to_scale);
 }
 
 fn sync_size_to_scale(mut query: Query<(&Size, &mut Transform), Or<(Added<Size>, Added<Transform>)>>) {

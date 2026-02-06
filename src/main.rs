@@ -2,7 +2,6 @@ mod abilities;
 mod arena;
 mod common;
 mod faction;
-mod fsm;
 mod game_state;
 mod loading;
 mod money;
@@ -24,7 +23,6 @@ use bevy::prelude::*;
 use abilities::AbilityPlugin;
 use arena::ArenaPlugin;
 use common::CommonPlugin;
-use fsm::FsmPlugin;
 use loading::LoadingPlugin;
 use player::PlayerPlugin;
 use schedule::{GameSet, PostGameSet};
@@ -157,7 +155,6 @@ fn main() {
             PlayerPlugin,
             StatsPlugin,
             AbilityPlugin,
-            FsmPlugin,
             UiPlugin,
             WavePlugin,
         ))

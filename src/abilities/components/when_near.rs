@@ -19,7 +19,7 @@ pub fn register_systems(app: &mut App) {
 fn when_near_system(
     query: Query<(Entity, &WhenNear, &Transform)>,
     player: Query<&Transform, With<Player>>,
-    mut events: MessageWriter<crate::fsm::StateTransition>,
+    mut events: MessageWriter<crate::abilities::state::StateTransition>,
 ) {
     let Ok(player_transform) = player.single() else {
         return;
@@ -29,7 +29,7 @@ fn when_near_system(
     for (entity, when_near, transform) in &query {
         let dist = transform.translation.distance(player_pos);
         if dist < when_near.distance {
-            events.write(crate::fsm::StateTransition {
+            events.write(crate::abilities::state::StateTransition {
                 entity,
                 to: when_near.to.clone(),
             });

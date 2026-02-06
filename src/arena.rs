@@ -221,8 +221,8 @@ fn process_spawn_markers(
                 wave_state.spawned_count += 1;
             }
 
-            commands.entity(marker_entity).remove::<Sprite>();
-            commands.entity(marker_entity).remove::<SpawnMarker>();
+            commands.entity(marker_entity).remove::<(Sprite, SpawnMarker)>();
+            commands.entity(marker_entity).insert(DespawnOnExit(WavePhase::Combat));
         }
     }
 }
