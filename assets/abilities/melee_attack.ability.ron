@@ -1,0 +1,10 @@
+(
+    id: "melee_attack",
+    components: [
+        OnInput((entities: [
+            (components: [
+                MeleeStrike((range: "60.0", damage: "stat(physical_damage)")),
+            ])
+        ]))
+    ]
+)

@@ -35,5 +35,9 @@ collect_components!(
         when_near,
         when_found_target,
         after_time,
+        lunge_movement,
+        on_death,
+        spawn_ability,
+        melee_strike,
     ]
 );

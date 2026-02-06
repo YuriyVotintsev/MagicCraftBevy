@@ -1,0 +1,39 @@
+(
+    id: "slime_small",
+    components: [
+        Once((entities: [
+            (
+                base_stats: {
+                    "movement_speed_base": 100.0,
+                    "max_life_base": 15.0,
+                    "physical_damage_base": 5.0,
+                },
+                abilities: ["melee_attack"],
+                components: [
+                    Size((value: "25.0")),
+                    Sprite((color: (0.5, 0.9, 0.7, 1.0), shape: Circle)),
+                    Collider((shape: Circle, sensor: Some(false))),
+                    DynamicBody(()),
+                    Health(()),
+                ],
+                states: Some((
+                    initial: "find_target",
+                    states: {
+                        "find_target": (
+                            components: [FindNearestEnemy((size: "4000.0"))],
+                            transitions: [WhenFoundTarget((to: "lunge"))],
+                        ),
+                        "lunge": (
+                            components: [LungeMovement(())],
+                            transitions: [WhenNear((to: "attack", distance: "15.0"))],
+                        ),
+                        "attack": (
+                            components: [UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5")))],
+                            transitions: [AfterTime((to: "lunge", duration: "0.8"))],
+                        ),
+                    }
+                ))
+            )
+        ]))
+    ]
+)

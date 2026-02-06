@@ -152,7 +152,8 @@ fn spawn_markers(
     wave_state: Res<WaveState>,
     markers_query: Query<(), With<SpawnMarker>>,
 ) {
-    let alive_or_spawning = wave_state.spawned_count.saturating_sub(wave_state.killed_count);
+    let total = wave_state.spawned_count + wave_state.extra_spawned;
+    let alive_or_spawning = total.saturating_sub(wave_state.killed_count);
     let active_markers = markers_query.iter().count() as u32;
 
     if alive_or_spawning > WaveState::spawn_threshold() {
@@ -184,10 +185,11 @@ fn spawn_markers(
     for _ in 0..to_spawn {
         let x = rng.random_range(-half_width..half_width);
         let y = rng.random_range(-half_height..half_height);
-        let ability_name = if rng.random_bool(0.5) {
-            "slime"
-        } else {
-            "archer"
+        let roll = rng.random_range(0..3);
+        let ability_name = match roll {
+            0 => "skeleton",
+            1 => "archer",
+            _ => "slime_giant",
         };
 
         commands.spawn((

@@ -30,6 +30,7 @@ pub struct WaveState {
     pub killed_count: u32,
     pub target_count: u32,
     pub max_concurrent: u32,
+    pub extra_spawned: u32,
 }
 
 impl Default for WaveState {
@@ -40,6 +41,7 @@ impl Default for WaveState {
             killed_count: 0,
             target_count: BASE_ENEMIES,
             max_concurrent: BASE_CONCURRENT,
+            extra_spawned: 0,
         }
     }
 }
@@ -144,7 +146,8 @@ fn check_wave_completion(
     mut shop_timer: ResMut<ShopDelayTimer>,
 ) {
     let all_spawned = wave_state.spawned_count >= wave_state.target_count;
-    let all_wave_enemies_killed = wave_state.killed_count >= wave_state.spawned_count;
+    let total = wave_state.spawned_count + wave_state.extra_spawned;
+    let all_wave_enemies_killed = wave_state.killed_count >= total;
     let no_enemies_alive = !enemies_query.iter().any(|f| *f == Faction::Enemy);
 
     if all_spawned && all_wave_enemies_killed && no_enemies_alive && wave_state.spawned_count > 0 {
@@ -182,6 +185,7 @@ fn start_next_wave(
     wave_state.current_wave += 1;
     wave_state.spawned_count = 0;
     wave_state.killed_count = 0;
+    wave_state.extra_spawned = 0;
     wave_state.target_count = WaveState::calculate_target(wave_state.current_wave);
     wave_state.max_concurrent = WaveState::calculate_max_concurrent(wave_state.current_wave);
 
