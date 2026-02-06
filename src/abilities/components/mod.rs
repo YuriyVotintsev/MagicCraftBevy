@@ -7,7 +7,6 @@ collect_components!(
     ],
     components: [
         projectile,
-        speed,
         straight,
         lifetime,
         pierce,

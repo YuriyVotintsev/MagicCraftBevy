@@ -7,7 +7,6 @@ use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::stats::PendingDamage;
 use crate::Faction;
-use crate::GameState;
 
 #[ability_component]
 pub struct MeleeStrike {
@@ -18,15 +17,13 @@ pub struct MeleeStrike {
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
-        melee_strike_system
-            .in_set(GameSet::Damage)
-            .run_if(in_state(GameState::Playing)),
+        melee_strike_system.in_set(GameSet::Damage),
     );
 }
 
 fn melee_strike_system(
     mut commands: Commands,
-    query: Query<(Entity, &MeleeStrike, &AbilitySource), Added<MeleeStrike>>,
+    query: Query<(Entity, &MeleeStrike, &AbilitySource)>,
     transforms: Query<&Transform>,
     spatial_query: SpatialQuery,
 ) {

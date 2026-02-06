@@ -6,10 +6,9 @@ use rand::Rng;
 use crate::schedule::GameSet;
 use crate::GameState;
 
-use super::speed::Speed;
-
 #[ability_component]
 pub struct Straight {
+    pub speed: ScalarExpr,
     #[raw(default = 0)]
     pub spread: ScalarExpr,
     #[default_expr("target.direction")]
@@ -27,9 +26,9 @@ pub fn register_systems(app: &mut App) {
 
 fn init_straight(
     mut commands: Commands,
-    query: Query<(Entity, &Speed, &Straight), Added<Straight>>,
+    query: Query<(Entity, &Straight), Added<Straight>>,
 ) {
-    for (entity, speed, straight) in &query {
+    for (entity, straight) in &query {
         let base_direction = straight.direction.normalize_or_zero();
 
         let direction = if straight.spread > 0.0 {
@@ -47,7 +46,7 @@ fn init_straight(
 
         commands.entity(entity).insert((
             RigidBody::Kinematic,
-            LinearVelocity(direction * speed.value),
+            LinearVelocity(direction * straight.speed),
         ));
     }
 }

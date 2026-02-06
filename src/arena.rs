@@ -7,7 +7,7 @@ use crate::Faction;
 use crate::abilities::{AbilityRegistry, attach_ability};
 use crate::abilities::components::health::Health;
 use crate::physics::{GameLayer, Wall};
-use crate::wave::{WaveEnemy, WavePhase, WaveState};
+use crate::wave::{WaveEnemy, WaveMarker, WavePhase, WaveState};
 
 #[cfg(not(feature = "headless"))]
 pub const WINDOW_WIDTH: f32 = 1280.0;
@@ -151,12 +151,13 @@ fn spawn_markers(
     mut commands: Commands,
     wave_state: Res<WaveState>,
     markers_query: Query<(), With<SpawnMarker>>,
+    enemies_query: Query<&Faction>,
 ) {
-    let total = wave_state.spawned_count + wave_state.extra_spawned;
-    let alive_or_spawning = total.saturating_sub(wave_state.killed_count);
+    let alive_enemies = enemies_query.iter().filter(|f| **f == Faction::Enemy).count() as u32;
     let active_markers = markers_query.iter().count() as u32;
+    let total_on_arena = alive_enemies + active_markers;
 
-    if alive_or_spawning > WaveState::spawn_threshold() {
+    if total_on_arena > WaveState::spawn_threshold() {
         return;
     }
 
@@ -170,8 +171,7 @@ fn spawn_markers(
 
     let can_spawn = wave_state
         .max_concurrent
-        .saturating_sub(alive_or_spawning)
-        .saturating_sub(active_markers);
+        .saturating_sub(total_on_arena);
     let to_spawn = can_spawn.min(remaining_to_spawn);
 
     if to_spawn == 0 {
@@ -223,23 +223,20 @@ fn process_spawn_markers(
             }
 
             commands.entity(marker_entity).remove::<(Sprite, SpawnMarker)>();
-            commands.entity(marker_entity).insert(DespawnOnExit(WavePhase::Combat));
+            commands.entity(marker_entity).insert((WaveMarker, DespawnOnExit(WavePhase::Combat)));
         }
     }
 }
 
 fn tag_wave_enemies(
     mut commands: Commands,
-    query: Query<Entity, (Added<Health>, With<Faction>)>,
+    query: Query<Entity, (Added<Health>, With<Faction>, Without<WaveEnemy>)>,
     faction_query: Query<&Faction>,
 ) {
     for entity in &query {
         let Ok(faction) = faction_query.get(entity) else { continue };
         if *faction == Faction::Enemy {
-            commands.entity(entity).insert((
-                WaveEnemy,
-                DespawnOnExit(WavePhase::Combat),
-            ));
+            commands.entity(entity).insert(DespawnOnExit(WavePhase::Combat));
         }
     }
 }

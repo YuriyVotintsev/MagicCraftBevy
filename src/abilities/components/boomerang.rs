@@ -6,10 +6,9 @@ use crate::common::AttachedTo;
 use crate::schedule::GameSet;
 use crate::GameState;
 
-use super::speed::Speed;
-
 #[ability_component]
 pub struct Boomerang {
+    pub speed: ScalarExpr,
     pub max_distance: ScalarExpr,
     #[default_expr("target.direction")]
     pub direction: VecExpr,
@@ -36,14 +35,14 @@ pub fn register_systems(app: &mut App) {
 
 fn init_boomerang(
     mut commands: Commands,
-    query: Query<(Entity, &Speed, &Boomerang), Added<Boomerang>>,
+    query: Query<(Entity, &Boomerang), Added<Boomerang>>,
 ) {
-    for (entity, speed, boomerang) in &query {
+    for (entity, boomerang) in &query {
         let direction = boomerang.direction.normalize_or_zero();
         commands.entity(entity).insert((
             AttachedTo { owner: boomerang.return_to },
             RigidBody::Kinematic,
-            LinearVelocity(direction * speed.value),
+            LinearVelocity(direction * boomerang.speed),
             BoomerangState::default(),
             Transform::from_translation(boomerang.spawn_position.extend(0.0)),
         ));
@@ -53,9 +52,9 @@ fn init_boomerang(
 fn boomerang_system(
     mut commands: Commands,
     owner_query: Query<&Transform, Without<Boomerang>>,
-    mut query: Query<(Entity, &AttachedTo, &Speed, &Boomerang, &mut BoomerangState, &Transform, &mut LinearVelocity)>,
+    mut query: Query<(Entity, &AttachedTo, &Boomerang, &mut BoomerangState, &Transform, &mut LinearVelocity)>,
 ) {
-    for (entity, attached, speed, boomerang, mut state, transform, mut velocity) in &mut query {
+    for (entity, attached, boomerang, mut state, transform, mut velocity) in &mut query {
         if !state.returning {
             let distance = transform.translation.truncate().distance(boomerang.spawn_position);
             if distance >= boomerang.max_distance {
@@ -74,7 +73,7 @@ fn boomerang_system(
                 }
 
                 let direction = to_owner.truncate().normalize();
-                velocity.0 = direction * speed.value;
+                velocity.0 = direction * boomerang.speed;
             } else {
                 commands.entity(entity).despawn();
             }

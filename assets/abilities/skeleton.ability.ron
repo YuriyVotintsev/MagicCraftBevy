@@ -4,7 +4,7 @@
         Once((entities: [
             (
                 base_stats: {
-                    "movement_speed_base": 100.0,
+                    "movement_speed_base": 200.0,
                     "max_life_base": 50.0,
                     "physical_damage_base": 8.0,
                 },
@@ -25,10 +25,10 @@
                         ),
                         "chase": (
                             components: [MoveToward(())],
-                            transitions: [WhenNear((to: "attack", distance: "50.0"))],
+                            transitions: [WhenNear((to: "attack", distance: "80.0"))],
                         ),
                         "attack": (
-                            components: [UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5")))],
+                            components: [MoveToward(()), UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5")))],
                             transitions: [AfterTime((to: "chase", duration: "1.0"))],
                         ),
                     }

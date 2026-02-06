@@ -4,7 +4,6 @@ use magic_craft_macros::ability_component;
 use crate::abilities::context::TargetInfo;
 use crate::abilities::AbilitySource;
 use crate::stats::{ComputedStats, Dead, DEFAULT_STATS, StatCalculators, StatRegistry};
-use crate::wave::WaveState;
 
 #[ability_component(SOURCE_ENTITY, SOURCE_POSITION)]
 pub struct OnDeath {
@@ -24,7 +23,6 @@ fn on_death_observer(
     stat_registry: Option<Res<StatRegistry>>,
     calculators: Option<Res<StatCalculators>>,
     ability_registry: Res<crate::abilities::AbilityRegistry>,
-    mut wave_state: ResMut<WaveState>,
 ) {
     let entity = on.event_target();
     let Ok((on_death, source, transform)) = query.get(entity) else {
@@ -55,14 +53,6 @@ fn on_death_observer(
     };
 
     for entity_def in &on_death.entities {
-        let count = entity_def
-            .count
-            .as_ref()
-            .map(|c| c.eval(&spawn_source, caster_stats).max(1.0) as u32)
-            .unwrap_or(1);
-
-        wave_state.extra_spawned += count;
-
         crate::abilities::spawn::spawn_entity_def(
             &mut commands,
             entity_def,

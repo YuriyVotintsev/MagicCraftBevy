@@ -47,7 +47,7 @@ fn init_sprite(
                 commands.entity(entity).insert((
                     BevySprite {
                         color,
-                        custom_size: Some(Vec2::ONE),
+                        custom_size: Some(Vec2::splat(2.0)),
                         ..default()
                     },
                     transform,

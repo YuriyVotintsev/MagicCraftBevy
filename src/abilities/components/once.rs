@@ -4,6 +4,7 @@ use magic_craft_macros::ability_component;
 use crate::abilities::{AbilityRegistry, AbilitySource, TargetInfo};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, StatCalculators, StatRegistry, DEFAULT_STATS};
+use crate::wave::{WaveEnemy, WaveMarker, WavePhase};
 use crate::GameState;
 
 #[ability_component(SOURCE_ENTITY, SOURCE_POSITION)]
@@ -27,6 +28,7 @@ fn once_system(
     mut commands: Commands,
     ability_query: Query<(Entity, &AbilitySource, &Once), Without<OnceTriggered>>,
     owner_query: Query<&Transform>,
+    wave_marker_query: Query<(), With<WaveMarker>>,
     stats_query: Query<&ComputedStats>,
     stat_registry: Option<Res<StatRegistry>>,
     calculators: Option<Res<StatCalculators>>,
@@ -37,6 +39,8 @@ fn once_system(
         let Ok(transform) = owner_query.get(caster_entity) else {
             continue;
         };
+
+        let is_wave_spawn = wave_marker_query.contains(caster_entity);
 
         let caster_stats = stats_query
             .get(caster_entity)
@@ -56,7 +60,7 @@ fn once_system(
         };
 
         for entity_def in &once.entities {
-            crate::abilities::spawn::spawn_entity_def(
+            let spawned = crate::abilities::spawn::spawn_entity_def(
                 &mut commands,
                 entity_def,
                 &spawn_source,
@@ -65,6 +69,15 @@ fn once_system(
                 calculators.as_deref(),
                 Some(&ability_registry),
             );
+
+            if is_wave_spawn {
+                for &spawned_entity in &spawned {
+                    commands.entity(spawned_entity).insert((
+                        WaveEnemy,
+                        DespawnOnExit(WavePhase::Combat),
+                    ));
+                }
+            }
         }
 
         commands.entity(entity).insert(OnceTriggered);
