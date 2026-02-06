@@ -5,6 +5,7 @@ use crate::Faction;
 use crate::stats::ComputedStats;
 use super::context::TargetInfo;
 use super::entity_def::StatesBlock;
+use super::spawn::StoredComponentDefs;
 use super::AbilitySource;
 
 #[derive(Message)]
@@ -29,10 +30,11 @@ pub fn state_transition_system(
         &Faction,
         &Transform,
         &ComputedStats,
+        Option<&StoredComponentDefs>,
     )>,
 ) {
     for event in events.read() {
-        let Ok((mut current_state, stored, source, faction, transform, stats)) = query.get_mut(event.entity) else {
+        let Ok((mut current_state, stored, source, faction, transform, stats, existing_stored_defs)) = query.get_mut(event.entity) else {
             continue;
         };
 
@@ -55,6 +57,7 @@ pub fn state_transition_system(
 
         commands.entity(event.entity).insert(LinearVelocity::ZERO);
 
+        let mut new_state_recalc = Vec::new();
         if let Some(new_state) = stored.0.states.get(new_state_name) {
             let mut caster = source.caster;
             caster.position = Some(transform.translation.truncate());
@@ -76,6 +79,30 @@ pub fn state_transition_system(
             for trans in &new_state.transitions {
                 trans.insert_component(&mut ec, &transition_source, stats);
             }
+
+            new_state_recalc.extend(
+                new_state.components.iter()
+                    .chain(new_state.transitions.iter())
+                    .filter(|c| c.has_recalc())
+                    .cloned()
+            );
+        }
+
+        if let Some(existing) = existing_stored_defs {
+            let has_base = !existing.base.is_empty();
+            if has_base || !new_state_recalc.is_empty() {
+                commands.entity(event.entity).insert(StoredComponentDefs {
+                    base: existing.base.clone(),
+                    state: new_state_recalc,
+                });
+            } else {
+                commands.entity(event.entity).remove::<StoredComponentDefs>();
+            }
+        } else if !new_state_recalc.is_empty() {
+            commands.entity(event.entity).insert(StoredComponentDefs {
+                base: Vec::new(),
+                state: new_state_recalc,
+            });
         }
 
         current_state.0 = new_state_name.clone();

@@ -141,6 +141,19 @@ macro_rules! collect_components {
                     }
                 }
             }
+
+            pub fn has_recalc(&self) -> bool {
+                paste::paste! {
+                    match self {
+                        $(
+                            Self::[<$activator:camel>](def) => $activator::has_recalc(def),
+                        )*
+                        $(
+                            Self::[<$component:camel>](def) => $component::has_recalc(def),
+                        )*
+                    }
+                }
+            }
         }
 
         pub fn register_component_systems(app: &mut ::bevy::prelude::App) {

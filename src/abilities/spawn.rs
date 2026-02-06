@@ -1,10 +1,23 @@
 use bevy::prelude::*;
 
 use crate::stats::{ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry};
+use super::components::ComponentDef;
 use super::context::TargetInfo;
 use super::entity_def::EntityDef;
 use super::state::{CurrentState, StoredStatesBlock};
 use super::{AbilityInputs, AbilitySource, AbilityRegistry, attach_ability};
+
+#[derive(Component)]
+pub struct StoredComponentDefs {
+    pub base: Vec<ComponentDef>,
+    pub state: Vec<ComponentDef>,
+}
+
+impl StoredComponentDefs {
+    pub fn all(&self) -> impl Iterator<Item = &ComponentDef> {
+        self.base.iter().chain(self.state.iter())
+    }
+}
 
 #[allow(unused_assignments)]
 pub fn spawn_entity(
@@ -89,6 +102,11 @@ pub fn spawn_entity(
         component.insert_component(&mut ec, effective_source, effective_stats);
     }
 
+    let recalc_defs: Vec<_> = entity_def.components.iter()
+        .filter(|c| c.has_recalc())
+        .cloned()
+        .collect();
+
     if !entity_def.abilities.is_empty() {
         if let Some(ability_registry) = ability_registry {
             for ability_name in &entity_def.abilities {
@@ -99,6 +117,7 @@ pub fn spawn_entity(
         }
     }
 
+    let mut state_recalc_defs = Vec::new();
     if let Some(states_block) = &entity_def.states {
         if let Some(initial_state_def) = states_block.states.get(&states_block.initial) {
             let mut ec = commands.entity(entity_id);
@@ -108,12 +127,26 @@ pub fn spawn_entity(
             for trans in &initial_state_def.transitions {
                 trans.insert_component(&mut ec, effective_source, effective_stats);
             }
+
+            state_recalc_defs.extend(
+                initial_state_def.components.iter()
+                    .chain(initial_state_def.transitions.iter())
+                    .filter(|c| c.has_recalc())
+                    .cloned()
+            );
         }
 
         commands.entity(entity_id).insert((
             CurrentState(states_block.initial.clone()),
             StoredStatesBlock(states_block.clone()),
         ));
+    }
+
+    if !recalc_defs.is_empty() || !state_recalc_defs.is_empty() {
+        commands.entity(entity_id).insert(StoredComponentDefs {
+            base: recalc_defs,
+            state: state_recalc_defs,
+        });
     }
 
     entity_id

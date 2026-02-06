@@ -24,11 +24,32 @@ pub use node::attach_ability;
 
 use bevy::prelude::*;
 
+use crate::game_state::GameState;
+use crate::stats::ComputedStats;
 use crate::wave::WavePhase;
+use spawn::StoredComponentDefs;
 
 fn clear_ability_inputs(mut query: Query<&mut AbilityInputs>) {
     for mut inputs in &mut query {
         inputs.clear();
+    }
+}
+
+fn recalculate_on_stats_change(world: &mut World) {
+    let mut to_update: Vec<(Entity, AbilitySource, ComputedStats, StoredComponentDefs)> = Vec::new();
+
+    let mut query = world.query_filtered::<(Entity, &AbilitySource, &ComputedStats, &StoredComponentDefs), Changed<ComputedStats>>();
+    for (entity, source, stats, defs) in query.iter(world) {
+        to_update.push((entity, *source, stats.clone(), StoredComponentDefs {
+            base: defs.base.clone(),
+            state: defs.state.clone(),
+        }));
+    }
+
+    for (entity, source, stats, defs) in &to_update {
+        for def in defs.all() {
+            def.update_component(*entity, source, stats, world);
+        }
     }
 }
 
@@ -40,6 +61,12 @@ impl Plugin for AbilityPlugin {
             .add_message::<state::StateTransition>();
 
         components::register_component_systems(app);
+
+        app.add_systems(
+            PreUpdate,
+            recalculate_on_stats_change
+                .run_if(not(in_state(GameState::Loading))),
+        );
 
         app.add_systems(
             Update,

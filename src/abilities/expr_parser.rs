@@ -1,4 +1,4 @@
-use super::expr::{ScalarExprRaw, VecExprRaw, EntityExprRaw};
+use super::expr::{EntityExprRaw, ScalarExprRaw, VecExprRaw};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Token {
@@ -232,6 +232,7 @@ impl Parser {
             "distance" => self.parse_distance(),
             "dot" => self.parse_dot(),
             "angle" => self.parse_angle(),
+            "recalc" => self.parse_recalc_wrapper(),
             _ => Err(format!("Unknown identifier: '{}'", name)),
         }
     }
@@ -387,6 +388,17 @@ impl Parser {
         self.expect_token(&Token::RParen)?;
         let vec = expect_vec2(v, "angle")?;
         Ok(TypedExpr::Scalar(ScalarExprRaw::Angle(Box::new(vec))))
+    }
+
+    fn parse_recalc_wrapper(&mut self) -> Result<TypedExpr, String> {
+        self.expect_token(&Token::LParen)?;
+        let inner = self.parse_expr(0)?;
+        self.expect_token(&Token::RParen)?;
+        match inner {
+            TypedExpr::Scalar(s) => Ok(TypedExpr::Scalar(ScalarExprRaw::Recalc(Box::new(s)))),
+            TypedExpr::Vec2(v) => Ok(TypedExpr::Vec2(VecExprRaw::Recalc(Box::new(v)))),
+            TypedExpr::Entity(e) => Ok(TypedExpr::Entity(EntityExprRaw::Recalc(Box::new(e)))),
+        }
     }
 }
 

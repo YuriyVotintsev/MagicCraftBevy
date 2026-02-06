@@ -181,23 +181,39 @@ fn is_option_vec_expr(ty: &Type) -> bool {
     false
 }
 
+fn get_has_recalc_code(field_name: &syn::Ident, ty: &Type) -> Option<TokenStream2> {
+    if is_scalar_expr_type(ty) || is_vec_expr_type(ty) {
+        Some(quote! {
+            if def.#field_name.uses_recalc() { return true; }
+        })
+    } else if is_option_scalar_expr(ty) || is_option_vec_expr(ty) {
+        Some(quote! {
+            if let Some(ref expr) = def.#field_name {
+                if expr.uses_recalc() { return true; }
+            }
+        })
+    } else {
+        None
+    }
+}
+
 fn get_update_code(field_name: &syn::Ident, ty: &Type) -> Option<TokenStream2> {
     if is_scalar_expr_type(ty) {
         Some(quote! {
-            if def.#field_name.uses_stats() {
+            if def.#field_name.uses_recalc() {
                 comp.#field_name = def.#field_name.eval(source, stats);
             }
         })
     } else if is_vec_expr_type(ty) {
         Some(quote! {
-            if def.#field_name.uses_stats() {
+            if def.#field_name.uses_recalc() {
                 comp.#field_name = def.#field_name.eval(source, stats);
             }
         })
     } else if is_option_scalar_expr(ty) {
         Some(quote! {
             if let Some(ref expr) = def.#field_name {
-                if expr.uses_stats() {
+                if expr.uses_recalc() {
                     comp.#field_name = Some(expr.eval(source, stats));
                 }
             }
@@ -205,7 +221,7 @@ fn get_update_code(field_name: &syn::Ident, ty: &Type) -> Option<TokenStream2> {
     } else if is_option_vec_expr(ty) {
         Some(quote! {
             if let Some(ref expr) = def.#field_name {
-                if expr.uses_stats() {
+                if expr.uses_recalc() {
                     comp.#field_name = Some(expr.eval(source, stats));
                 }
             }
@@ -846,6 +862,10 @@ fn generate_ability_component_unit(
         pub fn update_component(_entity: bevy::prelude::Entity, _def: &Def, _source: &crate::abilities::core_components::AbilitySource, _stats: &crate::stats::ComputedStats, _world: &mut bevy::prelude::World) {
         }
 
+        pub fn has_recalc(_def: &Def) -> bool {
+            false
+        }
+
         pub fn remove_component(commands: &mut bevy::prelude::EntityCommands) {
             commands.remove::<#component_name>();
         }
@@ -868,6 +888,7 @@ fn generate_ability_component_named(
     let mut component_fields = Vec::new();
     let mut insert_fields = Vec::new();
     let mut update_stmts = Vec::new();
+    let mut has_recalc_stmts = Vec::new();
 
     for field in &fields.named {
         let field_name = field.ident.as_ref().unwrap();
@@ -882,6 +903,10 @@ fn generate_ability_component_named(
 
         if let Some(update_code) = get_update_code(field_name, field_ty) {
             update_stmts.push(update_code);
+        }
+
+        if let Some(recalc_code) = get_has_recalc_code(field_name, field_ty) {
+            has_recalc_stmts.push(recalc_code);
         }
 
         if is_scalar_expr_type(field_ty) {
@@ -1200,6 +1225,11 @@ fn generate_ability_component_named(
             if let Some(mut comp) = world.get_mut::<#component_name>(entity) {
                 #(#update_stmts)*
             }
+        }
+
+        pub fn has_recalc(def: &Def) -> bool {
+            #(#has_recalc_stmts)*
+            false
         }
 
         pub fn remove_component(commands: &mut bevy::prelude::EntityCommands) {

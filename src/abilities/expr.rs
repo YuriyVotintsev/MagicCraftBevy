@@ -25,6 +25,7 @@ pub enum ScalarExprRaw {
     X(Box<VecExprRaw>),
     Y(Box<VecExprRaw>),
     Angle(Box<VecExprRaw>),
+    Recalc(Box<Self>),
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +47,7 @@ pub enum ScalarExpr {
     X(Box<VecExpr>),
     Y(Box<VecExpr>),
     Angle(Box<VecExpr>),
+    Recalc(Box<Self>),
 }
 
 impl Default for ScalarExpr {
@@ -75,6 +77,7 @@ pub enum VecExprRaw {
     Lerp(Box<Self>, Box<Self>, Box<ScalarExprRaw>),
     Vec2Expr(Box<ScalarExprRaw>, Box<ScalarExprRaw>),
     FromAngle(Box<ScalarExprRaw>),
+    Recalc(Box<Self>),
 }
 
 #[derive(Debug, Clone)]
@@ -92,6 +95,7 @@ pub enum VecExpr {
     Lerp(Box<Self>, Box<Self>, Box<ScalarExpr>),
     Vec2Expr(Box<ScalarExpr>, Box<ScalarExpr>),
     FromAngle(Box<ScalarExpr>),
+    Recalc(Box<Self>),
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +103,7 @@ pub enum EntityExprRaw {
     CasterEntity,
     SourceEntity,
     TargetEntity,
+    Recalc(Box<Self>),
 }
 
 #[derive(Debug, Clone)]
@@ -107,6 +112,7 @@ pub enum EntityExpr {
     CasterEntity,
     SourceEntity,
     TargetEntity,
+    Recalc(Box<Self>),
 }
 
 impl ScalarExprRaw {
@@ -158,6 +164,7 @@ impl ScalarExprRaw {
             Self::X(v) => ScalarExpr::X(Box::new(v.resolve(reg))),
             Self::Y(v) => ScalarExpr::Y(Box::new(v.resolve(reg))),
             Self::Angle(v) => ScalarExpr::Angle(Box::new(v.resolve(reg))),
+            Self::Recalc(e) => ScalarExpr::Recalc(Box::new(e.resolve(reg))),
         }
     }
 
@@ -175,6 +182,7 @@ impl ScalarExprRaw {
             Self::Distance(a, b) | Self::Dot(a, b) => {
                 a.required_fields().union(b.required_fields())
             }
+            Self::Recalc(e) => e.required_fields(),
         }
     }
 }
@@ -214,6 +222,7 @@ impl VecExprRaw {
                 Box::new(y.resolve(reg)),
             ),
             Self::FromAngle(a) => VecExpr::FromAngle(Box::new(a.resolve(reg))),
+            Self::Recalc(e) => VecExpr::Recalc(Box::new(e.resolve(reg))),
         }
     }
 
@@ -236,6 +245,7 @@ impl VecExprRaw {
                 .union(t.required_fields()),
             Self::Vec2Expr(x, y) => x.required_fields().union(y.required_fields()),
             Self::FromAngle(a) => a.required_fields(),
+            Self::Recalc(e) => e.required_fields(),
         }
     }
 }
@@ -247,6 +257,7 @@ impl EntityExprRaw {
             Self::CasterEntity => EntityExpr::CasterEntity,
             Self::SourceEntity => EntityExpr::SourceEntity,
             Self::TargetEntity => EntityExpr::TargetEntity,
+            Self::Recalc(e) => EntityExpr::Recalc(Box::new(e.resolve(_reg))),
         }
     }
 
@@ -255,11 +266,13 @@ impl EntityExprRaw {
             Self::CasterEntity => ProvidedFields::NONE,
             Self::SourceEntity => ProvidedFields::SOURCE_ENTITY,
             Self::TargetEntity => ProvidedFields::TARGET_ENTITY,
+            Self::Recalc(e) => e.required_fields(),
         }
     }
 }
 
 impl ScalarExpr {
+    #[allow(dead_code)]
     pub fn uses_stats(&self) -> bool {
         match self {
             Self::Literal(_) | Self::Index | Self::Count => false,
@@ -273,6 +286,23 @@ impl ScalarExpr {
             Self::Neg(a) => a.uses_stats(),
             Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.uses_stats(),
             Self::Distance(a, b) | Self::Dot(a, b) => a.uses_stats() || b.uses_stats(),
+            Self::Recalc(e) => e.uses_stats(),
+        }
+    }
+
+    pub fn uses_recalc(&self) -> bool {
+        match self {
+            Self::Literal(_) | Self::Index | Self::Count | Self::Stat(_) => false,
+            Self::Recalc(_) => true,
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::Div(a, b)
+            | Self::Min(a, b)
+            | Self::Max(a, b) => a.uses_recalc() || b.uses_recalc(),
+            Self::Neg(a) => a.uses_recalc(),
+            Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.uses_recalc(),
+            Self::Distance(a, b) | Self::Dot(a, b) => a.uses_recalc() || b.uses_recalc(),
         }
     }
 
@@ -305,11 +335,13 @@ impl ScalarExpr {
                 let v = v.eval(source, stats);
                 v.y.atan2(v.x)
             }
+            Self::Recalc(e) => e.eval(source, stats),
         }
     }
 }
 
 impl VecExpr {
+    #[allow(dead_code)]
     pub fn uses_stats(&self) -> bool {
         match self {
             Self::CasterPos | Self::SourcePos | Self::SourceDir
@@ -321,6 +353,22 @@ impl VecExpr {
             Self::Lerp(a, b, t) => a.uses_stats() || b.uses_stats() || t.uses_stats(),
             Self::Vec2Expr(x, y) => x.uses_stats() || y.uses_stats(),
             Self::FromAngle(a) => a.uses_stats(),
+            Self::Recalc(e) => e.uses_stats(),
+        }
+    }
+
+    pub fn uses_recalc(&self) -> bool {
+        match self {
+            Self::CasterPos | Self::SourcePos | Self::SourceDir
+            | Self::TargetPos | Self::TargetDir => false,
+            Self::Recalc(_) => true,
+            Self::Add(a, b) | Self::Sub(a, b) => a.uses_recalc() || b.uses_recalc(),
+            Self::Scale(v, s) => v.uses_recalc() || s.uses_recalc(),
+            Self::Normalize(v) => v.uses_recalc(),
+            Self::Rotate(v, a) => v.uses_recalc() || a.uses_recalc(),
+            Self::Lerp(a, b, t) => a.uses_recalc() || b.uses_recalc() || t.uses_recalc(),
+            Self::Vec2Expr(x, y) => x.uses_recalc() || y.uses_recalc(),
+            Self::FromAngle(a) => a.uses_recalc(),
         }
     }
 
@@ -346,6 +394,7 @@ impl VecExpr {
             Self::Lerp(a, b, t) => a.eval(source, stats).lerp(b.eval(source, stats), t.eval(source, stats)),
             Self::Vec2Expr(x, y) => Vec2::new(x.eval(source, stats), y.eval(source, stats)),
             Self::FromAngle(a) => Vec2::from_angle(a.eval(source, stats)),
+            Self::Recalc(e) => e.eval(source, stats),
         }
     }
 }
@@ -357,6 +406,7 @@ impl EntityExpr {
             Self::CasterEntity => source.caster.entity,
             Self::SourceEntity => source.source.entity,
             Self::TargetEntity => source.target.entity,
+            Self::Recalc(e) => e.eval(source),
         }
     }
 }
