@@ -1,5 +1,6 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
+use bevy::camera::ScalingMode;
 use rand::Rng;
 
 use crate::GameState;
@@ -11,9 +12,9 @@ use crate::schedule::GameSet;
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 
 #[cfg(not(feature = "headless"))]
-pub const WINDOW_WIDTH: f32 = 1280.0;
+pub const WINDOW_WIDTH: f32 = 1920.0;
 #[cfg(not(feature = "headless"))]
-pub const WINDOW_HEIGHT: f32 = 720.0;
+pub const WINDOW_HEIGHT: f32 = 1080.0;
 pub const ARENA_WIDTH: f32 = 1920.0;
 pub const ARENA_HEIGHT: f32 = 1080.0;
 pub const BORDER_THICKNESS: f32 = 10.0;
@@ -55,7 +56,16 @@ fn cleanup_spawn_markers(mut commands: Commands, markers: Query<Entity, With<Spa
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn((Name::new("MainCamera"), Camera2d));
+    commands.spawn((
+        Name::new("MainCamera"),
+        Camera2d,
+        Projection::Orthographic(OrthographicProjection {
+            scaling_mode: ScalingMode::FixedVertical {
+                viewport_height: ARENA_HEIGHT,
+            },
+            ..OrthographicProjection::default_2d()
+        }),
+    ));
 }
 
 fn spawn_arena(mut commands: Commands) {

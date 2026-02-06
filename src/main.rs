@@ -116,7 +116,8 @@ fn main() {
     {
         app.add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
-                resolution: WindowResolution::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32),
+                resolution: WindowResolution::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
+                    .with_scale_factor_override(1.0),
                 title: "Magic Craft".to_string(),
                 ..default()
             }),
