@@ -3,7 +3,6 @@ use avian2d::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::abilities::context::TargetInfo;
-use crate::abilities::spawn::SpawnContext;
 use crate::abilities::AbilitySource;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
@@ -88,19 +87,18 @@ fn on_area_trigger_system(
                 .unwrap_or(Vec2::ZERO);
             let target_info = TargetInfo::from_entity_and_position(target_entity, target_pos);
 
-            let spawn_ctx = SpawnContext {
+            let spawn_source = AbilitySource {
                 ability_id: source.ability_id,
                 caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
                 caster_faction: source.caster_faction,
                 source: source_info,
                 target: target_info,
-                stats: caster_stats,
                 index: 0,
                 count: 1,
             };
 
             for entity_def in &trigger.entities {
-                crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx, None, None, None);
+                crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_source, caster_stats, None, None, None);
             }
         }
 

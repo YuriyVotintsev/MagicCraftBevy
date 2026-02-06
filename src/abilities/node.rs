@@ -6,7 +6,6 @@ use crate::stats::DEFAULT_STATS;
 use super::context::TargetInfo;
 use super::ids::AbilityId;
 use super::activator_support::AbilityEntity;
-use super::spawn::SpawnContext;
 use super::AbilitySource;
 
 pub fn attach_ability(
@@ -22,31 +21,24 @@ pub fn attach_ability(
 
     let caster = TargetInfo::from_entity_and_position(owner, Vec2::ZERO);
 
-    let mut entity_commands = commands.spawn((
-        AbilitySource {
-            ability_id,
-            caster,
-            caster_faction: owner_faction,
-            source: TargetInfo::EMPTY,
-            target: TargetInfo::EMPTY,
-        },
-        AbilityEntity,
-        Name::new(format!("Ability_{:?}", ability_id)),
-    ));
-
-    let ctx = SpawnContext {
+    let source = AbilitySource {
         ability_id,
         caster,
         caster_faction: owner_faction,
         source: TargetInfo::EMPTY,
         target: TargetInfo::EMPTY,
-        stats: &DEFAULT_STATS,
         index: 0,
         count: 1,
     };
 
+    let mut entity_commands = commands.spawn((
+        source,
+        AbilityEntity,
+        Name::new(format!("Ability_{:?}", ability_id)),
+    ));
+
     for component in &ability_def.components {
-        component.insert_component(&mut entity_commands, &ctx);
+        component.insert_component(&mut entity_commands, &source, &DEFAULT_STATS);
     }
 }
 

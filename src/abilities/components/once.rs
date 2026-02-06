@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
-use crate::abilities::spawn::SpawnContext;
 use crate::abilities::{AbilityRegistry, AbilitySource, TargetInfo};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, StatCalculators, StatRegistry, DEFAULT_STATS};
@@ -45,15 +44,13 @@ fn once_system(
 
         let caster_pos = transform.translation.truncate();
         let source_info = TargetInfo::from_entity_and_position(caster_entity, caster_pos);
-        let target_info = TargetInfo::EMPTY;
 
-        let spawn_ctx = SpawnContext {
+        let spawn_source = AbilitySource {
             ability_id: source.ability_id,
             caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
             caster_faction: source.caster_faction,
             source: source_info,
-            target: target_info,
-            stats: caster_stats,
+            target: TargetInfo::EMPTY,
             index: 0,
             count: 1,
         };
@@ -62,7 +59,8 @@ fn once_system(
             crate::abilities::spawn::spawn_entity_def(
                 &mut commands,
                 entity_def,
-                &spawn_ctx,
+                &spawn_source,
+                caster_stats,
                 stat_registry.as_deref(),
                 calculators.as_deref(),
                 Some(&ability_registry),

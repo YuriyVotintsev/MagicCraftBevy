@@ -2,7 +2,6 @@ pub mod ids;
 pub mod context;
 pub mod expr;
 pub mod expr_parser;
-pub mod eval_context;
 pub mod node;
 mod ability_def;
 mod activator_support;

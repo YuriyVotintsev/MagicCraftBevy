@@ -185,20 +185,20 @@ fn get_update_code(field_name: &syn::Ident, ty: &Type) -> Option<TokenStream2> {
     if is_scalar_expr_type(ty) {
         Some(quote! {
             if def.#field_name.uses_stats() {
-                comp.#field_name = def.#field_name.eval(&eval_ctx);
+                comp.#field_name = def.#field_name.eval(source, stats);
             }
         })
     } else if is_vec_expr_type(ty) {
         Some(quote! {
             if def.#field_name.uses_stats() {
-                comp.#field_name = def.#field_name.eval(&eval_ctx);
+                comp.#field_name = def.#field_name.eval(source, stats);
             }
         })
     } else if is_option_scalar_expr(ty) {
         Some(quote! {
             if let Some(ref expr) = def.#field_name {
                 if expr.uses_stats() {
-                    comp.#field_name = Some(expr.eval(&eval_ctx));
+                    comp.#field_name = Some(expr.eval(source, stats));
                 }
             }
         })
@@ -206,7 +206,7 @@ fn get_update_code(field_name: &syn::Ident, ty: &Type) -> Option<TokenStream2> {
         Some(quote! {
             if let Some(ref expr) = def.#field_name {
                 if expr.uses_stats() {
-                    comp.#field_name = Some(expr.eval(&eval_ctx));
+                    comp.#field_name = Some(expr.eval(source, stats));
                 }
             }
         })
@@ -305,15 +305,15 @@ fn get_component_type(ty: &Type) -> Option<TokenStream2> {
 
 fn get_eval_code(field_name: &syn::Ident, ty: &Type) -> Option<TokenStream2> {
     if is_scalar_expr_type(ty) {
-        Some(quote! { def.#field_name.eval(&eval_ctx) })
+        Some(quote! { def.#field_name.eval(source, stats) })
     } else if is_vec_expr_type(ty) {
-        Some(quote! { def.#field_name.eval(&eval_ctx) })
+        Some(quote! { def.#field_name.eval(source, stats) })
     } else if is_entity_expr_type(ty) {
-        Some(quote! { def.#field_name.eval(&eval_ctx).unwrap() })
+        Some(quote! { def.#field_name.eval(source).unwrap() })
     } else if is_option_scalar_expr(ty) {
-        Some(quote! { def.#field_name.as_ref().map(|e| e.eval(&eval_ctx)) })
+        Some(quote! { def.#field_name.as_ref().map(|e| e.eval(source, stats)) })
     } else if is_option_vec_expr(ty) {
-        Some(quote! { def.#field_name.as_ref().map(|e| e.eval(&eval_ctx)) })
+        Some(quote! { def.#field_name.as_ref().map(|e| e.eval(source, stats)) })
     } else {
         None
     }
@@ -669,8 +669,7 @@ fn generate_for_named_struct(
                 #(#component_fields,)*
             }
 
-            pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, def: &#name, ctx: &crate::abilities::spawn::SpawnContext) {
-                let eval_ctx = ctx.eval_context();
+            pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, def: &#name, source: &crate::abilities::core_components::AbilitySource, stats: &crate::stats::ComputedStats) {
                 commands.insert(#comp_name {
                     #(#insert_fields,)*
                 });
@@ -720,7 +719,7 @@ fn generate_for_unit_struct(
             #[derive(bevy::prelude::Component)]
             pub struct #comp_name;
 
-            pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, _def: &#name, _ctx: &crate::abilities::spawn::SpawnContext) {
+            pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, _def: &#name, _source: &crate::abilities::core_components::AbilitySource, _stats: &crate::stats::ComputedStats) {
                 commands.insert(#comp_name);
             }
         }
@@ -840,11 +839,11 @@ fn generate_ability_component_unit(
         #[derive(bevy::prelude::Component)]
         pub struct #component_name;
 
-        pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, _def: &Def, _ctx: &crate::abilities::spawn::SpawnContext) {
+        pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, _def: &Def, _source: &crate::abilities::core_components::AbilitySource, _stats: &crate::stats::ComputedStats) {
             commands.insert(#component_name);
         }
 
-        pub fn update_component(_entity: bevy::prelude::Entity, _def: &Def, _ctx: &crate::abilities::spawn::SpawnContext, _world: &mut bevy::prelude::World) {
+        pub fn update_component(_entity: bevy::prelude::Entity, _def: &Def, _source: &crate::abilities::core_components::AbilitySource, _stats: &crate::stats::ComputedStats, _world: &mut bevy::prelude::World) {
         }
 
         pub fn remove_component(commands: &mut bevy::prelude::EntityCommands) {
@@ -941,7 +940,7 @@ fn generate_ability_component_named(
             }
 
             component_fields.push(quote! { pub #field_name: f32 });
-            insert_fields.push(quote! { #field_name: def.#field_name.eval(&eval_ctx) });
+            insert_fields.push(quote! { #field_name: def.#field_name.eval(source, stats) });
 
         } else if is_vec_expr_type(field_ty) {
             def_fields.push(quote! { pub #field_name: crate::abilities::expr::VecExpr });
@@ -980,7 +979,7 @@ fn generate_ability_component_named(
             }
 
             component_fields.push(quote! { pub #field_name: bevy::prelude::Vec2 });
-            insert_fields.push(quote! { #field_name: def.#field_name.eval(&eval_ctx) });
+            insert_fields.push(quote! { #field_name: def.#field_name.eval(source, stats) });
 
         } else if is_entity_expr_type(field_ty) {
             def_fields.push(quote! { pub #field_name: crate::abilities::expr::EntityExpr });
@@ -1019,7 +1018,7 @@ fn generate_ability_component_named(
             }
 
             component_fields.push(quote! { pub #field_name: bevy::prelude::Entity });
-            insert_fields.push(quote! { #field_name: def.#field_name.eval(&eval_ctx).unwrap() });
+            insert_fields.push(quote! { #field_name: def.#field_name.eval(source).unwrap() });
 
         } else if is_option_scalar_expr(field_ty) {
             def_fields.push(quote! { pub #field_name: Option<crate::abilities::expr::ScalarExpr> });
@@ -1040,7 +1039,7 @@ fn generate_ability_component_named(
             });
 
             component_fields.push(quote! { pub #field_name: Option<f32> });
-            insert_fields.push(quote! { #field_name: def.#field_name.as_ref().map(|e| e.eval(&eval_ctx)) });
+            insert_fields.push(quote! { #field_name: def.#field_name.as_ref().map(|e| e.eval(source, stats)) });
 
         } else if is_vec_entity_def(field_ty) {
             def_fields.push(quote! { pub #field_name: Vec<crate::abilities::entity_def::EntityDef> });
@@ -1191,15 +1190,13 @@ fn generate_ability_component_named(
             #(#component_fields,)*
         }
 
-        pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, def: &Def, ctx: &crate::abilities::spawn::SpawnContext) {
-            let eval_ctx = ctx.eval_context();
+        pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, def: &Def, source: &crate::abilities::core_components::AbilitySource, stats: &crate::stats::ComputedStats) {
             commands.insert(#component_name {
                 #(#insert_fields,)*
             });
         }
 
-        pub fn update_component(entity: bevy::prelude::Entity, def: &Def, ctx: &crate::abilities::spawn::SpawnContext, world: &mut bevy::prelude::World) {
-            let eval_ctx = ctx.eval_context();
+        pub fn update_component(entity: bevy::prelude::Entity, def: &Def, source: &crate::abilities::core_components::AbilitySource, stats: &crate::stats::ComputedStats, world: &mut bevy::prelude::World) {
             if let Some(mut comp) = world.get_mut::<#component_name>(entity) {
                 #(#update_stmts)*
             }

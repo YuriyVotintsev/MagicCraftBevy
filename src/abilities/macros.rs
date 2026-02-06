@@ -89,27 +89,27 @@ macro_rules! collect_components {
         }
 
         impl ComponentDef {
-            pub fn insert_component(&self, commands: &mut ::bevy::prelude::EntityCommands, ctx: &super::spawn::SpawnContext) {
+            pub fn insert_component(&self, commands: &mut ::bevy::prelude::EntityCommands, source: &super::AbilitySource, stats: &crate::stats::ComputedStats) {
                 paste::paste! {
                     match self {
                         $(
-                            Self::[<$activator:camel>](def) => $activator::insert_component(commands, def, ctx),
+                            Self::[<$activator:camel>](def) => $activator::insert_component(commands, def, source, stats),
                         )*
                         $(
-                            Self::[<$component:camel>](def) => $component::insert_component(commands, def, ctx),
+                            Self::[<$component:camel>](def) => $component::insert_component(commands, def, source, stats),
                         )*
                     }
                 }
             }
 
-            pub fn update_component(&self, entity: ::bevy::prelude::Entity, ctx: &super::spawn::SpawnContext, world: &mut ::bevy::prelude::World) {
+            pub fn update_component(&self, entity: ::bevy::prelude::Entity, source: &super::AbilitySource, stats: &crate::stats::ComputedStats, world: &mut ::bevy::prelude::World) {
                 paste::paste! {
                     match self {
                         $(
-                            Self::[<$activator:camel>](def) => $activator::update_component(entity, def, ctx, world),
+                            Self::[<$activator:camel>](def) => $activator::update_component(entity, def, source, stats, world),
                         )*
                         $(
-                            Self::[<$component:camel>](def) => $component::update_component(entity, def, ctx, world),
+                            Self::[<$component:camel>](def) => $component::update_component(entity, def, source, stats, world),
                         )*
                     }
                 }

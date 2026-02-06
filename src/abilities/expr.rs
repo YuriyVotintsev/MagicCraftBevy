@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Deserializer};
 
-use crate::stats::{StatId, StatRegistry};
+use crate::stats::{ComputedStats, StatId, StatRegistry};
 use super::context::ProvidedFields;
-use super::eval_context::EvalContext;
+use super::core_components::AbilitySource;
 use super::expr_parser::{TypedExpr, parse_expr_string};
 
 #[derive(Debug, Clone)]
@@ -276,33 +276,33 @@ impl ScalarExpr {
         }
     }
 
-    pub fn eval(&self, ctx: &EvalContext) -> f32 {
+    pub fn eval(&self, source: &AbilitySource, stats: &ComputedStats) -> f32 {
         match self {
             Self::Literal(v) => *v,
-            Self::Stat(id) => ctx.stats.get(*id),
-            Self::Index => ctx.index as f32,
-            Self::Count => ctx.count as f32,
-            Self::Add(a, b) => a.eval(ctx) + b.eval(ctx),
-            Self::Sub(a, b) => a.eval(ctx) - b.eval(ctx),
-            Self::Mul(a, b) => a.eval(ctx) * b.eval(ctx),
+            Self::Stat(id) => stats.get(*id),
+            Self::Index => source.index as f32,
+            Self::Count => source.count as f32,
+            Self::Add(a, b) => a.eval(source, stats) + b.eval(source, stats),
+            Self::Sub(a, b) => a.eval(source, stats) - b.eval(source, stats),
+            Self::Mul(a, b) => a.eval(source, stats) * b.eval(source, stats),
             Self::Div(a, b) => {
-                let d = b.eval(ctx);
+                let d = b.eval(source, stats);
                 if d.abs() < f32::EPSILON {
                     0.0
                 } else {
-                    a.eval(ctx) / d
+                    a.eval(source, stats) / d
                 }
             }
-            Self::Neg(a) => -a.eval(ctx),
-            Self::Min(a, b) => a.eval(ctx).min(b.eval(ctx)),
-            Self::Max(a, b) => a.eval(ctx).max(b.eval(ctx)),
-            Self::Length(v) => v.eval(ctx).length(),
-            Self::Distance(a, b) => a.eval(ctx).distance(b.eval(ctx)),
-            Self::Dot(a, b) => a.eval(ctx).dot(b.eval(ctx)),
-            Self::X(v) => v.eval(ctx).x,
-            Self::Y(v) => v.eval(ctx).y,
+            Self::Neg(a) => -a.eval(source, stats),
+            Self::Min(a, b) => a.eval(source, stats).min(b.eval(source, stats)),
+            Self::Max(a, b) => a.eval(source, stats).max(b.eval(source, stats)),
+            Self::Length(v) => v.eval(source, stats).length(),
+            Self::Distance(a, b) => a.eval(source, stats).distance(b.eval(source, stats)),
+            Self::Dot(a, b) => a.eval(source, stats).dot(b.eval(source, stats)),
+            Self::X(v) => v.eval(source, stats).x,
+            Self::Y(v) => v.eval(source, stats).y,
             Self::Angle(v) => {
-                let v = v.eval(ctx);
+                let v = v.eval(source, stats);
                 v.y.atan2(v.x)
             }
         }
@@ -324,39 +324,39 @@ impl VecExpr {
         }
     }
 
-    pub fn eval(&self, ctx: &EvalContext) -> Vec2 {
+    pub fn eval(&self, source: &AbilitySource, stats: &ComputedStats) -> Vec2 {
         match self {
-            Self::CasterPos => ctx.caster.position.unwrap_or(Vec2::ZERO),
-            Self::SourcePos => ctx.source.position.unwrap_or(Vec2::ZERO),
-            Self::SourceDir => ctx.source.direction.unwrap_or(Vec2::ZERO),
-            Self::TargetPos => ctx.target.position.unwrap_or(Vec2::ZERO),
-            Self::TargetDir => ctx.target.direction.unwrap_or(Vec2::ZERO),
-            Self::Add(a, b) => a.eval(ctx) + b.eval(ctx),
-            Self::Sub(a, b) => a.eval(ctx) - b.eval(ctx),
-            Self::Scale(v, s) => v.eval(ctx) * s.eval(ctx),
-            Self::Normalize(v) => v.eval(ctx).normalize_or_zero(),
+            Self::CasterPos => source.caster.position.unwrap_or(Vec2::ZERO),
+            Self::SourcePos => source.source.position.unwrap_or(Vec2::ZERO),
+            Self::SourceDir => source.source.direction.unwrap_or(Vec2::ZERO),
+            Self::TargetPos => source.target.position.unwrap_or(Vec2::ZERO),
+            Self::TargetDir => source.target.direction.unwrap_or(Vec2::ZERO),
+            Self::Add(a, b) => a.eval(source, stats) + b.eval(source, stats),
+            Self::Sub(a, b) => a.eval(source, stats) - b.eval(source, stats),
+            Self::Scale(v, s) => v.eval(source, stats) * s.eval(source, stats),
+            Self::Normalize(v) => v.eval(source, stats).normalize_or_zero(),
             Self::Rotate(v, angle) => {
-                let v = v.eval(ctx);
-                let a = angle.eval(ctx);
+                let v = v.eval(source, stats);
+                let a = angle.eval(source, stats);
                 Vec2::new(
                     v.x * a.cos() - v.y * a.sin(),
                     v.x * a.sin() + v.y * a.cos(),
                 )
             }
-            Self::Lerp(a, b, t) => a.eval(ctx).lerp(b.eval(ctx), t.eval(ctx)),
-            Self::Vec2Expr(x, y) => Vec2::new(x.eval(ctx), y.eval(ctx)),
-            Self::FromAngle(a) => Vec2::from_angle(a.eval(ctx)),
+            Self::Lerp(a, b, t) => a.eval(source, stats).lerp(b.eval(source, stats), t.eval(source, stats)),
+            Self::Vec2Expr(x, y) => Vec2::new(x.eval(source, stats), y.eval(source, stats)),
+            Self::FromAngle(a) => Vec2::from_angle(a.eval(source, stats)),
         }
     }
 }
 
 #[allow(dead_code)]
 impl EntityExpr {
-    pub fn eval(&self, ctx: &EvalContext) -> Option<Entity> {
+    pub fn eval(&self, source: &AbilitySource) -> Option<Entity> {
         match self {
-            Self::CasterEntity => ctx.caster.entity,
-            Self::SourceEntity => ctx.source.entity,
-            Self::TargetEntity => ctx.target.entity,
+            Self::CasterEntity => source.caster.entity,
+            Self::SourceEntity => source.source.entity,
+            Self::TargetEntity => source.target.entity,
         }
     }
 }

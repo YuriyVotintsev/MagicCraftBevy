@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::abilities::context::TargetInfo;
-use crate::abilities::spawn::SpawnContext;
 use crate::abilities::AbilitySource;
 use crate::schedule::GameSet;
 use super::lifetime::Lifetime;
@@ -40,19 +39,18 @@ fn on_expire_trigger_system(
         let source_pos = transform.translation.truncate();
         let source_info = TargetInfo::from_position(source_pos);
 
-        let spawn_ctx = SpawnContext {
+        let spawn_source = AbilitySource {
             ability_id: source.ability_id,
             caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
             caster_faction: source.caster_faction,
             source: source_info,
             target: TargetInfo::EMPTY,
-            stats: caster_stats,
             index: 0,
             count: 1,
         };
 
         for entity_def in &trigger.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx, None, None, None);
+            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_source, caster_stats, None, None, None);
         }
 
         commands.entity(entity).remove::<OnExpire>();

@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
-use crate::abilities::spawn::SpawnContext;
 use crate::abilities::{AbilityInputs, AbilitySource, TargetInfo};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
@@ -70,19 +69,18 @@ fn while_held_system(
         let source_info = TargetInfo::from_entity_and_position(caster_entity, caster_pos);
         let target_info = TargetInfo::from_direction(input.direction.truncate());
 
-        let spawn_ctx = SpawnContext {
+        let spawn_source = AbilitySource {
             ability_id: source.ability_id,
             caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
             caster_faction: source.caster_faction,
             source: source_info,
             target: target_info,
-            stats: caster_stats,
             index: 0,
             count: 1,
         };
 
         for entity_def in &while_held.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx, None, None, None);
+            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_source, caster_stats, None, None, None);
         }
 
         timer.timer = while_held.interval;

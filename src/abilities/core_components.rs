@@ -43,4 +43,6 @@ pub struct AbilitySource {
     pub caster_faction: Faction,
     pub source: TargetInfo,
     pub target: TargetInfo,
+    pub index: usize,
+    pub count: usize,
 }

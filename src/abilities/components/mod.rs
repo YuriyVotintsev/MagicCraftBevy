@@ -4,7 +4,6 @@ collect_components!(
         once,
         interval,
         while_held,
-        persistent,
     ],
     components: [
         projectile,
@@ -28,7 +27,6 @@ collect_components!(
         follow_caster,
         destroy_enemy_projectiles,
         boomerang,
-        recalculate,
         health,
         dynamic_body,
         move_toward,

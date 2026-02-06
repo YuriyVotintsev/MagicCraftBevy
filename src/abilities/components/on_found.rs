@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::abilities::context::TargetInfo;
-use crate::abilities::spawn::SpawnContext;
 use crate::abilities::AbilitySource;
 use crate::schedule::GameSet;
 use crate::GameState;
@@ -44,19 +43,18 @@ fn on_found_trigger_system(
         let source_info = TargetInfo::from_position(found_pos);
         let target_info = TargetInfo::from_entity_and_position(found.0, found_pos);
 
-        let spawn_ctx = SpawnContext {
+        let spawn_source = AbilitySource {
             ability_id: source.ability_id,
             caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
             caster_faction: source.caster_faction,
             source: source_info,
             target: target_info,
-            stats: caster_stats,
             index: 0,
             count: 1,
         };
 
         for entity_def in &trigger.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_ctx, None, None, None);
+            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_source, caster_stats, None, None, None);
         }
 
         commands.entity(entity).despawn();

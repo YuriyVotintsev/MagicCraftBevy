@@ -5,7 +5,6 @@ use crate::Faction;
 use crate::stats::ComputedStats;
 use super::context::TargetInfo;
 use super::entity_def::StatesBlock;
-use super::spawn::SpawnContext;
 use super::AbilitySource;
 
 #[derive(Message)]
@@ -60,23 +59,22 @@ pub fn state_transition_system(
             let mut caster = source.caster;
             caster.position = Some(transform.translation.truncate());
 
-            let ctx = SpawnContext {
+            let transition_source = AbilitySource {
                 ability_id: source.ability_id,
                 caster,
                 caster_faction: *faction,
                 source: TargetInfo::from_entity_and_position(event.entity, transform.translation.truncate()),
                 target: TargetInfo::EMPTY,
-                stats,
                 index: 0,
                 count: 1,
             };
 
             let mut ec = commands.entity(event.entity);
             for comp in &new_state.components {
-                comp.insert_component(&mut ec, &ctx);
+                comp.insert_component(&mut ec, &transition_source, stats);
             }
             for trans in &new_state.transitions {
-                trans.insert_component(&mut ec, &ctx);
+                trans.insert_component(&mut ec, &transition_source, stats);
             }
         }
 
