@@ -12,8 +12,12 @@
                     Health(()),
                 ],
                 states: Some((
-                    initial: "chase",
+                    initial: "find_target",
                     states: {
+                        "find_target": (
+                            components: [FindNearestEnemy((size: "4000.0"))],
+                            transitions: [WhenFoundTarget((to: "chase"))],
+                        ),
                         "chase": (
                             components: [MoveToward(())],
                             transitions: [WhenNear((to: "attack", distance: "50.0"))],

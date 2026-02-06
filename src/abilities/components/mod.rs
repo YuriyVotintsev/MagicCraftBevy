@@ -33,6 +33,7 @@ collect_components!(
         keep_distance,
         use_abilities,
         when_near,
+        when_found_target,
         after_time,
     ]
 );

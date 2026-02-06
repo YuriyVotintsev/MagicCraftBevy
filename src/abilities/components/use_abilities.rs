@@ -2,10 +2,11 @@ use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::abilities::{AbilityInputs, AbilityRegistry, InputState};
-use crate::player::Player;
 
 #[ability_component]
 pub struct UseAbilities {
+    #[default_expr("target.entity")]
+    pub target: EntityExpr,
     pub abilities: Vec<String>,
     #[raw(default = 1.0)]
     pub cooldown: ScalarExpr,
@@ -37,15 +38,14 @@ fn init_use_abilities_timer(
 fn use_abilities_system(
     time: Res<Time>,
     ability_registry: Res<AbilityRegistry>,
-    player_query: Query<&Transform, With<Player>>,
+    transforms: Query<&Transform, Without<UseAbilities>>,
     mut query: Query<(&Transform, &UseAbilities, &mut UseAbilitiesTimer, &mut AbilityInputs)>,
 ) {
-    let Ok(player_transform) = player_query.single() else {
-        return;
-    };
-    let player_pos = player_transform.translation;
-
     for (transform, use_abilities, mut timer, mut inputs) in &mut query {
+        let Ok(target_transform) = transforms.get(use_abilities.target) else {
+            continue;
+        };
+
         timer.elapsed += time.delta_secs();
 
         if timer.elapsed < use_abilities.cooldown {
@@ -54,7 +54,7 @@ fn use_abilities_system(
 
         timer.elapsed = 0.0;
 
-        let direction = (player_pos - transform.translation).normalize_or_zero();
+        let direction = (target_transform.translation - transform.translation).normalize_or_zero();
 
         for ability_name in &use_abilities.abilities {
             if let Some(ability_id) = ability_registry.get_id(ability_name) {

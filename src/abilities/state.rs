@@ -1,9 +1,7 @@
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use crate::Faction;
 use crate::stats::ComputedStats;
-use super::context::TargetInfo;
 use super::entity_def::StatesBlock;
 use super::spawn::StoredComponentDefs;
 use super::AbilitySource;
@@ -27,14 +25,12 @@ pub fn state_transition_system(
         &mut CurrentState,
         &StoredStatesBlock,
         &AbilitySource,
-        &Faction,
-        &Transform,
         &ComputedStats,
         Option<&StoredComponentDefs>,
     )>,
 ) {
     for event in events.read() {
-        let Ok((mut current_state, stored, source, faction, transform, stats, existing_stored_defs)) = query.get_mut(event.entity) else {
+        let Ok((mut current_state, stored, source, stats, existing_stored_defs)) = query.get_mut(event.entity) else {
             continue;
         };
 
@@ -59,25 +55,12 @@ pub fn state_transition_system(
 
         let mut new_state_recalc = Vec::new();
         if let Some(new_state) = stored.0.states.get(new_state_name) {
-            let mut caster = source.caster;
-            caster.position = Some(transform.translation.truncate());
-
-            let transition_source = AbilitySource {
-                ability_id: source.ability_id,
-                caster,
-                caster_faction: *faction,
-                source: TargetInfo::from_entity_and_position(event.entity, transform.translation.truncate()),
-                target: TargetInfo::EMPTY,
-                index: 0,
-                count: 1,
-            };
-
             let mut ec = commands.entity(event.entity);
             for comp in &new_state.components {
-                comp.insert_component(&mut ec, &transition_source, stats);
+                comp.insert_component(&mut ec, source, stats);
             }
             for trans in &new_state.transitions {
-                trans.insert_component(&mut ec, &transition_source, stats);
+                trans.insert_component(&mut ec, source, stats);
             }
 
             new_state_recalc.extend(

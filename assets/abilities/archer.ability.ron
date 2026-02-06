@@ -17,8 +17,12 @@
                     Health(()),
                 ],
                 states: Some((
-                    initial: "kite",
+                    initial: "find_target",
                     states: {
+                        "find_target": (
+                            components: [FindNearestEnemy((size: "4000.0"))],
+                            transitions: [WhenFoundTarget((to: "kite"))],
+                        ),
                         "kite": (
                             components: [
                                 KeepDistance((min: "150.0", max: "300.0")),

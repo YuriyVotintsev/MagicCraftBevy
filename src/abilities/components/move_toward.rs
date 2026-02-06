@@ -2,11 +2,13 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
-use crate::player::Player;
 use crate::stats::{ComputedStats, StatRegistry};
 
 #[ability_component]
-pub struct MoveToward;
+pub struct MoveToward {
+    #[default_expr("target.entity")]
+    pub target: EntityExpr,
+}
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -17,18 +19,17 @@ pub fn register_systems(app: &mut App) {
 
 fn move_toward_system(
     stat_registry: Res<StatRegistry>,
-    mut query: Query<(&Transform, &mut LinearVelocity, &ComputedStats), With<MoveToward>>,
-    player: Query<&Transform, (With<Player>, Without<MoveToward>)>,
+    mut query: Query<(&Transform, &mut LinearVelocity, &ComputedStats, &MoveToward)>,
+    transforms: Query<&Transform, Without<MoveToward>>,
 ) {
-    let Ok(player_transform) = player.single() else {
-        return;
-    };
-    let player_pos = player_transform.translation;
     let speed_id = stat_registry.get("movement_speed");
 
-    for (transform, mut velocity, stats) in &mut query {
+    for (transform, mut velocity, stats, move_toward) in &mut query {
+        let Ok(target_transform) = transforms.get(move_toward.target) else {
+            continue;
+        };
         let speed = speed_id.map(|id| stats.get(id)).unwrap_or(100.0);
-        let direction = (player_pos - transform.translation).truncate();
+        let direction = (target_transform.translation - transform.translation).truncate();
 
         velocity.0 = if direction.length_squared() > 1.0 {
             direction.normalize() * speed

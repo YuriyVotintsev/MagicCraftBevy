@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
-use crate::player::Player;
-
 #[ability_component]
 pub struct WhenNear {
+    #[default_expr("target.entity")]
+    pub target: EntityExpr,
     pub to: String,
     pub distance: ScalarExpr,
 }
@@ -18,16 +18,14 @@ pub fn register_systems(app: &mut App) {
 
 fn when_near_system(
     query: Query<(Entity, &WhenNear, &Transform)>,
-    player: Query<&Transform, With<Player>>,
+    transforms: Query<&Transform, Without<WhenNear>>,
     mut events: MessageWriter<crate::abilities::state::StateTransition>,
 ) {
-    let Ok(player_transform) = player.single() else {
-        return;
-    };
-    let player_pos = player_transform.translation;
-
     for (entity, when_near, transform) in &query {
-        let dist = transform.translation.distance(player_pos);
+        let Ok(target_transform) = transforms.get(when_near.target) else {
+            continue;
+        };
+        let dist = transform.translation.distance(target_transform.translation);
         if dist < when_near.distance {
             events.write(crate::abilities::state::StateTransition {
                 entity,
