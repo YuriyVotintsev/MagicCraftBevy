@@ -34,11 +34,12 @@ fn init_persistent(
     stats_query: Query<&ComputedStats>,
 ) {
     for (entity, source, persistent) in &ability_query {
-        let Ok(transform) = owner_query.get(source.caster) else {
+        let caster_entity = source.caster.entity.unwrap();
+        let Ok(transform) = owner_query.get(caster_entity) else {
             continue;
         };
 
-        let caster_stats = stats_query.get(source.caster).unwrap_or(&DEFAULT_STATS);
+        let caster_stats = stats_query.get(caster_entity).unwrap_or(&DEFAULT_STATS);
 
         let spawned = spawn_persistent_entities(
             &mut commands, source, persistent, transform, caster_stats,
@@ -56,11 +57,12 @@ fn update_persistent(
     all_stats_query: Query<&ComputedStats>,
 ) {
     for (source, persistent, mut state) in &mut ability_query {
-        if stats_query.get(source.caster).is_err() {
+        let caster_entity = source.caster.entity.unwrap();
+        if stats_query.get(caster_entity).is_err() {
             continue;
         }
 
-        let Ok(transform) = owner_query.get(source.caster) else {
+        let Ok(transform) = owner_query.get(caster_entity) else {
             continue;
         };
 
@@ -70,7 +72,7 @@ fn update_persistent(
             }
         }
 
-        let caster_stats = all_stats_query.get(source.caster).unwrap_or(&DEFAULT_STATS);
+        let caster_stats = all_stats_query.get(caster_entity).unwrap_or(&DEFAULT_STATS);
 
         state.spawned = spawn_persistent_entities(
             &mut commands, source, persistent, transform, caster_stats,
@@ -85,15 +87,13 @@ fn spawn_persistent_entities(
     transform: &Transform,
     caster_stats: &ComputedStats,
 ) -> Vec<Entity> {
-    let source_info = TargetInfo::from_entity_and_position(
-        source.caster,
-        transform.translation.truncate(),
-    );
+    let caster_entity = source.caster.entity.unwrap();
+    let caster_pos = transform.translation.truncate();
+    let source_info = TargetInfo::from_entity_and_position(caster_entity, caster_pos);
 
     let spawn_ctx = SpawnContext {
         ability_id: source.ability_id,
-        caster: source.caster,
-        caster_position: transform.translation.truncate(),
+        caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
         caster_faction: source.caster_faction,
         source: source_info,
         target: TargetInfo::EMPTY,

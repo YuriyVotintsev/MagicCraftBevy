@@ -6,7 +6,10 @@ use crate::schedule::GameSet;
 use crate::GameState;
 
 #[ability_component]
-pub struct FollowCaster;
+pub struct FollowCaster {
+    #[default_expr("caster.entity")]
+    pub target: EntityExpr,
+}
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -20,11 +23,11 @@ pub fn register_systems(app: &mut App) {
 
 fn init_follow_caster(
     mut commands: Commands,
-    query: Query<(Entity, &crate::abilities::AbilitySource), Added<FollowCaster>>,
+    query: Query<(Entity, &FollowCaster), Added<FollowCaster>>,
 ) {
-    for (entity, source) in &query {
+    for (entity, follow) in &query {
         commands.entity(entity).insert((
-            AttachedTo { owner: source.caster },
+            AttachedTo { owner: follow.target },
             Transform::default(),
         ));
     }

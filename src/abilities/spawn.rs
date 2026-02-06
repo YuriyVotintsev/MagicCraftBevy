@@ -16,8 +16,7 @@ pub struct StoredComponentDefs {
 
 pub struct SpawnContext<'a> {
     pub ability_id: AbilityId,
-    pub caster: Entity,
-    pub caster_position: Vec2,
+    pub caster: TargetInfo,
     pub caster_faction: Faction,
     pub source: TargetInfo,
     pub target: TargetInfo,
@@ -29,7 +28,7 @@ pub struct SpawnContext<'a> {
 impl<'a> SpawnContext<'a> {
     pub fn eval_context(&self) -> EvalContext<'a> {
         EvalContext {
-            caster: TargetInfo::from_entity_and_position(self.caster, self.caster_position),
+            caster: self.caster,
             source: self.source,
             target: self.target,
             stats: self.stats,
@@ -70,8 +69,19 @@ pub fn spawn_entity(
 
         calculators.recalculate(&modifiers, &mut computed, &mut dirty);
 
+        let self_caster = TargetInfo::from_entity_and_position(
+            entity_id,
+            ctx.caster.position.unwrap_or(Vec2::ZERO),
+        );
+
         commands.entity(entity_id).insert((
-            AbilitySource::new(ctx.ability_id, entity_id, ctx.caster_faction),
+            AbilitySource {
+                ability_id: ctx.ability_id,
+                caster: self_caster,
+                caster_faction: ctx.caster_faction,
+                source: ctx.source,
+                target: ctx.target,
+            },
             ctx.caster_faction,
             modifiers,
             dirty,
@@ -83,8 +93,7 @@ pub fn spawn_entity(
 
         self_ctx = Some(SpawnContext {
             ability_id: ctx.ability_id,
-            caster: entity_id,
-            caster_position: ctx.caster_position,
+            caster: self_caster,
             caster_faction: ctx.caster_faction,
             source: ctx.source,
             target: ctx.target,
@@ -94,7 +103,13 @@ pub fn spawn_entity(
         });
     } else {
         commands.entity(entity_id).insert((
-            AbilitySource::new(ctx.ability_id, ctx.caster, ctx.caster_faction),
+            AbilitySource {
+                ability_id: ctx.ability_id,
+                caster: ctx.caster,
+                caster_faction: ctx.caster_faction,
+                source: ctx.source,
+                target: ctx.target,
+            },
             ctx.caster_faction,
         ));
 
@@ -165,7 +180,6 @@ pub fn spawn_entity_def(
         let spawn_ctx = SpawnContext {
             ability_id: ctx.ability_id,
             caster: ctx.caster,
-            caster_position: ctx.caster_position,
             caster_faction: ctx.caster_faction,
             source: ctx.source,
             target: ctx.target,

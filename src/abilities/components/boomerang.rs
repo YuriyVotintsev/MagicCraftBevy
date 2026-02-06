@@ -15,6 +15,8 @@ pub struct Boomerang {
     pub direction: VecExpr,
     #[default_expr("source.position")]
     pub spawn_position: VecExpr,
+    #[default_expr("caster.entity")]
+    pub return_to: EntityExpr,
 }
 
 #[derive(Component, Default)]
@@ -34,12 +36,12 @@ pub fn register_systems(app: &mut App) {
 
 fn init_boomerang(
     mut commands: Commands,
-    query: Query<(Entity, &Speed, &Boomerang, &crate::abilities::AbilitySource), Added<Boomerang>>,
+    query: Query<(Entity, &Speed, &Boomerang), Added<Boomerang>>,
 ) {
-    for (entity, speed, boomerang, source) in &query {
+    for (entity, speed, boomerang) in &query {
         let direction = boomerang.direction.normalize_or_zero();
         commands.entity(entity).insert((
-            AttachedTo { owner: source.caster },
+            AttachedTo { owner: boomerang.return_to },
             RigidBody::Kinematic,
             LinearVelocity(direction * speed.value),
             BoomerangState::default(),

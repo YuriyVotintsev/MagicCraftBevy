@@ -28,11 +28,12 @@ fn on_expire_trigger_system(
             continue;
         }
 
+        let caster_entity = source.caster.entity.unwrap();
         let caster_stats = stats_query
-            .get(source.caster)
+            .get(caster_entity)
             .unwrap_or(&DEFAULT_STATS);
 
-        let caster_pos = transforms.get(source.caster)
+        let caster_pos = transforms.get(caster_entity)
             .map(|t| t.translation.truncate())
             .unwrap_or(Vec2::ZERO);
 
@@ -41,8 +42,7 @@ fn on_expire_trigger_system(
 
         let spawn_ctx = SpawnContext {
             ability_id: source.ability_id,
-            caster: source.caster,
-            caster_position: caster_pos,
+            caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
             caster_faction: source.caster_faction,
             source: source_info,
             target: TargetInfo::EMPTY,

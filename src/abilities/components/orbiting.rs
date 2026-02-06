@@ -11,6 +11,8 @@ pub struct Orbiting {
     pub angular_speed: ScalarExpr,
     #[default_expr("6.28318 * index / count")]
     pub current_angle: ScalarExpr,
+    #[default_expr("caster.entity")]
+    pub center: EntityExpr,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -25,15 +27,15 @@ pub fn register_systems(app: &mut App) {
 
 fn init_orbiting(
     mut commands: Commands,
-    query: Query<(Entity, &Orbiting, &crate::abilities::AbilitySource), Added<Orbiting>>,
+    query: Query<(Entity, &Orbiting), Added<Orbiting>>,
     transforms: Query<&Transform>,
 ) {
-    for (entity, orbiting, source) in &query {
-        let owner_pos = transforms.get(source.caster).map(|t| t.translation).unwrap_or_default();
+    for (entity, orbiting) in &query {
+        let owner_pos = transforms.get(orbiting.center).map(|t| t.translation).unwrap_or_default();
         let offset = Vec2::new(orbiting.current_angle.cos(), orbiting.current_angle.sin()) * orbiting.radius;
         let position = owner_pos + offset.extend(0.0);
         commands.entity(entity).insert((
-            AttachedTo { owner: source.caster },
+            AttachedTo { owner: orbiting.center },
             Transform::from_translation(position),
         ));
     }

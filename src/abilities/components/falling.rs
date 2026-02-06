@@ -63,18 +63,18 @@ fn update_falling_projectiles(
         transform.translation.y = current_y;
 
         if t >= 1.0 {
+            let caster_entity = source.caster.entity.unwrap();
             let caster_stats = stats_query
-                .get(source.caster)
+                .get(caster_entity)
                 .unwrap_or(&DEFAULT_STATS);
 
-            let caster_pos = transforms.get(source.caster)
+            let caster_pos = transforms.get(caster_entity)
                 .map(|t| t.translation.truncate())
                 .unwrap_or(falling.caster_position);
 
             let spawn_ctx = SpawnContext {
                 ability_id: source.ability_id,
-                caster: source.caster,
-                caster_position: caster_pos,
+                caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
                 caster_faction: source.caster_faction,
                 source: TargetInfo::from_position(falling.target_position),
                 target: TargetInfo::EMPTY,

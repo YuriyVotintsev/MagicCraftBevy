@@ -11,6 +11,8 @@ use crate::GameState;
 #[ability_component]
 pub struct FindNearestEnemy {
     pub size: ScalarExpr,
+    #[default_expr("caster.entity")]
+    pub center: EntityExpr,
 }
 
 #[derive(Component)]
@@ -33,7 +35,7 @@ fn find_nearest_enemy_system(
 ) {
     for (entity, finder, source) in &query {
         let caster_pos = transforms
-            .get(source.caster)
+            .get(finder.center)
             .map(|t| t.translation.truncate())
             .unwrap_or(Vec2::ZERO);
 

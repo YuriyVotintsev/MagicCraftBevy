@@ -57,10 +57,12 @@ pub fn state_transition_system(
         commands.entity(event.entity).insert(LinearVelocity::ZERO);
 
         if let Some(new_state) = stored.0.states.get(new_state_name) {
+            let mut caster = source.caster;
+            caster.position = Some(transform.translation.truncate());
+
             let ctx = SpawnContext {
                 ability_id: source.ability_id,
-                caster: source.caster,
-                caster_position: transform.translation.truncate(),
+                caster,
                 caster_faction: *faction,
                 source: TargetInfo::from_entity_and_position(event.entity, transform.translation.truncate()),
                 target: TargetInfo::EMPTY,

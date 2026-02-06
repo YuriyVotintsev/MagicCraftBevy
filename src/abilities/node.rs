@@ -20,16 +20,23 @@ pub fn attach_ability(
         return;
     };
 
+    let caster = TargetInfo::from_entity_and_position(owner, Vec2::ZERO);
+
     let mut entity_commands = commands.spawn((
-        AbilitySource::new(ability_id, owner, owner_faction),
+        AbilitySource {
+            ability_id,
+            caster,
+            caster_faction: owner_faction,
+            source: TargetInfo::EMPTY,
+            target: TargetInfo::EMPTY,
+        },
         AbilityEntity,
         Name::new(format!("Ability_{:?}", ability_id)),
     ));
 
     let ctx = SpawnContext {
         ability_id,
-        caster: owner,
-        caster_position: Vec2::ZERO,
+        caster,
         caster_faction: owner_faction,
         source: TargetInfo::EMPTY,
         target: TargetInfo::EMPTY,

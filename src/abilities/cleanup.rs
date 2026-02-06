@@ -8,7 +8,11 @@ pub fn cleanup_orphaned_abilities(
     owner_query: Query<Entity, Without<AbilityEntity>>,
 ) {
     for (entity, source) in &ability_query {
-        if !owner_query.contains(source.caster) {
+        let Some(caster_entity) = source.caster.entity else {
+            commands.entity(entity).despawn();
+            continue;
+        };
+        if !owner_query.contains(caster_entity) {
             commands.entity(entity).despawn();
         }
     }

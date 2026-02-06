@@ -28,7 +28,8 @@ fn on_input_system(
     stats_query: Query<&ComputedStats>,
 ) {
     for (_entity, source, on_input) in &ability_query {
-        let Ok((inputs, transform)) = owner_query.get(source.caster) else {
+        let caster_entity = source.caster.entity.unwrap();
+        let Ok((inputs, transform)) = owner_query.get(caster_entity) else {
             continue;
         };
 
@@ -36,16 +37,16 @@ fn on_input_system(
         if !input.just_pressed { continue }
 
         let caster_stats = stats_query
-            .get(source.caster)
+            .get(caster_entity)
             .unwrap_or(&DEFAULT_STATS);
 
-        let source_info = TargetInfo::from_entity_and_position(source.caster, transform.translation.truncate());
+        let caster_pos = transform.translation.truncate();
+        let source_info = TargetInfo::from_entity_and_position(caster_entity, caster_pos);
         let target_info = TargetInfo::from_direction(input.direction.truncate());
 
         let spawn_ctx = SpawnContext {
             ability_id: source.ability_id,
-            caster: source.caster,
-            caster_position: transform.translation.truncate(),
+            caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
             caster_faction: source.caster_faction,
             source: source_info,
             target: target_info,

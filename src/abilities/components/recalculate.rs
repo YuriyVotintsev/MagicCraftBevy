@@ -53,7 +53,8 @@ fn recalculate_system(
     let delta = time.delta_secs();
 
     for (entity, source, recalculate, mut timer, stored) in &mut query {
-        if stats_query.get(source.caster).is_err() {
+        let caster_entity = source.caster.entity.unwrap();
+        if stats_query.get(caster_entity).is_err() {
             continue;
         }
 
@@ -67,14 +68,14 @@ fn recalculate_system(
 
         let defs = stored.defs.clone();
         let ability_id = source.ability_id;
-        let caster = source.caster;
+        let caster_entity = caster_entity;
         let caster_faction = source.caster_faction;
 
         commands.queue(RecalculateCommand {
             entity,
             defs,
             ability_id,
-            caster,
+            caster: caster_entity,
             caster_faction,
         });
     }
@@ -100,14 +101,13 @@ impl Command for RecalculateCommand {
             .cloned()
             .unwrap_or_else(|| DEFAULT_STATS.clone());
 
-        let source_info = TargetInfo::from_entity_and_position(self.caster, caster_pos);
+        let caster_info = TargetInfo::from_entity_and_position(self.caster, caster_pos);
 
         let ctx = SpawnContext {
             ability_id: self.ability_id,
-            caster: self.caster,
-            caster_position: caster_pos,
+            caster: caster_info,
             caster_faction: self.caster_faction,
-            source: source_info,
+            source: caster_info,
             target: TargetInfo::EMPTY,
             stats: &caster_stats,
             index: 0,
