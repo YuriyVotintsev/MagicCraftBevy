@@ -150,13 +150,12 @@ fn camera_follow(
 fn spawn_markers(
     mut commands: Commands,
     wave_state: Res<WaveState>,
-    enemies_query: Query<&Faction>,
     markers_query: Query<(), With<SpawnMarker>>,
 ) {
-    let alive_enemies = enemies_query.iter().filter(|f| **f == Faction::Enemy).count() as u32;
+    let alive_or_spawning = wave_state.spawned_count.saturating_sub(wave_state.killed_count);
     let active_markers = markers_query.iter().count() as u32;
 
-    if alive_enemies > WaveState::spawn_threshold() {
+    if alive_or_spawning > WaveState::spawn_threshold() {
         return;
     }
 
@@ -170,7 +169,7 @@ fn spawn_markers(
 
     let can_spawn = wave_state
         .max_concurrent
-        .saturating_sub(alive_enemies)
+        .saturating_sub(alive_or_spawning)
         .saturating_sub(active_markers);
     let to_spawn = can_spawn.min(remaining_to_spawn);
 
