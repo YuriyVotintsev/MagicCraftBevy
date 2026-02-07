@@ -7,7 +7,7 @@ pub mod loader;
 mod modifiers;
 mod pending_damage;
 mod stat_id;
-mod systems;
+pub(crate) mod systems;
 
 pub use calculators::StatCalculators;
 pub use computed_stats::{ComputedStats, DEFAULT_STATS};

@@ -28,20 +28,13 @@ use crate::stats::ComputedStats;
 use crate::wave::WavePhase;
 use spawn::StoredComponentDefs;
 
-fn recalculate_on_stats_change(world: &mut World) {
-    let mut to_update: Vec<(Entity, AbilitySource, ComputedStats, StoredComponentDefs)> = Vec::new();
-
-    let mut query = world.query_filtered::<(Entity, &AbilitySource, &ComputedStats, &StoredComponentDefs), Changed<ComputedStats>>();
-    for (entity, source, stats, defs) in query.iter(world) {
-        to_update.push((entity, *source, stats.clone(), StoredComponentDefs {
-            base: defs.base.clone(),
-            state: defs.state.clone(),
-        }));
-    }
-
-    for (entity, source, stats, defs) in &to_update {
+fn recalculate_on_stats_change(
+    mut commands: Commands,
+    query: Query<(Entity, &AbilitySource, &ComputedStats, &StoredComponentDefs), Changed<ComputedStats>>,
+) {
+    for (entity, source, stats, defs) in &query {
         for def in defs.all() {
-            def.update_component(*entity, source, stats, world);
+            def.update_component(&mut commands.entity(entity), source, stats);
         }
     }
 }
@@ -58,13 +51,14 @@ impl Plugin for AbilityPlugin {
         app.add_systems(
             PreUpdate,
             recalculate_on_stats_change
+                .after(crate::stats::systems::recalculate_stats)
                 .run_if(not(in_state(GameState::Loading))),
         );
 
         app.add_systems(
             Update,
             (
-                cleanup::cleanup_orphaned_abilities,
+                cleanup::cleanup_orphaned_abilities.in_set(crate::schedule::GameSet::Cleanup),
                 state::state_transition_system.in_set(crate::schedule::GameSet::MobAI),
                 activation::ability_activation_system.in_set(crate::schedule::GameSet::AbilityActivation),
             )

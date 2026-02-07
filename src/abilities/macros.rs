@@ -59,11 +59,11 @@ macro_rules! collect_components {
                 }
             }
 
-            pub fn update_component(&self, entity: ::bevy::prelude::Entity, source: &super::AbilitySource, stats: &crate::stats::ComputedStats, world: &mut ::bevy::prelude::World) {
+            pub fn update_component(&self, commands: &mut ::bevy::prelude::EntityCommands, source: &super::AbilitySource, stats: &crate::stats::ComputedStats) {
                 paste::paste! {
                     match self {
                         $(
-                            Self::[<$component:camel>](def) => $component::update_component(entity, def, source, stats, world),
+                            Self::[<$component:camel>](def) => $component::update_component(commands, def, source, stats),
                         )*
                     }
                 }

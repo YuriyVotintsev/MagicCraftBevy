@@ -138,6 +138,7 @@ fn main() {
                 GameSet::AbilityExecution,
                 GameSet::Damage,
                 GameSet::WaveManagement,
+                GameSet::Cleanup,
             )
                 .chain()
                 .run_if(in_state(GameState::Playing)),

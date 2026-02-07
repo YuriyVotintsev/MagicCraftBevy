@@ -9,6 +9,7 @@ pub enum GameSet {
     AbilityExecution,
     Damage,
     WaveManagement,
+    Cleanup,
 }
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
