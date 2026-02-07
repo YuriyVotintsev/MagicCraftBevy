@@ -30,8 +30,22 @@ impl AbilityDefRaw {
 }
 
 #[cfg(test)]
-pub(crate) fn validate_entity_fields(ability_id: &str, provided: super::context::ProvidedFields, entity_raw: &EntityDefRaw) -> Vec<String> {
+pub(crate) fn validate_entity_fields(
+    ability_id: &str,
+    provided: super::context::ProvidedFields,
+    entity_raw: &EntityDefRaw,
+    stat_names: &std::collections::HashSet<String>,
+) -> Vec<String> {
     let mut errors = Vec::new();
+
+    for name in entity_raw.base_stats.keys() {
+        if !stat_names.contains(name) {
+            errors.push(format!(
+                "Ability '{}': unknown stat '{}' in base_stats",
+                ability_id, name
+            ));
+        }
+    }
 
     if let Some(count) = &entity_raw.count {
         let required = count.required_fields();
@@ -59,7 +73,7 @@ pub(crate) fn validate_entity_fields(ability_id: &str, provided: super::context:
 
         if let Some((trigger_provided, nested_entities)) = nested {
             for nested_entity in nested_entities {
-                errors.extend(validate_entity_fields(ability_id, trigger_provided, nested_entity));
+                errors.extend(validate_entity_fields(ability_id, trigger_provided, nested_entity, stat_names));
             }
         }
     }
@@ -145,9 +159,22 @@ mod tests {
         refs
     }
 
+    fn load_stat_names() -> HashSet<String> {
+        #[derive(serde::Deserialize)]
+        struct StatsConfig {
+            stat_ids: Vec<crate::stats::loader::StatDefRaw>,
+            #[allow(dead_code)]
+            calculators: Vec<crate::stats::loader::CalculatorDefRaw>,
+        }
+        let content = std::fs::read_to_string("assets/stats/config.stats.ron").unwrap();
+        let config: StatsConfig = ron::from_str(&content).unwrap();
+        config.stat_ids.iter().map(|s| s.name.clone()).collect()
+    }
+
     #[test]
     fn validate_all_ability_fields() {
         let (defs, mob_ids) = load_all_defs();
+        let stat_names = load_stat_names();
         let mut errors = Vec::new();
         let mut referenced = HashSet::new();
 
@@ -174,13 +201,22 @@ mod tests {
                     continue;
                 };
                 for entity_raw in &def.entities {
-                    errors.extend(validate_entity_fields(name, context, entity_raw));
+                    errors.extend(validate_entity_fields(name, context, entity_raw, &stat_names));
                 }
             }
         }
 
         for def in defs.values() {
             for entity_raw in &def.entities {
+                for name in entity_raw.base_stats.keys() {
+                    if !stat_names.contains(name) {
+                        errors.push(format!(
+                            "Ability '{}': unknown stat '{}' in base_stats",
+                            def.id, name
+                        ));
+                    }
+                }
+
                 let mob_abilities = collect_use_abilities_refs(entity_raw);
                 for ability_name in &mob_abilities {
                     referenced.insert(ability_name.clone());
@@ -189,7 +225,7 @@ mod tests {
                         continue;
                     };
                     for entity in &ability_def.entities {
-                        errors.extend(validate_entity_fields(ability_name, mob_context, entity));
+                        errors.extend(validate_entity_fields(ability_name, mob_context, entity, &stat_names));
                     }
                 }
 
@@ -201,7 +237,7 @@ mod tests {
                         continue;
                     };
                     for entity in &ability_def.entities {
-                        errors.extend(validate_entity_fields(ability_name, spawn_context, entity));
+                        errors.extend(validate_entity_fields(ability_name, spawn_context, entity, &stat_names));
                     }
                 }
             }

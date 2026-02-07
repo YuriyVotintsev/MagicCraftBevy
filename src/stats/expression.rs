@@ -1,13 +1,18 @@
 use serde::{Deserialize, Serialize};
+use std::fmt::Debug;
 
 use super::{ComputedStats, Modifiers, StatId, StatRegistry};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum ExpressionRaw {
+pub type ExpressionRaw = Expression<String>;
+
+#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize)]
+#[serde(bound(serialize = "S: Serialize", deserialize = "S: Deserialize<'de>"))]
+pub enum Expression<S: Clone + Debug = StatId> {
     Constant(f32),
-    Stat(String),
-    ModifierSum(String),
-    ModifierProduct(String),
+    Stat(S),
+    ModifierSum(S),
+    ModifierProduct(S),
 
     Add(Box<Self>, Box<Self>),
     Sub(Box<Self>, Box<Self>),
@@ -22,7 +27,7 @@ pub enum ExpressionRaw {
     },
 }
 
-impl ExpressionRaw {
+impl Expression<String> {
     pub fn resolve(&self, registry: &StatRegistry) -> Expression {
         match self {
             Self::Constant(v) => Expression::Constant(*v),
@@ -65,24 +70,6 @@ impl ExpressionRaw {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Expression {
-    Constant(f32),
-    Stat(StatId),
-    ModifierSum(StatId),
-    ModifierProduct(StatId),
-
-    Add(Box<Self>, Box<Self>),
-    Sub(Box<Self>, Box<Self>),
-    Mul(Box<Self>, Box<Self>),
-    Div(Box<Self>, Box<Self>),
-    Min(Box<Self>, Box<Self>),
-    Max(Box<Self>, Box<Self>),
-    Clamp { value: Box<Self>, min: f32, max: f32 },
-    #[allow(dead_code)]
-    PercentOf { stat: StatId, percent: f32 },
-}
-
 impl Expression {
     pub fn evaluate(&self, modifiers: &Modifiers, computed: &ComputedStats) -> f32 {
         match self {
@@ -110,7 +97,6 @@ impl Expression {
                     .max(b.evaluate(modifiers, computed))
             }
             Self::Clamp { value, min, max } => value.evaluate(modifiers, computed).clamp(*min, *max),
-            Self::PercentOf { stat, percent } => computed.get(*stat) * percent,
         }
     }
 }

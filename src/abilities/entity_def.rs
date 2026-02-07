@@ -1,59 +1,46 @@
 use std::collections::HashMap;
 use serde::Deserialize;
 
-use crate::abilities::expr::{ScalarExpr, ScalarExprRaw};
-use crate::stats::{StatId, StatRegistry};
-use super::components::{ComponentDef, ComponentDefRaw};
+use crate::abilities::expr::{ExprFamily, Raw, Resolved, ScalarExpr};
+use crate::stats::StatRegistry;
+
+#[allow(dead_code)]
+pub type StateDefRaw = StateDef<Raw>;
+#[allow(dead_code)]
+pub type StatesBlockRaw = StatesBlock<Raw>;
+pub type EntityDefRaw = EntityDef<Raw>;
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct StateDefRaw {
+#[serde(bound(deserialize = "F::ComponentDef: Deserialize<'de>"))]
+pub struct StateDef<F: ExprFamily = Resolved> {
     #[serde(default)]
-    pub components: Vec<ComponentDefRaw>,
+    pub components: Vec<F::ComponentDef>,
     #[serde(default)]
-    pub transitions: Vec<ComponentDefRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct StateDef {
-    pub components: Vec<ComponentDef>,
-    pub transitions: Vec<ComponentDef>,
+    pub transitions: Vec<F::ComponentDef>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct StatesBlockRaw {
+#[serde(bound(deserialize = "StateDef<F>: Deserialize<'de>"))]
+pub struct StatesBlock<F: ExprFamily = Resolved> {
     pub initial: String,
-    pub states: HashMap<String, StateDefRaw>,
-}
-
-#[derive(Debug, Clone)]
-pub struct StatesBlock {
-    pub initial: String,
-    pub states: HashMap<String, StateDef>,
+    pub states: HashMap<String, StateDef<F>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct EntityDefRaw {
+#[serde(bound(deserialize = "ScalarExpr<F>: Deserialize<'de>, F::StatRef: Deserialize<'de>, F::ComponentDef: Deserialize<'de>, StatesBlock<F>: Deserialize<'de>"))]
+pub struct EntityDef<F: ExprFamily = Resolved> {
     #[serde(default)]
-    pub count: Option<ScalarExprRaw>,
+    pub count: Option<ScalarExpr<F>>,
     #[serde(default)]
-    pub base_stats: HashMap<String, f32>,
+    pub base_stats: HashMap<F::StatRef, f32>,
     #[serde(default)]
     pub abilities: Vec<String>,
-    pub components: Vec<ComponentDefRaw>,
+    pub components: Vec<F::ComponentDef>,
     #[serde(default)]
-    pub states: Option<StatesBlockRaw>,
+    pub states: Option<StatesBlock<F>>,
 }
 
-#[derive(Debug, Clone)]
-pub struct EntityDef {
-    pub count: Option<ScalarExpr>,
-    pub base_stats: HashMap<StatId, f32>,
-    pub abilities: Vec<String>,
-    pub components: Vec<ComponentDef>,
-    pub states: Option<StatesBlock>,
-}
-
-impl StateDefRaw {
+impl StateDef<Raw> {
     pub fn resolve(&self, stat_registry: &StatRegistry) -> StateDef {
         StateDef {
             components: self.components.iter().map(|c| c.resolve(stat_registry)).collect(),
@@ -62,7 +49,7 @@ impl StateDefRaw {
     }
 }
 
-impl StatesBlockRaw {
+impl StatesBlock<Raw> {
     pub fn resolve(&self, stat_registry: &StatRegistry) -> StatesBlock {
         StatesBlock {
             initial: self.initial.clone(),
@@ -71,7 +58,7 @@ impl StatesBlockRaw {
     }
 }
 
-impl EntityDefRaw {
+impl EntityDef<Raw> {
     pub fn resolve(&self, stat_registry: &StatRegistry) -> EntityDef {
         EntityDef {
             count: self.count.as_ref().map(|c| c.resolve(stat_registry)),

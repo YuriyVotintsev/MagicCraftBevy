@@ -1,15 +1,40 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Deserializer};
+use std::fmt::Debug;
+use std::hash::Hash;
 
 use crate::stats::{ComputedStats, StatId, StatRegistry};
 use super::context::ProvidedFields;
 use super::core_components::AbilitySource;
 use super::expr_parser::{TypedExpr, parse_expr_string};
 
+pub trait ExprFamily: Clone + Debug {
+    type StatRef: Clone + Debug + Eq + Hash;
+    type ComponentDef: Clone + Debug;
+}
+
+#[derive(Clone, Debug)]
+pub struct Raw;
+impl ExprFamily for Raw {
+    type StatRef = String;
+    type ComponentDef = super::components::ComponentDefRaw;
+}
+
+#[derive(Clone, Debug)]
+pub struct Resolved;
+impl ExprFamily for Resolved {
+    type StatRef = StatId;
+    type ComponentDef = super::components::ComponentDef;
+}
+
+pub type ScalarExprRaw = ScalarExpr<Raw>;
+pub type VecExprRaw = VecExpr<Raw>;
+pub type EntityExprRaw = EntityExpr;
+
 #[derive(Debug, Clone)]
-pub enum ScalarExprRaw {
+pub enum ScalarExpr<F: ExprFamily = Resolved> {
     Literal(f32),
-    Stat(String),
+    Stat(F::StatRef),
     Index,
     Count,
     Add(Box<Self>, Box<Self>),
@@ -19,51 +44,23 @@ pub enum ScalarExprRaw {
     Neg(Box<Self>),
     Min(Box<Self>, Box<Self>),
     Max(Box<Self>, Box<Self>),
-    Length(Box<VecExprRaw>),
-    Distance(Box<VecExprRaw>, Box<VecExprRaw>),
-    Dot(Box<VecExprRaw>, Box<VecExprRaw>),
-    X(Box<VecExprRaw>),
-    Y(Box<VecExprRaw>),
-    Angle(Box<VecExprRaw>),
+    Length(Box<VecExpr<F>>),
+    Distance(Box<VecExpr<F>>, Box<VecExpr<F>>),
+    Dot(Box<VecExpr<F>>, Box<VecExpr<F>>),
+    X(Box<VecExpr<F>>),
+    Y(Box<VecExpr<F>>),
+    Angle(Box<VecExpr<F>>),
     Recalc(Box<Self>),
 }
 
-#[derive(Debug, Clone)]
-pub enum ScalarExpr {
-    Literal(f32),
-    Stat(StatId),
-    Index,
-    Count,
-    Add(Box<Self>, Box<Self>),
-    Sub(Box<Self>, Box<Self>),
-    Mul(Box<Self>, Box<Self>),
-    Div(Box<Self>, Box<Self>),
-    Neg(Box<Self>),
-    Min(Box<Self>, Box<Self>),
-    Max(Box<Self>, Box<Self>),
-    Length(Box<VecExpr>),
-    Distance(Box<VecExpr>, Box<VecExpr>),
-    Dot(Box<VecExpr>, Box<VecExpr>),
-    X(Box<VecExpr>),
-    Y(Box<VecExpr>),
-    Angle(Box<VecExpr>),
-    Recalc(Box<Self>),
-}
-
-impl Default for ScalarExpr {
-    fn default() -> Self {
-        Self::Literal(0.0)
-    }
-}
-
-impl Default for ScalarExprRaw {
+impl<F: ExprFamily> Default for ScalarExpr<F> {
     fn default() -> Self {
         Self::Literal(0.0)
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum VecExprRaw {
+pub enum VecExpr<F: ExprFamily = Resolved> {
     CasterPos,
     SourcePos,
     SourceDir,
@@ -71,43 +68,16 @@ pub enum VecExprRaw {
     TargetDir,
     Add(Box<Self>, Box<Self>),
     Sub(Box<Self>, Box<Self>),
-    Scale(Box<Self>, Box<ScalarExprRaw>),
+    Scale(Box<Self>, Box<ScalarExpr<F>>),
     Normalize(Box<Self>),
-    Rotate(Box<Self>, Box<ScalarExprRaw>),
-    Lerp(Box<Self>, Box<Self>, Box<ScalarExprRaw>),
-    Vec2Expr(Box<ScalarExprRaw>, Box<ScalarExprRaw>),
-    FromAngle(Box<ScalarExprRaw>),
+    Rotate(Box<Self>, Box<ScalarExpr<F>>),
+    Lerp(Box<Self>, Box<Self>, Box<ScalarExpr<F>>),
+    Vec2Expr(Box<ScalarExpr<F>>, Box<ScalarExpr<F>>),
+    FromAngle(Box<ScalarExpr<F>>),
     Recalc(Box<Self>),
 }
 
 #[derive(Debug, Clone)]
-pub enum VecExpr {
-    CasterPos,
-    SourcePos,
-    SourceDir,
-    TargetPos,
-    TargetDir,
-    Add(Box<Self>, Box<Self>),
-    Sub(Box<Self>, Box<Self>),
-    Scale(Box<Self>, Box<ScalarExpr>),
-    Normalize(Box<Self>),
-    Rotate(Box<Self>, Box<ScalarExpr>),
-    Lerp(Box<Self>, Box<Self>, Box<ScalarExpr>),
-    Vec2Expr(Box<ScalarExpr>, Box<ScalarExpr>),
-    FromAngle(Box<ScalarExpr>),
-    Recalc(Box<Self>),
-}
-
-#[derive(Debug, Clone)]
-pub enum EntityExprRaw {
-    CasterEntity,
-    SourceEntity,
-    TargetEntity,
-    Recalc(Box<Self>),
-}
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub enum EntityExpr {
     CasterEntity,
     SourceEntity,
@@ -115,7 +85,148 @@ pub enum EntityExpr {
     Recalc(Box<Self>),
 }
 
-impl ScalarExprRaw {
+// --- Shared impls (both Raw and Resolved) ---
+
+impl<F: ExprFamily> ScalarExpr<F> {
+    #[allow(dead_code)]
+    pub fn uses_stats(&self) -> bool {
+        match self {
+            Self::Literal(_) | Self::Index | Self::Count => false,
+            Self::Stat(_) => true,
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::Div(a, b)
+            | Self::Min(a, b)
+            | Self::Max(a, b) => a.uses_stats() || b.uses_stats(),
+            Self::Neg(a) => a.uses_stats(),
+            Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.uses_stats(),
+            Self::Distance(a, b) | Self::Dot(a, b) => a.uses_stats() || b.uses_stats(),
+            Self::Recalc(e) => e.uses_stats(),
+        }
+    }
+
+    pub fn uses_recalc(&self) -> bool {
+        match self {
+            Self::Literal(_) | Self::Index | Self::Count | Self::Stat(_) => false,
+            Self::Recalc(_) => true,
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::Div(a, b)
+            | Self::Min(a, b)
+            | Self::Max(a, b) => a.uses_recalc() || b.uses_recalc(),
+            Self::Neg(a) => a.uses_recalc(),
+            Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.uses_recalc(),
+            Self::Distance(a, b) | Self::Dot(a, b) => a.uses_recalc() || b.uses_recalc(),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn required_fields(&self) -> ProvidedFields {
+        match self {
+            Self::Literal(_) | Self::Stat(_) | Self::Index | Self::Count => ProvidedFields::NONE,
+            Self::Add(a, b)
+            | Self::Sub(a, b)
+            | Self::Mul(a, b)
+            | Self::Div(a, b)
+            | Self::Min(a, b)
+            | Self::Max(a, b) => a.required_fields().union(b.required_fields()),
+            Self::Neg(a) => a.required_fields(),
+            Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.required_fields(),
+            Self::Distance(a, b) | Self::Dot(a, b) => {
+                a.required_fields().union(b.required_fields())
+            }
+            Self::Recalc(e) => e.required_fields(),
+        }
+    }
+}
+
+impl<F: ExprFamily> VecExpr<F> {
+    #[allow(dead_code)]
+    pub fn uses_stats(&self) -> bool {
+        match self {
+            Self::CasterPos | Self::SourcePos | Self::SourceDir
+            | Self::TargetPos | Self::TargetDir => false,
+            Self::Add(a, b) | Self::Sub(a, b) => a.uses_stats() || b.uses_stats(),
+            Self::Scale(v, s) => v.uses_stats() || s.uses_stats(),
+            Self::Normalize(v) => v.uses_stats(),
+            Self::Rotate(v, a) => v.uses_stats() || a.uses_stats(),
+            Self::Lerp(a, b, t) => a.uses_stats() || b.uses_stats() || t.uses_stats(),
+            Self::Vec2Expr(x, y) => x.uses_stats() || y.uses_stats(),
+            Self::FromAngle(a) => a.uses_stats(),
+            Self::Recalc(e) => e.uses_stats(),
+        }
+    }
+
+    pub fn uses_recalc(&self) -> bool {
+        match self {
+            Self::CasterPos | Self::SourcePos | Self::SourceDir
+            | Self::TargetPos | Self::TargetDir => false,
+            Self::Recalc(_) => true,
+            Self::Add(a, b) | Self::Sub(a, b) => a.uses_recalc() || b.uses_recalc(),
+            Self::Scale(v, s) => v.uses_recalc() || s.uses_recalc(),
+            Self::Normalize(v) => v.uses_recalc(),
+            Self::Rotate(v, a) => v.uses_recalc() || a.uses_recalc(),
+            Self::Lerp(a, b, t) => a.uses_recalc() || b.uses_recalc() || t.uses_recalc(),
+            Self::Vec2Expr(x, y) => x.uses_recalc() || y.uses_recalc(),
+            Self::FromAngle(a) => a.uses_recalc(),
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn required_fields(&self) -> ProvidedFields {
+        match self {
+            Self::CasterPos => ProvidedFields::NONE,
+            Self::SourcePos => ProvidedFields::SOURCE_POSITION,
+            Self::SourceDir => ProvidedFields::SOURCE_DIRECTION,
+            Self::TargetPos => ProvidedFields::TARGET_POSITION,
+            Self::TargetDir => ProvidedFields::TARGET_DIRECTION,
+            Self::Add(a, b) | Self::Sub(a, b) => {
+                a.required_fields().union(b.required_fields())
+            }
+            Self::Scale(v, s) => v.required_fields().union(s.required_fields()),
+            Self::Normalize(v) => v.required_fields(),
+            Self::Rotate(v, s) => v.required_fields().union(s.required_fields()),
+            Self::Lerp(a, b, t) => a
+                .required_fields()
+                .union(b.required_fields())
+                .union(t.required_fields()),
+            Self::Vec2Expr(x, y) => x.required_fields().union(y.required_fields()),
+            Self::FromAngle(a) => a.required_fields(),
+            Self::Recalc(e) => e.required_fields(),
+        }
+    }
+}
+
+impl EntityExpr {
+    pub fn resolve(&self, _reg: &StatRegistry) -> EntityExpr {
+        self.clone()
+    }
+
+    #[allow(dead_code)]
+    pub fn required_fields(&self) -> ProvidedFields {
+        match self {
+            Self::CasterEntity => ProvidedFields::NONE,
+            Self::SourceEntity => ProvidedFields::SOURCE_ENTITY,
+            Self::TargetEntity => ProvidedFields::TARGET_ENTITY,
+            Self::Recalc(e) => e.required_fields(),
+        }
+    }
+
+    pub fn eval(&self, source: &AbilitySource) -> Option<Entity> {
+        match self {
+            Self::CasterEntity => source.caster.entity,
+            Self::SourceEntity => source.source.entity,
+            Self::TargetEntity => source.target.entity,
+            Self::Recalc(e) => e.eval(source),
+        }
+    }
+}
+
+// --- Raw-only impls (resolve) ---
+
+impl ScalarExpr<Raw> {
     pub fn resolve(&self, reg: &StatRegistry) -> ScalarExpr {
         match self {
             Self::Literal(v) => ScalarExpr::Literal(*v),
@@ -167,28 +278,9 @@ impl ScalarExprRaw {
             Self::Recalc(e) => ScalarExpr::Recalc(Box::new(e.resolve(reg))),
         }
     }
-
-    #[allow(dead_code)]
-    pub fn required_fields(&self) -> ProvidedFields {
-        match self {
-            Self::Literal(_) | Self::Stat(_) | Self::Index | Self::Count => ProvidedFields::NONE,
-            Self::Add(a, b)
-            | Self::Sub(a, b)
-            | Self::Mul(a, b)
-            | Self::Div(a, b)
-            | Self::Min(a, b)
-            | Self::Max(a, b) => a.required_fields().union(b.required_fields()),
-            Self::Neg(a) => a.required_fields(),
-            Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.required_fields(),
-            Self::Distance(a, b) | Self::Dot(a, b) => {
-                a.required_fields().union(b.required_fields())
-            }
-            Self::Recalc(e) => e.required_fields(),
-        }
-    }
 }
 
-impl VecExprRaw {
+impl VecExpr<Raw> {
     pub fn resolve(&self, reg: &StatRegistry) -> VecExpr {
         match self {
             Self::CasterPos => VecExpr::CasterPos,
@@ -226,89 +318,11 @@ impl VecExprRaw {
             Self::Recalc(e) => VecExpr::Recalc(Box::new(e.resolve(reg))),
         }
     }
-
-    #[allow(dead_code)]
-    pub fn required_fields(&self) -> ProvidedFields {
-        match self {
-            Self::CasterPos => ProvidedFields::NONE,
-            Self::SourcePos => ProvidedFields::SOURCE_POSITION,
-            Self::SourceDir => ProvidedFields::SOURCE_DIRECTION,
-            Self::TargetPos => ProvidedFields::TARGET_POSITION,
-            Self::TargetDir => ProvidedFields::TARGET_DIRECTION,
-            Self::Add(a, b) | Self::Sub(a, b) => {
-                a.required_fields().union(b.required_fields())
-            }
-            Self::Scale(v, s) => v.required_fields().union(s.required_fields()),
-            Self::Normalize(v) => v.required_fields(),
-            Self::Rotate(v, s) => v.required_fields().union(s.required_fields()),
-            Self::Lerp(a, b, t) => a
-                .required_fields()
-                .union(b.required_fields())
-                .union(t.required_fields()),
-            Self::Vec2Expr(x, y) => x.required_fields().union(y.required_fields()),
-            Self::FromAngle(a) => a.required_fields(),
-            Self::Recalc(e) => e.required_fields(),
-        }
-    }
 }
 
-#[allow(dead_code)]
-impl EntityExprRaw {
-    pub fn resolve(&self, _reg: &StatRegistry) -> EntityExpr {
-        match self {
-            Self::CasterEntity => EntityExpr::CasterEntity,
-            Self::SourceEntity => EntityExpr::SourceEntity,
-            Self::TargetEntity => EntityExpr::TargetEntity,
-            Self::Recalc(e) => EntityExpr::Recalc(Box::new(e.resolve(_reg))),
-        }
-    }
-
-    #[allow(dead_code)]
-    pub fn required_fields(&self) -> ProvidedFields {
-        match self {
-            Self::CasterEntity => ProvidedFields::NONE,
-            Self::SourceEntity => ProvidedFields::SOURCE_ENTITY,
-            Self::TargetEntity => ProvidedFields::TARGET_ENTITY,
-            Self::Recalc(e) => e.required_fields(),
-        }
-    }
-}
+// --- Resolved-only impls (eval) ---
 
 impl ScalarExpr {
-    #[allow(dead_code)]
-    pub fn uses_stats(&self) -> bool {
-        match self {
-            Self::Literal(_) | Self::Index | Self::Count => false,
-            Self::Stat(_) => true,
-            Self::Add(a, b)
-            | Self::Sub(a, b)
-            | Self::Mul(a, b)
-            | Self::Div(a, b)
-            | Self::Min(a, b)
-            | Self::Max(a, b) => a.uses_stats() || b.uses_stats(),
-            Self::Neg(a) => a.uses_stats(),
-            Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.uses_stats(),
-            Self::Distance(a, b) | Self::Dot(a, b) => a.uses_stats() || b.uses_stats(),
-            Self::Recalc(e) => e.uses_stats(),
-        }
-    }
-
-    pub fn uses_recalc(&self) -> bool {
-        match self {
-            Self::Literal(_) | Self::Index | Self::Count | Self::Stat(_) => false,
-            Self::Recalc(_) => true,
-            Self::Add(a, b)
-            | Self::Sub(a, b)
-            | Self::Mul(a, b)
-            | Self::Div(a, b)
-            | Self::Min(a, b)
-            | Self::Max(a, b) => a.uses_recalc() || b.uses_recalc(),
-            Self::Neg(a) => a.uses_recalc(),
-            Self::Length(v) | Self::X(v) | Self::Y(v) | Self::Angle(v) => v.uses_recalc(),
-            Self::Distance(a, b) | Self::Dot(a, b) => a.uses_recalc() || b.uses_recalc(),
-        }
-    }
-
     pub fn eval(&self, source: &AbilitySource, stats: &ComputedStats) -> f32 {
         match self {
             Self::Literal(v) => *v,
@@ -344,37 +358,6 @@ impl ScalarExpr {
 }
 
 impl VecExpr {
-    #[allow(dead_code)]
-    pub fn uses_stats(&self) -> bool {
-        match self {
-            Self::CasterPos | Self::SourcePos | Self::SourceDir
-            | Self::TargetPos | Self::TargetDir => false,
-            Self::Add(a, b) | Self::Sub(a, b) => a.uses_stats() || b.uses_stats(),
-            Self::Scale(v, s) => v.uses_stats() || s.uses_stats(),
-            Self::Normalize(v) => v.uses_stats(),
-            Self::Rotate(v, a) => v.uses_stats() || a.uses_stats(),
-            Self::Lerp(a, b, t) => a.uses_stats() || b.uses_stats() || t.uses_stats(),
-            Self::Vec2Expr(x, y) => x.uses_stats() || y.uses_stats(),
-            Self::FromAngle(a) => a.uses_stats(),
-            Self::Recalc(e) => e.uses_stats(),
-        }
-    }
-
-    pub fn uses_recalc(&self) -> bool {
-        match self {
-            Self::CasterPos | Self::SourcePos | Self::SourceDir
-            | Self::TargetPos | Self::TargetDir => false,
-            Self::Recalc(_) => true,
-            Self::Add(a, b) | Self::Sub(a, b) => a.uses_recalc() || b.uses_recalc(),
-            Self::Scale(v, s) => v.uses_recalc() || s.uses_recalc(),
-            Self::Normalize(v) => v.uses_recalc(),
-            Self::Rotate(v, a) => v.uses_recalc() || a.uses_recalc(),
-            Self::Lerp(a, b, t) => a.uses_recalc() || b.uses_recalc() || t.uses_recalc(),
-            Self::Vec2Expr(x, y) => x.uses_recalc() || y.uses_recalc(),
-            Self::FromAngle(a) => a.uses_recalc(),
-        }
-    }
-
     pub fn eval(&self, source: &AbilitySource, stats: &ComputedStats) -> Vec2 {
         match self {
             Self::CasterPos => source.caster.position.unwrap_or(Vec2::ZERO),
@@ -402,19 +385,9 @@ impl VecExpr {
     }
 }
 
-#[allow(dead_code)]
-impl EntityExpr {
-    pub fn eval(&self, source: &AbilitySource) -> Option<Entity> {
-        match self {
-            Self::CasterEntity => source.caster.entity,
-            Self::SourceEntity => source.source.entity,
-            Self::TargetEntity => source.target.entity,
-            Self::Recalc(e) => e.eval(source),
-        }
-    }
-}
+// --- Deserialization (Raw only) ---
 
-impl<'de> Deserialize<'de> for ScalarExprRaw {
+impl<'de> Deserialize<'de> for ScalarExpr<Raw> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
         match parse_expr_string(&s) {
@@ -435,7 +408,7 @@ impl<'de> Deserialize<'de> for ScalarExprRaw {
     }
 }
 
-impl<'de> Deserialize<'de> for VecExprRaw {
+impl<'de> Deserialize<'de> for VecExpr<Raw> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
         match parse_expr_string(&s) {
@@ -456,7 +429,7 @@ impl<'de> Deserialize<'de> for VecExprRaw {
     }
 }
 
-impl<'de> Deserialize<'de> for EntityExprRaw {
+impl<'de> Deserialize<'de> for EntityExpr {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let s = String::deserialize(deserializer)?;
         match parse_expr_string(&s) {
@@ -476,6 +449,8 @@ impl<'de> Deserialize<'de> for EntityExprRaw {
         }
     }
 }
+
+// --- Utility functions ---
 
 #[allow(dead_code)]
 pub fn parse_required_fields(expr_str: &str) -> super::context::ProvidedFields {
@@ -503,11 +478,10 @@ pub fn parse_and_resolve_vec(expr_str: &str, reg: &StatRegistry) -> VecExpr {
     }
 }
 
-pub fn parse_and_resolve_entity(expr_str: &str, reg: &StatRegistry) -> EntityExpr {
+pub fn parse_and_resolve_entity(expr_str: &str, _reg: &StatRegistry) -> EntityExpr {
     match parse_expr_string(expr_str) {
-        Ok(TypedExpr::Entity(e)) => e.resolve(reg),
+        Ok(TypedExpr::Entity(e)) => e,
         Ok(_) => panic!("Expected entity expression, got different type: '{}'", expr_str),
         Err(e) => panic!("Failed to parse entity expression '{}': {}", expr_str, e),
     }
 }
-
