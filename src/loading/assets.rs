@@ -102,6 +102,6 @@ impl AssetLoader for AbilityDefLoader {
     }
 
     fn extensions(&self) -> &[&str] {
-        &["ability.ron"]
+        &["ability.ron", "mob.ron"]
     }
 }

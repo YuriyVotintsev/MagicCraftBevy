@@ -13,6 +13,7 @@ pub struct LoadingState {
     pub stats_handle: Option<Handle<StatsConfigAsset>>,
     pub player_handle: Option<Handle<PlayerDefAsset>>,
     pub abilities_folder: Option<Handle<LoadedFolder>>,
+    pub mobs_folder: Option<Handle<LoadedFolder>>,
 }
 
 #[derive(Default, PartialEq, Clone, Copy)]
@@ -122,7 +123,8 @@ pub fn check_stats_loaded(
 
     loading_state.player_handle = Some(asset_server.load("player.player.ron"));
 
-    loading_state.abilities_folder = Some(asset_server.load_folder("abilities"));
+    loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
+    loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
 
     loading_state.phase = LoadingPhase::WaitingForContent;
     info!("Loading content assets...");
@@ -159,8 +161,17 @@ pub fn check_content_loaded(
     let Some(abilities_folder_handle) = &loading_state.abilities_folder else {
         return;
     };
+    let Some(mobs_folder_handle) = &loading_state.mobs_folder else {
+        return;
+    };
     if !matches!(
         asset_server.get_load_state(abilities_folder_handle.id()),
+        Some(LoadState::Loaded)
+    ) {
+        return;
+    }
+    if !matches!(
+        asset_server.get_load_state(mobs_folder_handle.id()),
         Some(LoadState::Loaded)
     ) {
         return;
@@ -172,13 +183,16 @@ pub fn check_content_loaded(
         .expect("Player definition asset not loaded");
     commands.insert_resource(PlayerDefResource(player_def.0.clone()));
 
-    if let Some(folder) = folders.get(abilities_folder_handle.id()) {
-        for handle in &folder.handles {
-            let typed_handle: Handle<AbilityDefAsset> = handle.clone().typed();
-            if let Some(ability_asset) = ability_assets.get(typed_handle.id()) {
-                let ability_def = resolve_ability_def(&ability_asset.0, &stat_registry, &mut ability_registry);
-                info!("Registered ability: {}", ability_asset.0.id);
-                ability_registry.register(ability_def);
+    let folder_handles = [abilities_folder_handle.id(), mobs_folder_handle.id()];
+    for folder_id in folder_handles {
+        if let Some(folder) = folders.get(folder_id) {
+            for handle in &folder.handles {
+                let typed_handle: Handle<AbilityDefAsset> = handle.clone().typed();
+                if let Some(ability_asset) = ability_assets.get(typed_handle.id()) {
+                    let ability_def = resolve_ability_def(&ability_asset.0, &stat_registry, &mut ability_registry);
+                    info!("Registered ability: {}", ability_asset.0.id);
+                    ability_registry.register(ability_def);
+                }
             }
         }
     }
