@@ -1,8 +1,7 @@
 (
     id: "dash",
-    components: [
-        OnInput((entities: [
-            (components: [Dash((speed: "1500.0", duration: "0.2"))])
-        ]))
+    cooldown: Some("1.0"),
+    entities: [
+        (components: [Dash((speed: "1500.0", duration: "0.2"))])
     ]
 )

@@ -1,46 +1,40 @@
 use bevy::prelude::*;
-use magic_craft_macros::ability_component;
 
-use crate::abilities::{AbilityRegistry, AbilitySource, TargetInfo};
-use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, StatCalculators, StatRegistry, DEFAULT_STATS};
 use crate::wave::{WaveEnemy, WavePhase};
-use crate::GameState;
+use super::core_components::{AbilityCooldown, AbilityInput};
+use super::context::TargetInfo;
+use super::node::AbilityRegistry;
+use super::AbilitySource;
 
-#[ability_component(SOURCE_ENTITY, SOURCE_POSITION)]
-pub struct Once {
-    pub entities: Vec<EntityDef>,
-}
-
-#[derive(Component)]
-pub struct OnceTriggered;
-
-pub fn register_systems(app: &mut App) {
-    app.add_systems(
-        Update,
-        once_system
-            .in_set(GameSet::AbilityActivation)
-            .run_if(in_state(GameState::Playing)),
-    );
-}
-
-fn once_system(
+pub fn ability_activation_system(
+    time: Res<Time>,
     mut commands: Commands,
-    ability_query: Query<(Entity, &AbilitySource, &Once), Without<OnceTriggered>>,
+    mut ability_query: Query<(&mut AbilityInput, &mut AbilityCooldown, &AbilitySource)>,
     owner_query: Query<&Transform>,
-    wave_enemy_query: Query<(), With<WaveEnemy>>,
     stats_query: Query<&ComputedStats>,
+    wave_enemy_query: Query<(), With<WaveEnemy>>,
     stat_registry: Option<Res<StatRegistry>>,
     calculators: Option<Res<StatCalculators>>,
     ability_registry: Res<AbilityRegistry>,
 ) {
-    for (entity, source, once) in &ability_query {
+    let delta = time.delta_secs();
+
+    for (mut input, mut cd, source) in &mut ability_query {
+        cd.timer -= delta;
+
+        if !input.pressed || cd.timer > 0.0 {
+            continue;
+        }
+
         let caster_entity = source.caster.entity.unwrap();
         let Ok(transform) = owner_query.get(caster_entity) else {
             continue;
         };
 
-        let is_wave_spawn = wave_enemy_query.contains(caster_entity);
+        let Some(ability_def) = ability_registry.get(source.ability_id) else {
+            continue;
+        };
 
         let caster_stats = stats_query
             .get(caster_entity)
@@ -54,12 +48,14 @@ fn once_system(
             caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
             caster_faction: source.caster_faction,
             source: source_info,
-            target: TargetInfo::EMPTY,
+            target: input.target,
             index: 0,
             count: 1,
         };
 
-        for entity_def in &once.entities {
+        let is_wave_spawn = wave_enemy_query.contains(caster_entity);
+
+        for entity_def in &ability_def.entities {
             let spawned = crate::abilities::spawn::spawn_entity_def(
                 &mut commands,
                 entity_def,
@@ -80,6 +76,7 @@ fn once_system(
             }
         }
 
-        commands.entity(entity).insert(OnceTriggered);
+        input.pressed = false;
+        cd.timer = cd.cooldown;
     }
 }

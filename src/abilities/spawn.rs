@@ -5,7 +5,7 @@ use super::components::ComponentDef;
 use super::context::TargetInfo;
 use super::entity_def::EntityDef;
 use super::state::{CurrentState, StoredStatesBlock};
-use super::{AbilityInputs, AbilitySource, AbilityRegistry, attach_ability};
+use super::{AbilitySource, AbilityRegistry, attach_ability};
 
 #[derive(Component)]
 pub struct StoredComponentDefs {
@@ -69,7 +69,6 @@ pub fn spawn_entity(
             source.caster_faction,
             modifiers,
             dirty,
-            AbilityInputs::new(),
         ));
 
         owned_stats = computed;
@@ -111,7 +110,7 @@ pub fn spawn_entity(
         if let Some(ability_registry) = ability_registry {
             for ability_name in &entity_def.abilities {
                 if let Some(aid) = ability_registry.get_id(ability_name) {
-                    attach_ability(commands, entity_id, source.caster_faction, aid, ability_registry);
+                    attach_ability(commands, entity_id, source.caster_faction, aid, ability_registry, true);
                 }
             }
         }

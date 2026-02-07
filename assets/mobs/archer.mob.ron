@@ -1,38 +1,36 @@
 (
     id: "archer",
-    components: [
-        Once((entities: [
-            (
-                base_stats: {
-                    "movement_speed_base": 150.0,
-                    "max_life_base": 30.0,
-                    "physical_damage_base": 10.0,
-                },
-                abilities: ["archer_shot"],
-                components: [
-                    Size((value: "60.0")),
-                    Sprite((color: (0.8, 0.3, 0.3, 1.0), shape: Triangle)),
-                    Collider((shape: Circle, sensor: Some(false))),
-                    DynamicBody(()),
-                    Health(()),
-                ],
-                states: Some((
-                    initial: "find_target",
-                    states: {
-                        "find_target": (
-                            components: [FindNearestEnemy((size: "4000.0"))],
-                            transitions: [WhenFoundTarget((to: "kite"))],
-                        ),
-                        "kite": (
-                            components: [
-                                KeepDistance((min: "150.0", max: "300.0")),
-                                UseAbilities((abilities: ["archer_shot"], cooldown: Some("2.0"))),
-                            ],
-                            transitions: [],
-                        ),
-                    }
-                ))
-            )
-        ]))
+    entities: [
+        (
+            base_stats: {
+                "movement_speed_base": 150.0,
+                "max_life_base": 30.0,
+                "physical_damage_base": 10.0,
+            },
+            abilities: ["archer_shot"],
+            components: [
+                Size((value: "60.0")),
+                Sprite((color: (0.8, 0.3, 0.3, 1.0), shape: Triangle)),
+                Collider((shape: Circle, sensor: Some(false))),
+                DynamicBody(()),
+                Health(()),
+            ],
+            states: Some((
+                initial: "find_target",
+                states: {
+                    "find_target": (
+                        components: [FindNearestEnemy((size: "4000.0"))],
+                        transitions: [WhenFoundTarget((to: "kite"))],
+                    ),
+                    "kite": (
+                        components: [
+                            KeepDistance((min: "150.0", max: "300.0")),
+                            UseAbilities((abilities: ["archer_shot"], cooldown: Some("2.0"))),
+                        ],
+                        transitions: [],
+                    ),
+                }
+            ))
+        )
     ]
 )

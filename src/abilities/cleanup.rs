@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use super::activator_support::AbilityEntity;
+use super::core_components::AbilityEntity;
 use super::AbilitySource;
 
 pub fn cleanup_orphaned_abilities(

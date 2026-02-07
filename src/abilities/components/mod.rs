@@ -1,10 +1,4 @@
 collect_components!(
-    activators: [
-        on_input,
-        once,
-        interval,
-        while_held,
-    ],
     components: [
         projectile,
         straight,

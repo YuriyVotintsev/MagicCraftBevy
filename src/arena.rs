@@ -230,7 +230,7 @@ fn process_spawn_markers(
     for (marker_entity, mut marker, _transform) in markers_query.iter_mut() {
         if marker.timer.tick(time.delta()).just_finished() {
             if let Some(ability_id) = ability_registry.get_id(&marker.ability_name) {
-                attach_ability(&mut commands, marker_entity, Faction::Enemy, ability_id, &ability_registry);
+                attach_ability(&mut commands, marker_entity, Faction::Enemy, ability_id, &ability_registry, true);
                 wave_state.spawned_count += 1;
             }
 

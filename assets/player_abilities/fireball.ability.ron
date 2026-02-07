@@ -1,17 +1,16 @@
 (
     id: "fireball",
-    components: [
-        OnInput((entities: [
-            (components: [
-                Projectile(()),
-                Straight((speed: "stat(projectile_speed) + 100.0")),
-                Size((value: "30.0")),
-                Collider((shape: Circle)),
-                Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
-                OnCollision((entities: [
-                    (components: [DamagePayload((amount: "stat(physical_damage)"))])
-                ]))
-            ])
-        ]))
+    cooldown: Some("0.5"),
+    entities: [
+        (components: [
+            Projectile(()),
+            Straight((speed: "stat(projectile_speed) + 100.0")),
+            Size((value: "30.0")),
+            Collider((shape: Circle)),
+            Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
+            OnCollision((entities: [
+                (components: [DamagePayload((amount: "stat(physical_damage)"))])
+            ]))
+        ])
     ]
 )

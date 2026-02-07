@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
-use crate::abilities::{AbilityInputs, AbilityRegistry, InputState};
+use crate::abilities::{AbilityInput, AbilityRegistry, AbilitySource};
+use crate::abilities::context::TargetInfo;
 
 #[ability_component]
 pub struct UseAbilities {
@@ -39,9 +40,10 @@ fn use_abilities_system(
     time: Res<Time>,
     ability_registry: Res<AbilityRegistry>,
     transforms: Query<&Transform, Without<UseAbilities>>,
-    mut query: Query<(&Transform, &UseAbilities, &mut UseAbilitiesTimer, &mut AbilityInputs)>,
+    mut query: Query<(&Transform, &UseAbilities, &mut UseAbilitiesTimer, &AbilitySource)>,
+    mut ability_input_query: Query<(&AbilitySource, &mut AbilityInput)>,
 ) {
-    for (transform, use_abilities, mut timer, mut inputs) in &mut query {
+    for (transform, use_abilities, mut timer, owner_source) in &mut query {
         let Ok(target_transform) = transforms.get(use_abilities.target) else {
             continue;
         };
@@ -55,14 +57,16 @@ fn use_abilities_system(
         timer.elapsed = 0.0;
 
         let direction = (target_transform.translation - transform.translation).normalize_or_zero();
+        let caster_entity = owner_source.caster.entity.unwrap();
 
         for ability_name in &use_abilities.abilities {
             if let Some(ability_id) = ability_registry.get_id(ability_name) {
-                inputs.set(ability_id, InputState {
-                    pressed: true,
-                    just_pressed: true,
-                    direction,
-                });
+                for (source, mut input) in &mut ability_input_query {
+                    if source.ability_id == ability_id && source.caster.entity == Some(caster_entity) {
+                        input.pressed = true;
+                        input.target = TargetInfo::from_direction(direction.truncate());
+                    }
+                }
             }
         }
     }

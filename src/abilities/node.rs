@@ -5,7 +5,7 @@ use crate::Faction;
 use crate::stats::DEFAULT_STATS;
 use super::context::TargetInfo;
 use super::ids::AbilityId;
-use super::activator_support::AbilityEntity;
+use super::core_components::{AbilityEntity, AbilityInput, AbilityCooldown};
 use super::AbilitySource;
 
 pub fn attach_ability(
@@ -14,32 +14,40 @@ pub fn attach_ability(
     owner_faction: Faction,
     ability_id: AbilityId,
     ability_registry: &AbilityRegistry,
+    initially_pressed: bool,
 ) {
     let Some(ability_def) = ability_registry.get(ability_id) else {
         return;
     };
 
-    let caster = TargetInfo::from_entity_and_position(owner, Vec2::ZERO);
+    let cooldown = ability_def.cooldown.eval(
+        &AbilitySource {
+            ability_id,
+            caster: TargetInfo::EMPTY,
+            caster_faction: owner_faction,
+            source: TargetInfo::EMPTY,
+            target: TargetInfo::EMPTY,
+            index: 0,
+            count: 1,
+        },
+        &DEFAULT_STATS,
+    );
 
-    let source = AbilitySource {
-        ability_id,
-        caster,
-        caster_faction: owner_faction,
-        source: TargetInfo::EMPTY,
-        target: TargetInfo::EMPTY,
-        index: 0,
-        count: 1,
-    };
-
-    let mut entity_commands = commands.spawn((
-        source,
+    commands.spawn((
+        AbilitySource {
+            ability_id,
+            caster: TargetInfo::from_entity_and_position(owner, Vec2::ZERO),
+            caster_faction: owner_faction,
+            source: TargetInfo::EMPTY,
+            target: TargetInfo::EMPTY,
+            index: 0,
+            count: 1,
+        },
         AbilityEntity,
+        AbilityCooldown { cooldown, timer: 0.0 },
+        AbilityInput { pressed: initially_pressed, target: TargetInfo::EMPTY },
         Name::new(format!("Ability_{:?}", ability_id)),
     ));
-
-    for component in &ability_def.components {
-        component.insert_component(&mut entity_commands, &source, &DEFAULT_STATS);
-    }
 }
 
 #[derive(Resource, Default)]

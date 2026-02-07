@@ -7,7 +7,8 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
-use crate::abilities::{AbilityInputs, AbilityRegistry, InputState, attach_ability};
+use crate::abilities::{AbilityInput, AbilityRegistry, AbilitySource, attach_ability};
+use crate::abilities::context::TargetInfo;
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
@@ -36,7 +37,7 @@ impl Plugin for PlayerPlugin {
             .add_systems(OnExit(WavePhase::Combat), reset_player_velocity)
             .add_systems(
                 Update,
-                (player_movement, player_defensive_input, player_active_input)
+                (player_movement, player_defensive_input, player_active_input, passive_auto_input)
                     .chain()
                     .in_set(GameSet::Input)
                     .run_if(in_state(WavePhase::Combat)),
@@ -109,7 +110,6 @@ fn spawn_player(
             computed,
             dirty,
             Health { current: max_life },
-            AbilityInputs::new(),
             Sprite {
                 color: Color::srgb(
                     player_def.visual.color[0],
@@ -124,13 +124,13 @@ fn spawn_player(
     )).id();
 
     if let Some(active_id) = selected_spells.active {
-        attach_ability(&mut commands, entity, Faction::Player, active_id, &ability_registry);
+        attach_ability(&mut commands, entity, Faction::Player, active_id, &ability_registry, false);
     }
     if let Some(passive_id) = selected_spells.passive {
-        attach_ability(&mut commands, entity, Faction::Player, passive_id, &ability_registry);
+        attach_ability(&mut commands, entity, Faction::Player, passive_id, &ability_registry, false);
     }
     if let Some(defensive_id) = selected_spells.defensive {
-        attach_ability(&mut commands, entity, Faction::Player, defensive_id, &ability_registry);
+        attach_ability(&mut commands, entity, Faction::Player, defensive_id, &ability_registry, false);
     }
 }
 
@@ -174,22 +174,20 @@ fn player_active_input(
     mouse: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
-    mut player_query: Query<(&Transform, &mut AbilityInputs), With<Player>>,
+    player_query: Query<&Transform, With<Player>>,
     selected_spells: Res<SelectedSpells>,
+    mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
 ) {
     let Some(ability_id) = selected_spells.active else {
         return;
     };
 
-    let Ok((player_transform, mut inputs)) = player_query.single_mut() else {
+    let Ok(player_transform) = player_query.single() else {
         return;
     };
 
     let pressed = mouse.pressed(MouseButton::Left);
-    let just_pressed = mouse.just_pressed(MouseButton::Left);
-
-    if !pressed && !just_pressed {
-        inputs.inputs.remove(&ability_id);
+    if !pressed {
         return;
     }
 
@@ -216,23 +214,25 @@ fn player_active_input(
         return;
     }
 
-    inputs.set(ability_id, InputState {
-        pressed,
-        just_pressed,
-        direction: direction.extend(0.0),
-    });
+    for (source, mut input) in &mut ability_query {
+        if source.ability_id == ability_id {
+            input.pressed = true;
+            input.target = TargetInfo::from_direction(direction);
+        }
+    }
 }
 
 fn player_defensive_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut query: Query<(&LinearVelocity, &mut AbilityInputs), (With<Player>, Without<MovementLocked>)>,
+    player_query: Query<&LinearVelocity, (With<Player>, Without<MovementLocked>)>,
     selected_spells: Res<SelectedSpells>,
+    mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
 ) {
     let Some(ability_id) = selected_spells.defensive else {
         return;
     };
 
-    let Ok((velocity, mut inputs)) = query.single_mut() else {
+    let Ok(velocity) = player_query.single() else {
         return;
     };
 
@@ -242,11 +242,27 @@ fn player_defensive_input(
 
     let direction = velocity.0.normalize_or_zero();
 
-    inputs.set(ability_id, InputState {
-        pressed: true,
-        just_pressed: true,
-        direction: direction.extend(0.0),
-    });
+    for (source, mut input) in &mut ability_query {
+        if source.ability_id == ability_id {
+            input.pressed = true;
+            input.target = TargetInfo::from_direction(direction);
+        }
+    }
+}
+
+fn passive_auto_input(
+    selected_spells: Res<SelectedSpells>,
+    mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
+) {
+    let Some(ability_id) = selected_spells.passive else {
+        return;
+    };
+
+    for (source, mut input) in &mut ability_query {
+        if source.ability_id == ability_id {
+            input.pressed = true;
+        }
+    }
 }
 
 fn handle_player_death(

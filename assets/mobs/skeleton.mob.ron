@@ -1,39 +1,37 @@
 (
     id: "skeleton",
-    components: [
-        Once((entities: [
-            (
-                base_stats: {
-                    "movement_speed_base": 200.0,
-                    "max_life_base": 50.0,
-                    "physical_damage_base": 8.0,
-                },
-                abilities: ["melee_attack"],
-                components: [
-                    Size((value: "60.0")),
-                    Sprite((color: (0.85, 0.85, 0.75, 1.0), shape: Square)),
-                    Collider((shape: Circle, sensor: Some(false))),
-                    DynamicBody(()),
-                    Health(()),
-                ],
-                states: Some((
-                    initial: "find_target",
-                    states: {
-                        "find_target": (
-                            components: [FindNearestEnemy((size: "4000.0"))],
-                            transitions: [WhenFoundTarget((to: "chase"))],
-                        ),
-                        "chase": (
-                            components: [MoveToward(())],
-                            transitions: [WhenNear((to: "attack", distance: "80.0"))],
-                        ),
-                        "attack": (
-                            components: [MoveToward(()), UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5")))],
-                            transitions: [AfterTime((to: "chase", duration: "1.0"))],
-                        ),
-                    }
-                ))
-            )
-        ]))
+    entities: [
+        (
+            base_stats: {
+                "movement_speed_base": 200.0,
+                "max_life_base": 50.0,
+                "physical_damage_base": 8.0,
+            },
+            abilities: ["melee_attack"],
+            components: [
+                Size((value: "60.0")),
+                Sprite((color: (0.85, 0.85, 0.75, 1.0), shape: Square)),
+                Collider((shape: Circle, sensor: Some(false))),
+                DynamicBody(()),
+                Health(()),
+            ],
+            states: Some((
+                initial: "find_target",
+                states: {
+                    "find_target": (
+                        components: [FindNearestEnemy((size: "4000.0"))],
+                        transitions: [WhenFoundTarget((to: "chase"))],
+                    ),
+                    "chase": (
+                        components: [MoveToward(())],
+                        transitions: [WhenNear((to: "attack", distance: "80.0"))],
+                    ),
+                    "attack": (
+                        components: [MoveToward(()), UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5")))],
+                        transitions: [AfterTime((to: "chase", duration: "1.0"))],
+                    ),
+                }
+            ))
+        )
     ]
 )
