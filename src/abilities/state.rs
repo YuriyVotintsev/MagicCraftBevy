@@ -90,7 +90,7 @@ pub fn state_transition_system(
 
         current_state.0 = new_state_name.clone();
 
-        info!(
+        debug!(
             "State transition: '{}' -> '{}'",
             old_state_name, new_state_name
         );

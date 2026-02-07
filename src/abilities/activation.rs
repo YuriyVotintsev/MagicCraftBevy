@@ -21,9 +21,12 @@ pub fn ability_activation_system(
     let delta = time.delta_secs();
 
     for (mut input, mut cd, source) in &mut ability_query {
-        cd.timer -= delta;
+        cd.timer = (cd.timer - delta).max(0.0);
 
-        if !input.pressed || cd.timer > 0.0 {
+        let should_fire = input.pressed && cd.timer <= 0.0;
+        input.pressed = false;
+
+        if !should_fire {
             continue;
         }
 
@@ -76,7 +79,6 @@ pub fn ability_activation_system(
             }
         }
 
-        input.pressed = false;
         cd.timer = cd.cooldown;
     }
 }

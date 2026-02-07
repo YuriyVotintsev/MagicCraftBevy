@@ -1,5 +1,6 @@
 (
     id: "shield",
+    cooldown: Some("0"),
     entities: [
         (components: [
             FollowCaster(()),

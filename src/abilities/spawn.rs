@@ -110,7 +110,7 @@ pub fn spawn_entity(
         if let Some(ability_registry) = ability_registry {
             for ability_name in &entity_def.abilities {
                 if let Some(aid) = ability_registry.get_id(ability_name) {
-                    attach_ability(commands, entity_id, source.caster_faction, aid, ability_registry, true);
+                    attach_ability(commands, entity_id, source.caster_faction, aid, ability_registry, false);
                 }
             }
         }

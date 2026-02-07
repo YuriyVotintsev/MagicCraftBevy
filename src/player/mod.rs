@@ -182,34 +182,28 @@ fn player_active_input(
         return;
     };
 
-    let Ok(player_transform) = player_query.single() else {
-        return;
-    };
-
-    let pressed = mouse.pressed(MouseButton::Left);
-    if !pressed {
+    if !mouse.pressed(MouseButton::Left) {
         return;
     }
 
+    let Ok(player_transform) = player_query.single() else {
+        return;
+    };
     let Ok(window) = windows.single() else {
         return;
     };
-
     let Ok((camera, camera_transform)) = camera_query.single() else {
         return;
     };
-
     let Some(cursor_pos) = window.cursor_position() else {
         return;
     };
-
     let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else {
         return;
     };
 
     let player_pos = player_transform.translation.truncate();
     let direction = (world_pos - player_pos).normalize_or_zero();
-
     if direction == Vec2::ZERO {
         return;
     }
