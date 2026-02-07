@@ -168,6 +168,7 @@ impl ScalarExprRaw {
         }
     }
 
+    #[allow(dead_code)]
     pub fn required_fields(&self) -> ProvidedFields {
         match self {
             Self::Literal(_) | Self::Stat(_) | Self::Index | Self::Count => ProvidedFields::NONE,
@@ -226,6 +227,7 @@ impl VecExprRaw {
         }
     }
 
+    #[allow(dead_code)]
     pub fn required_fields(&self) -> ProvidedFields {
         match self {
             Self::CasterPos => ProvidedFields::NONE,
@@ -261,6 +263,7 @@ impl EntityExprRaw {
         }
     }
 
+    #[allow(dead_code)]
     pub fn required_fields(&self) -> ProvidedFields {
         match self {
             Self::CasterEntity => ProvidedFields::NONE,
@@ -474,6 +477,7 @@ impl<'de> Deserialize<'de> for EntityExprRaw {
     }
 }
 
+#[allow(dead_code)]
 pub fn parse_required_fields(expr_str: &str) -> super::context::ProvidedFields {
     match parse_expr_string(expr_str) {
         Ok(TypedExpr::Scalar(e)) => e.required_fields(),

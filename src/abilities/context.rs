@@ -42,6 +42,7 @@ impl TargetInfo {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ProvidedFields(u8);
 
+#[allow(dead_code)]
 impl ProvidedFields {
     pub const NONE: Self = Self(0);
     pub const SOURCE_ENTITY: Self = Self(0b0000_0001);
@@ -50,7 +51,6 @@ impl ProvidedFields {
     pub const TARGET_ENTITY: Self = Self(0b0000_1000);
     pub const TARGET_POSITION: Self = Self(0b0001_0000);
     pub const TARGET_DIRECTION: Self = Self(0b0010_0000);
-    pub const ALL: Self = Self(0b0011_1111);
 
     pub const fn union(self, other: Self) -> Self {
         Self(self.0 | other.0)

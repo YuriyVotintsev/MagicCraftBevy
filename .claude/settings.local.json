@@ -31,7 +31,8 @@
       "Bash(tree:*)",
       "Bash(done)",
       "Bash(git mv:*)",
-      "Bash(cargo fix:*)"
+      "Bash(cargo fix:*)",
+      "Bash(cargo test:*)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"

@@ -174,7 +174,7 @@ fn player_active_input(
     mouse: Res<ButtonInput<MouseButton>>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
-    player_query: Query<&Transform, With<Player>>,
+    player_query: Query<(Entity, &Transform), With<Player>>,
     selected_spells: Res<SelectedSpells>,
     mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
 ) {
@@ -186,7 +186,7 @@ fn player_active_input(
         return;
     }
 
-    let Ok(player_transform) = player_query.single() else {
+    let Ok((player_entity, player_transform)) = player_query.single() else {
         return;
     };
     let Ok(window) = windows.single() else {
@@ -209,7 +209,7 @@ fn player_active_input(
     }
 
     for (source, mut input) in &mut ability_query {
-        if source.ability_id == ability_id {
+        if source.ability_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
             input.target = TargetInfo::from_direction(direction);
         }
@@ -218,7 +218,7 @@ fn player_active_input(
 
 fn player_defensive_input(
     keyboard: Res<ButtonInput<KeyCode>>,
-    player_query: Query<&LinearVelocity, (With<Player>, Without<MovementLocked>)>,
+    player_query: Query<(Entity, &LinearVelocity), (With<Player>, Without<MovementLocked>)>,
     selected_spells: Res<SelectedSpells>,
     mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
 ) {
@@ -226,7 +226,7 @@ fn player_defensive_input(
         return;
     };
 
-    let Ok(velocity) = player_query.single() else {
+    let Ok((player_entity, velocity)) = player_query.single() else {
         return;
     };
 
@@ -237,7 +237,7 @@ fn player_defensive_input(
     let direction = velocity.0.normalize_or_zero();
 
     for (source, mut input) in &mut ability_query {
-        if source.ability_id == ability_id {
+        if source.ability_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
             input.target = TargetInfo::from_direction(direction);
         }
@@ -246,14 +246,18 @@ fn player_defensive_input(
 
 fn passive_auto_input(
     selected_spells: Res<SelectedSpells>,
+    player_query: Query<Entity, With<Player>>,
     mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
 ) {
     let Some(ability_id) = selected_spells.passive else {
         return;
     };
+    let Ok(player_entity) = player_query.single() else {
+        return;
+    };
 
     for (source, mut input) in &mut ability_query {
-        if source.ability_id == ability_id {
+        if source.ability_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
         }
     }
