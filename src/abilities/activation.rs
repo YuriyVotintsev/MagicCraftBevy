@@ -1,21 +1,20 @@
 use bevy::prelude::*;
 
-use crate::stats::{ComputedStats, StatCalculators, StatRegistry, DEFAULT_STATS};
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::wave::{WaveEnemy, WavePhase};
 use super::core_components::{AbilityCooldown, AbilityInput};
 use super::context::TargetInfo;
 use super::node::AbilityRegistry;
+use super::spawn::EntitySpawner;
 use super::AbilitySource;
 
 pub fn ability_activation_system(
     time: Res<Time>,
-    mut commands: Commands,
+    mut spawner: EntitySpawner,
     mut ability_query: Query<(&mut AbilityInput, &mut AbilityCooldown, &AbilitySource)>,
     owner_query: Query<&Transform>,
     stats_query: Query<&ComputedStats>,
     wave_enemy_query: Query<(), With<WaveEnemy>>,
-    stat_registry: Option<Res<StatRegistry>>,
-    calculators: Option<Res<StatCalculators>>,
     ability_registry: Res<AbilityRegistry>,
 ) {
     let delta = time.delta_secs();
@@ -63,19 +62,11 @@ pub fn ability_activation_system(
         let is_wave_spawn = wave_enemy_query.contains(caster_entity);
 
         for entity_def in &ability_def.entities {
-            let spawned = crate::abilities::spawn::spawn_entity_def(
-                &mut commands,
-                entity_def,
-                &spawn_source,
-                caster_stats,
-                stat_registry.as_deref(),
-                calculators.as_deref(),
-                Some(&ability_registry),
-            );
+            let spawned = spawner.spawn(entity_def, &spawn_source, caster_stats);
 
             if is_wave_spawn {
                 for &spawned_entity in &spawned {
-                    commands.entity(spawned_entity).insert((
+                    spawner.commands.entity(spawned_entity).insert((
                         WaveEnemy,
                         DespawnOnExit(WavePhase::Combat),
                     ));

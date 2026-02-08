@@ -2,10 +2,11 @@ use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::abilities::context::TargetInfo;
+use crate::abilities::spawn::EntitySpawner;
 use crate::abilities::AbilitySource;
 use crate::schedule::GameSet;
 use crate::GameState;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::ComputedStats;
 
 use super::find_nearest_enemy::FoundTarget;
 
@@ -24,39 +25,23 @@ pub fn register_systems(app: &mut App) {
 }
 
 fn on_found_trigger_system(
-    mut commands: Commands,
+    mut spawner: EntitySpawner,
     query: Query<(Entity, &OnFound, &FoundTarget, &AbilitySource)>,
     stats_query: Query<&ComputedStats>,
     transforms: Query<&Transform>,
 ) {
     for (entity, trigger, found, source) in &query {
-        let caster_entity = source.caster.entity.unwrap();
-        let caster_stats = stats_query
-            .get(caster_entity)
-            .unwrap_or(&DEFAULT_STATS);
-
-        let caster_pos = transforms.get(caster_entity)
-            .map(|t| t.translation.truncate())
-            .unwrap_or(Vec2::ZERO);
-
         let found_pos = found.1.truncate();
-        let source_info = TargetInfo::from_position(found_pos);
-        let target_info = TargetInfo::from_entity_and_position(found.0, found_pos);
+        spawner.spawn_triggered(
+            entity,
+            source,
+            TargetInfo::from_position(found_pos),
+            TargetInfo::from_entity_and_position(found.0, found_pos),
+            &trigger.entities,
+            &stats_query,
+            &transforms,
+        );
 
-        let spawn_source = AbilitySource {
-            ability_id: source.ability_id,
-            caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
-            caster_faction: source.caster_faction,
-            source: source_info,
-            target: target_info,
-            index: 0,
-            count: 1,
-        };
-
-        for entity_def in &trigger.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_source, caster_stats, None, None, None);
-        }
-
-        commands.entity(entity).despawn();
+        spawner.commands.entity(entity).despawn();
     }
 }

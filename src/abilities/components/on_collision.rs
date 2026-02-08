@@ -4,11 +4,12 @@ use avian2d::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::abilities::context::TargetInfo;
+use crate::abilities::spawn::EntitySpawner;
 use crate::abilities::AbilitySource;
 use crate::physics::Wall;
 use crate::schedule::GameSet;
 use crate::Faction;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::ComputedStats;
 
 use super::pierce::Pierce;
 use super::projectile::Projectile;
@@ -28,7 +29,7 @@ pub fn register_systems(app: &mut App) {
 }
 
 fn on_collision_trigger_system(
-    mut commands: Commands,
+    mut spawner: EntitySpawner,
     mut collision_events: MessageReader<CollisionStart>,
     hittable_query: Query<(&AbilitySource, &Faction, &Transform, &OnCollision)>,
     target_query: Query<(&Faction, &Transform), Without<OnCollision>>,
@@ -71,34 +72,18 @@ fn on_collision_trigger_system(
             continue;
         }
 
-        let caster_entity = source.caster.entity.unwrap();
-        let caster_stats = stats_query
-            .get(caster_entity)
-            .unwrap_or(&DEFAULT_STATS);
-
-        let caster_pos = transforms.get(caster_entity)
-            .map(|t| t.translation.truncate())
-            .unwrap_or(Vec2::ZERO);
-
         let source_pos = hittable_transform.translation.truncate();
         let target_pos = target_transform.translation.truncate();
 
-        let source_info = TargetInfo::from_entity_and_position(hittable_entity, source_pos);
-        let target_info = TargetInfo::from_entity_and_position(other_entity, target_pos);
-
-        let spawn_source = AbilitySource {
-            ability_id: source.ability_id,
-            caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
-            caster_faction: source.caster_faction,
-            source: source_info,
-            target: target_info,
-            index: 0,
-            count: 1,
-        };
-
-        for entity_def in &trigger.entities {
-            crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_source, caster_stats, None, None, None);
-        }
+        spawner.spawn_triggered(
+            hittable_entity,
+            source,
+            TargetInfo::from_entity_and_position(hittable_entity, source_pos),
+            TargetInfo::from_entity_and_position(other_entity, target_pos),
+            &trigger.entities,
+            &stats_query,
+            &transforms,
+        );
     }
 }
 

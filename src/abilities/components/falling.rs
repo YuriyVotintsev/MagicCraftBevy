@@ -2,10 +2,11 @@ use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::abilities::context::TargetInfo;
+use crate::abilities::spawn::EntitySpawner;
 use crate::abilities::AbilitySource;
 use crate::schedule::GameSet;
 use crate::GameState;
-use crate::stats::{ComputedStats, DEFAULT_STATS};
+use crate::stats::ComputedStats;
 
 #[ability_component(SOURCE_POSITION)]
 pub struct Falling {
@@ -43,7 +44,7 @@ fn init_falling_progress(
 }
 
 fn update_falling_projectiles(
-    mut commands: Commands,
+    mut spawner: EntitySpawner,
     time: Res<Time>,
     mut query: Query<(Entity, &Falling, &mut FallingProgress, &AbilitySource, &mut Transform)>,
     stats_query: Query<&ComputedStats>,
@@ -62,30 +63,17 @@ fn update_falling_projectiles(
         transform.translation.y = current_y;
 
         if t >= 1.0 {
-            let caster_entity = source.caster.entity.unwrap();
-            let caster_stats = stats_query
-                .get(caster_entity)
-                .unwrap_or(&DEFAULT_STATS);
+            spawner.spawn_triggered(
+                entity,
+                source,
+                TargetInfo::from_position(falling.target_position),
+                TargetInfo::EMPTY,
+                &falling.entities,
+                &stats_query,
+                &transforms,
+            );
 
-            let caster_pos = transforms.get(caster_entity)
-                .map(|t| t.translation.truncate())
-                .unwrap_or(falling.caster_position);
-
-            let spawn_source = AbilitySource {
-                ability_id: source.ability_id,
-                caster: TargetInfo::from_entity_and_position(caster_entity, caster_pos),
-                caster_faction: source.caster_faction,
-                source: TargetInfo::from_position(falling.target_position),
-                target: TargetInfo::EMPTY,
-                index: 0,
-                count: 1,
-            };
-
-            for entity_def in &falling.entities {
-                crate::abilities::spawn::spawn_entity_def(&mut commands, entity_def, &spawn_source, caster_stats, None, None, None);
-            }
-
-            commands.entity(entity).despawn();
+            spawner.commands.entity(entity).despawn();
         }
     }
 }
