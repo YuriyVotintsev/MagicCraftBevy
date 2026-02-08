@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::stats::{ComputedStats, StatRegistry};
-
 #[ability_component]
 pub struct KeepDistance {
     #[default_expr("target.entity")]
@@ -17,6 +16,9 @@ pub fn register_systems(app: &mut App) {
         Update,
         keep_distance_system.in_set(crate::schedule::GameSet::MobAI),
     );
+    app.add_observer(|on: On<Remove, KeepDistance>, mut q: Query<&mut LinearVelocity>| {
+        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec2::ZERO; }
+    });
 }
 
 fn keep_distance_system(

@@ -1,4 +1,3 @@
-use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::stats::ComputedStats;
@@ -50,8 +49,6 @@ pub fn state_transition_system(
                 trans.remove_component(&mut ec);
             }
         }
-
-        commands.entity(event.entity).insert(LinearVelocity::ZERO);
 
         let mut new_state_recalc = Vec::new();
         if let Some(new_state) = stored.0.states.get(new_state_name) {

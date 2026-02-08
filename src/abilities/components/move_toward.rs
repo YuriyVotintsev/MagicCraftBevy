@@ -3,7 +3,6 @@ use bevy::prelude::*;
 use magic_craft_macros::ability_component;
 
 use crate::stats::{ComputedStats, StatRegistry};
-
 #[ability_component]
 pub struct MoveToward {
     #[default_expr("target.entity")]
@@ -15,6 +14,9 @@ pub fn register_systems(app: &mut App) {
         Update,
         move_toward_system.in_set(crate::schedule::GameSet::MobAI),
     );
+    app.add_observer(|on: On<Remove, MoveToward>, mut q: Query<&mut LinearVelocity>| {
+        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec2::ZERO; }
+    });
 }
 
 fn move_toward_system(

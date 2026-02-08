@@ -57,14 +57,11 @@ pub struct AbilityRegistry {
 }
 
 impl AbilityRegistry {
-    pub fn allocate_id(&mut self, name: &str) -> AbilityId {
+    pub fn register(&mut self, name: &str, ability: super::ability_def::AbilityDef) -> AbilityId {
         let id = AbilityId(self.abilities.len() as u32);
         self.name_to_id.insert(name.to_string(), id);
-        id
-    }
-
-    pub fn register(&mut self, ability: super::ability_def::AbilityDef) {
         self.abilities.push(ability);
+        id
     }
 
     pub fn get(&self, id: AbilityId) -> Option<&super::ability_def::AbilityDef> {

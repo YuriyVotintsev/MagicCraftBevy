@@ -19,7 +19,79 @@ impl StoredComponentDefs {
     }
 }
 
-#[allow(unused_assignments)]
+fn init_own_stats(
+    commands: &mut Commands,
+    entity_id: Entity,
+    source: &AbilitySource,
+    entity_def: &EntityDef,
+    stat_registry: &StatRegistry,
+    calculators: &StatCalculators,
+) -> (ComputedStats, AbilitySource) {
+    let mut modifiers = Modifiers::new();
+    let mut dirty = DirtyStats::default();
+    let mut computed = ComputedStats::new(stat_registry.len());
+
+    dirty.mark_all((0..stat_registry.len() as u32).map(StatId));
+
+    for (stat_id, value) in &entity_def.base_stats {
+        modifiers.add(*stat_id, *value, None);
+    }
+
+    calculators.recalculate(&modifiers, &mut computed, &mut dirty);
+
+    let self_source = AbilitySource {
+        caster: TargetInfo::from_entity_and_position(
+            entity_id,
+            source.caster.position.unwrap_or(Vec2::ZERO),
+        ),
+        ..*source
+    };
+
+    commands.entity(entity_id).insert((
+        self_source,
+        source.caster_faction,
+        modifiers,
+        dirty,
+        computed.clone(),
+    ));
+
+    (computed, self_source)
+}
+
+fn init_fsm(
+    commands: &mut Commands,
+    entity_id: Entity,
+    states_block: &super::entity_def::StatesBlock,
+    source: &AbilitySource,
+    stats: &ComputedStats,
+) -> Vec<ComponentDef> {
+    let mut state_recalc_defs = Vec::new();
+
+    if let Some(initial_state_def) = states_block.states.get(&states_block.initial) {
+        let mut ec = commands.entity(entity_id);
+        for comp in &initial_state_def.components {
+            comp.insert_component(&mut ec, source, stats);
+        }
+        for trans in &initial_state_def.transitions {
+            trans.insert_component(&mut ec, source, stats);
+        }
+
+        state_recalc_defs.extend(
+            initial_state_def.components.iter()
+                .chain(initial_state_def.transitions.iter())
+                .filter(|c| c.has_recalc())
+                .cloned()
+        );
+    }
+
+    commands.entity(entity_id).insert((
+        CurrentState(states_block.initial.clone()),
+        StoredStatesBlock(states_block.clone()),
+    ));
+
+    state_recalc_defs
+}
+
 pub fn spawn_entity(
     commands: &mut Commands,
     entity_def: &EntityDef,
@@ -31,74 +103,29 @@ pub fn spawn_entity(
 ) -> Entity {
     let entity_id = commands.spawn_empty().id();
 
-    let owned_stats: ComputedStats;
-    let self_source;
-
-    if !entity_def.base_stats.is_empty() {
-        let base_stats = &entity_def.base_stats;
+    let (effective_source, effective_stats) = if !entity_def.base_stats.is_empty() {
         let stat_registry = stat_registry.expect("base_stats requires StatRegistry");
         let calculators = calculators.expect("base_stats requires StatCalculators");
-
-        let mut modifiers = Modifiers::new();
-        let mut dirty = DirtyStats::default();
-        let mut computed = ComputedStats::new(stat_registry.len());
-
-        dirty.mark_all((0..stat_registry.len() as u32).map(StatId));
-
-        for (stat_id, value) in base_stats {
-            modifiers.add(*stat_id, *value, None);
-        }
-
-        calculators.recalculate(&modifiers, &mut computed, &mut dirty);
-
-        let self_caster = TargetInfo::from_entity_and_position(
-            entity_id,
-            source.caster.position.unwrap_or(Vec2::ZERO),
-        );
-
-        commands.entity(entity_id).insert((
-            AbilitySource {
-                ability_id: source.ability_id,
-                caster: self_caster,
-                caster_faction: source.caster_faction,
-                source: source.source,
-                target: source.target,
-                index: source.index,
-                count: source.count,
-            },
-            source.caster_faction,
-            modifiers,
-            dirty,
-        ));
-
-        owned_stats = computed;
-        commands.entity(entity_id).insert(owned_stats.clone());
-
-        self_source = Some(AbilitySource {
-            ability_id: source.ability_id,
-            caster: self_caster,
-            caster_faction: source.caster_faction,
-            source: source.source,
-            target: source.target,
-            index: source.index,
-            count: source.count,
-        });
+        let (owned_stats, self_source) =
+            init_own_stats(commands, entity_id, source, entity_def, stat_registry, calculators);
+        (self_source, owned_stats)
     } else {
         commands.entity(entity_id).insert((
             *source,
             source.caster_faction,
         ));
+        (*source, ComputedStats::default())
+    };
 
-        owned_stats = ComputedStats::default();
-        self_source = None;
-    }
-
-    let effective_source = self_source.as_ref().unwrap_or(source);
-    let effective_stats = if self_source.is_some() { &owned_stats } else { stats };
+    let effective_stats_ref = if !entity_def.base_stats.is_empty() {
+        &effective_stats
+    } else {
+        stats
+    };
 
     let mut ec = commands.entity(entity_id);
     for component in &entity_def.components {
-        component.insert_component(&mut ec, effective_source, effective_stats);
+        component.insert_component(&mut ec, &effective_source, effective_stats_ref);
     }
 
     let recalc_defs: Vec<_> = entity_def.components.iter()
@@ -106,40 +133,19 @@ pub fn spawn_entity(
         .cloned()
         .collect();
 
-    if !entity_def.abilities.is_empty() {
-        if let Some(ability_registry) = ability_registry {
-            for ability_name in &entity_def.abilities {
-                if let Some(aid) = ability_registry.get_id(ability_name) {
-                    attach_ability(commands, entity_id, source.caster_faction, aid, ability_registry, false);
-                }
+    if let Some(ability_registry) = ability_registry {
+        for ability_name in &entity_def.abilities {
+            if let Some(aid) = ability_registry.get_id(ability_name) {
+                attach_ability(commands, entity_id, source.caster_faction, aid, ability_registry, false);
             }
         }
     }
 
-    let mut state_recalc_defs = Vec::new();
-    if let Some(states_block) = &entity_def.states {
-        if let Some(initial_state_def) = states_block.states.get(&states_block.initial) {
-            let mut ec = commands.entity(entity_id);
-            for comp in &initial_state_def.components {
-                comp.insert_component(&mut ec, effective_source, effective_stats);
-            }
-            for trans in &initial_state_def.transitions {
-                trans.insert_component(&mut ec, effective_source, effective_stats);
-            }
-
-            state_recalc_defs.extend(
-                initial_state_def.components.iter()
-                    .chain(initial_state_def.transitions.iter())
-                    .filter(|c| c.has_recalc())
-                    .cloned()
-            );
-        }
-
-        commands.entity(entity_id).insert((
-            CurrentState(states_block.initial.clone()),
-            StoredStatesBlock(states_block.clone()),
-        ));
-    }
+    let state_recalc_defs = if let Some(states_block) = &entity_def.states {
+        init_fsm(commands, entity_id, states_block, &effective_source, effective_stats_ref)
+    } else {
+        Vec::new()
+    };
 
     if !recalc_defs.is_empty() || !state_recalc_defs.is_empty() {
         commands.entity(entity_id).insert(StoredComponentDefs {

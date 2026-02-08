@@ -17,7 +17,7 @@ mod macros;
 pub mod components;
 
 pub use node::AbilityRegistry;
-pub use ability_def::{AbilityDef, AbilityDefRaw};
+pub use ability_def::AbilityDefRaw;
 pub use core_components::{AbilitySource, AbilityInput};
 pub use node::attach_ability;
 

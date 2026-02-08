@@ -1,7 +1,7 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
-use crate::abilities::{AbilityRegistry, AbilityDefRaw};
+use crate::abilities::AbilityRegistry;
 use crate::player::PlayerDefResource;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
@@ -189,9 +189,9 @@ pub fn check_content_loaded(
             for handle in &folder.handles {
                 let typed_handle: Handle<AbilityDefAsset> = handle.clone().typed();
                 if let Some(ability_asset) = ability_assets.get(typed_handle.id()) {
-                    let ability_def = resolve_ability_def(&ability_asset.0, &stat_registry, &mut ability_registry);
+                    let ability_def = ability_asset.0.resolve(&stat_registry);
                     info!("Registered ability: {}", ability_asset.0.id);
-                    ability_registry.register(ability_def);
+                    ability_registry.register(&ability_asset.0.id, ability_def);
                 }
             }
         }
@@ -213,11 +213,3 @@ pub fn finalize_loading(
     next_state.set(crate::GameState::MainMenu);
 }
 
-fn resolve_ability_def(
-    raw: &AbilityDefRaw,
-    stat_registry: &StatRegistry,
-    ability_registry: &mut AbilityRegistry,
-) -> crate::abilities::AbilityDef {
-    ability_registry.allocate_id(&raw.id);
-    raw.resolve(stat_registry)
-}

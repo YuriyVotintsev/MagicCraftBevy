@@ -34,7 +34,7 @@ macro_rules! collect_components {
                 }
             }
 
-            #[allow(dead_code)]
+            #[cfg(test)]
             pub fn required_fields_and_nested(&self) -> (
                 crate::abilities::context::ProvidedFields,
                 Option<(crate::abilities::context::ProvidedFields, &[crate::abilities::entity_def::EntityDefRaw])>,

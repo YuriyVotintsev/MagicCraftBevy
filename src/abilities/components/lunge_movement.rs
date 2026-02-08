@@ -33,6 +33,9 @@ pub fn register_systems(app: &mut App) {
             .chain()
             .in_set(crate::schedule::GameSet::MobAI),
     );
+    app.add_observer(|on: On<Remove, LungeMovement>, mut q: Query<&mut LinearVelocity>| {
+        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec2::ZERO; }
+    });
 }
 
 fn init_lunge_movement(
