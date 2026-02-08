@@ -28,7 +28,7 @@ pub fn register_systems(app: &mut App) {
         Update,
         (init_boomerang, boomerang_system)
             .chain()
-            .in_set(GameSet::AbilityExecution)
+            .in_set(GameSet::BlueprintExecution)
             .run_if(in_state(GameState::Playing)),
     );
 }

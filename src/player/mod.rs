@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
-use crate::blueprints::{AbilityInput, SpawnSource, attach_ability};
+use crate::blueprints::{BlueprintActivationInput, SpawnSource, spawn_blueprint_entity};
 use crate::blueprints::context::TargetInfo;
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
@@ -123,13 +123,13 @@ fn spawn_player(
     )).id();
 
     if let Some(active_id) = selected_spells.active {
-        attach_ability(&mut commands, entity, Faction::Player, active_id, false);
+        spawn_blueprint_entity(&mut commands, entity, Faction::Player, active_id, false);
     }
     if let Some(passive_id) = selected_spells.passive {
-        attach_ability(&mut commands, entity, Faction::Player, passive_id, false);
+        spawn_blueprint_entity(&mut commands, entity, Faction::Player, passive_id, false);
     }
     if let Some(defensive_id) = selected_spells.defensive {
-        attach_ability(&mut commands, entity, Faction::Player, defensive_id, false);
+        spawn_blueprint_entity(&mut commands, entity, Faction::Player, defensive_id, false);
     }
 }
 
@@ -175,7 +175,7 @@ fn player_active_input(
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     player_query: Query<(Entity, &Transform), With<Player>>,
     selected_spells: Res<SelectedSpells>,
-    mut ability_query: Query<(&SpawnSource, &mut AbilityInput)>,
+    mut blueprint_query: Query<(&SpawnSource, &mut BlueprintActivationInput)>,
 ) {
     let Some(ability_id) = selected_spells.active else {
         return;
@@ -207,7 +207,7 @@ fn player_active_input(
         return;
     }
 
-    for (source, mut input) in &mut ability_query {
+    for (source, mut input) in &mut blueprint_query {
         if source.blueprint_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
             input.target = TargetInfo::from_direction(direction);
@@ -219,7 +219,7 @@ fn player_defensive_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     player_query: Query<(Entity, &LinearVelocity), (With<Player>, Without<MovementLocked>)>,
     selected_spells: Res<SelectedSpells>,
-    mut ability_query: Query<(&SpawnSource, &mut AbilityInput)>,
+    mut blueprint_query: Query<(&SpawnSource, &mut BlueprintActivationInput)>,
 ) {
     let Some(ability_id) = selected_spells.defensive else {
         return;
@@ -235,7 +235,7 @@ fn player_defensive_input(
 
     let direction = velocity.0.normalize_or_zero();
 
-    for (source, mut input) in &mut ability_query {
+    for (source, mut input) in &mut blueprint_query {
         if source.blueprint_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
             input.target = TargetInfo::from_direction(direction);
@@ -246,7 +246,7 @@ fn player_defensive_input(
 fn passive_auto_input(
     selected_spells: Res<SelectedSpells>,
     player_query: Query<Entity, With<Player>>,
-    mut ability_query: Query<(&SpawnSource, &mut AbilityInput)>,
+    mut blueprint_query: Query<(&SpawnSource, &mut BlueprintActivationInput)>,
 ) {
     let Some(ability_id) = selected_spells.passive else {
         return;
@@ -255,7 +255,7 @@ fn passive_auto_input(
         return;
     };
 
-    for (source, mut input) in &mut ability_query {
+    for (source, mut input) in &mut blueprint_query {
         if source.blueprint_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
         }

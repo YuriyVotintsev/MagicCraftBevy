@@ -2,16 +2,16 @@ use bevy::prelude::*;
 
 use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::wave::{WaveEnemy, WavePhase};
-use super::core_components::{AbilityCooldown, AbilityInput};
+use super::core_components::{BlueprintActivationCooldown, BlueprintActivationInput};
 use super::context::TargetInfo;
 use super::registry::BlueprintRegistry;
 use super::spawn::EntitySpawner;
 use super::SpawnSource;
 
-pub fn ability_activation_system(
+pub fn blueprint_activation_system(
     time: Res<Time>,
     mut spawner: EntitySpawner,
-    mut ability_query: Query<(&mut AbilityInput, &mut AbilityCooldown, &SpawnSource)>,
+    mut blueprint_query: Query<(&mut BlueprintActivationInput, &mut BlueprintActivationCooldown, &SpawnSource)>,
     owner_query: Query<&Transform>,
     stats_query: Query<&ComputedStats>,
     wave_enemy_query: Query<(), With<WaveEnemy>>,
@@ -19,7 +19,7 @@ pub fn ability_activation_system(
 ) {
     let delta = time.delta_secs();
 
-    for (mut input, mut cd, source) in &mut ability_query {
+    for (mut input, mut cd, source) in &mut blueprint_query {
         if cd.timer > 0.0 {
             cd.timer = (cd.timer - delta).max(0.0);
         }

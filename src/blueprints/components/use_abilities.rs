@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
-use crate::blueprints::{AbilityInput, BlueprintRegistry, SpawnSource};
+use crate::blueprints::{BlueprintActivationInput, BlueprintRegistry, SpawnSource};
 use crate::blueprints::context::TargetInfo;
 
 #[blueprint_component]
@@ -41,7 +41,7 @@ fn use_abilities_system(
     blueprint_registry: Res<BlueprintRegistry>,
     transforms: Query<&Transform, Without<UseAbilities>>,
     mut query: Query<(&Transform, &UseAbilities, &mut UseAbilitiesTimer, &SpawnSource)>,
-    mut ability_input_query: Query<(&SpawnSource, &mut AbilityInput)>,
+    mut activation_input_query: Query<(&SpawnSource, &mut BlueprintActivationInput)>,
 ) {
     for (transform, use_abilities, mut timer, owner_source) in &mut query {
         let Ok(target_transform) = transforms.get(use_abilities.target) else {
@@ -59,10 +59,10 @@ fn use_abilities_system(
         let direction = (target_transform.translation - transform.translation).normalize_or_zero();
         let Some(caster_entity) = owner_source.caster.entity else { continue };
 
-        for ability_name in &use_abilities.abilities {
-            if let Some(ability_id) = blueprint_registry.get_id(ability_name) {
-                for (source, mut input) in &mut ability_input_query {
-                    if source.blueprint_id == ability_id && source.caster.entity == Some(caster_entity) {
+        for blueprint_name in &use_abilities.abilities {
+            if let Some(bid) = blueprint_registry.get_id(blueprint_name) {
+                for (source, mut input) in &mut activation_input_query {
+                    if source.blueprint_id == bid && source.caster.entity == Some(caster_entity) {
                         input.pressed = true;
                         input.target = TargetInfo::from_direction(direction.truncate());
                     }

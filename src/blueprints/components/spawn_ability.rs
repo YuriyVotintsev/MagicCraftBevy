@@ -2,12 +2,12 @@ use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 use rand::Rng;
 
-use crate::blueprints::{BlueprintRegistry, SpawnSource, attach_ability};
+use crate::blueprints::{BlueprintRegistry, SpawnSource, spawn_blueprint_entity};
 use crate::schedule::GameSet;
 
 #[blueprint_component]
 pub struct Spawn {
-    pub ability: String,
+    pub blueprint: String,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -33,8 +33,8 @@ fn init_spawn(
 
         commands.entity(entity).insert(Transform::from_translation(spawn_pos.extend(0.0)));
 
-        if let Some(ability_id) = blueprint_registry.get_id(&spawn.ability) {
-            attach_ability(&mut commands, entity, source.caster_faction, ability_id, true);
+        if let Some(bid) = blueprint_registry.get_id(&spawn.blueprint) {
+            spawn_blueprint_entity(&mut commands, entity, source.caster_faction, bid, true);
         }
 
         commands.entity(entity).insert(super::lifetime::Lifetime { remaining: 5.0 });

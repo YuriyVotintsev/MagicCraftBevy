@@ -19,16 +19,16 @@ impl From<BlueprintId> for u32 {
 }
 
 #[derive(Component)]
-pub struct AbilityEntity;
+pub struct BlueprintEntity;
 
 #[derive(Component)]
-pub struct AbilityInput {
+pub struct BlueprintActivationInput {
     pub pressed: bool,
     pub target: TargetInfo,
 }
 
 #[derive(Component)]
-pub struct AbilityCooldown {
+pub struct BlueprintActivationCooldown {
     pub timer: f32,
 }
 

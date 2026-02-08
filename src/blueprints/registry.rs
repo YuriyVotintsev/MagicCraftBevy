@@ -3,10 +3,10 @@ use bevy::prelude::*;
 
 use crate::Faction;
 use super::context::TargetInfo;
-use super::core_components::{BlueprintId, AbilityEntity, AbilityInput, AbilityCooldown};
+use super::core_components::{BlueprintId, BlueprintEntity, BlueprintActivationInput, BlueprintActivationCooldown};
 use super::SpawnSource;
 
-pub fn attach_ability(
+pub fn spawn_blueprint_entity(
     commands: &mut Commands,
     owner: Entity,
     owner_faction: Faction,
@@ -23,10 +23,10 @@ pub fn attach_ability(
             index: 0,
             count: 1,
         },
-        AbilityEntity,
-        AbilityCooldown { timer: 0.0 },
-        AbilityInput { pressed: initially_pressed, target: TargetInfo::EMPTY },
-        Name::new(format!("Ability_{:?}", blueprint_id)),
+        BlueprintEntity,
+        BlueprintActivationCooldown { timer: 0.0 },
+        BlueprintActivationInput { pressed: initially_pressed, target: TargetInfo::EMPTY },
+        Name::new(format!("Blueprint_{:?}", blueprint_id)),
     ));
 }
 

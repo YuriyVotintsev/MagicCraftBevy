@@ -21,8 +21,8 @@ mod tests;
 
 pub use registry::BlueprintRegistry;
 pub use blueprint_def::BlueprintDefRaw;
-pub use core_components::{SpawnSource, AbilityInput, BlueprintId};
-pub use registry::attach_ability;
+pub use core_components::{SpawnSource, BlueprintActivationInput, BlueprintId};
+pub use registry::spawn_blueprint_entity;
 
 use bevy::prelude::*;
 
@@ -48,9 +48,9 @@ impl Plugin for BlueprintPlugin {
         app.add_systems(
             Update,
             (
-                cleanup::cleanup_orphaned_abilities.in_set(crate::schedule::GameSet::Cleanup),
+                cleanup::cleanup_orphaned_blueprint_entities.in_set(crate::schedule::GameSet::Cleanup),
                 state::state_transition_system.in_set(crate::schedule::GameSet::MobAI),
-                activation::ability_activation_system.in_set(crate::schedule::GameSet::AbilityActivation),
+                activation::blueprint_activation_system.in_set(crate::schedule::GameSet::BlueprintActivation),
             )
                 .run_if(in_state(WavePhase::Combat)),
         );

@@ -17,7 +17,7 @@ pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
         destroy_enemy_projectiles_system
-            .in_set(GameSet::AbilityExecution)
+            .in_set(GameSet::BlueprintExecution)
             .run_if(in_state(GameState::Playing)),
     );
 }

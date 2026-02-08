@@ -18,7 +18,7 @@ pub struct OnCollision {
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
-        on_collision_trigger_system.in_set(GameSet::AbilityExecution),
+        on_collision_trigger_system.in_set(GameSet::BlueprintExecution),
     );
 }
 

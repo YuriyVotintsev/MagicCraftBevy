@@ -27,7 +27,7 @@ pub fn register_systems(app: &mut App) {
         Update,
         (init_on_area_timer, on_area_trigger_system)
             .chain()
-            .in_set(GameSet::AbilityExecution),
+            .in_set(GameSet::BlueprintExecution),
     );
 }
 

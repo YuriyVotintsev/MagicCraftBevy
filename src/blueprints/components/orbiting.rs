@@ -20,7 +20,7 @@ pub fn register_systems(app: &mut App) {
         Update,
         (init_orbiting, update_orbiting_positions)
             .chain()
-            .in_set(GameSet::AbilityExecution)
+            .in_set(GameSet::BlueprintExecution)
             .run_if(in_state(GameState::Playing)),
     );
 }

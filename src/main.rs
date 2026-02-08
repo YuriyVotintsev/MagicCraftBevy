@@ -134,8 +134,8 @@ fn main() {
                 GameSet::Input,
                 GameSet::MobAI,
                 GameSet::Spawning,
-                GameSet::AbilityActivation,
-                GameSet::AbilityExecution,
+                GameSet::BlueprintActivation,
+                GameSet::BlueprintExecution,
                 GameSet::Damage,
                 GameSet::WaveManagement,
                 GameSet::Cleanup,
@@ -148,12 +148,12 @@ fn main() {
             Update,
             ApplyDeferred
                 .after(GameSet::Spawning)
-                .before(GameSet::AbilityActivation),
+                .before(GameSet::BlueprintActivation),
         )
         .add_systems(
             Update,
             ApplyDeferred
-                .after(GameSet::AbilityExecution)
+                .after(GameSet::BlueprintExecution)
                 .before(GameSet::Damage),
         )
         .add_plugins((

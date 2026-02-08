@@ -5,7 +5,7 @@ use rand::Rng;
 
 use crate::GameState;
 use crate::Faction;
-use crate::blueprints::{BlueprintRegistry, attach_ability};
+use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
 use crate::blueprints::components::health::Health;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
@@ -25,7 +25,7 @@ const MARKER_DURATION: f32 = 2.0;
 #[derive(Component)]
 struct SpawnMarker {
     timer: Timer,
-    ability_name: String,
+    blueprint_name: String,
 }
 
 pub struct ArenaPlugin;
@@ -198,7 +198,7 @@ fn spawn_markers(
         let x = rng.random_range(-half_width..half_width);
         let y = rng.random_range(-half_height..half_height);
         let roll = rng.random_range(0..3);
-        let ability_name = match roll {
+        let blueprint_name = match roll {
             0 => "skeleton",
             1 => "archer",
             _ => "slime_giant",
@@ -208,7 +208,7 @@ fn spawn_markers(
             Name::new("SpawnMarker"),
             SpawnMarker {
                 timer: Timer::from_seconds(MARKER_DURATION, TimerMode::Once),
-                ability_name: ability_name.to_string(),
+                blueprint_name: blueprint_name.to_string(),
             },
             Sprite {
                 color: Color::srgb(1.0, 0.9, 0.2),
@@ -229,8 +229,8 @@ fn process_spawn_markers(
 ) {
     for (marker_entity, mut marker, _transform) in markers_query.iter_mut() {
         if marker.timer.tick(time.delta()).just_finished() {
-            if let Some(ability_id) = blueprint_registry.get_id(&marker.ability_name) {
-                attach_ability(&mut commands, marker_entity, Faction::Enemy, ability_id, true);
+            if let Some(blueprint_id) = blueprint_registry.get_id(&marker.blueprint_name) {
+                spawn_blueprint_entity(&mut commands, marker_entity, Faction::Enemy, blueprint_id, true);
                 wave_state.spawned_count += 1;
             }
 

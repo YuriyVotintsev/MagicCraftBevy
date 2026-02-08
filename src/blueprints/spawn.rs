@@ -9,14 +9,14 @@ use super::context::TargetInfo;
 use super::entity_def::{EntityDef, StatesBlock};
 use super::recalc::StoredComponentDefs;
 use super::state::{CurrentState, StoredStatesBlock};
-use super::{SpawnSource, BlueprintRegistry, attach_ability};
+use super::{SpawnSource, BlueprintRegistry, spawn_blueprint_entity};
 
 #[derive(SystemParam)]
 pub struct EntitySpawner<'w, 's> {
     pub commands: Commands<'w, 's>,
     stat_registry: Res<'w, StatRegistry>,
     calculators: Res<'w, StatCalculators>,
-    ability_registry: Res<'w, BlueprintRegistry>,
+    blueprint_registry: Res<'w, BlueprintRegistry>,
 }
 
 impl EntitySpawner<'_, '_> {
@@ -94,7 +94,7 @@ impl EntitySpawner<'_, '_> {
             &source,
             stats,
         );
-        self.attach_abilities(entity_id, &entity_def.abilities, source.caster_faction);
+        self.spawn_blueprint_entities(entity_id, &entity_def.abilities, source.caster_faction);
         let state_recalc = init_fsm(
             &mut self.commands,
             entity_id,
@@ -149,10 +149,10 @@ impl EntitySpawner<'_, '_> {
         (source, Some(computed))
     }
 
-    fn attach_abilities(&mut self, entity_id: Entity, abilities: &[String], faction: Faction) {
+    fn spawn_blueprint_entities(&mut self, entity_id: Entity, abilities: &[String], faction: Faction) {
         for name in abilities {
-            if let Some(aid) = self.ability_registry.get_id(name) {
-                attach_ability(&mut self.commands, entity_id, faction, aid, false);
+            if let Some(bid) = self.blueprint_registry.get_id(name) {
+                spawn_blueprint_entity(&mut self.commands, entity_id, faction, bid, false);
             }
         }
     }

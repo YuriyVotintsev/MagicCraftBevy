@@ -16,7 +16,7 @@ pub fn register_systems(app: &mut App) {
     app.add_systems(PostUpdate, init_projectile);
     app.add_systems(
         Update,
-        projectile_collision_physics.in_set(GameSet::AbilityExecution),
+        projectile_collision_physics.in_set(GameSet::BlueprintExecution),
     );
 }
 

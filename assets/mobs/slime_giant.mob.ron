@@ -16,7 +16,7 @@
                 Health(()),
                 OnDeath((entities: [
                     (count: Some("2"), components: [
-                        SpawnAbility((ability: "slime_large")),
+                        SpawnAbility((blueprint: "slime_large")),
                     ])
                 ])),
             ],

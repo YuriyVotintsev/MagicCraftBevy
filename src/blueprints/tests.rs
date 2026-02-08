@@ -5,7 +5,7 @@ use super::entity_def::EntityDefRaw;
 use std::collections::{HashMap, HashSet};
 
 fn validate_entity_fields(
-    ability_id: &str,
+    blueprint_id: &str,
     provided: ProvidedFields,
     entity_raw: &EntityDefRaw,
     stat_names: &HashSet<String>,
@@ -15,8 +15,8 @@ fn validate_entity_fields(
     for name in entity_raw.base_stats.keys() {
         if !stat_names.contains(name) {
             errors.push(format!(
-                "Ability '{}': unknown stat '{}' in base_stats",
-                ability_id, name
+                "Blueprint '{}': unknown stat '{}' in base_stats",
+                blueprint_id, name
             ));
         }
     }
@@ -26,8 +26,8 @@ fn validate_entity_fields(
         if !provided.contains(required) {
             let missing = provided.missing(required);
             errors.push(format!(
-                "Ability '{}': count expression requires fields [{}] not provided",
-                ability_id,
+                "Blueprint '{}': count expression requires fields [{}] not provided",
+                blueprint_id,
                 missing.field_names().join(", ")
             ));
         }
@@ -39,15 +39,15 @@ fn validate_entity_fields(
         if !provided.contains(required) {
             let missing = provided.missing(required);
             errors.push(format!(
-                "Ability '{}': component expression requires fields [{}] not provided",
-                ability_id,
+                "Blueprint '{}': component expression requires fields [{}] not provided",
+                blueprint_id,
                 missing.field_names().join(", ")
             ));
         }
 
         if let Some((trigger_provided, nested_entities)) = nested {
             for nested_entity in nested_entities {
-                errors.extend(validate_entity_fields(ability_id, trigger_provided, nested_entity, stat_names));
+                errors.extend(validate_entity_fields(blueprint_id, trigger_provided, nested_entity, stat_names));
             }
         }
     }
@@ -113,7 +113,7 @@ fn collect_spawn_ability_refs(components: &[ComponentDefRaw]) -> Vec<String> {
     for component in components {
         match component {
             ComponentDefRaw::SpawnAbility(raw) => {
-                refs.push(raw.ability.clone());
+                refs.push(raw.blueprint.clone());
             }
             ComponentDefRaw::OnDeath(raw) => {
                 for entity in &raw.entities {
@@ -139,7 +139,7 @@ fn load_stat_names() -> HashSet<String> {
 }
 
 #[test]
-fn validate_all_ability_fields() {
+fn validate_all_blueprint_fields() {
     let (defs, mob_ids) = load_all_defs();
     let stat_names = load_stat_names();
     let mut errors = Vec::new();
@@ -164,7 +164,7 @@ fn validate_all_ability_fields() {
         for &name in slot.choices() {
             referenced.insert(name.to_string());
             let Some(def) = defs.get(name) else {
-                errors.push(format!("Player {} ability '{}' not found in assets", slot.label(), name));
+                errors.push(format!("Player {} blueprint '{}' not found in assets", slot.label(), name));
                 continue;
             };
             for entity_raw in &def.entities {
@@ -178,33 +178,33 @@ fn validate_all_ability_fields() {
             for name in entity_raw.base_stats.keys() {
                 if !stat_names.contains(name) {
                     errors.push(format!(
-                        "Ability '{}': unknown stat '{}' in base_stats",
+                        "Blueprint '{}': unknown stat '{}' in base_stats",
                         def.id, name
                     ));
                 }
             }
 
-            let mob_abilities = collect_use_abilities_refs(entity_raw);
-            for ability_name in &mob_abilities {
-                referenced.insert(ability_name.clone());
-                let Some(ability_def) = defs.get(ability_name) else {
-                    errors.push(format!("Mob '{}': UseAbilities references '{}' not found", def.id, ability_name));
+            let mob_blueprints = collect_use_abilities_refs(entity_raw);
+            for blueprint_name in &mob_blueprints {
+                referenced.insert(blueprint_name.clone());
+                let Some(blueprint_def) = defs.get(blueprint_name) else {
+                    errors.push(format!("Mob '{}': UseAbilities references '{}' not found", def.id, blueprint_name));
                     continue;
                 };
-                for entity in &ability_def.entities {
-                    errors.extend(validate_entity_fields(ability_name, mob_context, entity, &stat_names));
+                for entity in &blueprint_def.entities {
+                    errors.extend(validate_entity_fields(blueprint_name, mob_context, entity, &stat_names));
                 }
             }
 
             let spawn_refs = collect_spawn_ability_refs(&entity_raw.components);
-            for ability_name in &spawn_refs {
-                referenced.insert(ability_name.clone());
-                let Some(ability_def) = defs.get(ability_name) else {
-                    errors.push(format!("Mob '{}': SpawnAbility references '{}' not found", def.id, ability_name));
+            for blueprint_name in &spawn_refs {
+                referenced.insert(blueprint_name.clone());
+                let Some(blueprint_def) = defs.get(blueprint_name) else {
+                    errors.push(format!("Mob '{}': SpawnAbility references '{}' not found", def.id, blueprint_name));
                     continue;
                 };
-                for entity in &ability_def.entities {
-                    errors.extend(validate_entity_fields(ability_name, spawn_context, entity, &stat_names));
+                for entity in &blueprint_def.entities {
+                    errors.extend(validate_entity_fields(blueprint_name, spawn_context, entity, &stat_names));
                 }
             }
         }
@@ -212,7 +212,7 @@ fn validate_all_ability_fields() {
 
     for (id, _) in &defs {
         if !referenced.contains(id) && !mob_ids.contains(id) {
-            errors.push(format!("Ability '{}' is defined but never referenced", id));
+            errors.push(format!("Blueprint '{}' is defined but never referenced", id));
         }
     }
 

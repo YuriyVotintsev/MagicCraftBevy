@@ -16,7 +16,7 @@ pub fn register_systems(app: &mut App) {
         Update,
         (init_follow_caster, follow_caster_system)
             .chain()
-            .in_set(GameSet::AbilityExecution)
+            .in_set(GameSet::BlueprintExecution)
             .run_if(in_state(GameState::Playing)),
     );
 }

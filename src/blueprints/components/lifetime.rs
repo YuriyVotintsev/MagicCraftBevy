@@ -13,7 +13,7 @@ pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
         tick_lifetime
-            .in_set(GameSet::AbilityExecution)
+            .in_set(GameSet::BlueprintExecution)
             .run_if(in_state(GameState::Playing)),
     );
 }

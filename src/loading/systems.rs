@@ -190,7 +190,7 @@ pub fn check_content_loaded(
                 let typed_handle: Handle<BlueprintDefAsset> = handle.clone().typed();
                 if let Some(blueprint_asset) = blueprint_assets.get(typed_handle.id()) {
                     let blueprint_def = blueprint_asset.0.resolve(&stat_registry);
-                    info!("Registered ability: {}", blueprint_asset.0.id);
+                    info!("Registered blueprint: {}", blueprint_asset.0.id);
                     blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
                 }
             }

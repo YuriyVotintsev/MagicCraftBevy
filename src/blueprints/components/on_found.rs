@@ -19,7 +19,7 @@ pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
         on_found_trigger_system
-            .in_set(GameSet::AbilityExecution)
+            .in_set(GameSet::BlueprintExecution)
             .run_if(in_state(GameState::Playing)),
     );
 }

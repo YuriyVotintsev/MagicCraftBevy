@@ -14,7 +14,7 @@ pub struct OnExpire {
 }
 
 pub fn register_systems(app: &mut App) {
-    app.add_systems(Update, on_expire_trigger_system.in_set(GameSet::AbilityExecution));
+    app.add_systems(Update, on_expire_trigger_system.in_set(GameSet::BlueprintExecution));
 }
 
 fn on_expire_trigger_system(
