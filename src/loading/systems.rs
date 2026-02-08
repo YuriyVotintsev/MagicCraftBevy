@@ -2,7 +2,7 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::blueprints::BlueprintRegistry;
-use crate::player::PlayerDefResource;
+use crate::player::PlayerEntityDef;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
 use super::assets::{BlueprintDefAsset, PlayerDefAsset, StatsConfigAsset};
@@ -179,9 +179,10 @@ pub fn check_content_loaded(
 
     info!("All content loaded, finalizing...");
 
-    let player_def = player_assets.get(player_handle.id())
+    let player_asset = player_assets.get(player_handle.id())
         .expect("Player definition asset not loaded");
-    commands.insert_resource(PlayerDefResource(player_def.0.clone()));
+    let player_entity_def = player_asset.0.resolve(&stat_registry);
+    commands.insert_resource(PlayerEntityDef(player_entity_def));
 
     let folder_handles = [abilities_folder_handle.id(), mobs_folder_handle.id()];
     for folder_id in folder_handles {

@@ -32,5 +32,7 @@ collect_components!(
         on_death,
         spawn_ability,
         melee_strike,
+        keyboard_movement,
+        player_input,
     ]
 );

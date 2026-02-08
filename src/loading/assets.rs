@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 
 use crate::blueprints::BlueprintDefRaw;
-use crate::player::player_def::PlayerDef;
+use crate::blueprints::entity_def::EntityDefRaw;
 use crate::stats::loader::{CalculatorDefRaw, StatDefRaw};
 
 #[derive(Asset, TypePath)]
@@ -14,7 +14,7 @@ pub struct StatsConfigAsset {
 }
 
 #[derive(Asset, TypePath)]
-pub struct PlayerDefAsset(pub PlayerDef);
+pub struct PlayerDefAsset(pub EntityDefRaw);
 
 #[derive(Asset, TypePath)]
 pub struct BlueprintDefAsset(pub BlueprintDefRaw);
@@ -74,8 +74,8 @@ impl AssetLoader for PlayerDefLoader {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let content = std::str::from_utf8(&bytes)?;
-        let player_def: PlayerDef = ron::from_str(content)?;
-        Ok(PlayerDefAsset(player_def))
+        let entity_def: EntityDefRaw = ron::from_str(content)?;
+        Ok(PlayerDefAsset(entity_def))
     }
 
     fn extensions(&self) -> &[&str] {

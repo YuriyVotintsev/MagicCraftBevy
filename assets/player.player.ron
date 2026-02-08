@@ -1,12 +1,4 @@
 (
-    visual: (
-        size: 50.0,
-        color: (0.2, 0.6, 1.0),
-    ),
-    collider: (
-        shape: Rectangle,
-        size: 50.0,
-    ),
     base_stats: {
         "strength_base": 10.0,
         "max_life_base": 100.0,
@@ -18,4 +10,17 @@
         "crit_chance_base": 0.05,
         "crit_multiplier_base": 1.5,
     },
+    components: [
+        Size((value: "50.0")),
+        Sprite((color: (0.2, 0.6, 1.0, 1.0))),
+        Collider((shape: Rectangle, sensor: Some(false))),
+        DynamicBody(()),
+        Health(()),
+        KeyboardMovement(()),
+        PlayerInput((bindings: [
+            (slot: Active, trigger: MouseHold(Left), targeting: Cursor),
+            (slot: Defensive, trigger: KeyJustPressed(Space), targeting: MovementDirection),
+            (slot: Passive, trigger: Auto, targeting: Untargeted),
+        ])),
+    ],
 )

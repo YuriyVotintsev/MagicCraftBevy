@@ -3,7 +3,7 @@ use rand::prelude::IndexedRandom;
 
 use crate::blueprints::{BlueprintId, BlueprintRegistry};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Deserialize)]
 pub enum SpellSlot {
     Active,
     Passive,

@@ -9,7 +9,7 @@ use super::context::TargetInfo;
 use super::entity_def::{EntityDef, StatesBlock};
 use super::recalc::StoredComponentDefs;
 use super::state::{CurrentState, StoredStatesBlock};
-use super::{SpawnSource, BlueprintRegistry, spawn_blueprint_entity};
+use super::{SpawnSource, BlueprintId, BlueprintRegistry, spawn_blueprint_entity};
 
 #[derive(SystemParam)]
 pub struct EntitySpawner<'w, 's> {
@@ -75,6 +75,19 @@ impl EntitySpawner<'_, '_> {
         for entity_def in entities {
             self.spawn(entity_def, &spawn_source, caster_stats);
         }
+    }
+
+    pub fn spawn_root(&mut self, entity_def: &EntityDef, faction: Faction) -> Entity {
+        let source = SpawnSource {
+            blueprint_id: BlueprintId::default(),
+            caster: TargetInfo::EMPTY,
+            caster_faction: faction,
+            source: TargetInfo::EMPTY,
+            target: TargetInfo::EMPTY,
+            index: 0,
+            count: 1,
+        };
+        self.spawn_one(entity_def, &source, &ComputedStats::new(self.stat_registry.len()))
     }
 
     fn spawn_one(
