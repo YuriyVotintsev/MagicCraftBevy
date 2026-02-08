@@ -210,6 +210,15 @@ fn get_update_parts(field_name: &syn::Ident, ty: &Type) -> Option<UpdateParts> {
     }
 }
 
+fn is_state_ref_type(ty: &Type) -> bool {
+    if let Type::Path(type_path) = ty {
+        if let Some(segment) = type_path.path.segments.last() {
+            return segment.ident == "StateRef";
+        }
+    }
+    false
+}
+
 fn is_bool_type(ty: &Type) -> bool {
     if let Type::Path(type_path) = ty {
         if let Some(segment) = type_path.path.segments.last() {
@@ -300,7 +309,7 @@ fn generate_ability_component_unit(
         pub struct Def;
 
         impl DefRaw {
-            pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry) -> Def {
+            pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry, _state_indices: Option<&std::collections::HashMap<String, usize>>) -> Def {
                 Def
             }
         }
@@ -545,6 +554,21 @@ fn generate_ability_component_named(
             component_fields.push(quote! { pub #field_name: Vec<crate::abilities::entity_def::EntityDef> });
             insert_fields.push(quote! { #field_name: def.#field_name.clone() });
 
+        } else if is_state_ref_type(field_ty) {
+            raw_fields.push(quote! {
+                pub #field_name: String
+            });
+
+            def_fields.push(quote! { pub #field_name: usize });
+
+            resolve_fields.push(quote! {
+                #field_name: *state_indices.unwrap().get(&self.#field_name)
+                    .unwrap_or_else(|| panic!("unknown state '{}'", self.#field_name))
+            });
+
+            component_fields.push(quote! { pub #field_name: usize });
+            insert_fields.push(quote! { #field_name: def.#field_name });
+
         } else if is_bool_type(field_ty) {
             def_fields.push(quote! { pub #field_name: bool });
 
@@ -676,7 +700,7 @@ fn generate_ability_component_named(
         }
 
         impl DefRaw {
-            pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> Def {
+            pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry, state_indices: Option<&std::collections::HashMap<String, usize>>) -> Def {
                 Def {
                     #(#resolve_fields,)*
                 }

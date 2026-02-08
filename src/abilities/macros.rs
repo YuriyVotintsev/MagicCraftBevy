@@ -24,11 +24,11 @@ macro_rules! collect_components {
         }
 
         impl ComponentDefRaw {
-            pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry) -> ComponentDef {
+            pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry, state_indices: Option<&std::collections::HashMap<String, usize>>) -> ComponentDef {
                 paste::paste! {
                     match self {
                         $(
-                            Self::[<$component:camel>](raw) => ComponentDef::[<$component:camel>](raw.resolve(stat_registry)),
+                            Self::[<$component:camel>](raw) => ComponentDef::[<$component:camel>](raw.resolve(stat_registry, state_indices)),
                         )*
                     }
                 }

@@ -34,7 +34,7 @@ fn init_spawn(
         commands.entity(entity).insert(Transform::from_translation(spawn_pos.extend(0.0)));
 
         if let Some(ability_id) = ability_registry.get_id(&spawn.ability) {
-            attach_ability(&mut commands, entity, source.caster_faction, ability_id, &ability_registry, true);
+            attach_ability(&mut commands, entity, source.caster_faction, ability_id, true);
         }
 
         commands.entity(entity).insert(super::lifetime::Lifetime { remaining: 5.0 });

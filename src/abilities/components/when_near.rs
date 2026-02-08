@@ -5,7 +5,7 @@ use magic_craft_macros::ability_component;
 pub struct WhenNear {
     #[default_expr("target.entity")]
     pub target: EntityExpr,
-    pub to: String,
+    pub to: StateRef,
     pub distance: ScalarExpr,
 }
 
@@ -29,7 +29,7 @@ fn when_near_system(
         if dist < when_near.distance {
             events.write(crate::abilities::state::StateTransition {
                 entity,
-                to: when_near.to.clone(),
+                to: when_near.to,
             });
         }
     }

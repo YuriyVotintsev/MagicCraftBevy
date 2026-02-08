@@ -4,10 +4,6 @@ use serde::Deserialize;
 use crate::abilities::expr::{ExprFamily, Raw, Resolved, ScalarExpr};
 use crate::stats::StatRegistry;
 
-#[allow(dead_code)]
-pub type StateDefRaw = StateDef<Raw>;
-#[allow(dead_code)]
-pub type StatesBlockRaw = StatesBlock<Raw>;
 pub type EntityDefRaw = EntityDef<Raw>;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -20,14 +16,20 @@ pub struct StateDef<F: ExprFamily = Resolved> {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(bound(deserialize = "StateDef<F>: Deserialize<'de>"))]
-pub struct StatesBlock<F: ExprFamily = Resolved> {
+pub struct StatesBlockRaw {
     pub initial: String,
-    pub states: HashMap<String, StateDef<F>>,
+    pub states: HashMap<String, StateDef<Raw>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct StatesBlock {
+    pub initial: usize,
+    pub states: Vec<StateDef>,
+    pub state_names: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
-#[serde(bound(deserialize = "ScalarExpr<F>: Deserialize<'de>, F::StatRef: Deserialize<'de>, F::ComponentDef: Deserialize<'de>, StatesBlock<F>: Deserialize<'de>"))]
+#[serde(bound(deserialize = "ScalarExpr<F>: Deserialize<'de>, F::StatRef: Deserialize<'de>, F::ComponentDef: Deserialize<'de>, F::StatesBlock: Deserialize<'de>"))]
 pub struct EntityDef<F: ExprFamily = Resolved> {
     #[serde(default)]
     pub count: Option<ScalarExpr<F>>,
@@ -37,24 +39,34 @@ pub struct EntityDef<F: ExprFamily = Resolved> {
     pub abilities: Vec<String>,
     pub components: Vec<F::ComponentDef>,
     #[serde(default)]
-    pub states: Option<StatesBlock<F>>,
+    pub states: Option<F::StatesBlock>,
 }
 
 impl StateDef<Raw> {
-    pub fn resolve(&self, stat_registry: &StatRegistry) -> StateDef {
+    pub fn resolve(&self, stat_registry: &StatRegistry, state_indices: &HashMap<String, usize>) -> StateDef {
         StateDef {
-            components: self.components.iter().map(|c| c.resolve(stat_registry)).collect(),
-            transitions: self.transitions.iter().map(|c| c.resolve(stat_registry)).collect(),
+            components: self.components.iter().map(|c| c.resolve(stat_registry, Some(state_indices))).collect(),
+            transitions: self.transitions.iter().map(|c| c.resolve(stat_registry, Some(state_indices))).collect(),
         }
     }
 }
 
-impl StatesBlock<Raw> {
+impl StatesBlockRaw {
     pub fn resolve(&self, stat_registry: &StatRegistry) -> StatesBlock {
-        StatesBlock {
-            initial: self.initial.clone(),
-            states: self.states.iter().map(|(k, v)| (k.clone(), v.resolve(stat_registry))).collect(),
-        }
+        let state_names: Vec<String> = self.states.keys().cloned().collect();
+        let state_indices: HashMap<String, usize> = state_names.iter()
+            .enumerate()
+            .map(|(i, name)| (name.clone(), i))
+            .collect();
+
+        let initial = *state_indices.get(&self.initial)
+            .unwrap_or_else(|| panic!("unknown initial state '{}'", self.initial));
+
+        let states = state_names.iter()
+            .map(|name| self.states[name].resolve(stat_registry, &state_indices))
+            .collect();
+
+        StatesBlock { initial, states, state_names }
     }
 }
 
@@ -68,7 +80,7 @@ impl EntityDef<Raw> {
                 })
                 .collect(),
             abilities: self.abilities.clone(),
-            components: self.components.iter().map(|c| c.resolve(stat_registry)).collect(),
+            components: self.components.iter().map(|c| c.resolve(stat_registry, None)).collect(),
             states: self.states.as_ref().map(|s| s.resolve(stat_registry)),
         }
     }

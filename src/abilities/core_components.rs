@@ -15,7 +15,6 @@ pub struct AbilityInput {
 
 #[derive(Component)]
 pub struct AbilityCooldown {
-    pub cooldown: f32,
     pub timer: f32,
 }
 

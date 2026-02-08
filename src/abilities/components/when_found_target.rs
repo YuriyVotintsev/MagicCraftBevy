@@ -7,7 +7,7 @@ use crate::abilities::components::find_nearest_enemy::FoundTarget;
 
 #[ability_component]
 pub struct WhenFoundTarget {
-    pub to: String,
+    pub to: StateRef,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -27,7 +27,7 @@ fn when_found_target_system(
         commands.entity(entity).remove::<FoundTarget>();
         events.write(crate::abilities::state::StateTransition {
             entity,
-            to: when_found.to.clone(),
+            to: when_found.to,
         });
     }
 }

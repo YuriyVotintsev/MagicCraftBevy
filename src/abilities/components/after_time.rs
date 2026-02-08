@@ -3,7 +3,7 @@ use magic_craft_macros::ability_component;
 
 #[ability_component]
 pub struct AfterTime {
-    pub to: String,
+    pub to: StateRef,
     pub duration: ScalarExpr,
 }
 
@@ -40,7 +40,7 @@ fn after_time_system(
         if timer.elapsed >= after_time.duration {
             events.write(crate::abilities::state::StateTransition {
                 entity,
-                to: after_time.to.clone(),
+                to: after_time.to,
             });
         }
     }

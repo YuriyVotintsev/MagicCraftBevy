@@ -57,7 +57,7 @@ fn use_abilities_system(
         timer.elapsed = 0.0;
 
         let direction = (target_transform.translation - transform.translation).normalize_or_zero();
-        let caster_entity = owner_source.caster.entity.unwrap();
+        let Some(caster_entity) = owner_source.caster.entity else { continue };
 
         for ability_name in &use_abilities.abilities {
             if let Some(ability_id) = ability_registry.get_id(ability_name) {

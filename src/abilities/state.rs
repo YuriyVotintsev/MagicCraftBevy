@@ -8,11 +8,11 @@ use super::AbilitySource;
 #[derive(Message)]
 pub struct StateTransition {
     pub entity: Entity,
-    pub to: String,
+    pub to: usize,
 }
 
 #[derive(Component)]
-pub struct CurrentState(pub String);
+pub struct CurrentState(pub usize);
 
 #[derive(Component)]
 pub struct StoredStatesBlock(pub StatesBlock);
@@ -33,14 +33,14 @@ pub fn state_transition_system(
             continue;
         };
 
-        let old_state_name = current_state.0.clone();
-        let new_state_name = &event.to;
+        let old_idx = current_state.0;
+        let new_idx = event.to;
 
-        if old_state_name == *new_state_name {
+        if old_idx == new_idx {
             continue;
         }
 
-        if let Some(old_state) = stored.0.states.get(&old_state_name) {
+        if let Some(old_state) = stored.0.states.get(old_idx) {
             let mut ec = commands.entity(event.entity);
             for comp in &old_state.components {
                 comp.remove_component(&mut ec);
@@ -51,7 +51,7 @@ pub fn state_transition_system(
         }
 
         let mut new_state_recalc = Vec::new();
-        if let Some(new_state) = stored.0.states.get(new_state_name) {
+        if let Some(new_state) = stored.0.states.get(new_idx) {
             let mut ec = commands.entity(event.entity);
             for comp in &new_state.components {
                 comp.insert_component(&mut ec, source, stats);
@@ -85,11 +85,11 @@ pub fn state_transition_system(
             });
         }
 
-        current_state.0 = new_state_name.clone();
+        current_state.0 = new_idx;
 
         debug!(
             "State transition: '{}' -> '{}'",
-            old_state_name, new_state_name
+            stored.0.state_names[old_idx], stored.0.state_names[new_idx]
         );
     }
 }

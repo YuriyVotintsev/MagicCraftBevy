@@ -28,7 +28,7 @@ fn melee_strike_system(
     spatial_query: SpatialQuery,
 ) {
     for (entity, strike, source) in &query {
-        let caster_entity = source.caster.entity.unwrap();
+        let Some(caster_entity) = source.caster.entity else { continue };
         let Ok(caster_transform) = transforms.get(caster_entity) else {
             commands.entity(entity).despawn();
             continue;

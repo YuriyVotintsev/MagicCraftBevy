@@ -163,7 +163,7 @@ impl EntitySpawner<'_, '_> {
     fn attach_abilities(&mut self, entity_id: Entity, abilities: &[String], faction: Faction) {
         for name in abilities {
             if let Some(aid) = self.ability_registry.get_id(name) {
-                attach_ability(&mut self.commands, entity_id, faction, aid, &self.ability_registry, false);
+                attach_ability(&mut self.commands, entity_id, faction, aid, false);
             }
         }
     }
@@ -195,7 +195,7 @@ fn init_fsm(
     let Some(states_block) = states_block else { return Vec::new() };
 
     let mut recalc = Vec::new();
-    if let Some(state_def) = states_block.states.get(&states_block.initial) {
+    if let Some(state_def) = states_block.states.get(states_block.initial) {
         let mut ec = commands.entity(entity_id);
         for comp in state_def.components.iter().chain(state_def.transitions.iter()) {
             comp.insert_component(&mut ec, source, stats);
@@ -206,7 +206,7 @@ fn init_fsm(
     }
 
     commands.entity(entity_id).insert((
-        CurrentState(states_block.initial.clone()),
+        CurrentState(states_block.initial),
         StoredStatesBlock(states_block.clone()),
     ));
 

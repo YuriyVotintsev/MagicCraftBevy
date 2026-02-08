@@ -12,6 +12,7 @@ use super::expr_parser::{TypedExpr, parse_expr_string};
 pub trait ExprFamily: Clone + Debug {
     type StatRef: Clone + Debug + Eq + Hash;
     type ComponentDef: Clone + Debug;
+    type StatesBlock: Clone + Debug;
 }
 
 #[derive(Clone, Debug)]
@@ -19,6 +20,7 @@ pub struct Raw;
 impl ExprFamily for Raw {
     type StatRef = String;
     type ComponentDef = super::components::ComponentDefRaw;
+    type StatesBlock = super::entity_def::StatesBlockRaw;
 }
 
 #[derive(Clone, Debug)]
@@ -26,6 +28,7 @@ pub struct Resolved;
 impl ExprFamily for Resolved {
     type StatRef = StatId;
     type ComponentDef = super::components::ComponentDef;
+    type StatesBlock = super::entity_def::StatesBlock;
 }
 
 pub type ScalarExprRaw = ScalarExpr<Raw>;

@@ -33,7 +33,7 @@ pub fn ability_activation_system(
             continue;
         }
 
-        let caster_entity = source.caster.entity.unwrap();
+        let Some(caster_entity) = source.caster.entity else { continue };
         let Ok(transform) = owner_query.get(caster_entity) else {
             continue;
         };
@@ -74,6 +74,6 @@ pub fn ability_activation_system(
             }
         }
 
-        cd.timer = cd.cooldown;
+        cd.timer = ability_def.cooldown.eval(&spawn_source, caster_stats);
     }
 }
