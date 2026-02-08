@@ -6,7 +6,7 @@ use rand::Rng;
 use crate::GameState;
 use crate::Faction;
 use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
-use crate::blueprints::components::health::Health;
+use crate::blueprints::components::common::health::Health;
 use crate::physics::{GameLayer, Wall};
 use crate::schedule::GameSet;
 use crate::wave::{WaveEnemy, WavePhase, WaveState};

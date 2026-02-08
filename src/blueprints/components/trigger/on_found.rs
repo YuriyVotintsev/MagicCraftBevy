@@ -8,7 +8,7 @@ use crate::schedule::GameSet;
 use crate::GameState;
 use crate::stats::ComputedStats;
 
-use super::find_nearest_enemy::FoundTarget;
+use crate::blueprints::components::ability::find_nearest_enemy::FoundTarget;
 
 #[blueprint_component(SOURCE_POSITION, TARGET_ENTITY, TARGET_POSITION)]
 pub struct OnFound {

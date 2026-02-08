@@ -3,7 +3,7 @@ use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::SpawnSource;
 use crate::blueprints::context::TargetInfo;
-use crate::blueprints::components::find_nearest_enemy::FoundTarget;
+use crate::blueprints::components::ability::find_nearest_enemy::FoundTarget;
 
 #[blueprint_component]
 pub struct WhenFoundTarget {

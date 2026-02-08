@@ -1,25 +1,31 @@
 #[macro_export]
 macro_rules! collect_components {
     (
-        components: [$($component:ident),* $(,)?]
+        groups: {
+            $($group:ident: [$($component:ident),* $(,)?]),* $(,)?
+        }
     ) => {
-        $(pub mod $component;)*
+        $(
+            pub mod $group {
+                $(pub mod $component;)*
+            }
+        )*
 
         paste::paste! {
             #[derive(Debug, Clone, serde::Deserialize)]
             pub enum ComponentDefRaw {
-                $(
-                    [<$component:camel>]($component::DefRaw),
-                )*
+                $($(
+                    [<$component:camel>]($group::$component::DefRaw),
+                )*)*
             }
         }
 
         paste::paste! {
             #[derive(Debug, Clone)]
             pub enum ComponentDef {
-                $(
-                    [<$component:camel>]($component::Def),
-                )*
+                $($(
+                    [<$component:camel>]($group::$component::Def),
+                )*)*
             }
         }
 
@@ -27,9 +33,9 @@ macro_rules! collect_components {
             pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry, state_indices: Option<&std::collections::HashMap<String, usize>>) -> ComponentDef {
                 paste::paste! {
                     match self {
-                        $(
+                        $($(
                             Self::[<$component:camel>](raw) => ComponentDef::[<$component:camel>](raw.resolve(stat_registry, state_indices)),
-                        )*
+                        )*)*
                     }
                 }
             }
@@ -41,9 +47,9 @@ macro_rules! collect_components {
             ) {
                 paste::paste! {
                     match self {
-                        $(
-                            Self::[<$component:camel>](raw) => $component::required_fields_and_nested(raw),
-                        )*
+                        $($(
+                            Self::[<$component:camel>](raw) => $group::$component::required_fields_and_nested(raw),
+                        )*)*
                     }
                 }
             }
@@ -53,9 +59,9 @@ macro_rules! collect_components {
             pub fn insert_component(&self, commands: &mut ::bevy::prelude::EntityCommands, source: &super::SpawnSource, stats: &crate::stats::ComputedStats) {
                 paste::paste! {
                     match self {
-                        $(
-                            Self::[<$component:camel>](def) => $component::insert_component(commands, def, source, stats),
-                        )*
+                        $($(
+                            Self::[<$component:camel>](def) => $group::$component::insert_component(commands, def, source, stats),
+                        )*)*
                     }
                 }
             }
@@ -63,9 +69,9 @@ macro_rules! collect_components {
             pub fn update_component(&self, commands: &mut ::bevy::prelude::EntityCommands, source: &super::SpawnSource, stats: &crate::stats::ComputedStats) {
                 paste::paste! {
                     match self {
-                        $(
-                            Self::[<$component:camel>](def) => $component::update_component(commands, def, source, stats),
-                        )*
+                        $($(
+                            Self::[<$component:camel>](def) => $group::$component::update_component(commands, def, source, stats),
+                        )*)*
                     }
                 }
             }
@@ -73,9 +79,9 @@ macro_rules! collect_components {
             pub fn remove_component(&self, commands: &mut ::bevy::prelude::EntityCommands) {
                 paste::paste! {
                     match self {
-                        $(
-                            Self::[<$component:camel>](_) => $component::remove_component(commands),
-                        )*
+                        $($(
+                            Self::[<$component:camel>](_) => $group::$component::remove_component(commands),
+                        )*)*
                     }
                 }
             }
@@ -83,18 +89,18 @@ macro_rules! collect_components {
             pub fn has_recalc(&self) -> bool {
                 paste::paste! {
                     match self {
-                        $(
-                            Self::[<$component:camel>](def) => $component::has_recalc(def),
-                        )*
+                        $($(
+                            Self::[<$component:camel>](def) => $group::$component::has_recalc(def),
+                        )*)*
                     }
                 }
             }
         }
 
         pub fn register_component_systems(app: &mut ::bevy::prelude::App) {
-            $(
-                $component::register_systems(app);
-            )*
+            $($(
+                $group::$component::register_systems(app);
+            )*)*
         }
     };
 }

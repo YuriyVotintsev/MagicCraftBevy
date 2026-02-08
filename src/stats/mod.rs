@@ -17,7 +17,7 @@ pub use health::{Dead, death_system, DeathEvent};
 pub use modifiers::Modifiers;
 pub use pending_damage::PendingDamage;
 
-use crate::blueprints::components::health::Health;
+use crate::blueprints::components::common::health::Health;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::Faction;
 use crate::GameState;

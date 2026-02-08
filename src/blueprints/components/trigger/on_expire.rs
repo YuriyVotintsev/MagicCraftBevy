@@ -5,7 +5,7 @@ use crate::blueprints::context::TargetInfo;
 use crate::blueprints::spawn::EntitySpawner;
 use crate::blueprints::SpawnSource;
 use crate::schedule::GameSet;
-use super::lifetime::Lifetime;
+use crate::blueprints::components::ability::lifetime::Lifetime;
 use crate::stats::ComputedStats;
 
 #[blueprint_component(SOURCE_POSITION)]

@@ -37,6 +37,6 @@ fn init_spawn(
             spawn_blueprint_entity(&mut commands, entity, source.caster_faction, bid, true);
         }
 
-        commands.entity(entity).insert(super::lifetime::Lifetime { remaining: 5.0 });
+        commands.entity(entity).insert(crate::blueprints::components::ability::lifetime::Lifetime { remaining: 5.0 });
     }
 }

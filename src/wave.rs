@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::blueprints::components::health::Health;
+use crate::blueprints::components::common::health::Health;
 use crate::money::PlayerMoney;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::stats::{death_system, DeathEvent};
