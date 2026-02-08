@@ -7,20 +7,9 @@ use crate::stats::{ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId
 use super::components::ComponentDef;
 use super::context::TargetInfo;
 use super::entity_def::{EntityDef, StatesBlock};
+use super::recalc::StoredComponentDefs;
 use super::state::{CurrentState, StoredStatesBlock};
 use super::{AbilitySource, AbilityRegistry, attach_ability};
-
-#[derive(Component)]
-pub struct StoredComponentDefs {
-    pub base: Vec<ComponentDef>,
-    pub state: Vec<ComponentDef>,
-}
-
-impl StoredComponentDefs {
-    pub fn all(&self) -> impl Iterator<Item = &ComponentDef> {
-        self.base.iter().chain(self.state.iter())
-    }
-}
 
 #[derive(SystemParam)]
 pub struct EntitySpawner<'w, 's> {

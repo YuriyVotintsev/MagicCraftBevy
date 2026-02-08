@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
-use crate::abilities::AbilityRegistry;
-use crate::abilities::ids::AbilityId;
+use crate::abilities::{AbilityId, AbilityRegistry};
 use crate::game_state::GameState;
 use crate::player::{SelectedSpells, SpellSlot};
 

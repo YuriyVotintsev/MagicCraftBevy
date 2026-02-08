@@ -4,7 +4,7 @@ use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::wave::{WaveEnemy, WavePhase};
 use super::core_components::{AbilityCooldown, AbilityInput};
 use super::context::TargetInfo;
-use super::node::AbilityRegistry;
+use super::registry::AbilityRegistry;
 use super::spawn::EntitySpawner;
 use super::AbilitySource;
 

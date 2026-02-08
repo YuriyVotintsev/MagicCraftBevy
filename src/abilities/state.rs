@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::stats::ComputedStats;
 use super::entity_def::StatesBlock;
-use super::spawn::StoredComponentDefs;
+use super::recalc::StoredComponentDefs;
 use super::AbilitySource;
 
 #[derive(Message)]

@@ -3,8 +3,7 @@ use bevy::prelude::*;
 
 use crate::Faction;
 use super::context::TargetInfo;
-use super::ids::AbilityId;
-use super::core_components::{AbilityEntity, AbilityInput, AbilityCooldown};
+use super::core_components::{AbilityId, AbilityEntity, AbilityInput, AbilityCooldown};
 use super::AbilitySource;
 
 pub fn attach_ability(

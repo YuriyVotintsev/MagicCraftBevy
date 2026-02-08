@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 use rand::prelude::IndexedRandom;
 
-use crate::abilities::ids::AbilityId;
-use crate::abilities::AbilityRegistry;
+use crate::abilities::{AbilityId, AbilityRegistry};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum SpellSlot {
