@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::prelude::IndexedRandom;
 
-use crate::abilities::{AbilityId, AbilityRegistry};
+use crate::blueprints::{BlueprintId, BlueprintRegistry};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum SpellSlot {
@@ -30,13 +30,13 @@ impl SpellSlot {
 
 #[derive(Resource, Default)]
 pub struct SelectedSpells {
-    pub active: Option<AbilityId>,
-    pub passive: Option<AbilityId>,
-    pub defensive: Option<AbilityId>,
+    pub active: Option<BlueprintId>,
+    pub passive: Option<BlueprintId>,
+    pub defensive: Option<BlueprintId>,
 }
 
 impl SelectedSpells {
-    pub fn get(&self, slot: SpellSlot) -> Option<AbilityId> {
+    pub fn get(&self, slot: SpellSlot) -> Option<BlueprintId> {
         match slot {
             SpellSlot::Active => self.active,
             SpellSlot::Passive => self.passive,
@@ -44,11 +44,11 @@ impl SelectedSpells {
         }
     }
 
-    pub fn set(&mut self, slot: SpellSlot, ability_id: AbilityId) {
+    pub fn set(&mut self, slot: SpellSlot, blueprint_id: BlueprintId) {
         match slot {
-            SpellSlot::Active => self.active = Some(ability_id),
-            SpellSlot::Passive => self.passive = Some(ability_id),
-            SpellSlot::Defensive => self.defensive = Some(ability_id),
+            SpellSlot::Active => self.active = Some(blueprint_id),
+            SpellSlot::Passive => self.passive = Some(blueprint_id),
+            SpellSlot::Defensive => self.defensive = Some(blueprint_id),
         }
     }
 
@@ -56,13 +56,13 @@ impl SelectedSpells {
         self.active.is_some() && self.passive.is_some() && self.defensive.is_some()
     }
 
-    pub fn randomize(&mut self, ability_registry: &AbilityRegistry) {
+    pub fn randomize(&mut self, blueprint_registry: &BlueprintRegistry) {
         let mut rng = rand::rng();
 
         for slot in [SpellSlot::Active, SpellSlot::Passive, SpellSlot::Defensive] {
             let choices = slot.choices();
             if let Some(&choice) = choices.choose(&mut rng) {
-                if let Some(id) = ability_registry.get_id(choice) {
+                if let Some(id) = blueprint_registry.get_id(choice) {
                     self.set(slot, id);
                 }
             }

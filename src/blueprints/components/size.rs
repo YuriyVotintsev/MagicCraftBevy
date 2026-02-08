@@ -1,0 +1,18 @@
+use bevy::prelude::*;
+use magic_craft_macros::blueprint_component;
+
+
+#[blueprint_component]
+pub struct Size {
+    pub value: ScalarExpr,
+}
+
+pub fn register_systems(app: &mut App) {
+    app.add_systems(Last, sync_size_to_scale);
+}
+
+fn sync_size_to_scale(mut query: Query<(&Size, &mut Transform), Or<(Added<Size>, Added<Transform>)>>) {
+    for (size, mut transform) in &mut query {
+        transform.scale = Vec3::splat(size.value / 2.0);
+    }
+}

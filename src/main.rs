@@ -1,4 +1,4 @@
-mod abilities;
+mod blueprints;
 mod arena;
 mod common;
 mod faction;
@@ -20,7 +20,7 @@ pub use movement::MovementLocked;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
-use abilities::AbilityPlugin;
+use blueprints::BlueprintPlugin;
 use arena::ArenaPlugin;
 use common::CommonPlugin;
 use loading::LoadingPlugin;
@@ -163,7 +163,7 @@ fn main() {
             ArenaPlugin,
             PlayerPlugin,
             StatsPlugin,
-            AbilityPlugin,
+            BlueprintPlugin,
             UiPlugin,
             WavePlugin,
         ))

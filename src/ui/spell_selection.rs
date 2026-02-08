@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
-use crate::abilities::{AbilityId, AbilityRegistry};
+use crate::blueprints::{BlueprintId, BlueprintRegistry};
 use crate::game_state::GameState;
 use crate::player::{SelectedSpells, SpellSlot};
 
 #[derive(Component)]
 pub struct SpellButton {
     pub slot: SpellSlot,
-    pub ability_id: AbilityId,
+    pub blueprint_id: BlueprintId,
 }
 
 #[derive(Component)]
@@ -22,9 +22,9 @@ const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 pub fn spawn_spell_selection(
     mut commands: Commands,
     mut selected_spells: ResMut<SelectedSpells>,
-    ability_registry: Res<AbilityRegistry>,
+    blueprint_registry: Res<BlueprintRegistry>,
 ) {
-    selected_spells.randomize(&ability_registry);
+    selected_spells.randomize(&blueprint_registry);
 
     let root = commands.spawn((
         Name::new("SpellSelectionRoot"),
@@ -78,7 +78,7 @@ pub fn spawn_spell_selection(
     commands.entity(container).add_child(columns_container);
 
     for slot in [SpellSlot::Active, SpellSlot::Passive, SpellSlot::Defensive] {
-        let column = spawn_spell_column(&mut commands, slot, &ability_registry);
+        let column = spawn_spell_column(&mut commands, slot, &blueprint_registry);
         commands.entity(columns_container).add_child(column);
     }
 
@@ -113,7 +113,7 @@ pub fn spawn_spell_selection(
 fn spawn_spell_column(
     commands: &mut Commands,
     slot: SpellSlot,
-    ability_registry: &AbilityRegistry,
+    blueprint_registry: &BlueprintRegistry,
 ) -> Entity {
     let column = commands.spawn((
         Node {
@@ -140,7 +140,7 @@ fn spawn_spell_column(
     commands.entity(column).add_child(label);
 
     for &ability_name in slot.choices() {
-        let button = spawn_spell_button(commands, slot, ability_name, ability_registry);
+        let button = spawn_spell_button(commands, slot, ability_name, blueprint_registry);
         commands.entity(column).add_child(button);
     }
 
@@ -151,16 +151,16 @@ fn spawn_spell_button(
     commands: &mut Commands,
     slot: SpellSlot,
     ability_name: &str,
-    ability_registry: &AbilityRegistry,
+    blueprint_registry: &BlueprintRegistry,
 ) -> Entity {
-    let ability_id = ability_registry.get_id(ability_name).unwrap_or_default();
+    let blueprint_id = blueprint_registry.get_id(ability_name).unwrap_or_default();
     let display_name = format_ability_name(ability_name);
 
     let button = commands.spawn((
         Button,
         SpellButton {
             slot,
-            ability_id,
+            blueprint_id,
         },
         Node {
             width: Val::Px(180.0),
@@ -209,7 +209,7 @@ pub fn spell_button_system(
 ) {
     for (interaction, spell_button) in &mut interaction_query {
         if *interaction == Interaction::Pressed {
-            selected_spells.set(spell_button.slot, spell_button.ability_id);
+            selected_spells.set(spell_button.slot, spell_button.blueprint_id);
         }
     }
 }
@@ -219,7 +219,7 @@ pub fn update_spell_button_colors(
     selected_spells: Res<SelectedSpells>,
 ) {
     for (interaction, spell_button, mut color) in &mut button_query {
-        let is_selected = selected_spells.get(spell_button.slot) == Some(spell_button.ability_id);
+        let is_selected = selected_spells.get(spell_button.slot) == Some(spell_button.blueprint_id);
 
         *color = match (*interaction, is_selected) {
             (Interaction::Pressed, _) => SELECTED_BUTTON.into(),

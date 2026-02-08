@@ -3,7 +3,7 @@ use bevy::asset::{Asset, AssetLoader, LoadContext};
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
 
-use crate::abilities::AbilityDefRaw;
+use crate::blueprints::BlueprintDefRaw;
 use crate::player::player_def::PlayerDef;
 use crate::stats::loader::{CalculatorDefRaw, StatDefRaw};
 
@@ -17,7 +17,7 @@ pub struct StatsConfigAsset {
 pub struct PlayerDefAsset(pub PlayerDef);
 
 #[derive(Asset, TypePath)]
-pub struct AbilityDefAsset(pub AbilityDefRaw);
+pub struct BlueprintDefAsset(pub BlueprintDefRaw);
 
 #[derive(Default, TypePath)]
 pub struct StatsConfigLoader;
@@ -26,7 +26,7 @@ pub struct StatsConfigLoader;
 pub struct PlayerDefLoader;
 
 #[derive(Default, TypePath)]
-pub struct AbilityDefLoader;
+pub struct BlueprintDefLoader;
 
 impl AssetLoader for StatsConfigLoader {
     type Asset = StatsConfigAsset;
@@ -83,8 +83,8 @@ impl AssetLoader for PlayerDefLoader {
     }
 }
 
-impl AssetLoader for AbilityDefLoader {
-    type Asset = AbilityDefAsset;
+impl AssetLoader for BlueprintDefLoader {
+    type Asset = BlueprintDefAsset;
     type Settings = ();
     type Error = anyhow::Error;
 
@@ -97,8 +97,8 @@ impl AssetLoader for AbilityDefLoader {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let content = std::str::from_utf8(&bytes)?;
-        let ability_def: AbilityDefRaw = ron::from_str(content)?;
-        Ok(AbilityDefAsset(ability_def))
+        let blueprint_def: BlueprintDefRaw = ron::from_str(content)?;
+        Ok(BlueprintDefAsset(blueprint_def))
     }
 
     fn extensions(&self) -> &[&str] {

@@ -7,12 +7,12 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::MovementLocked;
-use crate::abilities::{AbilityInput, AbilitySource, attach_ability};
-use crate::abilities::context::TargetInfo;
+use crate::blueprints::{AbilityInput, SpawnSource, attach_ability};
+use crate::blueprints::context::TargetInfo;
 use crate::physics::{ColliderShape, GameLayer};
 use crate::schedule::GameSet;
 use crate::schedule::PostGameSet;
-use crate::abilities::components::health::Health;
+use crate::blueprints::components::health::Health;
 use crate::stats::{
     ComputedStats, DeathEvent, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry,
     death_system,
@@ -175,7 +175,7 @@ fn player_active_input(
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     player_query: Query<(Entity, &Transform), With<Player>>,
     selected_spells: Res<SelectedSpells>,
-    mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
+    mut ability_query: Query<(&SpawnSource, &mut AbilityInput)>,
 ) {
     let Some(ability_id) = selected_spells.active else {
         return;
@@ -208,7 +208,7 @@ fn player_active_input(
     }
 
     for (source, mut input) in &mut ability_query {
-        if source.ability_id == ability_id && source.caster.entity == Some(player_entity) {
+        if source.blueprint_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
             input.target = TargetInfo::from_direction(direction);
         }
@@ -219,7 +219,7 @@ fn player_defensive_input(
     keyboard: Res<ButtonInput<KeyCode>>,
     player_query: Query<(Entity, &LinearVelocity), (With<Player>, Without<MovementLocked>)>,
     selected_spells: Res<SelectedSpells>,
-    mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
+    mut ability_query: Query<(&SpawnSource, &mut AbilityInput)>,
 ) {
     let Some(ability_id) = selected_spells.defensive else {
         return;
@@ -236,7 +236,7 @@ fn player_defensive_input(
     let direction = velocity.0.normalize_or_zero();
 
     for (source, mut input) in &mut ability_query {
-        if source.ability_id == ability_id && source.caster.entity == Some(player_entity) {
+        if source.blueprint_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
             input.target = TargetInfo::from_direction(direction);
         }
@@ -246,7 +246,7 @@ fn player_defensive_input(
 fn passive_auto_input(
     selected_spells: Res<SelectedSpells>,
     player_query: Query<Entity, With<Player>>,
-    mut ability_query: Query<(&AbilitySource, &mut AbilityInput)>,
+    mut ability_query: Query<(&SpawnSource, &mut AbilityInput)>,
 ) {
     let Some(ability_id) = selected_spells.passive else {
         return;
@@ -256,7 +256,7 @@ fn passive_auto_input(
     };
 
     for (source, mut input) in &mut ability_query {
-        if source.ability_id == ability_id && source.caster.entity == Some(player_entity) {
+        if source.blueprint_id == ability_id && source.caster.entity == Some(player_entity) {
             input.pressed = true;
         }
     }

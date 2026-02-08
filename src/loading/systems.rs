@@ -1,11 +1,11 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
-use crate::abilities::AbilityRegistry;
+use crate::blueprints::BlueprintRegistry;
 use crate::player::PlayerDefResource;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
-use super::assets::{AbilityDefAsset, PlayerDefAsset, StatsConfigAsset};
+use super::assets::{BlueprintDefAsset, PlayerDefAsset, StatsConfigAsset};
 
 #[derive(Resource, Default)]
 pub struct LoadingState {
@@ -135,10 +135,10 @@ pub fn check_content_loaded(
     mut loading_state: ResMut<LoadingState>,
     asset_server: Res<AssetServer>,
     player_assets: Res<Assets<PlayerDefAsset>>,
-    ability_assets: Res<Assets<AbilityDefAsset>>,
+    blueprint_assets: Res<Assets<BlueprintDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
-    mut ability_registry: ResMut<AbilityRegistry>,
+    mut blueprint_registry: ResMut<BlueprintRegistry>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForContent {
         return;
@@ -187,11 +187,11 @@ pub fn check_content_loaded(
     for folder_id in folder_handles {
         if let Some(folder) = folders.get(folder_id) {
             for handle in &folder.handles {
-                let typed_handle: Handle<AbilityDefAsset> = handle.clone().typed();
-                if let Some(ability_asset) = ability_assets.get(typed_handle.id()) {
-                    let ability_def = ability_asset.0.resolve(&stat_registry);
-                    info!("Registered ability: {}", ability_asset.0.id);
-                    ability_registry.register(&ability_asset.0.id, ability_def);
+                let typed_handle: Handle<BlueprintDefAsset> = handle.clone().typed();
+                if let Some(blueprint_asset) = blueprint_assets.get(typed_handle.id()) {
+                    let blueprint_def = blueprint_asset.0.resolve(&stat_registry);
+                    info!("Registered ability: {}", blueprint_asset.0.id);
+                    blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
                 }
             }
         }

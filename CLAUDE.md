@@ -23,7 +23,7 @@ cargo run --features headless -- --timeout 10  # Headless mode (quick test, 10 s
 
 ### Plugin-Based Structure
 Each major system is a self-contained Bevy Plugin registered in `main.rs`:
-- `AbilityPlugin` - Core ability system (most complex)
+- `BlueprintPlugin` - Data-driven entity definition system (most complex)
 - `StatsPlugin` - Stat calculation with modifiers
 - `FsmPlugin` - Finite state machine for mob AI
 - `MobAiPlugin` - Concrete behavior implementations
@@ -59,12 +59,12 @@ Abilities use trait registries for extensibility:
 - `BehaviourRegistry`, `TransitionRegistry` for FSM
 
 ### Key Patterns
-- **AbilityContext**: Data passed to effects/triggers during execution
+- **SpawnSource**: Context data passed during entity spawning
 - **PendingDamage**: Queued damage applied in GameSet::Damage
 - **DirtyStats**: Tracks which stats need recalculation (optimization)
 - **Raw→Processed types**: `*Raw` types use strings for Ron deserialization, converted to typed IDs at load time
 
-### Ability Component Design Rules
+### Blueprint Component Design Rules
 
 **1. RON name = ECS component (1:1 mapping)**
 ```
@@ -76,11 +76,11 @@ Collider((shape: Circle)) →  Collider { shape: Shape }
 OnCollision((entities: [...])) →  OnCollision { entities: Vec<EntityDef> }
 ```
 
-**2. Use `#[ability_component]` macro**
+**2. Use `#[blueprint_component]` macro**
 
-The macro generates `DefRaw`, `Def`, Component struct, and `insert_component()`:
+The proc macro generates `DefRaw`, `Def`, Component struct, and `insert_component()`:
 ```rust
-#[ability_component]
+#[blueprint_component]
 pub struct Straight {
     #[raw(default = 0)]
     pub spread: ScalarExpr,           // → f32 in Component
@@ -116,7 +116,7 @@ fn init_straight(
 
 **4. Runtime state in separate components**
 ```rust
-#[ability_component]
+#[blueprint_component]
 pub struct Growing {
     pub start_size: ScalarExpr,
     pub end_size: ScalarExpr,
@@ -139,7 +139,7 @@ pub struct GrowingProgress {  // Separate runtime state
 
 ```
 src/
-├── abilities/       # Core ability system: dispatcher, registries, effects, triggers
+├── blueprints/      # Data-driven entity definitions: components, expressions, spawning
 ├── stats/           # Stat calculation: modifiers, expressions, health, damage
 ├── fsm/             # Mob FSM core: states, transitions, events
 ├── mob_ai/          # Concrete behaviors (move_toward_player, when_near, etc.)
@@ -159,11 +159,11 @@ src/
 
 ## Common Development Tasks
 
-**Add new ability component:**
-1. Create `component_name.rs` in `abilities/components/`
-2. Define struct with `#[ability_component]` macro:
+**Add new blueprint component:**
+1. Create `component_name.rs` in `blueprints/components/`
+2. Define struct with `#[blueprint_component]` macro:
    ```rust
-   #[ability_component]
+   #[blueprint_component]
    pub struct MyComponent {
        pub damage: ScalarExpr,              // Required field
        #[raw(default = false)]
@@ -173,11 +173,7 @@ src/
    }
    ```
 3. If needs Transform/RigidBody/etc — add `init_component` system with `Added<Component>` query
-4. Register in `abilities/components/mod.rs` via `collect_components!` macro
-
-**Add new ability type:**
-1. Implement `Trigger` or `EffectExecutor` trait in `abilities/triggers/` or `abilities/effects/`
-2. Register in `abilities/mod.rs` plugin setup
+4. Register in `blueprints/components/mod.rs` via `collect_components!` macro
 
 **Add new mob:**
 Create `.mob.ron` in `assets/mobs/` with visual, collider, base_stats, states

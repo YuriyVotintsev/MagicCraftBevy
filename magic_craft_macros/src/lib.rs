@@ -232,7 +232,7 @@ fn is_bool_type(ty: &Type) -> bool {
 
 
 #[proc_macro_attribute]
-pub fn ability_component(attr: TokenStream, item: TokenStream) -> TokenStream {
+pub fn blueprint_component(attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as DeriveInput);
     let provided_fields = if attr.is_empty() {
         None
@@ -252,15 +252,15 @@ pub fn ability_component(attr: TokenStream, item: TokenStream) -> TokenStream {
         Data::Struct(data_struct) => {
             match &data_struct.fields {
                 Fields::Named(fields) => {
-                    generate_ability_component_named(&component_name, fields, provided_fields)
+                    generate_blueprint_component_named(&component_name, fields, provided_fields)
                 }
                 Fields::Unit => {
-                    generate_ability_component_unit(&component_name, provided_fields)
+                    generate_blueprint_component_unit(&component_name, provided_fields)
                 }
                 Fields::Unnamed(_) => {
                     syn::Error::new(
                         input.ident.span(),
-                        "ability_component does not support tuple structs"
+                        "blueprint_component does not support tuple structs"
                     ).to_compile_error().into()
                 }
             }
@@ -268,20 +268,20 @@ pub fn ability_component(attr: TokenStream, item: TokenStream) -> TokenStream {
         _ => {
             syn::Error::new(
                 input.ident.span(),
-                "ability_component can only be applied to structs"
+                "blueprint_component can only be applied to structs"
             ).to_compile_error().into()
         }
     }
 }
 
-fn generate_ability_component_unit(
+fn generate_blueprint_component_unit(
     component_name: &syn::Ident,
     provided_fields: Option<Vec<String>>,
 ) -> TokenStream {
     let provided_fields_fn = if let Some(ref pf) = provided_fields {
         let pf_tokens: Vec<_> = pf.iter().map(|s| {
             let ident = format_ident!("{}", s);
-            quote! { crate::abilities::context::ProvidedFields::#ident }
+            quote! { crate::blueprints::context::ProvidedFields::#ident }
         }).collect();
 
         let provided_expr = if pf_tokens.len() == 1 {
@@ -293,7 +293,7 @@ fn generate_ability_component_unit(
         };
 
         quote! {
-            pub fn provided_fields() -> crate::abilities::context::ProvidedFields {
+            pub fn provided_fields() -> crate::blueprints::context::ProvidedFields {
                 #provided_expr
             }
         }
@@ -315,8 +315,8 @@ fn generate_ability_component_unit(
         }
 
         #[cfg(test)]
-        pub fn required_fields_and_nested(_raw: &DefRaw) -> (crate::abilities::context::ProvidedFields, Option<(crate::abilities::context::ProvidedFields, &[crate::abilities::entity_def::EntityDefRaw])>) {
-            (crate::abilities::context::ProvidedFields::NONE, None)
+        pub fn required_fields_and_nested(_raw: &DefRaw) -> (crate::blueprints::context::ProvidedFields, Option<(crate::blueprints::context::ProvidedFields, &[crate::blueprints::entity_def::EntityDefRaw])>) {
+            (crate::blueprints::context::ProvidedFields::NONE, None)
         }
 
         #provided_fields_fn
@@ -324,11 +324,11 @@ fn generate_ability_component_unit(
         #[derive(bevy::prelude::Component)]
         pub struct #component_name;
 
-        pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, _def: &Def, _source: &crate::abilities::core_components::AbilitySource, _stats: &crate::stats::ComputedStats) {
+        pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, _def: &Def, _source: &crate::blueprints::core_components::SpawnSource, _stats: &crate::stats::ComputedStats) {
             commands.insert(#component_name);
         }
 
-        pub fn update_component(_commands: &mut bevy::prelude::EntityCommands, _def: &Def, _source: &crate::abilities::core_components::AbilitySource, _stats: &crate::stats::ComputedStats) {
+        pub fn update_component(_commands: &mut bevy::prelude::EntityCommands, _def: &Def, _source: &crate::blueprints::core_components::SpawnSource, _stats: &crate::stats::ComputedStats) {
         }
 
         pub fn has_recalc(_def: &Def) -> bool {
@@ -343,7 +343,7 @@ fn generate_ability_component_unit(
     output.into()
 }
 
-fn generate_ability_component_named(
+fn generate_blueprint_component_named(
     component_name: &syn::Ident,
     fields: &syn::FieldsNamed,
     provided_fields: Option<Vec<String>>,
@@ -383,49 +383,49 @@ fn generate_ability_component_named(
         }
 
         if is_scalar_expr_type(field_ty) {
-            def_fields.push(quote! { pub #field_name: crate::abilities::expr::ScalarExpr });
+            def_fields.push(quote! { pub #field_name: crate::blueprints::expr::ScalarExpr });
 
             if let Some(ref default_str) = default_expr {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::abilities::expr::ScalarExprRaw>
+                    pub #field_name: Option<crate::blueprints::expr::ScalarExprRaw>
                 });
 
                 resolve_fields.push(quote! {
                     #field_name: self.#field_name.as_ref()
                         .map(|v| v.resolve(stat_registry))
-                        .unwrap_or_else(|| crate::abilities::expr::parse_and_resolve_scalar(#default_str, stat_registry))
+                        .unwrap_or_else(|| crate::blueprints::expr::parse_and_resolve_scalar(#default_str, stat_registry))
                 });
 
                 required_fields_code.push(quote! {
                     fields = fields.union(
                         raw.#field_name.as_ref()
                             .map(|v| v.required_fields())
-                            .unwrap_or_else(|| crate::abilities::expr::parse_required_fields(#default_str))
+                            .unwrap_or_else(|| crate::blueprints::expr::parse_required_fields(#default_str))
                     );
                 });
             } else if let Some(default) = raw_default {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::abilities::expr::ScalarExprRaw>
+                    pub #field_name: Option<crate::blueprints::expr::ScalarExprRaw>
                 });
 
                 resolve_fields.push(quote! {
                     #field_name: self.#field_name.as_ref()
                         .map(|v| v.resolve(stat_registry))
-                        .unwrap_or(crate::abilities::expr::ScalarExpr::Literal(#default as f32))
+                        .unwrap_or(crate::blueprints::expr::ScalarExpr::Literal(#default as f32))
                 });
 
                 required_fields_code.push(quote! {
                     fields = fields.union(
                         raw.#field_name.as_ref()
                             .map(|v| v.required_fields())
-                            .unwrap_or(crate::abilities::context::ProvidedFields::NONE)
+                            .unwrap_or(crate::blueprints::context::ProvidedFields::NONE)
                     );
                 });
             } else {
                 raw_fields.push(quote! {
-                    pub #field_name: crate::abilities::expr::ScalarExprRaw
+                    pub #field_name: crate::blueprints::expr::ScalarExprRaw
                 });
 
                 resolve_fields.push(quote! {
@@ -441,30 +441,30 @@ fn generate_ability_component_named(
             insert_fields.push(quote! { #field_name: def.#field_name.eval(source, stats) });
 
         } else if is_vec_expr_type(field_ty) {
-            def_fields.push(quote! { pub #field_name: crate::abilities::expr::VecExpr });
+            def_fields.push(quote! { pub #field_name: crate::blueprints::expr::VecExpr });
 
             if let Some(ref default_str) = default_expr {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::abilities::expr::VecExprRaw>
+                    pub #field_name: Option<crate::blueprints::expr::VecExprRaw>
                 });
 
                 resolve_fields.push(quote! {
                     #field_name: self.#field_name.as_ref()
                         .map(|v| v.resolve(stat_registry))
-                        .unwrap_or_else(|| crate::abilities::expr::parse_and_resolve_vec(#default_str, stat_registry))
+                        .unwrap_or_else(|| crate::blueprints::expr::parse_and_resolve_vec(#default_str, stat_registry))
                 });
 
                 required_fields_code.push(quote! {
                     fields = fields.union(
                         raw.#field_name.as_ref()
                             .map(|v| v.required_fields())
-                            .unwrap_or_else(|| crate::abilities::expr::parse_required_fields(#default_str))
+                            .unwrap_or_else(|| crate::blueprints::expr::parse_required_fields(#default_str))
                     );
                 });
             } else {
                 raw_fields.push(quote! {
-                    pub #field_name: crate::abilities::expr::VecExprRaw
+                    pub #field_name: crate::blueprints::expr::VecExprRaw
                 });
 
                 resolve_fields.push(quote! {
@@ -480,30 +480,30 @@ fn generate_ability_component_named(
             insert_fields.push(quote! { #field_name: def.#field_name.eval(source, stats) });
 
         } else if is_entity_expr_type(field_ty) {
-            def_fields.push(quote! { pub #field_name: crate::abilities::expr::EntityExpr });
+            def_fields.push(quote! { pub #field_name: crate::blueprints::expr::EntityExpr });
 
             if let Some(ref default_str) = default_expr {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::abilities::expr::EntityExprRaw>
+                    pub #field_name: Option<crate::blueprints::expr::EntityExprRaw>
                 });
 
                 resolve_fields.push(quote! {
                     #field_name: self.#field_name.as_ref()
                         .map(|v| v.resolve(stat_registry))
-                        .unwrap_or_else(|| crate::abilities::expr::parse_and_resolve_entity(#default_str, stat_registry))
+                        .unwrap_or_else(|| crate::blueprints::expr::parse_and_resolve_entity(#default_str, stat_registry))
                 });
 
                 required_fields_code.push(quote! {
                     fields = fields.union(
                         raw.#field_name.as_ref()
                             .map(|v| v.required_fields())
-                            .unwrap_or_else(|| crate::abilities::expr::parse_required_fields(#default_str))
+                            .unwrap_or_else(|| crate::blueprints::expr::parse_required_fields(#default_str))
                     );
                 });
             } else {
                 raw_fields.push(quote! {
-                    pub #field_name: crate::abilities::expr::EntityExprRaw
+                    pub #field_name: crate::blueprints::expr::EntityExprRaw
                 });
 
                 resolve_fields.push(quote! {
@@ -519,11 +519,11 @@ fn generate_ability_component_named(
             insert_fields.push(quote! { #field_name: def.#field_name.eval(source).unwrap() });
 
         } else if is_option_scalar_expr(field_ty) {
-            def_fields.push(quote! { pub #field_name: Option<crate::abilities::expr::ScalarExpr> });
+            def_fields.push(quote! { pub #field_name: Option<crate::blueprints::expr::ScalarExpr> });
 
             raw_fields.push(quote! {
                 #[serde(default)]
-                pub #field_name: Option<crate::abilities::expr::ScalarExprRaw>
+                pub #field_name: Option<crate::blueprints::expr::ScalarExprRaw>
             });
 
             resolve_fields.push(quote! {
@@ -540,18 +540,18 @@ fn generate_ability_component_named(
             insert_fields.push(quote! { #field_name: def.#field_name.as_ref().map(|e| e.eval(source, stats)) });
 
         } else if is_vec_entity_def(field_ty) {
-            def_fields.push(quote! { pub #field_name: Vec<crate::abilities::entity_def::EntityDef> });
+            def_fields.push(quote! { pub #field_name: Vec<crate::blueprints::entity_def::EntityDef> });
 
             raw_fields.push(quote! {
                 #[serde(default)]
-                pub #field_name: Vec<crate::abilities::entity_def::EntityDefRaw>
+                pub #field_name: Vec<crate::blueprints::entity_def::EntityDefRaw>
             });
 
             resolve_fields.push(quote! {
                 #field_name: self.#field_name.iter().map(|e| e.resolve(stat_registry)).collect()
             });
 
-            component_fields.push(quote! { pub #field_name: Vec<crate::abilities::entity_def::EntityDef> });
+            component_fields.push(quote! { pub #field_name: Vec<crate::blueprints::entity_def::EntityDef> });
             insert_fields.push(quote! { #field_name: def.#field_name.clone() });
 
         } else if is_state_ref_type(field_ty) {
@@ -615,7 +615,7 @@ fn generate_ability_component_named(
         if let Some(ref pf) = provided_fields {
             let pf_tokens: Vec<_> = pf.iter().map(|s| {
                 let ident = format_ident!("{}", s);
-                quote! { crate::abilities::context::ProvidedFields::#ident }
+                quote! { crate::blueprints::context::ProvidedFields::#ident }
             }).collect();
 
             let provided_expr = if pf_tokens.len() == 1 {
@@ -639,7 +639,7 @@ fn generate_ability_component_named(
                 let nested = if raw.#entities_name.is_empty() {
                     None
                 } else {
-                    Some((crate::abilities::context::ProvidedFields::NONE, raw.#entities_name.as_slice()))
+                    Some((crate::blueprints::context::ProvidedFields::NONE, raw.#entities_name.as_slice()))
                 };
             }
         }
@@ -650,7 +650,7 @@ fn generate_ability_component_named(
     let provided_fields_fn = if let Some(ref pf) = provided_fields {
         let pf_tokens: Vec<_> = pf.iter().map(|s| {
             let ident = format_ident!("{}", s);
-            quote! { crate::abilities::context::ProvidedFields::#ident }
+            quote! { crate::blueprints::context::ProvidedFields::#ident }
         }).collect();
 
         let provided_expr = if pf_tokens.len() == 1 {
@@ -662,7 +662,7 @@ fn generate_ability_component_named(
         };
 
         quote! {
-            pub fn provided_fields() -> crate::abilities::context::ProvidedFields {
+            pub fn provided_fields() -> crate::blueprints::context::ProvidedFields {
                 #provided_expr
             }
         }
@@ -672,11 +672,11 @@ fn generate_ability_component_named(
 
     let update_component_fn = if update_checks.is_empty() {
         quote! {
-            pub fn update_component(_commands: &mut bevy::prelude::EntityCommands, _def: &Def, _source: &crate::abilities::core_components::AbilitySource, _stats: &crate::stats::ComputedStats) {}
+            pub fn update_component(_commands: &mut bevy::prelude::EntityCommands, _def: &Def, _source: &crate::blueprints::core_components::SpawnSource, _stats: &crate::stats::ComputedStats) {}
         }
     } else {
         quote! {
-            pub fn update_component(commands: &mut bevy::prelude::EntityCommands, def: &Def, source: &crate::abilities::core_components::AbilitySource, stats: &crate::stats::ComputedStats) {
+            pub fn update_component(commands: &mut bevy::prelude::EntityCommands, def: &Def, source: &crate::blueprints::core_components::SpawnSource, stats: &crate::stats::ComputedStats) {
                 #(#update_evals)*
                 if !(#(#update_checks.is_some())||*) { return; }
                 commands.queue(move |mut entity: bevy::ecs::world::EntityWorldMut| {
@@ -708,8 +708,8 @@ fn generate_ability_component_named(
         }
 
         #[cfg(test)]
-        pub fn required_fields_and_nested(raw: &DefRaw) -> (crate::abilities::context::ProvidedFields, Option<(crate::abilities::context::ProvidedFields, &[crate::abilities::entity_def::EntityDefRaw])>) {
-            let mut fields = crate::abilities::context::ProvidedFields::NONE;
+        pub fn required_fields_and_nested(raw: &DefRaw) -> (crate::blueprints::context::ProvidedFields, Option<(crate::blueprints::context::ProvidedFields, &[crate::blueprints::entity_def::EntityDefRaw])>) {
+            let mut fields = crate::blueprints::context::ProvidedFields::NONE;
             #(#required_fields_code)*
             #nested_code
             (fields, nested)
@@ -722,7 +722,7 @@ fn generate_ability_component_named(
             #(#component_fields,)*
         }
 
-        pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, def: &Def, source: &crate::abilities::core_components::AbilitySource, stats: &crate::stats::ComputedStats) {
+        pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, def: &Def, source: &crate::blueprints::core_components::SpawnSource, stats: &crate::stats::ComputedStats) {
             commands.insert(#component_name {
                 #(#insert_fields,)*
             });
