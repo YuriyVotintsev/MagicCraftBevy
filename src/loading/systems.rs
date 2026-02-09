@@ -2,16 +2,16 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::blueprints::BlueprintRegistry;
-use crate::player::PlayerEntityDef;
+use crate::player::AvailableHeroes;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
-use super::assets::{BlueprintDefAsset, PlayerDefAsset, StatsConfigAsset};
+use super::assets::{BlueprintDefAsset, StatsConfigAsset};
 
 #[derive(Resource, Default)]
 pub struct LoadingState {
     pub phase: LoadingPhase,
     pub stats_handle: Option<Handle<StatsConfigAsset>>,
-    pub player_handle: Option<Handle<PlayerDefAsset>>,
+    pub heroes_folder: Option<Handle<LoadedFolder>>,
     pub abilities_folder: Option<Handle<LoadedFolder>>,
     pub mobs_folder: Option<Handle<LoadedFolder>>,
 }
@@ -121,8 +121,7 @@ pub fn check_stats_loaded(
     commands.insert_resource(registry);
     commands.insert_resource(calculators);
 
-    loading_state.player_handle = Some(asset_server.load("player.player.ron"));
-
+    loading_state.heroes_folder = Some(asset_server.load_folder("heroes"));
     loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
     loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
 
@@ -134,7 +133,6 @@ pub fn check_content_loaded(
     mut commands: Commands,
     mut loading_state: ResMut<LoadingState>,
     asset_server: Res<AssetServer>,
-    player_assets: Res<Assets<PlayerDefAsset>>,
     blueprint_assets: Res<Assets<BlueprintDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
@@ -148,41 +146,40 @@ pub fn check_content_loaded(
         return;
     };
 
-    let Some(player_handle) = &loading_state.player_handle else {
+    let Some(heroes_folder_handle) = &loading_state.heroes_folder else {
         return;
     };
-    if !matches!(
-        asset_server.get_load_state(player_handle.id()),
-        Some(LoadState::Loaded)
-    ) {
-        return;
-    }
-
     let Some(abilities_folder_handle) = &loading_state.abilities_folder else {
         return;
     };
     let Some(mobs_folder_handle) = &loading_state.mobs_folder else {
         return;
     };
-    if !matches!(
-        asset_server.get_load_state(abilities_folder_handle.id()),
-        Some(LoadState::Loaded)
-    ) {
-        return;
-    }
-    if !matches!(
-        asset_server.get_load_state(mobs_folder_handle.id()),
-        Some(LoadState::Loaded)
-    ) {
-        return;
+
+    for handle in [heroes_folder_handle, abilities_folder_handle, mobs_folder_handle] {
+        if !matches!(
+            asset_server.get_load_state(handle.id()),
+            Some(LoadState::Loaded)
+        ) {
+            return;
+        }
     }
 
     info!("All content loaded, finalizing...");
 
-    let player_asset = player_assets.get(player_handle.id())
-        .expect("Player definition asset not loaded");
-    let player_entity_def = player_asset.0.resolve(&stat_registry);
-    commands.insert_resource(PlayerEntityDef(player_entity_def));
+    let mut hero_ids = Vec::new();
+    if let Some(folder) = folders.get(heroes_folder_handle.id()) {
+        for handle in &folder.handles {
+            let typed_handle: Handle<BlueprintDefAsset> = handle.clone().typed();
+            if let Some(blueprint_asset) = blueprint_assets.get(typed_handle.id()) {
+                let blueprint_def = blueprint_asset.0.resolve(&stat_registry);
+                info!("Registered hero: {}", blueprint_asset.0.id);
+                let id = blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
+                hero_ids.push(id);
+            }
+        }
+    }
+    commands.insert_resource(AvailableHeroes(hero_ids));
 
     let folder_handles = [abilities_folder_handle.id(), mobs_folder_handle.id()];
     for folder_id in folder_handles {
@@ -213,4 +210,3 @@ pub fn finalize_loading(
     loading_state.phase = LoadingPhase::Done;
     next_state.set(crate::GameState::MainMenu);
 }
-

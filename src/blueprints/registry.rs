@@ -34,12 +34,14 @@ pub fn spawn_blueprint_entity(
 pub struct BlueprintRegistry {
     blueprints: Vec<super::blueprint_def::BlueprintDef>,
     name_to_id: HashMap<String, BlueprintId>,
+    id_to_name: Vec<String>,
 }
 
 impl BlueprintRegistry {
     pub fn register(&mut self, name: &str, blueprint: super::blueprint_def::BlueprintDef) -> BlueprintId {
         let id = BlueprintId(self.blueprints.len() as u32);
         self.name_to_id.insert(name.to_string(), id);
+        self.id_to_name.push(name.to_string());
         self.blueprints.push(blueprint);
         id
     }
@@ -50,5 +52,9 @@ impl BlueprintRegistry {
 
     pub fn get_id(&self, name: &str) -> Option<BlueprintId> {
         self.name_to_id.get(name).copied()
+    }
+
+    pub fn get_name(&self, id: BlueprintId) -> Option<&str> {
+        self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
     }
 }

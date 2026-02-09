@@ -1,0 +1,31 @@
+(
+    id: "mage",
+    entities: [
+        (
+            base_stats: {
+                "strength_base": 5.0,
+                "max_life_base": 70.0,
+                "max_life_per_strength": 1.5,
+                "movement_speed_base": 350.0,
+                "physical_damage_base": 15.0,
+                "projectile_speed_base": 900.0,
+                "projectile_count": 1.0,
+                "crit_chance_base": 0.10,
+                "crit_multiplier_base": 2.0,
+            },
+            components: [
+                Size((value: "50.0")),
+                Sprite((color: (0.6, 0.2, 0.8, 1.0))),
+                Collider((shape: Rectangle, sensor: Some(false))),
+                DynamicBody(()),
+                Health(()),
+                KeyboardMovement(()),
+                PlayerInput((bindings: [
+                    (slot: Active, trigger: MouseHold(Left), targeting: Cursor),
+                    (slot: Defensive, trigger: KeyJustPressed(Space), targeting: MovementDirection),
+                    (slot: Passive, trigger: Auto, targeting: Untargeted),
+                ])),
+            ],
+        ),
+    ],
+)

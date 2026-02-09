@@ -1,5 +1,6 @@
 mod damage_numbers;
 mod game_over;
+mod hero_selection;
 mod hud;
 mod loading;
 mod main_menu;
@@ -21,6 +22,19 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 main_menu::menu_button_system.run_if(in_state(GameState::MainMenu)),
+            )
+            .add_systems(
+                OnEnter(GameState::HeroSelection),
+                hero_selection::spawn_hero_selection,
+            )
+            .add_systems(
+                Update,
+                (
+                    hero_selection::hero_button_system,
+                    hero_selection::update_hero_button_colors,
+                    hero_selection::continue_button_system,
+                )
+                    .run_if(in_state(GameState::HeroSelection)),
             )
             .add_systems(
                 OnEnter(GameState::SpellSelection),
