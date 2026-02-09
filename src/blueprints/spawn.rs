@@ -77,7 +77,12 @@ impl EntitySpawner<'_, '_> {
         }
     }
 
-    pub fn spawn_root(&mut self, entity_def: &EntityDef, faction: Faction) -> Entity {
+    pub fn spawn_root(
+        &mut self,
+        entity_def: &EntityDef,
+        faction: Faction,
+        extra_modifiers: &[(StatId, f32)],
+    ) -> Entity {
         let source = SpawnSource {
             blueprint_id: BlueprintId::default(),
             caster: TargetInfo::EMPTY,
@@ -87,7 +92,28 @@ impl EntitySpawner<'_, '_> {
             index: 0,
             count: 1,
         };
-        self.spawn_one(entity_def, &source, &ComputedStats::new(self.stat_registry.len()))
+        let entity_id = self.commands.spawn_empty().id();
+        let (source, owned_stats) = self.init_identity(entity_id, &source, entity_def, extra_modifiers);
+        let default_stats = ComputedStats::new(self.stat_registry.len());
+        let stats = owned_stats.as_ref().unwrap_or(&default_stats);
+
+        let base_recalc = insert_components(
+            &mut self.commands.entity(entity_id),
+            &entity_def.components,
+            &source,
+            stats,
+        );
+        self.spawn_blueprint_entities(entity_id, &entity_def.abilities, source.caster_faction);
+        let state_recalc = init_fsm(
+            &mut self.commands,
+            entity_id,
+            entity_def.states.as_ref(),
+            &source,
+            stats,
+        );
+        store_recalc(&mut self.commands, entity_id, base_recalc, state_recalc);
+
+        entity_id
     }
 
     fn spawn_one(
@@ -98,7 +124,7 @@ impl EntitySpawner<'_, '_> {
     ) -> Entity {
         let entity_id = self.commands.spawn_empty().id();
 
-        let (source, owned_stats) = self.init_identity(entity_id, parent_source, entity_def);
+        let (source, owned_stats) = self.init_identity(entity_id, parent_source, entity_def, &[]);
         let stats = owned_stats.as_ref().unwrap_or(caster_stats);
 
         let base_recalc = insert_components(
@@ -125,8 +151,9 @@ impl EntitySpawner<'_, '_> {
         entity_id: Entity,
         parent_source: &SpawnSource,
         entity_def: &EntityDef,
+        extra_modifiers: &[(StatId, f32)],
     ) -> (SpawnSource, Option<ComputedStats>) {
-        if entity_def.base_stats.is_empty() {
+        if entity_def.base_stats.is_empty() && extra_modifiers.is_empty() {
             self.commands.entity(entity_id).insert((*parent_source, parent_source.caster_faction));
             return (*parent_source, None);
         }
@@ -139,6 +166,9 @@ impl EntitySpawner<'_, '_> {
 
         for (stat_id, value) in &entity_def.base_stats {
             modifiers.add(*stat_id, *value, None);
+        }
+        for &(stat_id, value) in extra_modifiers {
+            modifiers.add(stat_id, value, None);
         }
 
         self.calculators.recalculate(&modifiers, &mut computed, &mut dirty);
@@ -160,6 +190,22 @@ impl EntitySpawner<'_, '_> {
         ));
 
         (source, Some(computed))
+    }
+
+    pub fn add_modifiers(&mut self, entity: Entity, modifiers: &[(StatId, f32)]) {
+        let mods: Vec<(StatId, f32)> = modifiers.to_vec();
+        self.commands.entity(entity).queue(move |mut entity: EntityWorldMut| {
+            if let Some(mut m) = entity.get_mut::<Modifiers>() {
+                for &(stat, value) in &mods {
+                    m.add(stat, value, None);
+                }
+            }
+            if let Some(mut dirty) = entity.get_mut::<DirtyStats>() {
+                for &(stat, _) in &mods {
+                    dirty.mark(stat);
+                }
+            }
+        });
     }
 
     fn spawn_blueprint_entities(&mut self, entity_id: Entity, abilities: &[String], faction: Faction) {

@@ -1,0 +1,12 @@
+(
+    id: "mage",
+    display_name: "Mage",
+    color: (0.6, 0.2, 0.8, 1.0),
+    modifiers: {
+        "physical_damage_base": 5.0,
+        "projectile_speed_base": 100.0,
+        "max_life_base": -30.0,
+        "crit_chance_base": 0.05,
+        "crit_multiplier_base": 0.5,
+    },
+)

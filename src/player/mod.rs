@@ -1,3 +1,4 @@
+pub mod hero_class;
 pub mod selected_spells;
 
 use avian2d::prelude::*;
@@ -5,22 +6,18 @@ use bevy::prelude::*;
 
 use crate::Faction;
 use crate::GameState;
-use crate::blueprints::{BlueprintId, BlueprintRegistry, spawn_blueprint_entity};
+use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
+use crate::blueprints::components::ComponentDef;
 use crate::blueprints::spawn::EntitySpawner;
 use crate::schedule::PostGameSet;
 use crate::stats::{DeathEvent, death_system};
 use crate::wave::WavePhase;
 
+pub use hero_class::{AvailableHeroes, SelectedHero};
 pub use selected_spells::{SelectedSpells, SpellSlot};
 
 #[derive(Component)]
 pub struct Player;
-
-#[derive(Resource)]
-pub struct AvailableHeroes(pub Vec<BlueprintId>);
-
-#[derive(Resource, Default)]
-pub struct SelectedHero(pub Option<BlueprintId>);
 
 pub struct PlayerPlugin;
 
@@ -43,23 +40,36 @@ fn reset_player_velocity(mut query: Query<&mut LinearVelocity, With<Player>>) {
 fn spawn_player(
     mut spawner: EntitySpawner,
     selected_hero: Res<SelectedHero>,
+    available_heroes: Res<AvailableHeroes>,
     blueprint_registry: Res<BlueprintRegistry>,
     selected_spells: Res<SelectedSpells>,
 ) {
-    let Some(hero_id) = selected_hero.0 else {
+    let Some(class_index) = selected_hero.0 else {
         warn!("No hero selected, cannot spawn player");
         return;
     };
-    let Some(blueprint_def) = blueprint_registry.get(hero_id) else {
-        warn!("Hero blueprint not found: {:?}", hero_id);
+    let Some(class) = available_heroes.classes.get(class_index) else {
+        warn!("Hero class index out of bounds: {}", class_index);
         return;
     };
-    let Some(entity_def) = blueprint_def.entities.first() else {
-        warn!("Hero blueprint has no entities");
+    let Some(blueprint_def) = blueprint_registry.get(available_heroes.base_blueprint) else {
+        warn!("Base hero blueprint not found");
+        return;
+    };
+    let Some(base_entity_def) = blueprint_def.entities.first() else {
+        warn!("Base hero blueprint has no entities");
         return;
     };
 
-    let entity = spawner.spawn_root(entity_def, Faction::Player);
+    let mut entity_def = base_entity_def.clone();
+    for comp in &mut entity_def.components {
+        if let ComponentDef::Sprite(ref mut def) = comp {
+            def.color = class.color;
+        }
+    }
+
+    let modifier_tuples: Vec<_> = class.modifiers.iter().map(|m| (m.stat, m.value)).collect();
+    let entity = spawner.spawn_root(&entity_def, Faction::Player, &modifier_tuples);
     spawner.commands.entity(entity).insert((
         Name::new("Player"),
         Player,

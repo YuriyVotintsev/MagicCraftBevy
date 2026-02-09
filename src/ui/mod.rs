@@ -33,6 +33,7 @@ impl Plugin for UiPlugin {
                 (
                     hero_selection::hero_button_system,
                     hero_selection::update_hero_button_colors,
+                    hero_selection::update_stats_panel,
                     hero_selection::continue_button_system,
                 )
                     .run_if(in_state(GameState::HeroSelection)),

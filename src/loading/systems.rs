@@ -3,10 +3,10 @@ use bevy::prelude::*;
 
 use crate::artifacts::{ArtifactDef, ArtifactRegistry, AvailableArtifacts};
 use crate::blueprints::BlueprintRegistry;
-use crate::player::AvailableHeroes;
+use crate::player::hero_class::{AvailableHeroes, HeroClass, HeroClassModifier};
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
-use super::assets::{ArtifactDefAsset, BlueprintDefAsset, StatsConfigAsset};
+use super::assets::{ArtifactDefAsset, BlueprintDefAsset, HeroClassAsset, StatsConfigAsset};
 
 #[derive(Resource, Default)]
 pub struct LoadingState {
@@ -137,6 +137,7 @@ pub fn check_content_loaded(
     mut loading_state: ResMut<LoadingState>,
     asset_server: Res<AssetServer>,
     blueprint_assets: Res<Assets<BlueprintDefAsset>>,
+    hero_class_assets: Res<Assets<HeroClassAsset>>,
     artifact_assets: Res<Assets<ArtifactDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
@@ -180,19 +181,44 @@ pub fn check_content_loaded(
 
     info!("All content loaded, finalizing...");
 
-    let mut hero_ids = Vec::new();
+    let mut base_blueprint = None;
+    let mut classes = Vec::new();
     if let Some(folder) = folders.get(heroes_folder_handle.id()) {
         for handle in &folder.handles {
-            let typed_handle: Handle<BlueprintDefAsset> = handle.clone().typed();
-            if let Some(blueprint_asset) = blueprint_assets.get(typed_handle.id()) {
-                let blueprint_def = blueprint_asset.0.resolve(&stat_registry);
-                info!("Registered hero: {}", blueprint_asset.0.id);
-                let id = blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
-                hero_ids.push(id);
+            if let Ok(typed_bp) = handle.clone().try_typed::<BlueprintDefAsset>() {
+                if let Some(blueprint_asset) = blueprint_assets.get(typed_bp.id()) {
+                    let blueprint_def = blueprint_asset.0.resolve(&stat_registry);
+                    info!("Registered base hero: {}", blueprint_asset.0.id);
+                    let id = blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
+                    base_blueprint = Some(id);
+                }
+            }
+
+            if let Ok(typed_class) = handle.clone().try_typed::<HeroClassAsset>() {
+                if let Some(class_asset) = hero_class_assets.get(typed_class.id()) {
+                    let raw = &class_asset.0;
+                    let modifiers: Vec<_> = raw.modifiers.iter()
+                        .filter_map(|(name, &value)| {
+                            stat_registry.get(name).map(|stat| HeroClassModifier {
+                                stat,
+                                value,
+                                name: name.clone(),
+                            })
+                        })
+                        .collect();
+                    info!("Registered hero class: {}", raw.id);
+                    classes.push(HeroClass {
+                        id: raw.id.clone(),
+                        display_name: raw.display_name.clone(),
+                        color: raw.color,
+                        modifiers,
+                    });
+                }
             }
         }
     }
-    commands.insert_resource(AvailableHeroes(hero_ids));
+    let base_blueprint = base_blueprint.expect("No base hero blueprint found in heroes folder");
+    commands.insert_resource(AvailableHeroes { base_blueprint, classes });
 
     let folder_handles = [abilities_folder_handle.id(), mobs_folder_handle.id()];
     for folder_id in folder_handles {

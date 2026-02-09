@@ -5,6 +5,7 @@ use bevy::reflect::TypePath;
 
 use crate::artifacts::ArtifactDefRaw;
 use crate::blueprints::BlueprintDefRaw;
+use crate::player::hero_class::HeroClassRaw;
 use crate::stats::loader::{CalculatorDefRaw, StatDefRaw};
 
 #[derive(Asset, TypePath)]
@@ -19,6 +20,9 @@ pub struct BlueprintDefAsset(pub BlueprintDefRaw);
 #[derive(Asset, TypePath)]
 pub struct ArtifactDefAsset(pub ArtifactDefRaw);
 
+#[derive(Asset, TypePath)]
+pub struct HeroClassAsset(pub HeroClassRaw);
+
 #[derive(Default, TypePath)]
 pub struct StatsConfigLoader;
 
@@ -27,6 +31,9 @@ pub struct BlueprintDefLoader;
 
 #[derive(Default, TypePath)]
 pub struct ArtifactDefLoader;
+
+#[derive(Default, TypePath)]
+pub struct HeroClassLoader;
 
 impl AssetLoader for StatsConfigLoader {
     type Asset = StatsConfigAsset;
@@ -103,5 +110,28 @@ impl AssetLoader for ArtifactDefLoader {
 
     fn extensions(&self) -> &[&str] {
         &["artifact.ron"]
+    }
+}
+
+impl AssetLoader for HeroClassLoader {
+    type Asset = HeroClassAsset;
+    type Settings = ();
+    type Error = anyhow::Error;
+
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes).await?;
+        let content = std::str::from_utf8(&bytes)?;
+        let def: HeroClassRaw = ron::from_str(content)?;
+        Ok(HeroClassAsset(def))
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["class.ron"]
     }
 }
