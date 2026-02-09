@@ -64,7 +64,17 @@ impl Plugin for UiPlugin {
             .add_systems(OnEnter(WavePhase::Shop), shop::spawn_shop)
             .add_systems(
                 Update,
-                shop::shop_button_system.run_if(in_state(WavePhase::Shop)),
+                (
+                    (shop::buy_system, shop::sell_system),
+                    shop::update_shop_on_change,
+                )
+                    .chain()
+                    .run_if(in_state(WavePhase::Shop)),
+            )
+            .add_systems(
+                Update,
+                (shop::next_wave_system, shop::update_button_colors)
+                    .run_if(in_state(WavePhase::Shop)),
             )
             .add_systems(
                 Update,

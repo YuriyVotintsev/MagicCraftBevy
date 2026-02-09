@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::artifacts::{ArtifactId, ArtifactRegistry, PlayerArtifacts, ShopOfferings};
 use crate::money::PlayerMoney;
 use crate::wave::{WavePhase, WaveState};
 
@@ -7,93 +8,434 @@ use crate::wave::{WavePhase, WaveState};
 pub struct ShopRoot;
 
 #[derive(Component)]
-pub struct ShopButton;
+pub struct NextWaveButton;
+
+#[derive(Component)]
+pub struct BuyButton {
+    pub index: usize,
+}
+
+#[derive(Component)]
+pub struct SellButton {
+    pub slot: usize,
+}
+
+#[derive(Component)]
+pub struct MoneyText;
+
+#[derive(Component)]
+pub struct ShopSection;
+
+#[derive(Component)]
+pub struct ArtifactSection;
 
 const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
 const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
+const DISABLED_BUTTON: Color = Color::srgb(0.1, 0.1, 0.1);
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
+const GOLD_COLOR: Color = Color::srgb(1.0, 0.84, 0.0);
+const SECTION_BG: Color = Color::srgba(0.15, 0.15, 0.25, 0.9);
+
+fn section_header(label: &str) -> impl Bundle {
+    (
+        Text::new(label),
+        TextFont {
+            font_size: 22.0,
+            ..default()
+        },
+        TextColor(GOLD_COLOR),
+        Node {
+            margin: UiRect::bottom(Val::Px(10.0)),
+            ..default()
+        },
+    )
+}
+
+fn shop_row(name: &str, price: u32, index: usize, can_buy: bool) -> impl Bundle {
+    (
+        Node {
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::SpaceBetween,
+            width: Val::Percent(100.0),
+            margin: UiRect::bottom(Val::Px(6.0)),
+            ..default()
+        },
+        children![
+            (
+                Text(format!("{} - {}g", name, price)),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(TEXT_COLOR),
+                Node {
+                    margin: UiRect::right(Val::Px(20.0)),
+                    ..default()
+                },
+            ),
+            (
+                Button,
+                BuyButton { index },
+                Node {
+                    width: Val::Px(70.0),
+                    height: Val::Px(36.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                BackgroundColor(if can_buy { NORMAL_BUTTON } else { DISABLED_BUTTON }),
+                children![(
+                    Text::new("Buy"),
+                    TextFont {
+                        font_size: 18.0,
+                        ..default()
+                    },
+                    TextColor(if can_buy { TEXT_COLOR } else { Color::srgb(0.4, 0.4, 0.4) })
+                )]
+            )
+        ],
+    )
+}
+
+fn artifact_row(name: &str, sell_price: u32, slot: usize) -> impl Bundle {
+    (
+        Node {
+            flex_direction: FlexDirection::Row,
+            align_items: AlignItems::Center,
+            justify_content: JustifyContent::SpaceBetween,
+            width: Val::Percent(100.0),
+            margin: UiRect::bottom(Val::Px(6.0)),
+            ..default()
+        },
+        children![
+            (
+                Text::new(name),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(TEXT_COLOR),
+                Node {
+                    margin: UiRect::right(Val::Px(20.0)),
+                    ..default()
+                },
+            ),
+            (
+                Button,
+                SellButton { slot },
+                Node {
+                    width: Val::Px(90.0),
+                    height: Val::Px(36.0),
+                    justify_content: JustifyContent::Center,
+                    align_items: AlignItems::Center,
+                    ..default()
+                },
+                BackgroundColor(NORMAL_BUTTON),
+                children![(
+                    Text(format!("Sell {}g", sell_price)),
+                    TextFont {
+                        font_size: 18.0,
+                        ..default()
+                    },
+                    TextColor(TEXT_COLOR)
+                )]
+            )
+        ],
+    )
+}
+
+fn build_shop_section(
+    commands: &mut Commands,
+    section: Entity,
+    offerings: &[ArtifactId],
+    money: u32,
+    artifacts: &PlayerArtifacts,
+    registry: &ArtifactRegistry,
+) {
+    let header = commands.spawn(section_header("SHOP")).id();
+    commands.entity(section).add_child(header);
+
+    if offerings.is_empty() {
+        let empty = commands
+            .spawn((
+                Text::new("(sold out)"),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.5, 0.5, 0.5)),
+            ))
+            .id();
+        commands.entity(section).add_child(empty);
+    } else {
+        for (i, &artifact_id) in offerings.iter().enumerate() {
+            if let Some(def) = registry.get(artifact_id) {
+                let can_buy = money >= def.price && !artifacts.is_full();
+                let row = commands.spawn(shop_row(&def.name, def.price, i, can_buy)).id();
+                commands.entity(section).add_child(row);
+            }
+        }
+    }
+}
+
+fn build_artifact_section(
+    commands: &mut Commands,
+    section: Entity,
+    artifacts: &PlayerArtifacts,
+    registry: &ArtifactRegistry,
+) {
+    let equipped = artifacts.equipped();
+
+    let header = commands
+        .spawn(section_header(&format!(
+            "ARTIFACTS ({}/{})",
+            equipped.len(),
+            artifacts.max_slots
+        )))
+        .id();
+    commands.entity(section).add_child(header);
+
+    if equipped.is_empty() {
+        let empty = commands
+            .spawn((
+                Text::new("(empty)"),
+                TextFont {
+                    font_size: 18.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.5, 0.5, 0.5)),
+            ))
+            .id();
+        commands.entity(section).add_child(empty);
+    } else {
+        for (slot, artifact_id) in &equipped {
+            if let Some(def) = registry.get(*artifact_id) {
+                let sell_price = (def.price + 1) / 2;
+                let row = commands.spawn(artifact_row(&def.name, sell_price, *slot)).id();
+                commands.entity(section).add_child(row);
+            }
+        }
+    }
+}
 
 pub fn spawn_shop(
     mut commands: Commands,
     wave_state: Res<WaveState>,
     money: Res<PlayerMoney>,
+    offerings: Res<ShopOfferings>,
+    artifacts: Res<PlayerArtifacts>,
+    registry: Res<ArtifactRegistry>,
 ) {
-    commands.spawn((
-        Name::new("ShopRoot"),
-        ShopRoot,
-        DespawnOnExit(WavePhase::Shop),
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-        children![
-            (
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    align_items: AlignItems::Center,
-                    padding: UiRect::all(Val::Px(40.0)),
+    let shop_section = commands
+        .spawn((
+            ShopSection,
+            Node {
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Stretch,
+                padding: UiRect::all(Val::Px(16.0)),
+                width: Val::Px(400.0),
+                margin: UiRect::bottom(Val::Px(16.0)),
+                ..default()
+            },
+            BackgroundColor(SECTION_BG),
+        ))
+        .id();
+    build_shop_section(
+        &mut commands,
+        shop_section,
+        &offerings.0,
+        money.0,
+        &artifacts,
+        &registry,
+    );
+
+    let artifact_section = commands
+        .spawn((
+            ArtifactSection,
+            Node {
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Stretch,
+                padding: UiRect::all(Val::Px(16.0)),
+                width: Val::Px(400.0),
+                margin: UiRect::bottom(Val::Px(20.0)),
+                ..default()
+            },
+            BackgroundColor(SECTION_BG),
+        ))
+        .id();
+    build_artifact_section(&mut commands, artifact_section, &artifacts, &registry);
+
+    let header = commands
+        .spawn((
+            Text(format!("Wave {} Complete!", wave_state.current_wave)),
+            TextFont {
+                font_size: 48.0,
+                ..default()
+            },
+            TextColor(TEXT_COLOR),
+            Node {
+                margin: UiRect::bottom(Val::Px(20.0)),
+                ..default()
+            },
+        ))
+        .id();
+
+    let money_text = commands
+        .spawn((
+            MoneyText,
+            Text(format!("Total: {} coins", money.0)),
+            TextFont {
+                font_size: 28.0,
+                ..default()
+            },
+            TextColor(GOLD_COLOR),
+            Node {
+                margin: UiRect::bottom(Val::Px(20.0)),
+                ..default()
+            },
+        ))
+        .id();
+
+    let next_wave_btn = commands
+        .spawn((
+            Button,
+            NextWaveButton,
+            Node {
+                width: Val::Px(200.0),
+                height: Val::Px(60.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(NORMAL_BUTTON),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new("Next Wave"),
+                TextFont {
+                    font_size: 28.0,
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.1, 0.1, 0.2, 0.95)),
-                children![
-                    (
-                        Text(format!("Wave {} Complete!", wave_state.current_wave)),
-                        TextFont {
-                            font_size: 48.0,
-                            ..default()
-                        },
-                        TextColor(TEXT_COLOR),
-                        Node {
-                            margin: UiRect::bottom(Val::Px(30.0)),
-                            ..default()
-                        }
-                    ),
-                    (
-                        Text(format!("Total: {} coins", money.0)),
-                        TextFont {
-                            font_size: 28.0,
-                            ..default()
-                        },
-                        TextColor(Color::srgb(1.0, 0.84, 0.0)),
-                        Node {
-                            margin: UiRect::bottom(Val::Px(40.0)),
-                            ..default()
-                        }
-                    ),
-                    (
-                        Button,
-                        ShopButton,
-                        Node {
-                            width: Val::Px(200.0),
-                            height: Val::Px(60.0),
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-                            ..default()
-                        },
-                        BackgroundColor(NORMAL_BUTTON),
-                        children![(
-                            Text::new("Next Wave"),
-                            TextFont {
-                                font_size: 28.0,
-                                ..default()
-                            },
-                            TextColor(TEXT_COLOR)
-                        )]
-                    ),
-                ]
-            )
-        ],
-    ));
+                TextColor(TEXT_COLOR),
+            ));
+        })
+        .id();
+
+    let panel = commands
+        .spawn((
+            Node {
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                padding: UiRect::all(Val::Px(40.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.1, 0.1, 0.2, 0.95)),
+        ))
+        .add_children(&[header, money_text, shop_section, artifact_section, next_wave_btn])
+        .id();
+
+    commands
+        .spawn((
+            Name::new("ShopRoot"),
+            ShopRoot,
+            DespawnOnExit(WavePhase::Shop),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+        ))
+        .add_children(&[panel]);
 }
 
-pub fn shop_button_system(
+pub fn buy_system(
+    interaction_query: Query<(&Interaction, &BuyButton), Changed<Interaction>>,
+    mut money: ResMut<PlayerMoney>,
+    mut artifacts: ResMut<PlayerArtifacts>,
+    mut offerings: ResMut<ShopOfferings>,
+    registry: Res<ArtifactRegistry>,
+) {
+    for (interaction, buy_btn) in &interaction_query {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        if buy_btn.index >= offerings.0.len() {
+            continue;
+        }
+        let artifact_id = offerings.0[buy_btn.index];
+        let Some(def) = registry.get(artifact_id) else {
+            continue;
+        };
+        if money.0 >= def.price && !artifacts.is_full() {
+            money.0 -= def.price;
+            artifacts.buy(artifact_id);
+            offerings.0.remove(buy_btn.index);
+        }
+    }
+}
+
+pub fn sell_system(
+    interaction_query: Query<(&Interaction, &SellButton), Changed<Interaction>>,
+    mut money: ResMut<PlayerMoney>,
+    mut artifacts: ResMut<PlayerArtifacts>,
+    registry: Res<ArtifactRegistry>,
+) {
+    for (interaction, sell_btn) in &interaction_query {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+        if let Some(artifact_id) = artifacts.sell(sell_btn.slot) {
+            if let Some(def) = registry.get(artifact_id) {
+                money.0 += (def.price + 1) / 2;
+            }
+        }
+    }
+}
+
+pub fn update_shop_on_change(
+    mut commands: Commands,
+    mut money_text: Query<&mut Text, With<MoneyText>>,
+    shop_section: Query<Entity, With<ShopSection>>,
+    artifact_section: Query<Entity, With<ArtifactSection>>,
+    money: Res<PlayerMoney>,
+    artifacts: Res<PlayerArtifacts>,
+    offerings: Res<ShopOfferings>,
+    registry: Res<ArtifactRegistry>,
+) {
+    if !money.is_changed() && !artifacts.is_changed() && !offerings.is_changed() {
+        return;
+    }
+
+    for mut text in &mut money_text {
+        text.0 = format!("Total: {} coins", money.0);
+    }
+
+    for entity in &shop_section {
+        commands.entity(entity).despawn_children();
+        build_shop_section(
+            &mut commands,
+            entity,
+            &offerings.0,
+            money.0,
+            &artifacts,
+            &registry,
+        );
+    }
+
+    for entity in &artifact_section {
+        commands.entity(entity).despawn_children();
+        build_artifact_section(&mut commands, entity, &artifacts, &registry);
+    }
+}
+
+pub fn next_wave_system(
     mut interaction_query: Query<
         (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<ShopButton>),
+        (Changed<Interaction>, With<NextWaveButton>),
     >,
     mut next_phase: ResMut<NextState<WavePhase>>,
 ) {
@@ -105,6 +447,32 @@ pub fn shop_button_system(
             }
             Interaction::Hovered => *color = HOVERED_BUTTON.into(),
             Interaction::None => *color = NORMAL_BUTTON.into(),
+        }
+    }
+}
+
+pub fn update_button_colors(
+    mut buy_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (With<BuyButton>, Without<NextWaveButton>, Without<SellButton>),
+    >,
+    mut sell_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (With<SellButton>, Without<NextWaveButton>, Without<BuyButton>),
+    >,
+) {
+    for (interaction, mut color) in &mut buy_query {
+        match interaction {
+            Interaction::Hovered => *color = HOVERED_BUTTON.into(),
+            Interaction::None => *color = NORMAL_BUTTON.into(),
+            _ => {}
+        }
+    }
+    for (interaction, mut color) in &mut sell_query {
+        match interaction {
+            Interaction::Hovered => *color = HOVERED_BUTTON.into(),
+            Interaction::None => *color = NORMAL_BUTTON.into(),
+            _ => {}
         }
     }
 }

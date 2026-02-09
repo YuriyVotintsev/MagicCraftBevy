@@ -1,3 +1,4 @@
+mod artifacts;
 mod blueprints;
 mod arena;
 mod common;
@@ -20,6 +21,7 @@ pub use movement::MovementLocked;
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
+use artifacts::ArtifactPlugin;
 use blueprints::BlueprintPlugin;
 use arena::ArenaPlugin;
 use common::CommonPlugin;
@@ -164,6 +166,7 @@ fn main() {
             PlayerPlugin,
             StatsPlugin,
             BlueprintPlugin,
+            ArtifactPlugin,
             UiPlugin,
             WavePlugin,
         ))

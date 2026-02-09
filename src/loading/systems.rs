@@ -1,11 +1,12 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
+use crate::artifacts::{ArtifactDef, ArtifactRegistry, AvailableArtifacts};
 use crate::blueprints::BlueprintRegistry;
 use crate::player::AvailableHeroes;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
-use super::assets::{BlueprintDefAsset, StatsConfigAsset};
+use super::assets::{ArtifactDefAsset, BlueprintDefAsset, StatsConfigAsset};
 
 #[derive(Resource, Default)]
 pub struct LoadingState {
@@ -14,6 +15,7 @@ pub struct LoadingState {
     pub heroes_folder: Option<Handle<LoadedFolder>>,
     pub abilities_folder: Option<Handle<LoadedFolder>>,
     pub mobs_folder: Option<Handle<LoadedFolder>>,
+    pub artifacts_folder: Option<Handle<LoadedFolder>>,
 }
 
 #[derive(Default, PartialEq, Clone, Copy)]
@@ -124,6 +126,7 @@ pub fn check_stats_loaded(
     loading_state.heroes_folder = Some(asset_server.load_folder("heroes"));
     loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
     loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
+    loading_state.artifacts_folder = Some(asset_server.load_folder("artifacts"));
 
     loading_state.phase = LoadingPhase::WaitingForContent;
     info!("Loading content assets...");
@@ -134,9 +137,11 @@ pub fn check_content_loaded(
     mut loading_state: ResMut<LoadingState>,
     asset_server: Res<AssetServer>,
     blueprint_assets: Res<Assets<BlueprintDefAsset>>,
+    artifact_assets: Res<Assets<ArtifactDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
     mut blueprint_registry: ResMut<BlueprintRegistry>,
+    mut artifact_registry: ResMut<ArtifactRegistry>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForContent {
         return;
@@ -155,8 +160,16 @@ pub fn check_content_loaded(
     let Some(mobs_folder_handle) = &loading_state.mobs_folder else {
         return;
     };
+    let Some(artifacts_folder_handle) = &loading_state.artifacts_folder else {
+        return;
+    };
 
-    for handle in [heroes_folder_handle, abilities_folder_handle, mobs_folder_handle] {
+    for handle in [
+        heroes_folder_handle,
+        abilities_folder_handle,
+        mobs_folder_handle,
+        artifacts_folder_handle,
+    ] {
         if !matches!(
             asset_server.get_load_state(handle.id()),
             Some(LoadState::Loaded)
@@ -194,6 +207,24 @@ pub fn check_content_loaded(
             }
         }
     }
+
+    let mut artifact_ids = Vec::new();
+    if let Some(folder) = folders.get(artifacts_folder_handle.id()) {
+        for handle in &folder.handles {
+            let typed_handle: Handle<ArtifactDefAsset> = handle.clone().typed();
+            if let Some(artifact_asset) = artifact_assets.get(typed_handle.id()) {
+                let raw = &artifact_asset.0;
+                let def = ArtifactDef {
+                    name: raw.name.clone(),
+                    price: raw.price,
+                };
+                info!("Registered artifact: {}", raw.id);
+                let id = artifact_registry.register(&raw.id, def);
+                artifact_ids.push(id);
+            }
+        }
+    }
+    commands.insert_resource(AvailableArtifacts(artifact_ids));
 
     loading_state.phase = LoadingPhase::Finalizing;
 }

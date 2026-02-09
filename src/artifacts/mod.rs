@@ -1,0 +1,134 @@
+use std::collections::HashMap;
+
+use bevy::prelude::*;
+use rand::prelude::*;
+
+use crate::wave::WavePhase;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub struct ArtifactId(pub u32);
+
+impl From<u32> for ArtifactId {
+    fn from(v: u32) -> Self {
+        Self(v)
+    }
+}
+
+impl From<ArtifactId> for u32 {
+    fn from(id: ArtifactId) -> Self {
+        id.0
+    }
+}
+
+pub struct ArtifactDef {
+    pub name: String,
+    pub price: u32,
+}
+
+#[derive(serde::Deserialize)]
+pub struct ArtifactDefRaw {
+    pub id: String,
+    pub name: String,
+    pub price: u32,
+}
+
+#[derive(Resource, Default)]
+pub struct ArtifactRegistry {
+    artifacts: Vec<ArtifactDef>,
+    name_to_id: HashMap<String, ArtifactId>,
+}
+
+impl ArtifactRegistry {
+    pub fn register(&mut self, id_str: &str, def: ArtifactDef) -> ArtifactId {
+        let id = ArtifactId(self.artifacts.len() as u32);
+        self.name_to_id.insert(id_str.to_string(), id);
+        self.artifacts.push(def);
+        id
+    }
+
+    pub fn get(&self, id: ArtifactId) -> Option<&ArtifactDef> {
+        self.artifacts.get(id.0 as usize)
+    }
+
+    pub fn get_id(&self, name: &str) -> Option<ArtifactId> {
+        self.name_to_id.get(name).copied()
+    }
+
+    pub fn all_ids(&self) -> Vec<ArtifactId> {
+        (0..self.artifacts.len() as u32).map(ArtifactId).collect()
+    }
+}
+
+#[derive(Resource)]
+pub struct PlayerArtifacts {
+    pub slots: Vec<Option<ArtifactId>>,
+    pub max_slots: usize,
+}
+
+impl Default for PlayerArtifacts {
+    fn default() -> Self {
+        Self {
+            max_slots: 5,
+            slots: vec![None; 5],
+        }
+    }
+}
+
+impl PlayerArtifacts {
+    pub fn buy(&mut self, id: ArtifactId) -> bool {
+        if let Some(slot) = self.slots.iter_mut().find(|s| s.is_none()) {
+            *slot = Some(id);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn sell(&mut self, slot_index: usize) -> Option<ArtifactId> {
+        if slot_index < self.slots.len() {
+            self.slots[slot_index].take()
+        } else {
+            None
+        }
+    }
+
+    pub fn is_full(&self) -> bool {
+        self.slots.iter().all(|s| s.is_some())
+    }
+
+    pub fn equipped(&self) -> Vec<(usize, ArtifactId)> {
+        self.slots
+            .iter()
+            .enumerate()
+            .filter_map(|(i, s)| s.map(|id| (i, id)))
+            .collect()
+    }
+}
+
+#[derive(Resource, Default)]
+pub struct ShopOfferings(pub Vec<ArtifactId>);
+
+#[derive(Resource, Default)]
+pub struct AvailableArtifacts(pub Vec<ArtifactId>);
+
+fn generate_shop_offerings(
+    mut offerings: ResMut<ShopOfferings>,
+    available: Res<AvailableArtifacts>,
+) {
+    let mut rng = rand::rng();
+    let mut ids = available.0.clone();
+    ids.shuffle(&mut rng);
+    offerings.0 = ids.into_iter().take(3).collect();
+}
+
+pub struct ArtifactPlugin;
+
+impl Plugin for ArtifactPlugin {
+    fn build(&self, app: &mut App) {
+        app.init_resource::<ArtifactRegistry>()
+            .init_resource::<PlayerArtifacts>()
+            .init_resource::<ShopOfferings>()
+            .init_resource::<AvailableArtifacts>()
+            .add_systems(OnEnter(WavePhase::ShopDelay), generate_shop_offerings);
+    }
+}

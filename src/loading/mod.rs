@@ -4,7 +4,10 @@ mod systems;
 use bevy::prelude::*;
 
 use crate::GameState;
-use assets::{BlueprintDefAsset, BlueprintDefLoader, StatsConfigAsset, StatsConfigLoader};
+use assets::{
+    ArtifactDefAsset, ArtifactDefLoader, BlueprintDefAsset, BlueprintDefLoader, StatsConfigAsset,
+    StatsConfigLoader,
+};
 use systems::LoadingState;
 
 pub struct LoadingPlugin;
@@ -13,8 +16,10 @@ impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<StatsConfigAsset>()
             .init_asset::<BlueprintDefAsset>()
+            .init_asset::<ArtifactDefAsset>()
             .register_asset_loader(StatsConfigLoader)
             .register_asset_loader(BlueprintDefLoader)
+            .register_asset_loader(ArtifactDefLoader)
             .init_resource::<LoadingState>()
             .add_systems(OnEnter(GameState::Loading), systems::start_loading)
             .add_systems(
