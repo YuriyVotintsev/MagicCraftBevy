@@ -9,7 +9,15 @@
             Collider((shape: Circle)),
             Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
             OnCollision((entities: [
-                (components: [DamagePayload((amount: "stat(physical_damage)"))])
+                (components: [DamagePayload((amount: "stat(physical_damage)"))]),
+                (components: [
+                    Size((value: "160.0")),
+                    Sprite((color: (1.0, 0.6, 0.1, 0.5), shape: Circle)),
+                    Lifetime((remaining: "0.3")),
+                    OnArea((size: "160.0", entities: [
+                        (components: [DamagePayload((amount: "stat(physical_damage) * 0.5"))])
+                    ]))
+                ])
             ]))
         ])
     ]

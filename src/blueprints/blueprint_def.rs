@@ -8,12 +8,15 @@ use crate::stats::StatRegistry;
 pub struct BlueprintDefRaw {
     pub id: String,
     #[serde(default)]
+    pub name: Option<String>,
+    #[serde(default)]
     pub cooldown: Option<ScalarExprRaw>,
     pub entities: Vec<EntityDefRaw>,
 }
 
 #[derive(Debug, Clone)]
 pub struct BlueprintDef {
+    pub name: Option<String>,
     pub cooldown: ScalarExpr,
     pub entities: Vec<EntityDef>,
 }
@@ -21,6 +24,7 @@ pub struct BlueprintDef {
 impl BlueprintDefRaw {
     pub fn resolve(&self, stat_registry: &StatRegistry) -> BlueprintDef {
         BlueprintDef {
+            name: self.name.clone(),
             cooldown: self.cooldown.as_ref()
                 .map(|c| c.resolve(stat_registry))
                 .unwrap_or(ScalarExpr::Literal(f32::INFINITY)),

@@ -37,6 +37,19 @@ pub struct BlueprintRegistry {
     id_to_name: Vec<String>,
 }
 
+fn format_id_as_name(id: &str) -> String {
+    id.split('_')
+        .map(|word| {
+            let mut chars: Vec<char> = word.chars().collect();
+            if let Some(first) = chars.first_mut() {
+                *first = first.to_ascii_uppercase();
+            }
+            chars.into_iter().collect::<String>()
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 impl BlueprintRegistry {
     pub fn register(&mut self, name: &str, blueprint: super::blueprint_def::BlueprintDef) -> BlueprintId {
         let id = BlueprintId(self.blueprints.len() as u32);
@@ -54,7 +67,14 @@ impl BlueprintRegistry {
         self.name_to_id.get(name).copied()
     }
 
-    pub fn get_name(&self, id: BlueprintId) -> Option<&str> {
-        self.id_to_name.get(id.0 as usize).map(|s| s.as_str())
+    pub fn get_display_name(&self, id: BlueprintId) -> String {
+        if let Some(bp) = self.blueprints.get(id.0 as usize) {
+            if let Some(name) = &bp.name {
+                return name.clone();
+            }
+        }
+        self.id_to_name.get(id.0 as usize)
+            .map(|s| format_id_as_name(s))
+            .unwrap_or_else(|| format!("Blueprint {:?}", id))
     }
 }

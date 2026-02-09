@@ -18,19 +18,6 @@ const SELECTED_BUTTON: Color = Color::srgb(0.2, 0.5, 0.2);
 const SELECTED_HOVERED_BUTTON: Color = Color::srgb(0.25, 0.6, 0.25);
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 
-fn format_hero_name(name: &str) -> String {
-    name.split('_')
-        .map(|word| {
-            let mut chars: Vec<char> = word.chars().collect();
-            if let Some(first) = chars.first_mut() {
-                *first = first.to_ascii_uppercase();
-            }
-            chars.into_iter().collect::<String>()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
 pub fn spawn_hero_selection(
     mut commands: Commands,
     available_heroes: Res<AvailableHeroes>,
@@ -93,9 +80,7 @@ pub fn spawn_hero_selection(
     commands.entity(container).add_child(row);
 
     for &hero_id in &available_heroes.0 {
-        let display_name = blueprint_registry.get_name(hero_id)
-            .map(format_hero_name)
-            .unwrap_or_else(|| format!("Hero {:?}", hero_id));
+        let display_name = blueprint_registry.get_display_name(hero_id);
 
         let button = commands.spawn((
             Button,

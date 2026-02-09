@@ -154,7 +154,7 @@ fn spawn_spell_button(
     blueprint_registry: &BlueprintRegistry,
 ) -> Entity {
     let blueprint_id = blueprint_registry.get_id(ability_name).unwrap_or_default();
-    let display_name = format_ability_name(ability_name);
+    let display_name = blueprint_registry.get_display_name(blueprint_id);
 
     let button = commands.spawn((
         Button,
@@ -185,19 +185,6 @@ fn spawn_spell_button(
     commands.entity(button).add_child(text);
 
     button
-}
-
-fn format_ability_name(name: &str) -> String {
-    name.split('_')
-        .map(|word| {
-            let mut chars: Vec<char> = word.chars().collect();
-            if let Some(first) = chars.first_mut() {
-                *first = first.to_ascii_uppercase();
-            }
-            chars.into_iter().collect::<String>()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
 }
 
 pub fn spell_button_system(
