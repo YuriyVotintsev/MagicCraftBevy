@@ -1,3 +1,4 @@
+mod artifact_panel;
 mod damage_numbers;
 mod game_over;
 mod hero_selection;
@@ -54,18 +55,27 @@ impl Plugin for UiPlugin {
                 Update,
                 game_over::game_over_button_system.run_if(in_state(GameState::GameOver)),
             )
-            .add_systems(OnEnter(GameState::Playing), hud::spawn_hud)
+            .add_systems(
+                OnEnter(GameState::Playing),
+                (hud::spawn_hud, artifact_panel::spawn_artifact_panel),
+            )
             .add_systems(
                 Update,
-                hud::update_hud
-                    .after(GameSet::Damage)
+                (
+                    hud::update_hud.after(GameSet::Damage),
+                    artifact_panel::rebuild_artifact_panel,
+                )
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnEnter(WavePhase::Shop), shop::spawn_shop)
             .add_systems(
                 Update,
                 (
-                    (shop::buy_system, shop::sell_system),
+                    (
+                        shop::buy_system,
+                        artifact_panel::handle_artifact_slot_click,
+                        artifact_panel::handle_panel_sell_click,
+                    ),
                     shop::update_shop_on_change,
                 )
                     .chain()
@@ -73,8 +83,16 @@ impl Plugin for UiPlugin {
             )
             .add_systems(
                 Update,
-                (shop::next_wave_system, shop::update_button_colors)
+                (
+                    shop::next_wave_system,
+                    shop::update_button_colors,
+                    artifact_panel::update_panel_button_colors,
+                )
                     .run_if(in_state(WavePhase::Shop)),
+            )
+            .add_systems(
+                OnExit(WavePhase::Shop),
+                artifact_panel::clear_artifact_selection,
             )
             .add_systems(
                 Update,

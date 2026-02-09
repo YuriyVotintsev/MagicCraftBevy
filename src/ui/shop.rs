@@ -16,18 +16,10 @@ pub struct BuyButton {
 }
 
 #[derive(Component)]
-pub struct SellButton {
-    pub slot: usize,
-}
-
-#[derive(Component)]
 pub struct MoneyText;
 
 #[derive(Component)]
 pub struct ShopSection;
-
-#[derive(Component)]
-pub struct ArtifactSection;
 
 const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
@@ -99,53 +91,6 @@ fn shop_row(name: &str, price: u32, index: usize, can_buy: bool) -> impl Bundle 
     )
 }
 
-fn artifact_row(name: &str, sell_price: u32, slot: usize) -> impl Bundle {
-    (
-        Node {
-            flex_direction: FlexDirection::Row,
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::SpaceBetween,
-            width: Val::Percent(100.0),
-            margin: UiRect::bottom(Val::Px(6.0)),
-            ..default()
-        },
-        children![
-            (
-                Text::new(name),
-                TextFont {
-                    font_size: 20.0,
-                    ..default()
-                },
-                TextColor(TEXT_COLOR),
-                Node {
-                    margin: UiRect::right(Val::Px(20.0)),
-                    ..default()
-                },
-            ),
-            (
-                Button,
-                SellButton { slot },
-                Node {
-                    width: Val::Px(90.0),
-                    height: Val::Px(36.0),
-                    justify_content: JustifyContent::Center,
-                    align_items: AlignItems::Center,
-                    ..default()
-                },
-                BackgroundColor(NORMAL_BUTTON),
-                children![(
-                    Text(format!("Sell {}g", sell_price)),
-                    TextFont {
-                        font_size: 18.0,
-                        ..default()
-                    },
-                    TextColor(TEXT_COLOR)
-                )]
-            )
-        ],
-    )
-}
-
 fn build_shop_section(
     commands: &mut Commands,
     section: Entity,
@@ -174,46 +119,6 @@ fn build_shop_section(
             if let Some(def) = registry.get(artifact_id) {
                 let can_buy = money >= def.price && !artifacts.is_full();
                 let row = commands.spawn(shop_row(&def.name, def.price, i, can_buy)).id();
-                commands.entity(section).add_child(row);
-            }
-        }
-    }
-}
-
-fn build_artifact_section(
-    commands: &mut Commands,
-    section: Entity,
-    artifacts: &PlayerArtifacts,
-    registry: &ArtifactRegistry,
-) {
-    let equipped = artifacts.equipped();
-
-    let header = commands
-        .spawn(section_header(&format!(
-            "ARTIFACTS ({}/{})",
-            equipped.len(),
-            artifacts.max_slots
-        )))
-        .id();
-    commands.entity(section).add_child(header);
-
-    if equipped.is_empty() {
-        let empty = commands
-            .spawn((
-                Text::new("(empty)"),
-                TextFont {
-                    font_size: 18.0,
-                    ..default()
-                },
-                TextColor(Color::srgb(0.5, 0.5, 0.5)),
-            ))
-            .id();
-        commands.entity(section).add_child(empty);
-    } else {
-        for (slot, artifact_id) in &equipped {
-            if let Some(def) = registry.get(*artifact_id) {
-                let sell_price = (def.price + 1) / 2;
-                let row = commands.spawn(artifact_row(&def.name, sell_price, *slot)).id();
                 commands.entity(section).add_child(row);
             }
         }
@@ -250,22 +155,6 @@ pub fn spawn_shop(
         &artifacts,
         &registry,
     );
-
-    let artifact_section = commands
-        .spawn((
-            ArtifactSection,
-            Node {
-                flex_direction: FlexDirection::Column,
-                align_items: AlignItems::Stretch,
-                padding: UiRect::all(Val::Px(16.0)),
-                width: Val::Px(400.0),
-                margin: UiRect::bottom(Val::Px(20.0)),
-                ..default()
-            },
-            BackgroundColor(SECTION_BG),
-        ))
-        .id();
-    build_artifact_section(&mut commands, artifact_section, &artifacts, &registry);
 
     let header = commands
         .spawn((
@@ -333,7 +222,7 @@ pub fn spawn_shop(
             },
             BackgroundColor(Color::srgba(0.1, 0.1, 0.2, 0.95)),
         ))
-        .add_children(&[header, money_text, shop_section, artifact_section, next_wave_btn])
+        .add_children(&[header, money_text, shop_section, next_wave_btn])
         .id();
 
     commands
@@ -378,29 +267,10 @@ pub fn buy_system(
     }
 }
 
-pub fn sell_system(
-    interaction_query: Query<(&Interaction, &SellButton), Changed<Interaction>>,
-    mut money: ResMut<PlayerMoney>,
-    mut artifacts: ResMut<PlayerArtifacts>,
-    registry: Res<ArtifactRegistry>,
-) {
-    for (interaction, sell_btn) in &interaction_query {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
-        if let Some(artifact_id) = artifacts.sell(sell_btn.slot) {
-            if let Some(def) = registry.get(artifact_id) {
-                money.0 += (def.price + 1) / 2;
-            }
-        }
-    }
-}
-
 pub fn update_shop_on_change(
     mut commands: Commands,
     mut money_text: Query<&mut Text, With<MoneyText>>,
     shop_section: Query<Entity, With<ShopSection>>,
-    artifact_section: Query<Entity, With<ArtifactSection>>,
     money: Res<PlayerMoney>,
     artifacts: Res<PlayerArtifacts>,
     offerings: Res<ShopOfferings>,
@@ -424,11 +294,6 @@ pub fn update_shop_on_change(
             &artifacts,
             &registry,
         );
-    }
-
-    for entity in &artifact_section {
-        commands.entity(entity).despawn_children();
-        build_artifact_section(&mut commands, entity, &artifacts, &registry);
     }
 }
 
@@ -454,21 +319,10 @@ pub fn next_wave_system(
 pub fn update_button_colors(
     mut buy_query: Query<
         (&Interaction, &mut BackgroundColor),
-        (With<BuyButton>, Without<NextWaveButton>, Without<SellButton>),
-    >,
-    mut sell_query: Query<
-        (&Interaction, &mut BackgroundColor),
-        (With<SellButton>, Without<NextWaveButton>, Without<BuyButton>),
+        (With<BuyButton>, Without<NextWaveButton>),
     >,
 ) {
     for (interaction, mut color) in &mut buy_query {
-        match interaction {
-            Interaction::Hovered => *color = HOVERED_BUTTON.into(),
-            Interaction::None => *color = NORMAL_BUTTON.into(),
-            _ => {}
-        }
-    }
-    for (interaction, mut color) in &mut sell_query {
         match interaction {
             Interaction::Hovered => *color = HOVERED_BUTTON.into(),
             Interaction::None => *color = NORMAL_BUTTON.into(),
