@@ -29,8 +29,8 @@ fn init_collider(
 ) {
     for (entity, collider, faction) in &query {
         let avian_collider = match collider.shape {
-            Shape::Circle => AvianCollider::circle(1.0),
-            Shape::Rectangle => AvianCollider::rectangle(2.0, 2.0),
+            Shape::Circle => AvianCollider::circle(0.5),
+            Shape::Rectangle => AvianCollider::rectangle(1.0, 1.0),
         };
 
         if collider.sensor {

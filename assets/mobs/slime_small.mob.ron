@@ -9,10 +9,10 @@
             },
             abilities: ["melee_attack"],
             components: [
-                Size((value: "25.0")),
+                Size((value: "50.0")),
                 Visual((children: [
                     (components: [
-                        Sprite((color: (1.0, 1.0, 1.0, 1.0), position: Some("vec2(0, 0)"), image: Some("images/sprites/Slime_Green.png"))),
+                        Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Slime_Green.png"))),
                         WalkAnimation(()),
                     ]),
                 ])),

@@ -7,7 +7,7 @@ use bevy::prelude::*;
 use crate::Faction;
 use crate::GameState;
 use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
-use crate::blueprints::components::ComponentDef;
+
 use crate::blueprints::spawn::EntitySpawner;
 use crate::schedule::PostGameSet;
 use crate::stats::{DeathEvent, death_system};
@@ -61,18 +61,7 @@ fn spawn_player(
         return;
     };
 
-    let mut entity_def = base_entity_def.clone();
-    for comp in &mut entity_def.components {
-        if let ComponentDef::Visual(ref mut visual_def) = comp {
-            for child in &mut visual_def.children {
-                for child_comp in &mut child.components {
-                    if let ComponentDef::Sprite(ref mut sprite_def) = child_comp {
-                        sprite_def.color = class.color;
-                    }
-                }
-            }
-        }
-    }
+    let entity_def = base_entity_def.clone();
 
     let modifier_tuples: Vec<_> = class.modifiers.iter().map(|m| (m.stat, m.value)).collect();
     let entity = spawner.spawn_root(&entity_def, Faction::Player, &modifier_tuples);

@@ -5,7 +5,7 @@
         (components: [
             FollowCaster(()),
             Lifetime((remaining: "0.5")),
-            Size((value: "200.0")),
+            Size((value: "400.0")),
             Sprite((color: (0.3, 0.5, 1.0, 0.3), shape: Circle)),
             DestroyEnemyProjectiles((size: "200.0")),
         ])

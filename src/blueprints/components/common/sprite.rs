@@ -2,6 +2,22 @@ use bevy::prelude::{Sprite as BevySprite, *};
 use magic_craft_macros::blueprint_component;
 use serde::Deserialize;
 
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(from = "(f32, f32, f32, f32)")]
+pub struct SpriteColor(pub f32, pub f32, pub f32, pub f32);
+
+impl Default for SpriteColor {
+    fn default() -> Self {
+        Self(1.0, 1.0, 1.0, 1.0)
+    }
+}
+
+impl From<(f32, f32, f32, f32)> for SpriteColor {
+    fn from(t: (f32, f32, f32, f32)) -> Self {
+        Self(t.0, t.1, t.2, t.3)
+    }
+}
+
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
 pub enum SpriteShape {
     #[default]
@@ -12,7 +28,8 @@ pub enum SpriteShape {
 
 #[blueprint_component]
 pub struct Sprite {
-    pub color: (f32, f32, f32, f32),
+    #[raw(default = SpriteColor::default())]
+    pub color: SpriteColor,
     #[raw(default = SpriteShape::Square)]
     pub shape: SpriteShape,
     #[default_expr("source.position")]
@@ -50,7 +67,7 @@ fn init_sprite(
                 BevySprite {
                     image: asset_server.load(image_path.clone()),
                     color,
-                    custom_size: Some(Vec2::splat(2.0)),
+                    custom_size: Some(Vec2::splat(1.0)),
                     ..default()
                 },
                 transform,
@@ -61,7 +78,7 @@ fn init_sprite(
                     commands.entity(entity).insert((
                         BevySprite {
                             color,
-                            custom_size: Some(Vec2::splat(2.0)),
+                            custom_size: Some(Vec2::splat(1.0)),
                             ..default()
                         },
                         transform,
@@ -82,7 +99,7 @@ fn init_sprite(
 struct CircleMeshHandle(Handle<Mesh>);
 
 fn setup_circle_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    let mesh = meshes.add(Circle::new(1.0));
+    let mesh = meshes.add(Circle::new(0.5));
     commands.insert_resource(CircleMeshHandle(mesh));
 }
 
@@ -107,7 +124,7 @@ fn spawn_circle_visuals(
 struct TriangleMeshHandle(Handle<Mesh>);
 
 fn setup_triangle_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    let mesh = meshes.add(RegularPolygon::new(1.0, 3));
+    let mesh = meshes.add(RegularPolygon::new(0.5, 3));
     commands.insert_resource(TriangleMeshHandle(mesh));
 }
 
