@@ -9,7 +9,7 @@
             },
             abilities: ["melee_attack"],
             components: [
-                Size((value: "120.0")),
+                Size((value: "192.0")),
                 Visual((children: [
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Skeleton_1.png"))),
