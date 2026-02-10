@@ -10,7 +10,12 @@
             abilities: ["archer_shot"],
             components: [
                 Size((value: "60.0")),
-                Sprite((color: (0.8, 0.3, 0.3, 1.0), shape: Triangle)),
+                Visual((children: [
+                    (components: [
+                        Sprite((color: (1.0, 1.0, 1.0, 1.0), position: Some("vec2(0, 0)"), image: Some("images/sprites/Goblin_Archer.png"))),
+                        WalkAnimation(()),
+                    ]),
+                ])),
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody(()),
                 Health(()),

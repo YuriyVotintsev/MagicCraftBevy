@@ -10,7 +10,12 @@
             abilities: ["melee_attack"],
             components: [
                 Size((value: "70.0")),
-                Sprite((color: (0.2, 0.7, 0.5, 1.0), shape: Circle)),
+                Visual((children: [
+                    (components: [
+                        Sprite((color: (1.0, 1.0, 1.0, 1.0), position: Some("vec2(0, 0)"), image: Some("images/sprites/Slime_Blue.png"))),
+                        WalkAnimation(()),
+                    ]),
+                ])),
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody(()),
                 Health(()),

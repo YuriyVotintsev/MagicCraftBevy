@@ -63,8 +63,14 @@ fn spawn_player(
 
     let mut entity_def = base_entity_def.clone();
     for comp in &mut entity_def.components {
-        if let ComponentDef::Sprite(ref mut def) = comp {
-            def.color = class.color;
+        if let ComponentDef::Visual(ref mut visual_def) = comp {
+            for child in &mut visual_def.children {
+                for child_comp in &mut child.components {
+                    if let ComponentDef::Sprite(ref mut sprite_def) = child_comp {
+                        sprite_def.color = class.color;
+                    }
+                }
+            }
         }
     }
 

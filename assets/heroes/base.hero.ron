@@ -15,7 +15,12 @@
             },
             components: [
                 Size((value: "50.0")),
-                Sprite((color: (1.0, 1.0, 1.0, 1.0))),
+                Visual((children: [
+                    (components: [
+                        Sprite((color: (1.0, 1.0, 1.0, 1.0), position: Some("vec2(0, 0)"), image: Some("images/sprites/Mage.png"))),
+                        WalkAnimation(()),
+                    ]),
+                ])),
                 Collider((shape: Rectangle, sensor: Some(false))),
                 DynamicBody(()),
                 Health(()),

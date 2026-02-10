@@ -23,6 +23,8 @@ collect_components!(
             health,
             dynamic_body,
             spawn_ability,
+            visual,
+            walk_animation,
         ],
         mob: [
             move_toward,
