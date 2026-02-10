@@ -25,6 +25,7 @@ collect_components!(
             spawn_ability,
             visual,
             walk_animation,
+            shadow,
         ],
         mob: [
             move_toward,

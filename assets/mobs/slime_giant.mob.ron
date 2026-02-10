@@ -11,6 +11,7 @@
             components: [
                 Size((value: "320.0")),
                 Visual((children: [
+                    (components: [Shadow(())]),
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Slime_Melt_Green.png"))),
                         WalkAnimation(()),
