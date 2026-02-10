@@ -1,7 +1,7 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
-use crate::artifacts::{ArtifactDef, ArtifactRegistry, AvailableArtifacts};
+use crate::artifacts::{ArtifactDef, ArtifactModifier, ArtifactRegistry, AvailableArtifacts};
 use crate::blueprints::BlueprintRegistry;
 use crate::player::hero_class::{AvailableHeroes, HeroClass, HeroClassModifier};
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
@@ -240,9 +240,19 @@ pub fn check_content_loaded(
             let typed_handle: Handle<ArtifactDefAsset> = handle.clone().typed();
             if let Some(artifact_asset) = artifact_assets.get(typed_handle.id()) {
                 let raw = &artifact_asset.0;
+                let modifiers: Vec<_> = raw.modifiers.iter()
+                    .filter_map(|(name, &value)| {
+                        stat_registry.get(name).map(|stat| ArtifactModifier {
+                            stat,
+                            value,
+                            name: name.clone(),
+                        })
+                    })
+                    .collect();
                 let def = ArtifactDef {
                     name: raw.name.clone(),
                     price: raw.price,
+                    modifiers,
                 };
                 info!("Registered artifact: {}", raw.id);
                 let id = artifact_registry.register(&raw.id, def);

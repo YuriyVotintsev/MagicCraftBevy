@@ -1,4 +1,5 @@
 mod artifact_panel;
+mod artifact_tooltip;
 mod damage_numbers;
 mod game_over;
 mod hero_selection;
@@ -100,6 +101,7 @@ impl Plugin for UiPlugin {
                 (
                     damage_numbers::spawn_damage_numbers,
                     damage_numbers::update_damage_numbers,
+                    artifact_tooltip::update_artifact_tooltip,
                 )
                     .run_if(in_state(GameState::Playing)),
             );

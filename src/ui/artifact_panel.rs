@@ -1,8 +1,11 @@
 use bevy::prelude::*;
 
-use crate::artifacts::{ArtifactRegistry, PlayerArtifacts};
+use crate::artifacts::{Artifact, ArtifactRegistry, PlayerArtifacts};
 use crate::game_state::GameState;
 use crate::money::PlayerMoney;
+use crate::player::Player;
+use crate::stats::Modifiers;
+use crate::ui::artifact_tooltip::ArtifactTooltipTarget;
 use crate::wave::WavePhase;
 
 #[derive(Resource, Default)]
@@ -58,6 +61,7 @@ pub fn rebuild_artifact_panel(
     panel_query: Query<Entity, With<ArtifactPanel>>,
     artifacts: Res<PlayerArtifacts>,
     registry: Res<ArtifactRegistry>,
+    artifact_query: Query<&Artifact>,
     selected: Res<SelectedArtifactSlot>,
     wave_phase: Option<Res<State<WavePhase>>>,
 ) {
@@ -86,8 +90,11 @@ pub fn rebuild_artifact_panel(
         .as_ref()
         .map_or(false, |p| **p == WavePhase::Shop);
 
-    for (slot, artifact_id) in &equipped {
-        let Some(def) = registry.get(*artifact_id) else {
+    for (slot, artifact_entity) in &equipped {
+        let Ok(artifact) = artifact_query.get(*artifact_entity) else {
+            continue;
+        };
+        let Some(def) = registry.get(artifact.0) else {
             continue;
         };
 
@@ -98,6 +105,7 @@ pub fn rebuild_artifact_panel(
             let mut row = commands.spawn((
                 Button,
                 ArtifactPanelSlot { slot: *slot },
+                ArtifactTooltipTarget(artifact.0),
                 Node {
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
@@ -150,6 +158,8 @@ pub fn rebuild_artifact_panel(
         } else {
             let row = commands
                 .spawn((
+                    Interaction::default(),
+                    ArtifactTooltipTarget(artifact.0),
                     Node {
                         padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
                         ..default()
@@ -186,20 +196,29 @@ pub fn handle_artifact_slot_click(
 }
 
 pub fn handle_panel_sell_click(
+    mut commands: Commands,
     interaction_query: Query<(&Interaction, &ArtifactPanelSellButton), Changed<Interaction>>,
     mut money: ResMut<PlayerMoney>,
     mut artifacts: ResMut<PlayerArtifacts>,
     mut selected: ResMut<SelectedArtifactSlot>,
     registry: Res<ArtifactRegistry>,
+    artifact_query: Query<&Artifact>,
+    mut player_query: Query<&mut Modifiers, With<Player>>,
 ) {
     for (interaction, sell_btn) in &interaction_query {
         if *interaction != Interaction::Pressed {
             continue;
         }
-        if let Some(artifact_id) = artifacts.sell(sell_btn.slot) {
-            if let Some(def) = registry.get(artifact_id) {
-                money.0 += (def.price + 1) / 2;
+        if let Some(artifact_entity) = artifacts.sell(sell_btn.slot) {
+            if let Ok(artifact) = artifact_query.get(artifact_entity) {
+                if let Some(def) = registry.get(artifact.0) {
+                    money.0 += (def.price + 1) / 2;
+                }
             }
+            for mut modifiers in &mut player_query {
+                modifiers.remove_by_source(artifact_entity);
+            }
+            commands.entity(artifact_entity).despawn();
         }
         selected.0 = None;
     }

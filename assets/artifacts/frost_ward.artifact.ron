@@ -1,1 +1,1 @@
-(id: "frost_ward", name: "Frost Ward", price: 6)
+(id: "frost_ward", name: "Frost Ward", price: 6, modifiers: {"max_life_base": 20, "max_life_increased": 0.05})

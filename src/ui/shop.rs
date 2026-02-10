@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
-use crate::artifacts::{ArtifactId, ArtifactRegistry, PlayerArtifacts, ShopOfferings};
+use crate::artifacts::{Artifact, ArtifactId, ArtifactRegistry, PlayerArtifacts, ShopOfferings};
 use crate::money::PlayerMoney;
+use crate::player::Player;
+use crate::stats::Modifiers;
+use crate::ui::artifact_tooltip::ArtifactTooltipTarget;
 use crate::wave::{WavePhase, WaveState};
 
 #[derive(Component)]
@@ -44,8 +47,10 @@ fn section_header(label: &str) -> impl Bundle {
     )
 }
 
-fn shop_row(name: &str, price: u32, index: usize, can_buy: bool) -> impl Bundle {
+fn shop_row(name: &str, price: u32, index: usize, can_buy: bool, artifact_id: ArtifactId) -> impl Bundle {
     (
+        Interaction::default(),
+        ArtifactTooltipTarget(artifact_id),
         Node {
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
@@ -94,10 +99,11 @@ fn shop_row(name: &str, price: u32, index: usize, can_buy: bool) -> impl Bundle 
 fn build_shop_section(
     commands: &mut Commands,
     section: Entity,
-    offerings: &[ArtifactId],
+    offerings: &[Entity],
     money: u32,
     artifacts: &PlayerArtifacts,
     registry: &ArtifactRegistry,
+    artifact_query: &Query<&Artifact>,
 ) {
     let header = commands.spawn(section_header("SHOP")).id();
     commands.entity(section).add_child(header);
@@ -115,10 +121,13 @@ fn build_shop_section(
             .id();
         commands.entity(section).add_child(empty);
     } else {
-        for (i, &artifact_id) in offerings.iter().enumerate() {
-            if let Some(def) = registry.get(artifact_id) {
+        for (i, &artifact_entity) in offerings.iter().enumerate() {
+            let Ok(artifact) = artifact_query.get(artifact_entity) else {
+                continue;
+            };
+            if let Some(def) = registry.get(artifact.0) {
                 let can_buy = money >= def.price && !artifacts.is_full();
-                let row = commands.spawn(shop_row(&def.name, def.price, i, can_buy)).id();
+                let row = commands.spawn(shop_row(&def.name, def.price, i, can_buy, artifact.0)).id();
                 commands.entity(section).add_child(row);
             }
         }
@@ -132,6 +141,7 @@ pub fn spawn_shop(
     offerings: Res<ShopOfferings>,
     artifacts: Res<PlayerArtifacts>,
     registry: Res<ArtifactRegistry>,
+    artifact_query: Query<&Artifact>,
 ) {
     let shop_section = commands
         .spawn((
@@ -154,6 +164,7 @@ pub fn spawn_shop(
         money.0,
         &artifacts,
         &registry,
+        &artifact_query,
     );
 
     let header = commands
@@ -247,6 +258,8 @@ pub fn buy_system(
     mut artifacts: ResMut<PlayerArtifacts>,
     mut offerings: ResMut<ShopOfferings>,
     registry: Res<ArtifactRegistry>,
+    artifact_query: Query<&Artifact>,
+    mut player_query: Query<&mut Modifiers, With<Player>>,
 ) {
     for (interaction, buy_btn) in &interaction_query {
         if *interaction != Interaction::Pressed {
@@ -255,14 +268,22 @@ pub fn buy_system(
         if buy_btn.index >= offerings.0.len() {
             continue;
         }
-        let artifact_id = offerings.0[buy_btn.index];
-        let Some(def) = registry.get(artifact_id) else {
+        let artifact_entity = offerings.0[buy_btn.index];
+        let Ok(artifact) = artifact_query.get(artifact_entity) else {
+            continue;
+        };
+        let Some(def) = registry.get(artifact.0) else {
             continue;
         };
         if money.0 >= def.price && !artifacts.is_full() {
             money.0 -= def.price;
-            artifacts.buy(artifact_id);
+            artifacts.buy(artifact_entity);
             offerings.0.remove(buy_btn.index);
+            for mut modifiers in &mut player_query {
+                for m in &def.modifiers {
+                    modifiers.add(m.stat, m.value, Some(artifact_entity));
+                }
+            }
         }
     }
 }
@@ -275,6 +296,7 @@ pub fn update_shop_on_change(
     artifacts: Res<PlayerArtifacts>,
     offerings: Res<ShopOfferings>,
     registry: Res<ArtifactRegistry>,
+    artifact_query: Query<&Artifact>,
 ) {
     if !money.is_changed() && !artifacts.is_changed() && !offerings.is_changed() {
         return;
@@ -293,6 +315,7 @@ pub fn update_shop_on_change(
             money.0,
             &artifacts,
             &registry,
+            &artifact_query,
         );
     }
 }

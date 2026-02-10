@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use rand::prelude::*;
 
+use crate::stats::StatId;
 use crate::wave::WavePhase;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
@@ -20,9 +21,19 @@ impl From<ArtifactId> for u32 {
     }
 }
 
+#[derive(Component)]
+pub struct Artifact(pub ArtifactId);
+
+pub struct ArtifactModifier {
+    pub stat: StatId,
+    pub value: f32,
+    pub name: String,
+}
+
 pub struct ArtifactDef {
     pub name: String,
     pub price: u32,
+    pub modifiers: Vec<ArtifactModifier>,
 }
 
 #[derive(serde::Deserialize)]
@@ -30,6 +41,8 @@ pub struct ArtifactDefRaw {
     pub id: String,
     pub name: String,
     pub price: u32,
+    #[serde(default)]
+    pub modifiers: HashMap<String, f32>,
 }
 
 #[derive(Resource, Default)]
@@ -61,7 +74,7 @@ impl ArtifactRegistry {
 
 #[derive(Resource)]
 pub struct PlayerArtifacts {
-    pub slots: Vec<Option<ArtifactId>>,
+    pub slots: Vec<Option<Entity>>,
     pub max_slots: usize,
 }
 
@@ -75,16 +88,16 @@ impl Default for PlayerArtifacts {
 }
 
 impl PlayerArtifacts {
-    pub fn buy(&mut self, id: ArtifactId) -> bool {
+    pub fn buy(&mut self, entity: Entity) -> bool {
         if let Some(slot) = self.slots.iter_mut().find(|s| s.is_none()) {
-            *slot = Some(id);
+            *slot = Some(entity);
             true
         } else {
             false
         }
     }
 
-    pub fn sell(&mut self, slot_index: usize) -> Option<ArtifactId> {
+    pub fn sell(&mut self, slot_index: usize) -> Option<Entity> {
         if slot_index < self.slots.len() {
             self.slots[slot_index].take()
         } else {
@@ -96,29 +109,38 @@ impl PlayerArtifacts {
         self.slots.iter().all(|s| s.is_some())
     }
 
-    pub fn equipped(&self) -> Vec<(usize, ArtifactId)> {
+    pub fn equipped(&self) -> Vec<(usize, Entity)> {
         self.slots
             .iter()
             .enumerate()
-            .filter_map(|(i, s)| s.map(|id| (i, id)))
+            .filter_map(|(i, s)| s.map(|e| (i, e)))
             .collect()
     }
 }
 
 #[derive(Resource, Default)]
-pub struct ShopOfferings(pub Vec<ArtifactId>);
+pub struct ShopOfferings(pub Vec<Entity>);
 
 #[derive(Resource, Default)]
 pub struct AvailableArtifacts(pub Vec<ArtifactId>);
 
 fn generate_shop_offerings(
+    mut commands: Commands,
     mut offerings: ResMut<ShopOfferings>,
     available: Res<AvailableArtifacts>,
 ) {
+    for entity in offerings.0.drain(..) {
+        commands.entity(entity).despawn();
+    }
+
     let mut rng = rand::rng();
     let mut ids = available.0.clone();
     ids.shuffle(&mut rng);
-    offerings.0 = ids.into_iter().take(3).collect();
+    offerings.0 = ids
+        .into_iter()
+        .take(3)
+        .map(|id| commands.spawn(Artifact(id)).id())
+        .collect();
 }
 
 pub struct ArtifactPlugin;

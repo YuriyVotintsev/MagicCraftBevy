@@ -1,1 +1,1 @@
-(id: "steel_gauntlets", name: "Steel Gauntlets", price: 4)
+(id: "steel_gauntlets", name: "Steel Gauntlets", price: 4, modifiers: {"strength_base": 3, "physical_damage_base": 5})
