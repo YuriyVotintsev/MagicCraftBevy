@@ -14,7 +14,7 @@
                 "crit_multiplier_base": 1.5,
             },
             components: [
-                Size((value: "100.0")),
+                Size((value: "200.0")),
                 Visual((children: [
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Mage.png"))),

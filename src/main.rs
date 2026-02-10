@@ -18,6 +18,17 @@ pub use faction::Faction;
 pub use game_state::GameState;
 pub use movement::MovementLocked;
 
+fn disable_physics_debug(mut store: ResMut<GizmoConfigStore>) {
+    store.config_mut::<PhysicsGizmos>().0.enabled = false;
+}
+
+fn toggle_physics_debug(key: Res<ButtonInput<KeyCode>>, mut store: ResMut<GizmoConfigStore>) {
+    if key.just_pressed(KeyCode::Backquote) {
+        let config = &mut store.config_mut::<PhysicsGizmos>().0;
+        config.enabled = !config.enabled;
+    }
+}
+
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
@@ -160,6 +171,11 @@ fn main() {
         )
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
+            PhysicsDebugPlugin::default(),
+        ))
+        .add_systems(Startup, disable_physics_debug)
+        .add_systems(Update, toggle_physics_debug)
+        .add_plugins((
             LoadingPlugin,
             CommonPlugin,
             ArenaPlugin,
