@@ -19,7 +19,7 @@
                     (components: [Shadow(())]),
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Mage.png"))),
-                        WalkAnimation(()),
+                        JumpWalkAnimation(()),
                     ]),
                 ])),
                 Collider((shape: Rectangle, sensor: Some(false))),

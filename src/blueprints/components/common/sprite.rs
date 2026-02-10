@@ -34,6 +34,8 @@ pub struct Sprite {
     pub shape: SpriteShape,
     #[default_expr("source.position")]
     pub position: VecExpr,
+    #[raw(default = 1.0)]
+    pub scale: ScalarExpr,
     #[raw(default = None)]
     pub image: Option<String>,
 }
@@ -61,13 +63,14 @@ fn init_sprite(
     for (entity, sprite) in &query {
         let color = Color::srgba(sprite.color.0, sprite.color.1, sprite.color.2, sprite.color.3);
         let transform = Transform::from_translation(sprite.position.extend(0.0));
+        let size = Vec2::splat(sprite.scale);
 
         if let Some(ref image_path) = sprite.image {
             commands.entity(entity).insert((
                 BevySprite {
                     image: asset_server.load(image_path.clone()),
                     color,
-                    custom_size: Some(Vec2::splat(1.0)),
+                    custom_size: Some(size),
                     ..default()
                 },
                 transform,
@@ -78,7 +81,7 @@ fn init_sprite(
                     commands.entity(entity).insert((
                         BevySprite {
                             color,
-                            custom_size: Some(Vec2::splat(1.0)),
+                            custom_size: Some(size),
                             ..default()
                         },
                         transform,

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 #[blueprint_component]
-pub struct WalkAnimation {
+pub struct JumpWalkAnimation {
     #[raw(default = 0.15)]
     pub bounce_height: ScalarExpr,
     #[raw(default = 10.0)]
@@ -13,28 +13,28 @@ pub struct WalkAnimation {
 }
 
 #[derive(Component, Default)]
-pub struct WalkAnimationState {
+pub struct JumpWalkAnimationState {
     pub phase: f32,
     pub amplitude: f32,
 }
 
 pub fn register_systems(app: &mut App) {
-    app.add_systems(PostUpdate, (init_walk_animation, walk_animation_system));
+    app.add_systems(PostUpdate, (init, animate));
 }
 
-fn init_walk_animation(mut commands: Commands, query: Query<Entity, Added<WalkAnimation>>) {
+fn init(mut commands: Commands, query: Query<Entity, Added<JumpWalkAnimation>>) {
     for entity in &query {
         commands
             .entity(entity)
-            .insert(WalkAnimationState::default());
+            .insert(JumpWalkAnimationState::default());
     }
 }
 
-fn walk_animation_system(
+pub fn animate(
     time: Res<Time>,
     mut query: Query<(
-        &WalkAnimation,
-        &mut WalkAnimationState,
+        &JumpWalkAnimation,
+        &mut JumpWalkAnimationState,
         &mut Transform,
         &ChildOf,
     )>,
@@ -59,8 +59,8 @@ fn walk_animation_system(
 
         let y = state.phase.sin().abs() * anim.bounce_height * state.amplitude;
         let tilt = state.phase.cos() * anim.max_tilt.to_radians() * state.amplitude;
-
         transform.translation.y = y;
         transform.rotation = Quat::from_rotation_z(tilt);
+        transform.scale = Vec3::ONE;
     }
 }

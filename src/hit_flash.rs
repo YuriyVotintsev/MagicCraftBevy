@@ -1,5 +1,8 @@
 use bevy::prelude::*;
 
+use crate::blueprints::components::common::jump_walk_animation::animate as jump_animate;
+use crate::blueprints::components::common::squish_walk_animation::animate as squish_animate;
+
 #[derive(Component)]
 pub struct HitFlash {
     elapsed: f32,
@@ -19,7 +22,12 @@ pub struct HitFlashPlugin;
 
 impl Plugin for HitFlashPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PostUpdate, tick_hit_flash);
+        app.add_systems(
+            PostUpdate,
+            tick_hit_flash
+                .after(jump_animate)
+                .after(squish_animate),
+        );
     }
 }
 
@@ -35,18 +43,17 @@ fn tick_hit_flash(
 
         let done = t >= 1.0;
 
-        let brightness = 6.0_f32.lerp(1.0, t);
-        let scale_x = 0.7_f32.lerp(1.0, t);
-        let scale_y = 1.3_f32.lerp(1.0, t);
-
         for child in children.iter() {
             if let Ok((mut sprite, mut transform)) = sprite_query.get_mut(child) {
                 if done {
                     sprite.color = Color::WHITE;
-                    transform.scale = Vec3::ONE;
                 } else {
+                    let brightness = 6.0_f32.lerp(1.0, t);
+                    let scale_x = 0.7_f32.lerp(1.0, t);
+                    let scale_y = 1.3_f32.lerp(1.0, t);
                     sprite.color = Color::srgb(brightness, brightness, brightness);
-                    transform.scale = Vec3::new(scale_x, scale_y, 1.0);
+                    transform.scale.x *= scale_x;
+                    transform.scale.y *= scale_y;
                 }
             }
         }

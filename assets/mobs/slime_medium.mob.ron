@@ -3,7 +3,7 @@
     entities: [
         (
             base_stats: {
-                "movement_speed_base": 160.0,
+                "movement_speed_base": 320.0,
                 "max_life_base": 30.0,
                 "physical_damage_base": 7.0,
             },
@@ -14,7 +14,7 @@
                     (components: [Shadow(())]),
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Slime_LightGreen.png"))),
-                        WalkAnimation(()),
+                        SquishWalkAnimation(()),
                     ]),
                 ])),
                 Collider((shape: Circle, sensor: Some(false))),

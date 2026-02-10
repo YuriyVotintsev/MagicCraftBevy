@@ -14,7 +14,7 @@
                     (components: [Shadow(())]),
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Goblin_Archer.png"))),
-                        WalkAnimation(()),
+                        JumpWalkAnimation(()),
                     ]),
                 ])),
                 Collider((shape: Circle, sensor: Some(false))),

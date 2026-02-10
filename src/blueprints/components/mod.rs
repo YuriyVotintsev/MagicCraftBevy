@@ -24,7 +24,8 @@ collect_components!(
             dynamic_body,
             spawn_ability,
             visual,
-            walk_animation,
+            jump_walk_animation,
+            squish_walk_animation,
             shadow,
         ],
         mob: [
