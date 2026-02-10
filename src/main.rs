@@ -4,6 +4,7 @@ mod arena;
 mod common;
 mod faction;
 mod game_state;
+mod hit_flash;
 mod loading;
 mod money;
 mod movement;
@@ -36,6 +37,7 @@ use artifacts::ArtifactPlugin;
 use blueprints::BlueprintPlugin;
 use arena::ArenaPlugin;
 use common::CommonPlugin;
+use hit_flash::HitFlashPlugin;
 use loading::LoadingPlugin;
 use player::PlayerPlugin;
 use schedule::{GameSet, PostGameSet};
@@ -183,6 +185,7 @@ fn main() {
             StatsPlugin,
             BlueprintPlugin,
             ArtifactPlugin,
+            HitFlashPlugin,
             UiPlugin,
             WavePlugin,
         ))

@@ -18,6 +18,7 @@ pub use modifiers::Modifiers;
 pub use pending_damage::PendingDamage;
 
 use crate::blueprints::components::common::health::Health;
+use crate::hit_flash::HitFlash;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::Faction;
 use crate::GameState;
@@ -90,6 +91,7 @@ fn apply_pending_damage(
 
         if let Ok(mut entity_commands) = commands.get_entity(entity) {
             entity_commands.remove::<PendingDamage>();
+            entity_commands.insert(HitFlash::new());
         }
     }
 }
