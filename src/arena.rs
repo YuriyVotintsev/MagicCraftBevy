@@ -15,9 +15,12 @@ use crate::wave::{WaveEnemy, WavePhase, WaveState};
 pub const WINDOW_WIDTH: f32 = 1920.0;
 #[cfg(not(feature = "headless"))]
 pub const WINDOW_HEIGHT: f32 = 1080.0;
-pub const ARENA_WIDTH: f32 = 1920.0;
-pub const ARENA_HEIGHT: f32 = 1080.0;
-pub const BORDER_THICKNESS: f32 = 10.0;
+pub const ARENA_WIDTH: f32 = 3840.0;
+pub const ARENA_HEIGHT: f32 = 2160.0;
+
+const ARENA_HALF_W: f32 = 1708.0;
+const ARENA_HALF_H: f32 = 750.0;
+const ARENA_CORNER_R: f32 = 320.0;
 
 const MARKER_SIZE: f32 = 30.0;
 const MARKER_DURATION: f32 = 2.0;
@@ -56,89 +59,64 @@ fn cleanup_spawn_markers(mut commands: Commands, markers: Query<Entity, With<Spa
 }
 
 fn setup_camera(mut commands: Commands) {
+    commands.insert_resource(ClearColor(Color::BLACK));
     commands.spawn((
         Name::new("MainCamera"),
         Camera2d,
         Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical {
-                viewport_height: ARENA_HEIGHT,
+                viewport_height: 1080.0,
             },
             ..OrthographicProjection::default_2d()
         }),
     ));
 }
 
-fn spawn_arena(mut commands: Commands) {
-    let half_width = ARENA_WIDTH / 2.0;
-    let half_height = ARENA_HEIGHT / 2.0;
-    let border_color = Color::srgb(0.8, 0.8, 0.8);
+fn spawn_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
+    commands.spawn((
+        Name::new("Background"),
+        Sprite {
+            image: asset_server.load("images/sprites/Background.png"),
+            custom_size: Some(Vec2::new(ARENA_WIDTH, ARENA_HEIGHT)),
+            ..default()
+        },
+        Transform::from_xyz(0.0, 0.0, -10.0),
+    ));
+
+    let half_w = ARENA_HALF_W;
+    let half_h = ARENA_HALF_H;
+    let r = ARENA_CORNER_R;
+    let segments = 8_u32;
+
+    let ix = half_w - r;
+    let iy = half_h - r;
+    let corners = [
+        (ix, iy, 0.0_f32, 90.0_f32),
+        (-ix, iy, 90.0, 180.0),
+        (-ix, -iy, 180.0, 270.0),
+        (ix, -iy, 270.0, 360.0),
+    ];
+
+    let mut vertices = Vec::new();
+    for (cx, cy, start, end) in corners {
+        for i in 0..=segments {
+            let t = i as f32 / segments as f32;
+            let angle = (start + t * (end - start)).to_radians();
+            vertices.push(Vec2::new(cx + r * angle.cos(), cy + r * angle.sin()));
+        }
+    }
+
+    let n = vertices.len() as u32;
+    let indices: Vec<[u32; 2]> = (0..n).map(|i| [i, (i + 1) % n]).collect();
 
     let wall_layers = CollisionLayers::new(GameLayer::Wall, LayerMask::ALL);
 
     commands.spawn((
-        Name::new("Wall_Top"),
+        Name::new("ArenaWall"),
         Wall,
-        Sprite {
-            color: border_color,
-            custom_size: Some(Vec2::new(
-                ARENA_WIDTH + BORDER_THICKNESS * 2.0,
-                BORDER_THICKNESS,
-            )),
-            ..default()
-        },
-        Transform::from_xyz(0.0, half_height + BORDER_THICKNESS / 2.0, 0.0),
-        Collider::rectangle(ARENA_WIDTH + BORDER_THICKNESS * 2.0, BORDER_THICKNESS),
-        RigidBody::Static,
-        wall_layers,
-    ));
-
-    commands.spawn((
-        Name::new("Wall_Bottom"),
-        Wall,
-        Sprite {
-            color: border_color,
-            custom_size: Some(Vec2::new(
-                ARENA_WIDTH + BORDER_THICKNESS * 2.0,
-                BORDER_THICKNESS,
-            )),
-            ..default()
-        },
-        Transform::from_xyz(0.0, -half_height - BORDER_THICKNESS / 2.0, 0.0),
-        Collider::rectangle(ARENA_WIDTH + BORDER_THICKNESS * 2.0, BORDER_THICKNESS),
-        RigidBody::Static,
-        wall_layers,
-    ));
-
-    commands.spawn((
-        Name::new("Wall_Left"),
-        Wall,
-        Sprite {
-            color: border_color,
-            custom_size: Some(Vec2::new(
-                BORDER_THICKNESS,
-                ARENA_HEIGHT + BORDER_THICKNESS * 2.0,
-            )),
-            ..default()
-        },
-        Transform::from_xyz(-half_width - BORDER_THICKNESS / 2.0, 0.0, 0.0),
-        Collider::rectangle(BORDER_THICKNESS, ARENA_HEIGHT + BORDER_THICKNESS * 2.0),
-        RigidBody::Static,
-        wall_layers,
-    ));
-
-    commands.spawn((
-        Name::new("Wall_Right"),
-        Wall,
-        Sprite {
-            color: border_color,
-            custom_size: Some(Vec2::new(
-                BORDER_THICKNESS,
-                ARENA_HEIGHT + BORDER_THICKNESS * 2.0,
-            )),
-            ..default()
-        },
-        Transform::from_xyz(half_width + BORDER_THICKNESS / 2.0, 0.0, 0.0),
-        Collider::rectangle(BORDER_THICKNESS, ARENA_HEIGHT + BORDER_THICKNESS * 2.0),
+        Transform::default(),
+        Collider::polyline(vertices, Some(indices)),
+        CollisionMargin(5.0),
         RigidBody::Static,
         wall_layers,
     ));
@@ -191,12 +169,18 @@ fn spawn_markers(
     }
 
     let mut rng = rand::rng();
-    let half_width = ARENA_WIDTH / 2.0 - MARKER_SIZE / 2.0;
-    let half_height = ARENA_HEIGHT / 2.0 - MARKER_SIZE / 2.0;
+    let margin = MARKER_SIZE;
+    let hw = ARENA_HALF_W - margin;
+    let hh = ARENA_HALF_H - margin;
 
     for _ in 0..to_spawn {
-        let x = rng.random_range(-half_width..half_width);
-        let y = rng.random_range(-half_height..half_height);
+        let (x, y) = loop {
+            let x = rng.random_range(-hw..hw);
+            let y = rng.random_range(-hh..hh);
+            if is_inside_arena(Vec2::new(x, y), margin) {
+                break (x, y);
+            }
+        };
         let roll = rng.random_range(0..3);
         let blueprint_name = match roll {
             0 => "skeleton",
@@ -238,6 +222,25 @@ fn process_spawn_markers(
             commands.entity(marker_entity).insert((WaveEnemy, DespawnOnExit(WavePhase::Combat)));
         }
     }
+}
+
+fn is_inside_arena(pos: Vec2, margin: f32) -> bool {
+    let hw = ARENA_HALF_W - margin;
+    let hh = ARENA_HALF_H - margin;
+    let r = (ARENA_CORNER_R - margin).max(0.0);
+    let px = pos.x.abs();
+    let py = pos.y.abs();
+    if px > hw || py > hh {
+        return false;
+    }
+    let ix = hw - r;
+    let iy = hh - r;
+    if px > ix && py > iy {
+        let dx = px - ix;
+        let dy = py - iy;
+        return dx * dx + dy * dy <= r * r;
+    }
+    true
 }
 
 fn tag_wave_enemies(
