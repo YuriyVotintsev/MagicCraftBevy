@@ -5,8 +5,9 @@ use bevy::prelude::*;
 
 use crate::GameState;
 use assets::{
-    ArtifactDefAsset, ArtifactDefLoader, BlueprintDefAsset, BlueprintDefLoader,
-    HeroClassAsset, HeroClassLoader, StatsConfigAsset, StatsConfigLoader,
+    AffixPoolAsset, AffixPoolLoader, ArtifactDefAsset, ArtifactDefLoader, BlueprintDefAsset,
+    BlueprintDefLoader, HeroClassAsset, HeroClassLoader, OrbConfigAsset, OrbConfigLoader,
+    StatsConfigAsset, StatsConfigLoader,
 };
 use systems::LoadingState;
 
@@ -18,10 +19,14 @@ impl Plugin for LoadingPlugin {
             .init_asset::<BlueprintDefAsset>()
             .init_asset::<ArtifactDefAsset>()
             .init_asset::<HeroClassAsset>()
+            .init_asset::<AffixPoolAsset>()
+            .init_asset::<OrbConfigAsset>()
             .register_asset_loader(StatsConfigLoader)
             .register_asset_loader(BlueprintDefLoader)
             .register_asset_loader(ArtifactDefLoader)
             .register_asset_loader(HeroClassLoader)
+            .register_asset_loader(AffixPoolLoader)
+            .register_asset_loader(OrbConfigLoader)
             .init_resource::<LoadingState>()
             .add_systems(OnEnter(GameState::Loading), systems::start_loading)
             .add_systems(

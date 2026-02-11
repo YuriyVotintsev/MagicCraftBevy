@@ -1,9 +1,11 @@
 use bevy::prelude::*;
 
+use crate::affixes::{OrbFlowState, OrbRegistry};
 use crate::artifacts::{Artifact, ArtifactId, ArtifactRegistry, PlayerArtifacts, ShopOfferings};
 use crate::money::PlayerMoney;
 use crate::player::Player;
 use crate::stats::Modifiers;
+use crate::ui::affix_shop::{self, OrbSection};
 use crate::ui::artifact_tooltip::ArtifactTooltipTarget;
 use crate::wave::{WavePhase, WaveState};
 
@@ -142,6 +144,8 @@ pub fn spawn_shop(
     artifacts: Res<PlayerArtifacts>,
     registry: Res<ArtifactRegistry>,
     artifact_query: Query<&Artifact>,
+    orb_registry: Res<OrbRegistry>,
+    flow_state: Res<OrbFlowState>,
 ) {
     let shop_section = commands
         .spawn((
@@ -165,6 +169,28 @@ pub fn spawn_shop(
         &artifacts,
         &registry,
         &artifact_query,
+    );
+
+    let orb_section = commands
+        .spawn((
+            OrbSection,
+            Node {
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Stretch,
+                padding: UiRect::all(Val::Px(16.0)),
+                width: Val::Px(400.0),
+                margin: UiRect::bottom(Val::Px(16.0)),
+                ..default()
+            },
+            BackgroundColor(SECTION_BG),
+        ))
+        .id();
+    affix_shop::build_orb_section(
+        &mut commands,
+        orb_section,
+        &orb_registry,
+        money.0,
+        &flow_state,
     );
 
     let header = commands
@@ -233,7 +259,7 @@ pub fn spawn_shop(
             },
             BackgroundColor(Color::srgba(0.1, 0.1, 0.2, 0.95)),
         ))
-        .add_children(&[header, money_text, shop_section, next_wave_btn])
+        .add_children(&[header, money_text, shop_section, orb_section, next_wave_btn])
         .id();
 
     commands
@@ -292,13 +318,20 @@ pub fn update_shop_on_change(
     mut commands: Commands,
     mut money_text: Query<&mut Text, With<MoneyText>>,
     shop_section: Query<Entity, With<ShopSection>>,
+    orb_section_query: Query<Entity, With<OrbSection>>,
     money: Res<PlayerMoney>,
     artifacts: Res<PlayerArtifacts>,
     offerings: Res<ShopOfferings>,
     registry: Res<ArtifactRegistry>,
     artifact_query: Query<&Artifact>,
+    orb_registry: Res<OrbRegistry>,
+    flow_state: Res<OrbFlowState>,
 ) {
-    if !money.is_changed() && !artifacts.is_changed() && !offerings.is_changed() {
+    if !money.is_changed()
+        && !artifacts.is_changed()
+        && !offerings.is_changed()
+        && !flow_state.is_changed()
+    {
         return;
     }
 
@@ -316,6 +349,17 @@ pub fn update_shop_on_change(
             &artifacts,
             &registry,
             &artifact_query,
+        );
+    }
+
+    for entity in &orb_section_query {
+        commands.entity(entity).despawn_children();
+        affix_shop::build_orb_section(
+            &mut commands,
+            entity,
+            &orb_registry,
+            money.0,
+            &flow_state,
         );
     }
 }

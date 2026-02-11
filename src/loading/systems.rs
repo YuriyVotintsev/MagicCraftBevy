@@ -1,12 +1,17 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
+use crate::affixes::{AffixDef, AffixRegistry, OrbDef, OrbRegistry};
 use crate::artifacts::{ArtifactDef, ArtifactModifier, ArtifactRegistry, AvailableArtifacts};
 use crate::blueprints::BlueprintRegistry;
 use crate::player::hero_class::{AvailableHeroes, HeroClass, HeroClassModifier};
+use crate::player::SpellSlot;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
-use super::assets::{ArtifactDefAsset, BlueprintDefAsset, HeroClassAsset, StatsConfigAsset};
+use super::assets::{
+    AffixPoolAsset, ArtifactDefAsset, BlueprintDefAsset, HeroClassAsset, OrbConfigAsset,
+    StatsConfigAsset,
+};
 
 #[derive(Resource, Default)]
 pub struct LoadingState {
@@ -16,6 +21,8 @@ pub struct LoadingState {
     pub abilities_folder: Option<Handle<LoadedFolder>>,
     pub mobs_folder: Option<Handle<LoadedFolder>>,
     pub artifacts_folder: Option<Handle<LoadedFolder>>,
+    pub affixes_folder: Option<Handle<LoadedFolder>>,
+    pub orbs_handle: Option<Handle<OrbConfigAsset>>,
 }
 
 #[derive(Default, PartialEq, Clone, Copy)]
@@ -127,6 +134,8 @@ pub fn check_stats_loaded(
     loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
     loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
     loading_state.artifacts_folder = Some(asset_server.load_folder("artifacts"));
+    loading_state.affixes_folder = Some(asset_server.load_folder("affixes"));
+    loading_state.orbs_handle = Some(asset_server.load("orbs/config.orbs.ron"));
 
     loading_state.phase = LoadingPhase::WaitingForContent;
     info!("Loading content assets...");
@@ -139,10 +148,14 @@ pub fn check_content_loaded(
     blueprint_assets: Res<Assets<BlueprintDefAsset>>,
     hero_class_assets: Res<Assets<HeroClassAsset>>,
     artifact_assets: Res<Assets<ArtifactDefAsset>>,
+    affix_pool_assets: Res<Assets<AffixPoolAsset>>,
+    orb_config_assets: Res<Assets<OrbConfigAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
     mut blueprint_registry: ResMut<BlueprintRegistry>,
     mut artifact_registry: ResMut<ArtifactRegistry>,
+    mut affix_registry: ResMut<AffixRegistry>,
+    mut orb_registry: ResMut<OrbRegistry>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForContent {
         return;
@@ -164,12 +177,19 @@ pub fn check_content_loaded(
     let Some(artifacts_folder_handle) = &loading_state.artifacts_folder else {
         return;
     };
+    let Some(affixes_folder_handle) = &loading_state.affixes_folder else {
+        return;
+    };
+    let Some(orbs_handle) = &loading_state.orbs_handle else {
+        return;
+    };
 
     for handle in [
         heroes_folder_handle,
         abilities_folder_handle,
         mobs_folder_handle,
         artifacts_folder_handle,
+        affixes_folder_handle,
     ] {
         if !matches!(
             asset_server.get_load_state(handle.id()),
@@ -177,6 +197,13 @@ pub fn check_content_loaded(
         ) {
             return;
         }
+    }
+
+    if !matches!(
+        asset_server.get_load_state(orbs_handle.id()),
+        Some(LoadState::Loaded)
+    ) {
+        return;
     }
 
     info!("All content loaded, finalizing...");
@@ -261,6 +288,55 @@ pub fn check_content_loaded(
         }
     }
     commands.insert_resource(AvailableArtifacts(artifact_ids));
+
+    if let Some(folder) = folders.get(affixes_folder_handle.id()) {
+        for handle in &folder.handles {
+            let typed_handle: Handle<AffixPoolAsset> = handle.clone().typed();
+            if let Some(pool_asset) = affix_pool_assets.get(typed_handle.id()) {
+                let path = asset_server
+                    .get_path(handle.id())
+                    .map(|p| p.path().to_string_lossy().to_string())
+                    .unwrap_or_default();
+                let slot = if path.contains("active") {
+                    SpellSlot::Active
+                } else if path.contains("passive") {
+                    SpellSlot::Passive
+                } else if path.contains("defensive") {
+                    SpellSlot::Defensive
+                } else {
+                    warn!("Unknown affix pool file: {}", path);
+                    continue;
+                };
+                for raw in &pool_asset.0 {
+                    if let Some(stat_id) = stat_registry.get(&raw.stat) {
+                        let def = AffixDef {
+                            name: raw.name.clone(),
+                            stat: stat_id,
+                            stat_name: raw.stat.clone(),
+                            tiers: raw.tiers.iter().map(|t| t.value).collect(),
+                        };
+                        let id = affix_registry.register(def, slot);
+                        info!("Registered affix: {} ({:?}) for {:?}", raw.id, id, slot);
+                    } else {
+                        warn!("Affix '{}' references unknown stat '{}'", raw.id, raw.stat);
+                    }
+                }
+            }
+        }
+    }
+
+    if let Some(orb_asset) = orb_config_assets.get(orbs_handle.id()) {
+        for raw in &orb_asset.0 {
+            let def = OrbDef {
+                name: raw.name.clone(),
+                description: raw.description.clone(),
+                price: raw.price,
+                behavior: raw.orb_type,
+            };
+            let id = orb_registry.register(&raw.id, def);
+            info!("Registered orb: {} ({:?})", raw.name, id);
+        }
+    }
 
     loading_state.phase = LoadingPhase::Finalizing;
 }

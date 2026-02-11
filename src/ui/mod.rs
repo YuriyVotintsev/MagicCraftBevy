@@ -1,3 +1,4 @@
+mod affix_shop;
 mod artifact_panel;
 mod artifact_tooltip;
 mod damage_numbers;
@@ -75,10 +76,19 @@ impl Plugin for UiPlugin {
                 (
                     (
                         shop::buy_system,
+                        affix_shop::buy_orb_system,
                         artifact_panel::handle_artifact_slot_click,
                         artifact_panel::handle_panel_sell_click,
                     ),
-                    shop::update_shop_on_change,
+                    (
+                        affix_shop::slot_select_system,
+                        affix_shop::accept_orb_system,
+                        affix_shop::cancel_orb_system,
+                    ),
+                    (
+                        shop::update_shop_on_change,
+                        affix_shop::manage_orb_popup,
+                    ),
                 )
                     .chain()
                     .run_if(in_state(WavePhase::Shop)),
@@ -89,6 +99,7 @@ impl Plugin for UiPlugin {
                     shop::next_wave_system,
                     shop::update_button_colors,
                     artifact_panel::update_panel_button_colors,
+                    affix_shop::update_orb_button_colors,
                 )
                     .run_if(in_state(WavePhase::Shop)),
             )

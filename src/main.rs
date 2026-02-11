@@ -1,3 +1,4 @@
+mod affixes;
 mod artifacts;
 mod blueprints;
 mod arena;
@@ -33,6 +34,7 @@ fn toggle_physics_debug(key: Res<ButtonInput<KeyCode>>, mut store: ResMut<GizmoC
 use avian2d::prelude::*;
 use bevy::prelude::*;
 
+use affixes::AffixPlugin;
 use artifacts::ArtifactPlugin;
 use blueprints::BlueprintPlugin;
 use arena::ArenaPlugin;
@@ -185,6 +187,7 @@ fn main() {
             StatsPlugin,
             BlueprintPlugin,
             ArtifactPlugin,
+            AffixPlugin,
             HitFlashPlugin,
             UiPlugin,
             WavePlugin,
