@@ -20,6 +20,7 @@ serde = { version = "1.0", features = ["derive"] }
 bevy-inspector-egui = "0.36"
 paste = "1.0"
 magic_craft_macros = { path = "magic_craft_macros" }
+bevy_tweening = "0.15"
 
 [profile.dev]
 opt-level = 1

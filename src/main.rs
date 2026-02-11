@@ -45,6 +45,7 @@ use player::PlayerPlugin;
 use schedule::{GameSet, PostGameSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
+use bevy_tweening::TweeningPlugin;
 use wave::{WavePhase, WavePlugin};
 
 #[cfg(not(feature = "headless"))]
@@ -189,6 +190,7 @@ fn main() {
             ArtifactPlugin,
             AffixPlugin,
             HitFlashPlugin,
+            TweeningPlugin,
             UiPlugin,
             WavePlugin,
         ))
