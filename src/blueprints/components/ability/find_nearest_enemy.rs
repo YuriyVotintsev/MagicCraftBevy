@@ -59,8 +59,6 @@ fn find_nearest_enemy_system(
 
         if let Some((target_entity, target_pos)) = target {
             commands.entity(entity).insert(FoundTarget(target_entity, target_pos));
-        } else {
-            commands.entity(entity).despawn();
         }
     }
 }
