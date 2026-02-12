@@ -52,8 +52,6 @@ use wave::{WavePhase, WavePlugin};
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
 #[cfg(not(feature = "headless"))]
 use bevy::window::WindowResolution;
-#[cfg(not(feature = "headless"))]
-use bevy_inspector_egui::{bevy_egui::EguiPlugin, quick::WorldInspectorPlugin};
 #[cfg(feature = "headless")]
 use bevy::window::ExitCondition;
 
@@ -140,8 +138,7 @@ fn main() {
                 ..default()
             }),
             ..default()
-        }))
-        .add_plugins((EguiPlugin::default(), WorldInspectorPlugin::new()));
+        }));
     }
 
     app.init_state::<GameState>()
