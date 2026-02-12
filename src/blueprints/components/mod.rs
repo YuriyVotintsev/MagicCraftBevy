@@ -3,6 +3,9 @@ collect_components!(
         ability: [
             projectile,
             straight,
+            parallel,
+            fan,
+            radial,
             lifetime,
             pierce,
             growing,

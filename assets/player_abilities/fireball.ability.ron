@@ -6,6 +6,7 @@
             count: Some("1 + stat(projectile_count)"),
             components: [
             Projectile(()),
+            Parallel((gap: "60.0")),
             Straight((speed: "800.0 * (1.0 + stat(projectile_speed_increased))")),
             Size((value: "60.0")),
             Collider((shape: Circle)),
