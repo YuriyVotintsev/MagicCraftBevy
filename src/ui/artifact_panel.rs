@@ -125,6 +125,7 @@ pub fn rebuild_artifact_panel(
                     parent.spawn((
                         Button,
                         ArtifactPanelSellButton { slot: *slot },
+                        ArtifactTooltipTarget(artifact.0),
                         Node {
                             padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                             justify_content: JustifyContent::Center,

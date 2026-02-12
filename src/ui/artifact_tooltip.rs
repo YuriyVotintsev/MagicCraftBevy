@@ -49,29 +49,35 @@ fn format_modifier_value(value: f32) -> String {
 
 pub fn update_artifact_tooltip(
     mut commands: Commands,
-    tooltip_targets: Query<(&Interaction, &ArtifactTooltipTarget)>,
+    tooltip_targets: Query<(Entity, &Interaction, &ArtifactTooltipTarget, &UiGlobalTransform, &ComputedNode)>,
     existing_tooltip: Query<Entity, With<ArtifactTooltip>>,
     registry: Res<ArtifactRegistry>,
-    mut last_hovered: Local<Option<ArtifactId>>,
+    mut last_hovered: Local<Option<(ArtifactId, Entity)>>,
 ) {
-    let mut hovered_id = None;
-    for (interaction, target) in &tooltip_targets {
+    let mut hovered = None;
+    let mut hovered_center = Vec2::ZERO;
+    let mut hovered_size = Vec2::ZERO;
+    let mut inv_scale = 1.0_f32;
+    for (entity, interaction, target, gt, cn) in &tooltip_targets {
         if matches!(interaction, Interaction::Hovered | Interaction::Pressed) {
-            hovered_id = Some(target.0);
+            hovered = Some((target.0, entity));
+            hovered_center = gt.translation;
+            hovered_size = cn.size();
+            inv_scale = cn.inverse_scale_factor();
             break;
         }
     }
 
-    if hovered_id == *last_hovered {
+    if hovered == *last_hovered {
         return;
     }
-    *last_hovered = hovered_id;
+    *last_hovered = hovered;
 
     for entity in &existing_tooltip {
         commands.entity(entity).despawn();
     }
 
-    let Some(artifact_id) = hovered_id else {
+    let Some((artifact_id, _)) = hovered else {
         return;
     };
     let Some(def) = registry.get(artifact_id) else {
@@ -81,6 +87,11 @@ pub fn update_artifact_tooltip(
         return;
     }
 
+    const TOOLTIP_WIDTH: f32 = 260.0;
+    let top_left = (hovered_center - hovered_size / 2.0) * inv_scale;
+    let left = (top_left.x - TOOLTIP_WIDTH - 8.0).max(0.0);
+    let top = top_left.y.max(0.0);
+
     let tooltip = commands
         .spawn((
             ArtifactTooltip,
@@ -88,8 +99,8 @@ pub fn update_artifact_tooltip(
             GlobalZIndex(100),
             Node {
                 position_type: PositionType::Absolute,
-                right: Val::Px(200.0),
-                top: Val::Px(10.0),
+                left: Val::Px(left),
+                top: Val::Px(top),
                 flex_direction: FlexDirection::Column,
                 align_items: AlignItems::Start,
                 padding: UiRect::all(Val::Px(12.0)),

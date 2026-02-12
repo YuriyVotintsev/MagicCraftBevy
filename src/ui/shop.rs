@@ -77,6 +77,7 @@ fn shop_row(name: &str, price: u32, index: usize, can_buy: bool, artifact_id: Ar
             (
                 Button,
                 BuyButton { index },
+                ArtifactTooltipTarget(artifact_id),
                 Node {
                     width: Val::Px(70.0),
                     height: Val::Px(36.0),

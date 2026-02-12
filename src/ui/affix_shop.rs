@@ -74,14 +74,18 @@ pub fn build_orb_section(
         let can_buy = money >= def.price && !flow_busy;
 
         let row = commands
-            .spawn(Node {
-                flex_direction: FlexDirection::Row,
-                align_items: AlignItems::Center,
-                justify_content: JustifyContent::SpaceBetween,
-                width: Val::Percent(100.0),
-                margin: UiRect::bottom(Val::Px(6.0)),
-                ..default()
-            })
+            .spawn((
+                Interaction::default(),
+                OrbTooltipTarget(orb_id),
+                Node {
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::SpaceBetween,
+                    width: Val::Percent(100.0),
+                    margin: UiRect::bottom(Val::Px(6.0)),
+                    ..default()
+                },
+            ))
             .with_children(|parent| {
                 parent.spawn((
                     Text(format!("{} - {}g", def.name, def.price)),
@@ -748,34 +752,45 @@ pub fn update_orb_button_colors(
 
 pub fn update_orb_tooltip(
     mut commands: Commands,
-    targets: Query<(&Interaction, &OrbTooltipTarget)>,
+    targets: Query<(Entity, &Interaction, &OrbTooltipTarget, &UiGlobalTransform, &ComputedNode)>,
     existing: Query<Entity, With<OrbTooltip>>,
     orb_registry: Res<OrbRegistry>,
-    mut last_hovered: Local<Option<OrbId>>,
+    mut last_hovered: Local<Option<(OrbId, Entity)>>,
 ) {
-    let mut hovered_id = None;
-    for (interaction, target) in &targets {
+    let mut hovered = None;
+    let mut hovered_center = Vec2::ZERO;
+    let mut hovered_size = Vec2::ZERO;
+    let mut inv_scale = 1.0_f32;
+    for (entity, interaction, target, gt, cn) in &targets {
         if matches!(interaction, Interaction::Hovered | Interaction::Pressed) {
-            hovered_id = Some(target.0);
+            hovered = Some((target.0, entity));
+            hovered_center = gt.translation;
+            hovered_size = cn.size();
+            inv_scale = cn.inverse_scale_factor();
             break;
         }
     }
 
-    if hovered_id == *last_hovered {
+    if hovered == *last_hovered {
         return;
     }
-    *last_hovered = hovered_id;
+    *last_hovered = hovered;
 
     for entity in &existing {
         commands.entity(entity).despawn();
     }
 
-    let Some(orb_id) = hovered_id else {
+    let Some((orb_id, _)) = hovered else {
         return;
     };
     let Some(def) = orb_registry.get(orb_id) else {
         return;
     };
+
+    const TOOLTIP_WIDTH: f32 = 260.0;
+    let top_left = (hovered_center - hovered_size / 2.0) * inv_scale;
+    let left = (top_left.x - TOOLTIP_WIDTH - 8.0).max(0.0);
+    let top = top_left.y.max(0.0);
 
     commands
         .spawn((
@@ -783,11 +798,11 @@ pub fn update_orb_tooltip(
             GlobalZIndex(100),
             Node {
                 position_type: PositionType::Absolute,
-                left: Val::Px(200.0),
-                top: Val::Px(10.0),
+                left: Val::Px(left),
+                top: Val::Px(top),
                 flex_direction: FlexDirection::Column,
                 padding: UiRect::all(Val::Px(12.0)),
-                max_width: Val::Px(260.0),
+                max_width: Val::Px(TOOLTIP_WIDTH),
                 ..default()
             },
             BackgroundColor(Color::srgba(0.06, 0.06, 0.12, 0.95)),
