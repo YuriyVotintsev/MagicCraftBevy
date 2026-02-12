@@ -47,7 +47,7 @@ Ability speed formula: `base_speed * (1.0 + stat(projectile_speed_increased))`.
 | `physical_damage_more` | `Product` | Ability damage (× multiplier) |
 | `movement_speed` | `base * (1+inc)` | Movement, Dash |
 | `projectile_speed_increased` | `Sum` | 5 abilities: FB, CA, FT, GH, OO |
-| `projectile_count` | `Sum` | FB, CA, GH, MT count; OO count (+2) |
+| `projectile_count` | `Sum` (additional) | FB, CA, GH, MT: 1+stat; OO: 3+stat |
 | `crit_chance` | `clamp(base * (1+inc), 0, 1)` | Damage system |
 | `crit_multiplier` | `Sum` | Damage system |
 | **`area_of_effect_increased`** | **`Sum`** | **FB burst, CA cloud, MT impact, OO radius+size, Shield** |
@@ -91,29 +91,29 @@ Damage shorthand: `DMG(base, eff)` = `(base + stat(physical_damage_base) * eff) 
 
 | Ability | Parameter | Before | After |
 |---------|-----------|--------|-------|
-| Fireball | count | (none) | `stat(projectile_count)` |
+| Fireball | count | (none) | `1 + stat(projectile_count)` |
 | Fireball | speed | `stat(projectile_speed) + 100.0` | `800.0 * (1.0 + stat(projectile_speed_increased))` |
 | Fireball | damage | `stat(physical_damage)` | DMG(15) |
 | Fireball | burst damage | `stat(physical_damage) * 0.5` | DMG(7.5, 0.5) |
 | Fireball | burst OnArea.size | `160.0` | `160.0 * (1.0 + stat(area_of_effect_increased))` |
-| Caustic Arrow | count | (none) | `stat(projectile_count)` |
+| Caustic Arrow | count | (none) | `1 + stat(projectile_count)` |
 | Caustic Arrow | speed | `600.0` | `600.0 * (1.0 + stat(projectile_speed_increased))` |
 | Caustic Arrow | DoT damage | `5.0` | DMG(2, 0.15) |
 | Caustic Arrow | cloud Lifetime | `4.0` | `4.0 * (1.0 + stat(duration_increased))` |
 | Caustic Arrow | OnArea.size | `160.0` | `160.0 * (1.0 + stat(area_of_effect_increased))` |
 | Flamethrower | speed | `600.0` | `600.0 * (1.0 + stat(projectile_speed_increased))` |
 | Flamethrower | damage | `1.0` | DMG(0.5, 0.03) |
-| Galv. Hammer | count | (none) | `stat(projectile_count)` |
+| Galv. Hammer | count | (none) | `1 + stat(projectile_count)` |
 | Galv. Hammer | speed | `500.0` | `500.0 * (1.0 + stat(projectile_speed_increased))` |
 | Galv. Hammer | damage | `stat(physical_damage)` | DMG(15) |
-| Meteor | count | (none) | `stat(projectile_count)` |
+| Meteor | count | (none) | `1 + stat(projectile_count)` |
 | Meteor | damage | `stat(physical_damage)` | DMG(50) |
 | Meteor | OnArea.size | `160.0` | `160.0 * (1.0 + stat(area_of_effect_increased))` |
 | Orb. Orbs | radius | `80.0` | `80.0 * (1.0 + stat(area_of_effect_increased))` |
 | Orb. Orbs | size | `40.0` | `40.0 * (1.0 + stat(area_of_effect_increased))` |
 | Orb. Orbs | angular_speed | `stat(movement_speed) / 100.0` | `3.5 * (1.0 + stat(projectile_speed_increased))` |
 | Orb. Orbs | damage | `stat(physical_damage)` | DMG(8, 0.5) |
-| Orb. Orbs | count | `3` | `stat(projectile_count) + 2` |
+| Orb. Orbs | count | `3` | `3 + stat(projectile_count)` |
 | Dash | speed | `1500.0` | `stat(movement_speed) * 4.0` |
 | Shield | size | `400.0` | `400.0 * (1.0 + stat(area_of_effect_increased))` |
 | Shield | destroy radius | `200.0` | `200.0 * (1.0 + stat(area_of_effect_increased))` |

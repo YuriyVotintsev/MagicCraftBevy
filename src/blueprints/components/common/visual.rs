@@ -18,15 +18,6 @@ fn init_visual(
     query: Query<(Entity, &Visual, &SpawnSource, &ComputedStats), Added<Visual>>,
 ) {
     for (parent, visual, source, stats) in &query {
-        let position = source
-            .source
-            .position
-            .or(source.caster.position)
-            .unwrap_or(Vec2::ZERO);
-        commands
-            .entity(parent)
-            .insert(Transform::from_translation(position.extend(0.0)));
-
         for child_def in &visual.children {
             let child = commands.spawn_empty().id();
             for comp in &child_def.components {

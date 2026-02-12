@@ -3,7 +3,7 @@
     cooldown: Some("0.5"),
     entities: [
         (
-            count: Some("stat(projectile_count)"),
+            count: Some("1 + stat(projectile_count)"),
             components: [
             Projectile(()),
             Straight((speed: "600.0 * (1.0 + stat(projectile_speed_increased))")),

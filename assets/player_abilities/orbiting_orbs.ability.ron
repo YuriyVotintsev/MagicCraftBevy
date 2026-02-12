@@ -2,7 +2,7 @@
     id: "orbiting_orbs",
     entities: [
         (
-            count: Some("stat(projectile_count) + 2"),
+            count: Some("3 + stat(projectile_count)"),
             components: [
                 Orbiting((radius: "80.0 * (1.0 + stat(area_of_effect_increased))", angular_speed: "3.5 * (1.0 + stat(projectile_speed_increased))")),
                 Size((value: "40.0 * (1.0 + stat(area_of_effect_increased))")),

@@ -97,6 +97,11 @@ impl EntitySpawner<'_, '_> {
         let default_stats = ComputedStats::new(self.stat_registry.len());
         let stats = owned_stats.as_ref().unwrap_or(&default_stats);
 
+        let position = source.source.position.or(source.caster.position).unwrap_or(Vec2::ZERO);
+        self.commands
+            .entity(entity_id)
+            .insert(Transform::from_translation(position.extend(0.0)));
+
         let base_recalc = insert_components(
             &mut self.commands.entity(entity_id),
             &entity_def.components,
@@ -126,6 +131,11 @@ impl EntitySpawner<'_, '_> {
 
         let (source, owned_stats) = self.init_identity(entity_id, parent_source, entity_def, &[]);
         let stats = owned_stats.as_ref().unwrap_or(caster_stats);
+
+        let position = source.source.position.or(source.caster.position).unwrap_or(Vec2::ZERO);
+        self.commands
+            .entity(entity_id)
+            .insert(Transform::from_translation(position.extend(0.0)));
 
         let base_recalc = insert_components(
             &mut self.commands.entity(entity_id),

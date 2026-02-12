@@ -3,7 +3,7 @@
     cooldown: Some("3.0"),
     entities: [
         (
-            count: Some("stat(projectile_count)"),
+            count: Some("1 + stat(projectile_count)"),
             components: [
             FindNearestEnemy((size: "1400.0")),
             OnFound((entities: [
