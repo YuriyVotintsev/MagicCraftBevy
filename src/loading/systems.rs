@@ -235,7 +235,6 @@ pub fn check_content_loaded(
                         .collect();
                     info!("Registered hero class: {}", raw.id);
                     classes.push(HeroClass {
-                        id: raw.id.clone(),
                         display_name: raw.display_name.clone(),
                         color: raw.color,
                         modifiers,
@@ -282,7 +281,7 @@ pub fn check_content_loaded(
                     modifiers,
                 };
                 info!("Registered artifact: {}", raw.id);
-                let id = artifact_registry.register(&raw.id, def);
+                let id = artifact_registry.register(def);
                 artifact_ids.push(id);
             }
         }
@@ -312,7 +311,6 @@ pub fn check_content_loaded(
                         let def = AffixDef {
                             name: raw.name.clone(),
                             stat: stat_id,
-                            stat_name: raw.stat.clone(),
                             tiers: raw.tiers.iter().map(|t| t.value).collect(),
                         };
                         let id = affix_registry.register(def, slot);

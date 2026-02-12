@@ -22,6 +22,12 @@ const POPUP_BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.85);
 pub struct BuyOrbButton(pub OrbId);
 
 #[derive(Component)]
+pub struct OrbTooltipTarget(pub OrbId);
+
+#[derive(Component)]
+pub struct OrbTooltip;
+
+#[derive(Component)]
 pub struct OrbSection;
 
 #[derive(Component)]
@@ -94,6 +100,7 @@ pub fn build_orb_section(
                     .spawn((
                         Button,
                         BuyOrbButton(orb_id),
+                        OrbTooltipTarget(orb_id),
                         Node {
                             width: Val::Px(70.0),
                             height: Val::Px(36.0),
@@ -737,4 +744,74 @@ pub fn update_orb_button_colors(
             _ => {}
         }
     }
+}
+
+pub fn update_orb_tooltip(
+    mut commands: Commands,
+    targets: Query<(&Interaction, &OrbTooltipTarget)>,
+    existing: Query<Entity, With<OrbTooltip>>,
+    orb_registry: Res<OrbRegistry>,
+    mut last_hovered: Local<Option<OrbId>>,
+) {
+    let mut hovered_id = None;
+    for (interaction, target) in &targets {
+        if matches!(interaction, Interaction::Hovered | Interaction::Pressed) {
+            hovered_id = Some(target.0);
+            break;
+        }
+    }
+
+    if hovered_id == *last_hovered {
+        return;
+    }
+    *last_hovered = hovered_id;
+
+    for entity in &existing {
+        commands.entity(entity).despawn();
+    }
+
+    let Some(orb_id) = hovered_id else {
+        return;
+    };
+    let Some(def) = orb_registry.get(orb_id) else {
+        return;
+    };
+
+    commands
+        .spawn((
+            OrbTooltip,
+            GlobalZIndex(100),
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(200.0),
+                top: Val::Px(10.0),
+                flex_direction: FlexDirection::Column,
+                padding: UiRect::all(Val::Px(12.0)),
+                max_width: Val::Px(260.0),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.06, 0.06, 0.12, 0.95)),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                Text::new(&def.name),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(GOLD_COLOR),
+                Node {
+                    margin: UiRect::bottom(Val::Px(6.0)),
+                    ..default()
+                },
+            ));
+            parent.spawn((
+                Text::new(&def.description),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(TEXT_COLOR),
+            ));
+        });
 }

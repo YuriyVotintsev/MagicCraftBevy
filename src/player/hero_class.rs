@@ -20,7 +20,6 @@ pub struct HeroClassModifier {
 }
 
 pub struct HeroClass {
-    pub id: String,
     pub display_name: String,
     pub color: (f32, f32, f32, f32),
     pub modifiers: Vec<HeroClassModifier>,

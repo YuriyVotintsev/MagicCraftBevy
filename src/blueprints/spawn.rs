@@ -192,22 +192,6 @@ impl EntitySpawner<'_, '_> {
         (source, Some(computed))
     }
 
-    pub fn add_modifiers(&mut self, entity: Entity, modifiers: &[(StatId, f32)]) {
-        let mods: Vec<(StatId, f32)> = modifiers.to_vec();
-        self.commands.entity(entity).queue(move |mut entity: EntityWorldMut| {
-            if let Some(mut m) = entity.get_mut::<Modifiers>() {
-                for &(stat, value) in &mods {
-                    m.add(stat, value, None);
-                }
-            }
-            if let Some(mut dirty) = entity.get_mut::<DirtyStats>() {
-                for &(stat, _) in &mods {
-                    dirty.mark(stat);
-                }
-            }
-        });
-    }
-
     fn spawn_blueprint_entities(&mut self, entity_id: Entity, abilities: &[String], faction: Faction) {
         for name in abilities {
             if let Some(bid) = self.blueprint_registry.get_id(name) {

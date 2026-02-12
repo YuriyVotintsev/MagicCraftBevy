@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 use rand::prelude::*;
 
-use crate::money::PlayerMoney;
 use crate::player::{Player, SpellSlot};
-use crate::stats::{DirtyStats, Modifiers, StatId, StatRegistry};
+use crate::stats::{DirtyStats, Modifiers, StatId};
 use crate::GameState;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -14,7 +13,6 @@ pub struct AffixId(pub u32);
 pub struct AffixDef {
     pub name: String,
     pub stat: StatId,
-    pub stat_name: String,
     pub tiers: Vec<f32>,
 }
 

@@ -48,13 +48,11 @@ pub struct ArtifactDefRaw {
 #[derive(Resource, Default)]
 pub struct ArtifactRegistry {
     artifacts: Vec<ArtifactDef>,
-    name_to_id: HashMap<String, ArtifactId>,
 }
 
 impl ArtifactRegistry {
-    pub fn register(&mut self, id_str: &str, def: ArtifactDef) -> ArtifactId {
+    pub fn register(&mut self, def: ArtifactDef) -> ArtifactId {
         let id = ArtifactId(self.artifacts.len() as u32);
-        self.name_to_id.insert(id_str.to_string(), id);
         self.artifacts.push(def);
         id
     }
@@ -62,26 +60,16 @@ impl ArtifactRegistry {
     pub fn get(&self, id: ArtifactId) -> Option<&ArtifactDef> {
         self.artifacts.get(id.0 as usize)
     }
-
-    pub fn get_id(&self, name: &str) -> Option<ArtifactId> {
-        self.name_to_id.get(name).copied()
-    }
-
-    pub fn all_ids(&self) -> Vec<ArtifactId> {
-        (0..self.artifacts.len() as u32).map(ArtifactId).collect()
-    }
 }
 
 #[derive(Resource)]
 pub struct PlayerArtifacts {
     pub slots: Vec<Option<Entity>>,
-    pub max_slots: usize,
 }
 
 impl Default for PlayerArtifacts {
     fn default() -> Self {
         Self {
-            max_slots: 5,
             slots: vec![None; 5],
         }
     }

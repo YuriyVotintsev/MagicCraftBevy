@@ -113,6 +113,7 @@ impl Plugin for UiPlugin {
                     damage_numbers::spawn_damage_numbers,
                     damage_numbers::update_damage_numbers,
                     artifact_tooltip::update_artifact_tooltip,
+                    affix_shop::update_orb_tooltip,
                 )
                     .run_if(in_state(GameState::Playing)),
             );
