@@ -3,15 +3,11 @@
     entities: [
         (
             base_stats: {
-                "strength_base": 5.0,
                 "max_life_base": 70.0,
-                "max_life_per_strength": 1.5,
                 "movement_speed_base": 350.0,
-                "physical_damage_base": 10.0,
-                "projectile_speed_base": 800.0,
                 "projectile_count": 1.0,
                 "crit_chance_base": 0.05,
-                "crit_multiplier_base": 1.5,
+                "crit_multiplier": 1.5,
             },
             components: [
                 Size((value: "200.0")),

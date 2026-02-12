@@ -2,20 +2,22 @@
     id: "fireball",
     cooldown: Some("0.5"),
     entities: [
-        (components: [
+        (
+            count: Some("stat(projectile_count)"),
+            components: [
             Projectile(()),
-            Straight((speed: "stat(projectile_speed) + 100.0")),
+            Straight((speed: "800.0 * (1.0 + stat(projectile_speed_increased))")),
             Size((value: "60.0")),
             Collider((shape: Circle)),
             Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
             OnCollision((entities: [
-                (components: [DamagePayload((amount: "stat(physical_damage)"))]),
+                (components: [DamagePayload((amount: "(15.0 + stat(physical_damage_base)) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))]),
                 (components: [
                     Size((value: "320.0")),
                     Sprite((color: (1.0, 0.6, 0.1, 0.5), shape: Circle)),
                     Lifetime((remaining: "0.3")),
-                    OnArea((size: "160.0", entities: [
-                        (components: [DamagePayload((amount: "stat(physical_damage) * 0.5"))])
+                    OnArea((size: "160.0 * (1.0 + stat(area_of_effect_increased))", entities: [
+                        (components: [DamagePayload((amount: "(7.5 + stat(physical_damage_base) * 0.5) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
                     ]))
                 ])
             ]))

@@ -1,1 +1,1 @@
-(id: "shadow_cloak", name: "Shadow Cloak", price: 8, modifiers: {"movement_speed_base": 20, "crit_chance_base": 0.05})
+(id: "shadow_cloak", name: "Shadow Cloak", price: 8, modifiers: {"movement_speed_increased": 0.08, "crit_chance_base": 0.05})

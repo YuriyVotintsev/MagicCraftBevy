@@ -4,10 +4,10 @@
     entities: [
         (components: [
             FollowCaster(()),
-            Lifetime((remaining: "0.5")),
-            Size((value: "400.0")),
+            Lifetime((remaining: "0.5 * (1.0 + stat(duration_increased))")),
+            Size((value: "400.0 * (1.0 + stat(area_of_effect_increased))")),
             Sprite((color: (0.3, 0.5, 1.0, 0.3), shape: Circle)),
-            DestroyEnemyProjectiles((size: "200.0")),
+            DestroyEnemyProjectiles((size: "200.0 * (1.0 + stat(area_of_effect_increased))")),
         ])
     ]
 )

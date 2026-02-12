@@ -1,1 +1,1 @@
-(id: "speed_boots", name: "Speed Boots", price: 5, modifiers: {"movement_speed_base": 30})
+(id: "speed_boots", name: "Speed Boots", price: 5, modifiers: {"movement_speed_increased": 0.10})

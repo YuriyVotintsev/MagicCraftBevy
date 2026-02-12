@@ -3,9 +3,7 @@
     display_name: "Warrior",
     color: (0.2, 0.6, 1.0, 1.0),
     modifiers: {
-        "strength_base": 5.0,
-        "max_life_base": 30.0,
-        "max_life_per_strength": 0.5,
+        "max_life_base": 50.0,
         "movement_speed_base": 50.0,
     },
 )

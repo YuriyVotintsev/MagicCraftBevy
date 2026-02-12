@@ -2,15 +2,15 @@
     id: "orbiting_orbs",
     entities: [
         (
-            count: Some("3"),
+            count: Some("stat(projectile_count) + 2"),
             components: [
-                Orbiting((radius: "80.0", angular_speed: "stat(movement_speed) / 100.0")),
-                Size((value: "40.0")),
+                Orbiting((radius: "80.0 * (1.0 + stat(area_of_effect_increased))", angular_speed: "3.5 * (1.0 + stat(projectile_speed_increased))")),
+                Size((value: "40.0 * (1.0 + stat(area_of_effect_increased))")),
                 Collider((shape: Circle)),
                 Sprite((color: (0.3, 0.7, 1.0, 1.0), shape: Circle)),
                 Pierce(()),
                 OnCollision((entities: [
-                    (components: [DamagePayload((amount: "stat(physical_damage)"))])
+                    (components: [DamagePayload((amount: "(8.0 + stat(physical_damage_base) * 0.5) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
                 ]))
             ]
         )

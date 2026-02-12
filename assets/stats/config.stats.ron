@@ -1,18 +1,8 @@
 (
     stat_ids: [
-        (name: "strength_base", aggregation: Sum),
-        (name: "strength_increased", aggregation: Sum),
-        (name: "strength_more", aggregation: Product),
-        (name: "strength", aggregation: Standard(
-            base: "strength_base",
-            increased: "strength_increased",
-            more: "strength_more",
-        )),
-
         (name: "max_life_base", aggregation: Sum),
         (name: "max_life_increased", aggregation: Sum),
         (name: "max_life_more", aggregation: Product),
-        (name: "max_life_per_strength", aggregation: Sum),
         (name: "max_life", aggregation: Custom),
 
         (name: "max_mana_base", aggregation: Sum),
@@ -22,47 +12,33 @@
         (name: "physical_damage_base", aggregation: Sum),
         (name: "physical_damage_increased", aggregation: Sum),
         (name: "physical_damage_more", aggregation: Product),
-        (name: "physical_damage", aggregation: Standard(
-            base: "physical_damage_base",
-            increased: "physical_damage_increased",
-            more: "physical_damage_more",
-        )),
 
         (name: "movement_speed_base", aggregation: Sum),
         (name: "movement_speed_increased", aggregation: Sum),
-        (name: "movement_speed_more", aggregation: Product),
-        (name: "movement_speed", aggregation: Standard(
-            base: "movement_speed_base",
-            increased: "movement_speed_increased",
-            more: "movement_speed_more",
-        )),
+        (name: "movement_speed", aggregation: Custom),
 
-        (name: "projectile_speed_base", aggregation: Sum),
         (name: "projectile_speed_increased", aggregation: Sum),
-        (name: "projectile_speed", aggregation: Custom),
         (name: "projectile_count", aggregation: Sum),
 
         (name: "crit_chance_base", aggregation: Sum),
         (name: "crit_chance_increased", aggregation: Sum),
         (name: "crit_chance", aggregation: Custom),
-        (name: "crit_multiplier_base", aggregation: Sum),
-        (name: "crit_multiplier_increased", aggregation: Sum),
-        (name: "crit_multiplier", aggregation: Custom),
+        (name: "crit_multiplier", aggregation: Sum),
+
+        (name: "area_of_effect_increased", aggregation: Sum),
+        (name: "duration_increased", aggregation: Sum),
     ],
     calculators: [
         (
             stat: "max_life",
             formula: Mul(
                 Mul(
-                    Add(
-                        Stat("max_life_base"),
-                        Mul(Stat("strength"), Stat("max_life_per_strength")),
-                    ),
+                    Stat("max_life_base"),
                     Add(Constant(1.0), Stat("max_life_increased")),
                 ),
                 Stat("max_life_more"),
             ),
-            depends_on: ["strength", "max_life_base", "max_life_increased", "max_life_more", "max_life_per_strength"],
+            depends_on: ["max_life_base", "max_life_increased", "max_life_more"],
         ),
         (
             stat: "max_mana",
@@ -73,12 +49,12 @@
             depends_on: ["max_mana_base", "max_mana_increased"],
         ),
         (
-            stat: "projectile_speed",
+            stat: "movement_speed",
             formula: Mul(
-                Stat("projectile_speed_base"),
-                Add(Constant(1.0), Stat("projectile_speed_increased")),
+                Stat("movement_speed_base"),
+                Add(Constant(1.0), Stat("movement_speed_increased")),
             ),
-            depends_on: ["projectile_speed_base", "projectile_speed_increased"],
+            depends_on: ["movement_speed_base", "movement_speed_increased"],
         ),
         (
             stat: "crit_chance",
@@ -91,17 +67,6 @@
                 max: 1.0,
             ),
             depends_on: ["crit_chance_base", "crit_chance_increased"],
-        ),
-        (
-            stat: "crit_multiplier",
-            formula: Max(
-                Mul(
-                    Stat("crit_multiplier_base"),
-                    Add(Constant(1.0), Stat("crit_multiplier_increased")),
-                ),
-                Constant(1.0),
-            ),
-            depends_on: ["crit_multiplier_base", "crit_multiplier_increased"],
         ),
     ],
 )
