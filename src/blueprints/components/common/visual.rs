@@ -18,6 +18,7 @@ fn init_visual(
     query: Query<(Entity, &Visual, &SpawnSource, &ComputedStats), Added<Visual>>,
 ) {
     for (parent, visual, source, stats) in &query {
+        commands.entity(parent).insert(Visibility::default());
         for child_def in &visual.children {
             let child = commands.spawn_empty().id();
             for comp in &child_def.components {

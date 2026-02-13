@@ -76,6 +76,7 @@ impl Plugin for UiPlugin {
                 (
                     (
                         shop::buy_system,
+                        shop::reroll_system,
                         affix_shop::buy_orb_system,
                         artifact_panel::handle_artifact_slot_click,
                         artifact_panel::handle_panel_sell_click,

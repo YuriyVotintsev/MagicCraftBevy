@@ -112,10 +112,19 @@ pub struct ShopOfferings(pub Vec<Entity>);
 #[derive(Resource, Default)]
 pub struct AvailableArtifacts(pub Vec<ArtifactId>);
 
-fn generate_shop_offerings(
-    mut commands: Commands,
-    mut offerings: ResMut<ShopOfferings>,
-    available: Res<AvailableArtifacts>,
+#[derive(Resource)]
+pub struct RerollCost(pub u32);
+
+impl Default for RerollCost {
+    fn default() -> Self {
+        Self(1)
+    }
+}
+
+pub fn reroll_offerings(
+    commands: &mut Commands,
+    offerings: &mut ShopOfferings,
+    available: &AvailableArtifacts,
 ) {
     for entity in offerings.0.drain(..) {
         commands.entity(entity).despawn();
@@ -131,6 +140,14 @@ fn generate_shop_offerings(
         .collect();
 }
 
+fn generate_shop_offerings(
+    mut commands: Commands,
+    mut offerings: ResMut<ShopOfferings>,
+    available: Res<AvailableArtifacts>,
+) {
+    reroll_offerings(&mut commands, &mut offerings, &available);
+}
+
 pub struct ArtifactPlugin;
 
 impl Plugin for ArtifactPlugin {
@@ -139,6 +156,7 @@ impl Plugin for ArtifactPlugin {
             .init_resource::<PlayerArtifacts>()
             .init_resource::<ShopOfferings>()
             .init_resource::<AvailableArtifacts>()
+            .init_resource::<RerollCost>()
             .add_systems(OnEnter(WavePhase::ShopDelay), generate_shop_offerings);
     }
 }

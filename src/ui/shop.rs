@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 use crate::affixes::{OrbFlowState, OrbRegistry};
-use crate::artifacts::{Artifact, ArtifactId, ArtifactRegistry, PlayerArtifacts, ShopOfferings};
+use crate::artifacts::{
+    Artifact, ArtifactId, ArtifactRegistry, AvailableArtifacts, PlayerArtifacts, RerollCost,
+    ShopOfferings, reroll_offerings,
+};
 use crate::money::PlayerMoney;
 use crate::player::Player;
 use crate::stats::Modifiers;
@@ -25,6 +28,12 @@ pub struct MoneyText;
 
 #[derive(Component)]
 pub struct ShopSection;
+
+#[derive(Component)]
+pub struct RerollButton;
+
+#[derive(Component)]
+pub struct RerollText;
 
 const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
@@ -147,7 +156,10 @@ pub fn spawn_shop(
     artifact_query: Query<&Artifact>,
     orb_registry: Res<OrbRegistry>,
     flow_state: Res<OrbFlowState>,
+    mut reroll_cost: ResMut<RerollCost>,
 ) {
+    reroll_cost.0 = 1;
+
     let shop_section = commands
         .spawn((
             ShopSection,
@@ -156,7 +168,6 @@ pub fn spawn_shop(
                 align_items: AlignItems::Stretch,
                 padding: UiRect::all(Val::Px(16.0)),
                 width: Val::Px(400.0),
-                margin: UiRect::bottom(Val::Px(16.0)),
                 ..default()
             },
             BackgroundColor(SECTION_BG),
@@ -180,7 +191,6 @@ pub fn spawn_shop(
                 align_items: AlignItems::Stretch,
                 padding: UiRect::all(Val::Px(16.0)),
                 width: Val::Px(400.0),
-                margin: UiRect::bottom(Val::Px(16.0)),
                 ..default()
             },
             BackgroundColor(SECTION_BG),
@@ -193,6 +203,16 @@ pub fn spawn_shop(
         money.0,
         &flow_state,
     );
+
+    let shops_row = commands
+        .spawn(Node {
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(16.0),
+            margin: UiRect::bottom(Val::Px(16.0)),
+            ..default()
+        })
+        .add_children(&[shop_section, orb_section])
+        .id();
 
     let header = commands
         .spawn((
@@ -223,6 +243,38 @@ pub fn spawn_shop(
                 ..default()
             },
         ))
+        .id();
+
+    let can_reroll = money.0 >= reroll_cost.0;
+    let reroll_btn = commands
+        .spawn((
+            Button,
+            RerollButton,
+            Node {
+                width: Val::Px(140.0),
+                height: Val::Px(36.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                margin: UiRect::bottom(Val::Px(12.0)),
+                ..default()
+            },
+            BackgroundColor(if can_reroll { NORMAL_BUTTON } else { DISABLED_BUTTON }),
+        ))
+        .with_children(|parent| {
+            parent.spawn((
+                RerollText,
+                Text(format!("Reroll - {}g", reroll_cost.0)),
+                TextFont {
+                    font_size: 20.0,
+                    ..default()
+                },
+                TextColor(if can_reroll {
+                    TEXT_COLOR
+                } else {
+                    Color::srgb(0.4, 0.4, 0.4)
+                }),
+            ));
+        })
         .id();
 
     let next_wave_btn = commands
@@ -260,7 +312,7 @@ pub fn spawn_shop(
             },
             BackgroundColor(Color::srgba(0.1, 0.1, 0.2, 0.95)),
         ))
-        .add_children(&[header, money_text, shop_section, orb_section, next_wave_btn])
+        .add_children(&[header, money_text, reroll_btn, shops_row, next_wave_btn])
         .id();
 
     commands
@@ -315,11 +367,46 @@ pub fn buy_system(
     }
 }
 
+pub fn reroll_system(
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<RerollButton>),
+    >,
+    mut commands: Commands,
+    mut money: ResMut<PlayerMoney>,
+    mut reroll_cost: ResMut<RerollCost>,
+    mut offerings: ResMut<ShopOfferings>,
+    available: Res<AvailableArtifacts>,
+) {
+    for (interaction, mut color) in &mut interaction_query {
+        let can_reroll = money.0 >= reroll_cost.0;
+        match interaction {
+            Interaction::Pressed => {
+                if can_reroll {
+                    money.0 -= reroll_cost.0;
+                    reroll_cost.0 += 1;
+                    reroll_offerings(&mut commands, &mut offerings, &available);
+                }
+            }
+            Interaction::Hovered => {
+                if can_reroll {
+                    *color = HOVERED_BUTTON.into();
+                }
+            }
+            Interaction::None => {
+                *color = if can_reroll { NORMAL_BUTTON } else { DISABLED_BUTTON }.into();
+            }
+        }
+    }
+}
+
 pub fn update_shop_on_change(
     mut commands: Commands,
-    mut money_text: Query<&mut Text, With<MoneyText>>,
+    mut money_text: Query<&mut Text, (With<MoneyText>, Without<RerollText>)>,
     shop_section: Query<Entity, With<ShopSection>>,
     orb_section_query: Query<Entity, With<OrbSection>>,
+    mut reroll_text: Query<(&mut Text, &mut TextColor), (With<RerollText>, Without<MoneyText>)>,
+    mut reroll_btn: Query<&mut BackgroundColor, With<RerollButton>>,
     money: Res<PlayerMoney>,
     artifacts: Res<PlayerArtifacts>,
     offerings: Res<ShopOfferings>,
@@ -327,17 +414,36 @@ pub fn update_shop_on_change(
     artifact_query: Query<&Artifact>,
     orb_registry: Res<OrbRegistry>,
     flow_state: Res<OrbFlowState>,
+    reroll_cost: Res<RerollCost>,
 ) {
     if !money.is_changed()
         && !artifacts.is_changed()
         && !offerings.is_changed()
         && !flow_state.is_changed()
+        && !reroll_cost.is_changed()
     {
         return;
     }
 
     for mut text in &mut money_text {
         text.0 = format!("Total: {} coins", money.0);
+    }
+
+    let can_reroll = money.0 >= reroll_cost.0;
+    for (mut text, mut color) in &mut reroll_text {
+        text.0 = format!("Reroll - {}g", reroll_cost.0);
+        *color = TextColor(if can_reroll {
+            TEXT_COLOR
+        } else {
+            Color::srgb(0.4, 0.4, 0.4)
+        });
+    }
+    for mut bg in &mut reroll_btn {
+        *bg = BackgroundColor(if can_reroll {
+            NORMAL_BUTTON
+        } else {
+            DISABLED_BUTTON
+        });
     }
 
     for entity in &shop_section {
