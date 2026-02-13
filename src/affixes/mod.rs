@@ -10,15 +10,20 @@ use crate::GameState;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AffixId(pub u32);
 
+#[derive(serde::Deserialize, Clone, Copy)]
+pub struct AffixTier {
+    pub min: f32,
+    pub max: f32,
+}
+
 pub struct AffixDef {
     pub name: String,
     pub stat: StatId,
-    pub tiers: Vec<f32>,
+    pub tiers: Vec<AffixTier>,
 }
 
 impl AffixDef {
-    pub fn format_value(&self, tier: usize) -> String {
-        let value = self.tiers.get(tier).copied().unwrap_or(0.0);
+    pub fn format_value(&self, value: f32) -> String {
         let display = if self.name.contains('%') {
             format!("{}", (value * 100.0).round() as i32)
         } else {
@@ -27,18 +32,34 @@ impl AffixDef {
         self.name.replace("{}", &display)
     }
 
-    pub fn format_display(&self, tier: usize) -> String {
-        format!("{} [T{}]", self.format_value(tier), tier + 1)
+    pub fn format_display(&self, affix: &Affix) -> String {
+        format!("{} [T{}]", self.format_value(affix.value), affix.tier + 1)
+    }
+
+    pub fn format_number(&self, value: f32) -> String {
+        if self.name.contains('%') {
+            format!("{}", (value * 100.0).round() as i32)
+        } else {
+            format!("{}", value.round() as i32)
+        }
+    }
+
+    pub fn name_parts(&self) -> (&str, &str) {
+        self.name.split_once("{}").unwrap_or((&self.name, ""))
     }
 
     pub fn max_tier(&self) -> usize {
         self.tiers.len().saturating_sub(1)
     }
-}
 
-#[derive(serde::Deserialize)]
-pub struct AffixTierRaw {
-    pub value: f32,
+    pub fn roll_value(&self, tier: usize, rng: &mut impl Rng) -> f32 {
+        let t = &self.tiers[tier];
+        if (t.max - t.min).abs() < f32::EPSILON {
+            t.min
+        } else {
+            rng.random_range(t.min..=t.max)
+        }
+    }
 }
 
 #[derive(serde::Deserialize)]
@@ -46,13 +67,14 @@ pub struct AffixDefRaw {
     pub id: String,
     pub name: String,
     pub stat: String,
-    pub tiers: Vec<AffixTierRaw>,
+    pub tiers: Vec<AffixTier>,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Affix {
     pub affix_id: AffixId,
     pub tier: usize,
+    pub value: f32,
 }
 
 #[derive(Component, Clone, Default)]
@@ -146,19 +168,26 @@ pub enum OrbFlowState {
         orb_id: OrbId,
     },
     Preview {
-        orb_id: OrbId,
         slot_entity: Entity,
         slot_type: SpellSlot,
         original: Affixes,
         preview: Affixes,
+        rerolled: [bool; 6],
     },
 }
 
-pub fn apply_alteration(affixes: &mut Affixes, pool: &[AffixId], rng: &mut impl Rng) {
+pub fn apply_alteration(
+    affixes: &mut Affixes,
+    pool: &[AffixId],
+    registry: &AffixRegistry,
+    rng: &mut impl Rng,
+) -> [bool; 6] {
+    let mut rerolled = [false; 6];
     if pool.is_empty() {
-        return;
+        return rerolled;
     }
     let index = rng.random_range(0..6usize);
+    rerolled[index] = true;
     let existing: Vec<AffixId> = affixes
         .affixes
         .iter()
@@ -168,22 +197,35 @@ pub fn apply_alteration(affixes: &mut Affixes, pool: &[AffixId], rng: &mut impl 
         .collect();
     let available: Vec<&AffixId> = pool.iter().filter(|id| !existing.contains(id)).collect();
     if let Some(&&new_id) = available.choose(&mut *rng) {
-        affixes.affixes[index] = Some(Affix {
-            affix_id: new_id,
-            tier: 0,
-        });
+        if let Some(def) = registry.get(new_id) {
+            let tier = rng.random_range(0..=def.max_tier());
+            let value = def.roll_value(tier, rng);
+            affixes.affixes[index] = Some(Affix {
+                affix_id: new_id,
+                tier,
+                value,
+            });
+        }
     }
+    rerolled
 }
 
-pub fn apply_chaos(affixes: &mut Affixes, pool: &[AffixId], rng: &mut impl Rng) {
+pub fn apply_chaos(
+    affixes: &mut Affixes,
+    pool: &[AffixId],
+    registry: &AffixRegistry,
+    rng: &mut impl Rng,
+) -> [bool; 6] {
+    let mut rerolled = [false; 6];
     if pool.is_empty() {
-        return;
+        return rerolled;
     }
     let mut indices: Vec<usize> = (0..6).collect();
     indices.shuffle(&mut *rng);
     let chosen: Vec<usize> = indices.into_iter().take(3).collect();
 
     for &i in &chosen {
+        rerolled[i] = true;
         affixes.affixes[i] = None;
     }
 
@@ -195,15 +237,26 @@ pub fn apply_chaos(affixes: &mut Affixes, pool: &[AffixId], rng: &mut impl Rng) 
             .collect();
         let available: Vec<&AffixId> = pool.iter().filter(|id| !existing.contains(id)).collect();
         if let Some(&&new_id) = available.choose(&mut *rng) {
-            affixes.affixes[i] = Some(Affix {
-                affix_id: new_id,
-                tier: 0,
-            });
+            if let Some(def) = registry.get(new_id) {
+                let tier = rng.random_range(0..=def.max_tier());
+                let value = def.roll_value(tier, rng);
+                affixes.affixes[i] = Some(Affix {
+                    affix_id: new_id,
+                    tier,
+                    value,
+                });
+            }
         }
     }
+    rerolled
 }
 
-pub fn apply_augmentation(affixes: &mut Affixes, registry: &AffixRegistry, rng: &mut impl Rng) {
+pub fn apply_augmentation(
+    affixes: &mut Affixes,
+    registry: &AffixRegistry,
+    rng: &mut impl Rng,
+) -> [bool; 6] {
+    let mut rerolled = [false; 6];
     let upgradable: Vec<usize> = affixes
         .affixes
         .iter()
@@ -221,10 +274,16 @@ pub fn apply_augmentation(affixes: &mut Affixes, registry: &AffixRegistry, rng: 
         .collect();
 
     if let Some(&index) = upgradable.choose(&mut *rng) {
+        rerolled[index] = true;
         if let Some(affix) = &mut affixes.affixes[index] {
-            affix.tier += 1;
+            let new_tier = affix.tier + 1;
+            if let Some(def) = registry.get(affix.affix_id) {
+                affix.value = def.roll_value(new_tier, rng);
+            }
+            affix.tier = new_tier;
         }
     }
+    rerolled
 }
 
 pub fn sync_affix_modifiers(
@@ -239,10 +298,8 @@ pub fn sync_affix_modifiers(
 
     for affix in affixes.affixes.iter().flatten() {
         if let Some(def) = affix_registry.get(affix.affix_id) {
-            if let Some(&value) = def.tiers.get(affix.tier) {
-                modifiers.add(def.stat, value, Some(slot_entity));
-                dirty.mark(def.stat);
-            }
+            modifiers.add(def.stat, affix.value, Some(slot_entity));
+            dirty.mark(def.stat);
         }
     }
 }

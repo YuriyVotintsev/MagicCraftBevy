@@ -311,7 +311,7 @@ pub fn check_content_loaded(
                         let def = AffixDef {
                             name: raw.name.clone(),
                             stat: stat_id,
-                            tiers: raw.tiers.iter().map(|t| t.value).collect(),
+                            tiers: raw.tiers.clone(),
                         };
                         let id = affix_registry.register(def, slot);
                         info!("Registered affix: {} ({:?}) for {:?}", raw.id, id, slot);
