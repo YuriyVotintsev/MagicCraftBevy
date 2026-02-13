@@ -5,28 +5,32 @@
         (
             count: Some("1 + stat(projectile_count)"),
             components: [
-            FindNearestEnemy((size: "1400.0")),
-            OnFound((entities: [
+            Staggered((interval: "0.15", entities: [
                 (components: [
-                    Size((value: "320.0")),
-                    Sprite((color: (1.0, 0.3, 0.0, 0.3), shape: Circle)),
-                    Lifetime((remaining: "0.8"))
-                ]),
-                (components: [
-                    Falling((height: "400.0", duration: "0.5", entities: [
+                    FindRandomEnemy((size: "1400.0")),
+                    OnFound((entities: [
                         (components: [
                             Size((value: "320.0")),
-                            Sprite((color: (1.0, 0.7, 0.3, 1.0), shape: Circle)),
-                            Lifetime((remaining: "0.3")),
-                            OnArea((size: "160.0 * (1.0 + stat(area_of_effect_increased))", entities: [
-                                (components: [DamagePayload((amount: "(50.0 + stat(physical_damage_base)) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
-                            ]))
+                            Sprite((color: (1.0, 0.3, 0.0, 0.3), shape: Circle)),
+                            Lifetime((remaining: "0.8"))
+                        ]),
+                        (components: [
+                            Falling((height: "400.0", duration: "0.5", entities: [
+                                (components: [
+                                    Size((value: "320.0")),
+                                    Sprite((color: (1.0, 0.7, 0.3, 1.0), shape: Circle)),
+                                    Lifetime((remaining: "0.3")),
+                                    OnArea((size: "160.0 * (1.0 + stat(area_of_effect_increased))", entities: [
+                                        (components: [DamagePayload((amount: "(50.0 + stat(physical_damage_base)) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
+                                    ]))
+                                ])
+                            ])),
+                            Size((value: "100.0")),
+                            Sprite((color: (1.0, 0.5, 0.0, 1.0)))
                         ])
-                    ])),
-                    Size((value: "100.0")),
-                    Sprite((color: (1.0, 0.5, 0.0, 1.0)))
+                    ]))
                 ])
             ]))
-        ])
-    ]
+            ])
+        ]
 )
