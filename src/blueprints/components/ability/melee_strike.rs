@@ -50,7 +50,7 @@ fn melee_strike_system(
         let hits = spatial_query.shape_intersections(&shape, position, 0.0, &filter);
 
         for target_entity in hits {
-            pending.write(PendingDamage { target: target_entity, amount: strike.damage });
+            pending.write(PendingDamage { target: target_entity, amount: strike.damage, source: Some(caster_entity) });
         }
 
         commands.entity(entity).despawn();

@@ -50,6 +50,7 @@ impl Plugin for BlueprintPlugin {
             (
                 cleanup::cleanup_orphaned_blueprint_entities.in_set(crate::schedule::GameSet::Cleanup),
                 state::state_transition_system.in_set(crate::schedule::GameSet::MobAI),
+                activation::respawn_on_count_change.in_set(crate::schedule::GameSet::Spawning),
                 activation::blueprint_activation_system.in_set(crate::schedule::GameSet::BlueprintActivation),
             )
                 .run_if(in_state(WavePhase::Combat)),

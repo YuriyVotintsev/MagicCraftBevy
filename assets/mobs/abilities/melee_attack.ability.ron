@@ -3,7 +3,7 @@
     cooldown: Some("0"),
     entities: [
         (components: [
-            MeleeStrike((range: "20.0", damage: "stat(physical_damage_base)")),
+            MeleeStrike((range: "50.0", damage: "stat(physical_damage_base)")),
         ])
     ]
 )

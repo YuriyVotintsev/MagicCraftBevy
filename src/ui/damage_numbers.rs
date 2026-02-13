@@ -45,10 +45,13 @@ pub fn spawn_damage_numbers(
         *counter += 1;
         let position = event.position + Vec3::new(0.0, 20.0, Z_LAYER);
 
-        let color = match event.target_faction {
-            Faction::Player => Color::srgb(1.0, 0.3, 0.3),
-            Faction::Enemy => Color::WHITE,
+        let color = match (event.target_faction, event.is_crit) {
+            (Faction::Enemy, true) => Color::srgb(1.0, 0.9, 0.1),
+            (Faction::Player, _) => Color::srgb(1.0, 0.3, 0.3),
+            (Faction::Enemy, false) => Color::WHITE,
         };
+
+        let font_size = if event.is_crit { FONT_SIZE * 1.5 } else { FONT_SIZE };
 
         let vx = (rand::random::<f32>() - 0.5) * 2.0 * HORIZONTAL_SPEED;
         let vy =
@@ -72,7 +75,7 @@ pub fn spawn_damage_numbers(
             },
             Text2d::new(format!("{}", event.amount as i32)),
             TextFont {
-                font_size: FONT_SIZE,
+                font_size,
                 ..default()
             },
             TextColor(color),

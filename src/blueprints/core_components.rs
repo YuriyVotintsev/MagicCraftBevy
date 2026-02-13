@@ -32,6 +32,11 @@ pub struct BlueprintActivationCooldown {
     pub timer: f32,
 }
 
+#[derive(Component)]
+pub struct TrackedSpawns {
+    pub entities: Vec<Entity>,
+}
+
 #[derive(Component, Clone, Copy)]
 pub struct SpawnSource {
     pub blueprint_id: BlueprintId,
