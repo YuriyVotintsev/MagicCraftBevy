@@ -7,7 +7,7 @@
             components: [
             Staggered((interval: "0.15", entities: [
                 (components: [
-                    FindRandomEnemy((size: "1400.0")),
+                    FindRandomEnemy((size: "1400.0", random_fallback: Some(true))),
                     OnFound((entities: [
                         (components: [
                             Size((value: "320.0")),

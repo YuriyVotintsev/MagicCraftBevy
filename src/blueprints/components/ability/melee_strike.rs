@@ -2,6 +2,7 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::blueprints::components::common::size::Size;
 use crate::blueprints::SpawnSource;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
@@ -26,6 +27,7 @@ fn melee_strike_system(
     mut pending: MessageWriter<PendingDamage>,
     query: Query<(Entity, &MeleeStrike, &SpawnSource)>,
     transforms: Query<&Transform>,
+    sizes: Query<&Size>,
     spatial_query: SpatialQuery,
 ) {
     for (entity, strike, source) in &query {
@@ -36,6 +38,7 @@ fn melee_strike_system(
         };
 
         let position = caster_transform.translation.truncate();
+        let caster_radius = sizes.get(caster_entity).map_or(0.0, |s| s.value / 2.0);
 
         let target_layer = match source.caster_faction {
             Faction::Player => GameLayer::Enemy,
@@ -43,7 +46,7 @@ fn melee_strike_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(target_layer);
-        let shape = Collider::circle(strike.range);
+        let shape = Collider::circle(strike.range + caster_radius);
         let hits = spatial_query.shape_intersections(&shape, position, 0.0, &filter);
 
         for target_entity in hits {

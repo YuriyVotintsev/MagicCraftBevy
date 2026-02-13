@@ -14,6 +14,8 @@ pub struct FindRandomEnemy {
     pub size: ScalarExpr,
     #[default_expr("caster.entity")]
     pub center: EntityExpr,
+    #[raw(default = false)]
+    pub random_fallback: bool,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -47,6 +49,12 @@ fn find_random_enemy_system(
         let hits = spatial_query.shape_intersections(&shape, caster_pos, 0.0, &filter);
 
         if hits.is_empty() {
+            if finder.random_fallback {
+                let angle = rand::random_range(0.0..std::f32::consts::TAU);
+                let dist = rand::random_range(0.0..finder.size / 2.0);
+                let pos = caster_pos + Vec2::new(angle.cos(), angle.sin()) * dist;
+                commands.entity(entity).insert(FoundTarget(entity, pos.extend(0.0)));
+            }
             continue;
         }
 
