@@ -116,10 +116,18 @@ fn reset_wave_state(
     mut wave_state: ResMut<WaveState>,
     mut money: ResMut<PlayerMoney>,
     mut shop_timer: ResMut<ShopDelayTimer>,
+    mut artifacts: ResMut<crate::artifacts::PlayerArtifacts>,
+    mut offerings: ResMut<crate::artifacts::ShopOfferings>,
+    mut reroll_cost: ResMut<crate::artifacts::RerollCost>,
+    mut orb_flow: ResMut<crate::affixes::OrbFlowState>,
 ) {
     *wave_state = WaveState::default();
     money.0 = 0;
     shop_timer.0.reset();
+    *artifacts = Default::default();
+    offerings.0.clear();
+    *reroll_cost = Default::default();
+    *orb_flow = Default::default();
 }
 
 fn track_wave_kills(
