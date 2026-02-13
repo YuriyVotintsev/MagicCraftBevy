@@ -25,10 +25,14 @@ fn process_damage_payloads(
     mut commands: Commands,
     query: Query<(Entity, &DamagePayload)>,
 ) {
+    let mut damage_map = bevy::platform::collections::HashMap::<Entity, f32>::default();
     for (entity, payload) in &query {
-        if let Ok(mut target_commands) = commands.get_entity(payload.target) {
-            target_commands.insert(PendingDamage(payload.amount));
-        }
+        *damage_map.entry(payload.target).or_default() += payload.amount;
         commands.entity(entity).despawn();
+    }
+    for (target, total) in damage_map {
+        if let Ok(mut target_commands) = commands.get_entity(target) {
+            target_commands.insert(PendingDamage(total));
+        }
     }
 }

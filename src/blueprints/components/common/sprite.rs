@@ -58,40 +58,39 @@ pub fn register_systems(app: &mut App) {
 fn init_sprite(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    query: Query<(Entity, &Sprite), Added<Sprite>>,
+    query: Query<(Entity, &Sprite, Has<Transform>), Added<Sprite>>,
 ) {
-    for (entity, sprite) in &query {
+    for (entity, sprite, has_transform) in &query {
         let color = Color::srgba(sprite.color.0, sprite.color.1, sprite.color.2, sprite.color.3);
-        let transform = Transform::from_translation(sprite.position.extend(0.0));
         let size = Vec2::splat(sprite.scale);
 
+        if !has_transform {
+            commands.entity(entity).insert(
+                Transform::from_translation(sprite.position.extend(0.0)),
+            );
+        }
+
         if let Some(ref image_path) = sprite.image {
-            commands.entity(entity).insert((
-                BevySprite {
-                    image: asset_server.load(image_path.clone()),
-                    color,
-                    custom_size: Some(size),
-                    ..default()
-                },
-                transform,
-            ));
+            commands.entity(entity).insert(BevySprite {
+                image: asset_server.load(image_path.clone()),
+                color,
+                custom_size: Some(size),
+                ..default()
+            });
         } else {
             match sprite.shape {
                 SpriteShape::Square => {
-                    commands.entity(entity).insert((
-                        BevySprite {
-                            color,
-                            custom_size: Some(size),
-                            ..default()
-                        },
-                        transform,
-                    ));
+                    commands.entity(entity).insert(BevySprite {
+                        color,
+                        custom_size: Some(size),
+                        ..default()
+                    });
                 }
                 SpriteShape::Circle => {
-                    commands.entity(entity).insert((CircleSprite { color }, transform));
+                    commands.entity(entity).insert(CircleSprite { color });
                 }
                 SpriteShape::Triangle => {
-                    commands.entity(entity).insert((TriangleSprite { color }, transform));
+                    commands.entity(entity).insert(TriangleSprite { color });
                 }
             }
         }
