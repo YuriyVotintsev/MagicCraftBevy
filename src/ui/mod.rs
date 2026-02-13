@@ -7,6 +7,7 @@ mod hero_selection;
 mod hud;
 mod loading;
 mod main_menu;
+mod pause_menu;
 mod shop;
 mod spell_selection;
 
@@ -14,7 +15,7 @@ use bevy::prelude::*;
 
 use crate::game_state::GameState;
 use crate::schedule::GameSet;
-use crate::wave::WavePhase;
+use crate::wave::{CombatPhase, WavePhase};
 
 pub struct UiPlugin;
 
@@ -117,6 +118,15 @@ impl Plugin for UiPlugin {
                     affix_shop::update_orb_tooltip,
                 )
                     .run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(OnEnter(CombatPhase::Paused), pause_menu::spawn_pause_menu)
+            .add_systems(
+                Update,
+                pause_menu::toggle_pause_system.run_if(in_state(WavePhase::Combat)),
+            )
+            .add_systems(
+                Update,
+                pause_menu::pause_button_system.run_if(in_state(CombatPhase::Paused)),
             );
     }
 }

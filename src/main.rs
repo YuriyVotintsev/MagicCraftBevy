@@ -46,7 +46,7 @@ use schedule::{GameSet, PostGameSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
-use wave::{WavePhase, WavePlugin};
+use wave::{CombatPhase, WavePhase, WavePlugin};
 
 #[cfg(not(feature = "headless"))]
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
@@ -143,6 +143,7 @@ fn main() {
 
     app.init_state::<GameState>()
         .add_sub_state::<WavePhase>()
+        .add_sub_state::<CombatPhase>()
         .configure_sets(
             Update,
             (
@@ -157,9 +158,9 @@ fn main() {
                 GameSet::Cleanup,
             )
                 .chain()
-                .run_if(in_state(GameState::Playing)),
+                .run_if(in_state(CombatPhase::Running)),
         )
-        .configure_sets(PostUpdate, PostGameSet.run_if(in_state(GameState::Playing)))
+        .configure_sets(PostUpdate, PostGameSet.run_if(in_state(CombatPhase::Running)))
         .add_systems(
             Update,
             ApplyDeferred

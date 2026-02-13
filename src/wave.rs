@@ -7,6 +7,14 @@ use crate::stats::{death_system, DeathEvent};
 use crate::Faction;
 use crate::GameState;
 
+#[derive(SubStates, Default, Clone, PartialEq, Eq, Hash, Debug)]
+#[source(WavePhase = WavePhase::Combat)]
+pub enum CombatPhase {
+    #[default]
+    Running,
+    Paused,
+}
+
 const BASE_ENEMIES: u32 = 10;
 const ENEMIES_PER_WAVE: u32 = 3;
 const BASE_CONCURRENT: u32 = 5;
@@ -120,6 +128,7 @@ fn reset_wave_state(
     mut offerings: ResMut<crate::artifacts::ShopOfferings>,
     mut reroll_cost: ResMut<crate::artifacts::RerollCost>,
     mut orb_flow: ResMut<crate::affixes::OrbFlowState>,
+    mut virtual_time: ResMut<Time<Virtual>>,
 ) {
     *wave_state = WaveState::default();
     money.0 = 0;
@@ -128,6 +137,7 @@ fn reset_wave_state(
     offerings.0.clear();
     *reroll_cost = Default::default();
     *orb_flow = Default::default();
+    virtual_time.unpause();
 }
 
 fn track_wave_kills(
