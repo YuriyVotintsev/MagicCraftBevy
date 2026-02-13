@@ -23,6 +23,7 @@ pub fn register_systems(app: &mut App) {
 
 fn melee_strike_system(
     mut commands: Commands,
+    mut pending: MessageWriter<PendingDamage>,
     query: Query<(Entity, &MeleeStrike, &SpawnSource)>,
     transforms: Query<&Transform>,
     spatial_query: SpatialQuery,
@@ -46,9 +47,7 @@ fn melee_strike_system(
         let hits = spatial_query.shape_intersections(&shape, position, 0.0, &filter);
 
         for target_entity in hits {
-            if let Ok(mut target_commands) = commands.get_entity(target_entity) {
-                target_commands.insert(PendingDamage(strike.damage));
-            }
+            pending.write(PendingDamage { target: target_entity, amount: strike.damage });
         }
 
         commands.entity(entity).despawn();

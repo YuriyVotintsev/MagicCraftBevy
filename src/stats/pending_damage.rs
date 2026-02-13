@@ -1,4 +1,7 @@
 use bevy::prelude::*;
 
-#[derive(Component)]
-pub struct PendingDamage(pub f32);
+#[derive(Message)]
+pub struct PendingDamage {
+    pub target: Entity,
+    pub amount: f32,
+}

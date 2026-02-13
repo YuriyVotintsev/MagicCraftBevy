@@ -1,1 +1,1 @@
-(id: "emerald_amulet", name: "Emerald Amulet", price: 7, modifiers: {"max_life_base": 20})
+(id: "emerald_amulet", name: "Emerald Amulet", price: 7, modifiers: {"projectile_count": 1})

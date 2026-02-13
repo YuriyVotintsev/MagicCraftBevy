@@ -39,7 +39,8 @@ pub struct StatsPlugin;
 
 impl Plugin for StatsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_message::<DeathEvent>()
+        app.add_message::<PendingDamage>()
+            .add_message::<DeathEvent>()
             .add_message::<DamageEvent>()
             .add_systems(
                 PreUpdate,
@@ -49,7 +50,7 @@ impl Plugin for StatsPlugin {
             )
             .add_systems(
                 Update,
-                (discard_damage_on_invulnerable, apply_pending_damage).in_set(GameSet::Damage),
+                apply_pending_damage.in_set(GameSet::DamageApply),
             )
             .add_systems(PostUpdate, health::death_system.in_set(PostGameSet))
             .add_systems(
@@ -59,38 +60,35 @@ impl Plugin for StatsPlugin {
     }
 }
 
-fn discard_damage_on_invulnerable(
-    mut commands: Commands,
-    query: Query<Entity, (With<PendingDamage>, With<InvulnerableStack>)>,
-) {
-    for entity in &query {
-        commands.entity(entity).remove::<PendingDamage>();
-    }
-}
-
 fn apply_pending_damage(
     mut commands: Commands,
     stat_registry: Res<StatRegistry>,
     mut damage_events: MessageWriter<DamageEvent>,
-    mut query: Query<
-        (Entity, &PendingDamage, &mut Health, &ComputedStats, &Transform, &Faction),
-        Without<InvulnerableStack>,
-    >,
+    mut pending: MessageReader<PendingDamage>,
+    mut query: Query<(&mut Health, &ComputedStats, &Transform, &Faction)>,
+    invulnerable: Query<(), With<InvulnerableStack>>,
 ) {
     let max_life_id = stat_registry.get("max_life");
 
-    for (entity, pending, mut health, stats, transform, faction) in &mut query {
+    for hit in pending.read() {
+        if invulnerable.get(hit.target).is_ok() {
+            continue;
+        }
+
+        let Ok((mut health, stats, transform, faction)) = query.get_mut(hit.target) else {
+            continue;
+        };
+
         let max = max_life_id.map(|id| stats.get(id)).unwrap_or(f32::MAX);
-        health.current = (health.current - pending.0).clamp(0.0, max);
+        health.current = (health.current - hit.amount).clamp(0.0, max);
 
         damage_events.write(DamageEvent {
             position: transform.translation,
-            amount: pending.0,
+            amount: hit.amount,
             target_faction: *faction,
         });
 
-        if let Ok(mut entity_commands) = commands.get_entity(entity) {
-            entity_commands.remove::<PendingDamage>();
+        if let Ok(mut entity_commands) = commands.get_entity(hit.target) {
             entity_commands.insert(HitFlash::new());
         }
     }

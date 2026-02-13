@@ -23,16 +23,11 @@ pub fn register_systems(app: &mut App) {
 
 fn process_damage_payloads(
     mut commands: Commands,
+    mut pending: MessageWriter<PendingDamage>,
     query: Query<(Entity, &DamagePayload)>,
 ) {
-    let mut damage_map = bevy::platform::collections::HashMap::<Entity, f32>::default();
     for (entity, payload) in &query {
-        *damage_map.entry(payload.target).or_default() += payload.amount;
+        pending.write(PendingDamage { target: payload.target, amount: payload.amount });
         commands.entity(entity).despawn();
-    }
-    for (target, total) in damage_map {
-        if let Ok(mut target_commands) = commands.get_entity(target) {
-            target_commands.insert(PendingDamage(total));
-        }
     }
 }

@@ -152,6 +152,7 @@ fn main() {
                 GameSet::BlueprintActivation,
                 GameSet::BlueprintExecution,
                 GameSet::Damage,
+                GameSet::DamageApply,
                 GameSet::WaveManagement,
                 GameSet::Cleanup,
             )

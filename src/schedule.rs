@@ -8,6 +8,7 @@ pub enum GameSet {
     BlueprintActivation,
     BlueprintExecution,
     Damage,
+    DamageApply,
     WaveManagement,
     Cleanup,
 }
