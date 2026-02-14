@@ -30,7 +30,7 @@
                     ),
                     "chase": (
                         components: [MoveToward(())],
-                        transitions: [WhenNear((to: "attack", distance: "80.0"))],
+                        transitions: [WhenNear((to: "attack", distance: "130.0"))],
                     ),
                     "attack": (
                         components: [MoveToward(()), UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5")))],

@@ -35,7 +35,7 @@
                     ),
                     "lunge": (
                         components: [LungeMovement(())],
-                        transitions: [WhenNear((to: "attack", distance: "70.0"))],
+                        transitions: [WhenNear((to: "attack", distance: "120.0"))],
                     ),
                     "attack": (
                         components: [LungeMovement(()), UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5")))],
