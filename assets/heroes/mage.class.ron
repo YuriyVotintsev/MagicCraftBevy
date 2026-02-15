@@ -2,6 +2,7 @@
     id: "mage",
     display_name: "Mage",
     color: (0.6, 0.2, 0.8, 1.0),
+    sprite: Some("images/Mage.png"),
     modifiers: {
         "physical_damage_base": 5.0,
         "projectile_speed_increased": 0.15,

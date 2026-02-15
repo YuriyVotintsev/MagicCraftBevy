@@ -10,6 +10,8 @@ pub struct HeroClassRaw {
     pub id: String,
     pub display_name: String,
     pub color: (f32, f32, f32, f32),
+    #[serde(default)]
+    pub sprite: Option<String>,
     pub modifiers: HashMap<String, f32>,
 }
 
@@ -22,6 +24,7 @@ pub struct HeroClassModifier {
 pub struct HeroClass {
     pub display_name: String,
     pub color: (f32, f32, f32, f32),
+    pub sprite: Option<String>,
     pub modifiers: Vec<HeroClassModifier>,
 }
 

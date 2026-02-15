@@ -237,6 +237,7 @@ pub fn check_content_loaded(
                     classes.push(HeroClass {
                         display_name: raw.display_name.clone(),
                         color: raw.color,
+                        sprite: raw.sprite.clone(),
                         modifiers,
                     });
                 }
