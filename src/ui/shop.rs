@@ -2,12 +2,10 @@ use bevy::prelude::*;
 
 use crate::affixes::{OrbFlowState, OrbRegistry};
 use crate::artifacts::{
-    Artifact, ArtifactId, ArtifactRegistry, AvailableArtifacts, PlayerArtifacts, RerollCost,
-    ShopOfferings, reroll_offerings,
+    Artifact, ArtifactId, ArtifactRegistry, BuyRequest, PlayerArtifacts, RerollCost,
+    RerollRequest, ShopOfferings,
 };
 use crate::money::PlayerMoney;
-use crate::player::Player;
-use crate::stats::Modifiers;
 use crate::ui::affix_shop::{self, OrbSection};
 use crate::ui::artifact_tooltip::ArtifactTooltipTarget;
 use crate::wave::{WavePhase, WaveState};
@@ -333,45 +331,11 @@ pub fn spawn_shop(
 
 pub fn buy_system(
     interaction_query: Query<(&Interaction, &BuyButton), Changed<Interaction>>,
-    mut money: ResMut<PlayerMoney>,
-    mut artifacts: ResMut<PlayerArtifacts>,
-    mut offerings: ResMut<ShopOfferings>,
-    registry: Res<ArtifactRegistry>,
-    artifact_query: Query<&Artifact>,
-    mut player_query: Query<&mut Modifiers, With<Player>>,
+    mut buy_events: MessageWriter<BuyRequest>,
 ) {
     for (interaction, buy_btn) in &interaction_query {
-        if *interaction != Interaction::Pressed {
-            continue;
-        }
-        if buy_btn.index >= offerings.0.len() {
-            continue;
-        }
-        let artifact_entity = offerings.0[buy_btn.index];
-        let Ok(artifact) = artifact_query.get(artifact_entity) else {
-            continue;
-        };
-        let Some(def) = registry.get(artifact.0) else {
-            continue;
-        };
-        if money.0 >= def.price && !artifacts.is_full() {
-            money.0 -= def.price;
-            artifacts.buy(artifact_entity);
-            offerings.0.remove(buy_btn.index);
-            for mut modifiers in &mut player_query {
-                for modifier_def in &def.modifiers {
-                    for sr in &modifier_def.stats {
-                        match sr {
-                            crate::stats::StatRange::Fixed { stat, value } => {
-                                modifiers.add(*stat, *value, Some(artifact_entity));
-                            }
-                            crate::stats::StatRange::Range { stat, min, max } => {
-                                modifiers.add(*stat, (*min + *max) / 2.0, Some(artifact_entity));
-                            }
-                        }
-                    }
-                }
-            }
+        if *interaction == Interaction::Pressed {
+            buy_events.write(BuyRequest { index: buy_btn.index });
         }
     }
 }
@@ -381,11 +345,9 @@ pub fn reroll_system(
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<RerollButton>),
     >,
-    mut commands: Commands,
     mut money: ResMut<PlayerMoney>,
     mut reroll_cost: ResMut<RerollCost>,
-    mut offerings: ResMut<ShopOfferings>,
-    available: Res<AvailableArtifacts>,
+    mut reroll_events: MessageWriter<RerollRequest>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         let can_reroll = money.0 >= reroll_cost.0;
@@ -394,7 +356,7 @@ pub fn reroll_system(
                 if can_reroll {
                     money.0 -= reroll_cost.0;
                     reroll_cost.0 += 1;
-                    reroll_offerings(&mut commands, &mut offerings, &available);
+                    reroll_events.write(RerollRequest);
                 }
             }
             Interaction::Hovered => {

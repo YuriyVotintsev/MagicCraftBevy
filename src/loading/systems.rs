@@ -277,7 +277,7 @@ pub fn check_content_loaded(
                     modifiers,
                 };
                 info!("Registered artifact: {}", raw.id);
-                let id = artifact_registry.register(def);
+                let id = artifact_registry.register(&raw.id, def);
                 artifact_ids.push(id);
             }
         }

@@ -1,10 +1,7 @@
 use bevy::prelude::*;
 
-use crate::artifacts::{Artifact, ArtifactRegistry, PlayerArtifacts};
+use crate::artifacts::{Artifact, ArtifactRegistry, PlayerArtifacts, SellRequest};
 use crate::game_state::GameState;
-use crate::money::PlayerMoney;
-use crate::player::Player;
-use crate::stats::Modifiers;
 use crate::ui::artifact_tooltip::ArtifactTooltipTarget;
 use crate::wave::WavePhase;
 
@@ -197,31 +194,15 @@ pub fn handle_artifact_slot_click(
 }
 
 pub fn handle_panel_sell_click(
-    mut commands: Commands,
     interaction_query: Query<(&Interaction, &ArtifactPanelSellButton), Changed<Interaction>>,
-    mut money: ResMut<PlayerMoney>,
-    mut artifacts: ResMut<PlayerArtifacts>,
     mut selected: ResMut<SelectedArtifactSlot>,
-    registry: Res<ArtifactRegistry>,
-    artifact_query: Query<&Artifact>,
-    mut player_query: Query<&mut Modifiers, With<Player>>,
+    mut sell_events: MessageWriter<SellRequest>,
 ) {
     for (interaction, sell_btn) in &interaction_query {
-        if *interaction != Interaction::Pressed {
-            continue;
+        if *interaction == Interaction::Pressed {
+            sell_events.write(SellRequest { slot: sell_btn.slot });
+            selected.0 = None;
         }
-        if let Some(artifact_entity) = artifacts.sell(sell_btn.slot) {
-            if let Ok(artifact) = artifact_query.get(artifact_entity) {
-                if let Some(def) = registry.get(artifact.0) {
-                    money.0 += (def.price + 1) / 2;
-                }
-            }
-            for mut modifiers in &mut player_query {
-                modifiers.remove_by_source(artifact_entity);
-            }
-            commands.entity(artifact_entity).despawn();
-        }
-        selected.0 = None;
     }
 }
 

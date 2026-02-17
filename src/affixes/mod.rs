@@ -22,9 +22,14 @@ impl Plugin for AffixPlugin {
         app.init_resource::<AffixRegistry>()
             .init_resource::<OrbRegistry>()
             .init_resource::<OrbFlowState>()
+            .add_systems(OnEnter(GameState::Playing), reset_affixes)
             .add_systems(
                 Update,
                 systems::spawn_spell_slots.run_if(in_state(GameState::Playing)),
             );
     }
+}
+
+fn reset_affixes(mut orb_flow: ResMut<OrbFlowState>) {
+    *orb_flow = Default::default();
 }
