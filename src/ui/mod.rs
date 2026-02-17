@@ -10,6 +10,7 @@ mod main_menu;
 mod pause_menu;
 mod shop;
 mod spell_selection;
+pub mod stat_line_builder;
 
 use bevy::prelude::*;
 

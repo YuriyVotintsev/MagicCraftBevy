@@ -7,15 +7,15 @@ use crate::affixes::{
 use crate::blueprints::BlueprintRegistry;
 use crate::money::PlayerMoney;
 use crate::player::{Player, SelectedSpells, SpellSlot};
-use crate::stats::{DirtyStats, Modifiers, StatDisplayRegistry};
+use crate::stats::{DirtyStats, Modifiers, StatDisplayRegistry, StatId};
+
+use super::stat_line_builder::{
+    DiffSide, StatLineBuilder, StatRenderMode, GOLD_COLOR, TEXT_COLOR,
+};
 
 const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
 const DISABLED_BUTTON: Color = Color::srgb(0.1, 0.1, 0.1);
-const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-const GOLD_COLOR: Color = Color::srgb(1.0, 0.84, 0.0);
-const GREEN_COLOR: Color = Color::srgb(0.2, 0.9, 0.2);
-const RED_COLOR: Color = Color::srgb(0.9, 0.2, 0.2);
 const POPUP_BG: Color = Color::srgba(0.0, 0.0, 0.0, 0.85);
 
 #[derive(Component)]
@@ -247,12 +247,6 @@ fn spawn_slot_select_popup(
     let _ = popup;
 }
 
-fn format_affix_display(affix: &Affix, display: &StatDisplayRegistry) -> String {
-    let lines = display.format(&affix.values);
-    let tier_str = format!(" [T{}]", affix.tier + 1);
-    lines.join(", ") + &tier_str
-}
-
 fn spawn_preview_popup(
     commands: &mut Commands,
     original: &Affixes,
@@ -411,55 +405,71 @@ fn build_affix_diff_row(
 
     match (old, new) {
         (None, None) => {
-            let child = commands
-                .spawn((
-                    Text::new("[empty]"),
-                    TextFont {
-                        font_size,
-                        ..default()
-                    },
-                    TextColor(Color::srgb(0.4, 0.4, 0.4)),
-                    Node {
-                        height: row_height,
-                        ..default()
-                    },
-                ))
-                .id();
-            commands.entity(parent_entity).add_child(child);
+            let row = StatLineBuilder::spawn_line(
+                commands,
+                &[],
+                StatRenderMode::Diff {
+                    old: None,
+                    new: None,
+                    rerolled: false,
+                },
+                font_size,
+            );
+            commands.entity(row).insert(Node {
+                height: row_height,
+                ..default()
+            });
+            commands.entity(parent_entity).add_child(row);
         }
         (None, Some(new_affix)) => {
-            let child = commands
-                .spawn((
-                    Text(format_affix_display(new_affix, display)),
-                    TextFont {
-                        font_size,
-                        ..default()
+            let stat_ids: Vec<StatId> = new_affix.values.iter().map(|(s, _)| *s).collect();
+            let values: Vec<f32> = new_affix.values.iter().map(|(_, v)| *v).collect();
+            let formats = display.get_format(&stat_ids);
+            for line in &formats {
+                let row = StatLineBuilder::spawn_line(
+                    commands,
+                    line,
+                    StatRenderMode::Diff {
+                        old: None,
+                        new: Some(DiffSide {
+                            values: &values,
+                            tier: new_affix.tier,
+                        }),
+                        rerolled: false,
                     },
-                    TextColor(GREEN_COLOR),
-                    Node {
-                        height: row_height,
-                        ..default()
-                    },
-                ))
-                .id();
-            commands.entity(parent_entity).add_child(child);
+                    font_size,
+                );
+                commands.entity(row).insert(Node {
+                    height: row_height,
+                    ..default()
+                });
+                commands.entity(parent_entity).add_child(row);
+            }
         }
         (Some(old_affix), None) => {
-            let child = commands
-                .spawn((
-                    Text(format_affix_display(old_affix, display)),
-                    TextFont {
-                        font_size,
-                        ..default()
+            let stat_ids: Vec<StatId> = old_affix.values.iter().map(|(s, _)| *s).collect();
+            let values: Vec<f32> = old_affix.values.iter().map(|(_, v)| *v).collect();
+            let formats = display.get_format(&stat_ids);
+            for line in &formats {
+                let row = StatLineBuilder::spawn_line(
+                    commands,
+                    line,
+                    StatRenderMode::Diff {
+                        old: Some(DiffSide {
+                            values: &values,
+                            tier: old_affix.tier,
+                        }),
+                        new: None,
+                        rerolled: false,
                     },
-                    TextColor(RED_COLOR),
-                    Node {
-                        height: row_height,
-                        ..default()
-                    },
-                ))
-                .id();
-            commands.entity(parent_entity).add_child(child);
+                    font_size,
+                );
+                commands.entity(row).insert(Node {
+                    height: row_height,
+                    ..default()
+                });
+                commands.entity(parent_entity).add_child(row);
+            }
         }
         (Some(old_affix), Some(new_affix)) => {
             if old_affix.affix_id != new_affix.affix_id {
@@ -469,113 +479,90 @@ fn build_affix_diff_row(
                         ..default()
                     })
                     .id();
-                let old_child = commands
-                    .spawn((
-                        Text(format_affix_display(old_affix, display)),
-                        TextFont {
-                            font_size,
-                            ..default()
+
+                let old_stat_ids: Vec<StatId> =
+                    old_affix.values.iter().map(|(s, _)| *s).collect();
+                let old_values: Vec<f32> = old_affix.values.iter().map(|(_, v)| *v).collect();
+                let old_formats = display.get_format(&old_stat_ids);
+                for line in &old_formats {
+                    let row = StatLineBuilder::spawn_line(
+                        commands,
+                        line,
+                        StatRenderMode::Diff {
+                            old: Some(DiffSide {
+                                values: &old_values,
+                                tier: old_affix.tier,
+                            }),
+                            new: None,
+                            rerolled: false,
                         },
-                        TextColor(RED_COLOR),
-                        Node {
-                            height: row_height,
-                            ..default()
+                        font_size,
+                    );
+                    commands.entity(row).insert(Node {
+                        height: row_height,
+                        ..default()
+                    });
+                    commands.entity(col).add_child(row);
+                }
+
+                let new_stat_ids: Vec<StatId> =
+                    new_affix.values.iter().map(|(s, _)| *s).collect();
+                let new_values: Vec<f32> = new_affix.values.iter().map(|(_, v)| *v).collect();
+                let new_formats = display.get_format(&new_stat_ids);
+                for line in &new_formats {
+                    let row = StatLineBuilder::spawn_line(
+                        commands,
+                        line,
+                        StatRenderMode::Diff {
+                            old: None,
+                            new: Some(DiffSide {
+                                values: &new_values,
+                                tier: new_affix.tier,
+                            }),
+                            rerolled: false,
                         },
-                    ))
-                    .id();
-                commands.entity(col).add_child(old_child);
-                let new_child = commands
-                    .spawn((
-                        Text(format_affix_display(new_affix, display)),
-                        TextFont {
-                            font_size,
-                            ..default()
-                        },
-                        TextColor(GREEN_COLOR),
-                        Node {
-                            height: row_height,
-                            ..default()
-                        },
-                    ))
-                    .id();
-                commands.entity(col).add_child(new_child);
+                        font_size,
+                    );
+                    commands.entity(row).insert(Node {
+                        height: row_height,
+                        ..default()
+                    });
+                    commands.entity(col).add_child(row);
+                }
+
                 commands.entity(parent_entity).add_child(col);
-            } else if old_affix.tier != new_affix.tier || old_affix.values != new_affix.values {
-                build_affix_value_diff(commands, parent_entity, old_affix, new_affix, font_size, row_height, display);
             } else {
-                let color = if rerolled { GOLD_COLOR } else { TEXT_COLOR };
-                let child = commands
-                    .spawn((
-                        Text(format_affix_display(old_affix, display)),
-                        TextFont {
-                            font_size,
-                            ..default()
+                let stat_ids: Vec<StatId> =
+                    old_affix.values.iter().map(|(s, _)| *s).collect();
+                let old_values: Vec<f32> = old_affix.values.iter().map(|(_, v)| *v).collect();
+                let new_values: Vec<f32> = new_affix.values.iter().map(|(_, v)| *v).collect();
+                let formats = display.get_format(&stat_ids);
+                for line in &formats {
+                    let row = StatLineBuilder::spawn_line(
+                        commands,
+                        line,
+                        StatRenderMode::Diff {
+                            old: Some(DiffSide {
+                                values: &old_values,
+                                tier: old_affix.tier,
+                            }),
+                            new: Some(DiffSide {
+                                values: &new_values,
+                                tier: new_affix.tier,
+                            }),
+                            rerolled,
                         },
-                        TextColor(color),
-                        Node {
-                            height: row_height,
-                            ..default()
-                        },
-                    ))
-                    .id();
-                commands.entity(parent_entity).add_child(child);
+                        font_size,
+                    );
+                    commands.entity(row).insert(Node {
+                        height: row_height,
+                        ..default()
+                    });
+                    commands.entity(parent_entity).add_child(row);
+                }
             }
         }
     }
-}
-
-fn build_affix_value_diff(
-    commands: &mut Commands,
-    parent_entity: Entity,
-    old_affix: &Affix,
-    new_affix: &Affix,
-    font_size: f32,
-    row_height: Val,
-    display: &StatDisplayRegistry,
-) {
-    let old_lines = display.format(&old_affix.values);
-    let new_lines = display.format(&new_affix.values);
-
-    let old_text = old_lines.join(", ");
-    let new_text = new_lines.join(", ");
-
-    let child = commands
-        .spawn((
-            Text::new(&old_text),
-            TextFont {
-                font_size,
-                ..default()
-            },
-            TextColor(TEXT_COLOR),
-            Node {
-                height: row_height,
-                ..default()
-            },
-        ))
-        .with_children(|p| {
-            p.spawn((TextSpan::new(" -> "), TextColor(TEXT_COLOR)));
-            p.spawn((TextSpan::new(&new_text), TextColor(GREEN_COLOR)));
-            if old_affix.tier != new_affix.tier {
-                p.spawn((TextSpan::new(" ["), TextColor(TEXT_COLOR)));
-                p.spawn((
-                    TextSpan::new(format!("T{}", old_affix.tier + 1)),
-                    TextColor(RED_COLOR),
-                ));
-                p.spawn((TextSpan::new("->"), TextColor(TEXT_COLOR)));
-                p.spawn((
-                    TextSpan::new(format!("T{}", new_affix.tier + 1)),
-                    TextColor(GREEN_COLOR),
-                ));
-                p.spawn((TextSpan::new("]"), TextColor(TEXT_COLOR)));
-            } else {
-                p.spawn((
-                    TextSpan::new(format!(" [T{}]", old_affix.tier + 1)),
-                    TextColor(TEXT_COLOR),
-                ));
-            }
-        })
-        .id();
-    commands.entity(parent_entity).add_child(child);
 }
 
 fn get_spell_name(

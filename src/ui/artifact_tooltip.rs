@@ -4,6 +4,8 @@ use crate::artifacts::{Artifact, ArtifactRegistry};
 use crate::game_state::GameState;
 use crate::stats::{StatDisplayRegistry, StatRange};
 
+use super::stat_line_builder::{StatLineBuilder, StatRenderMode, GOLD_COLOR};
+
 #[derive(Component)]
 pub struct ArtifactTooltipTarget(pub Entity);
 
@@ -11,9 +13,6 @@ pub struct ArtifactTooltipTarget(pub Entity);
 pub struct ArtifactTooltip;
 
 const TOOLTIP_BG: Color = Color::srgba(0.06, 0.06, 0.12, 0.95);
-const GOLD_COLOR: Color = Color::srgb(1.0, 0.84, 0.0);
-const POSITIVE_COLOR: Color = Color::srgb(0.3, 0.9, 0.3);
-const NEGATIVE_COLOR: Color = Color::srgb(0.9, 0.3, 0.3);
 
 pub fn update_artifact_tooltip(
     mut commands: Commands,
@@ -103,42 +102,62 @@ pub fn update_artifact_tooltip(
     commands.entity(tooltip).add_child(header);
 
     if !artifact.values.is_empty() {
-        for &(stat, value) in &artifact.values {
-            let lines = display.format(&[(stat, value)]);
-            for line in lines {
-                let color = if value > 0.0 { POSITIVE_COLOR } else { NEGATIVE_COLOR };
-                let row = commands.spawn((
-                    Text::new(line),
-                    TextFont { font_size: 16.0, ..default() },
-                    TextColor(color),
-                    Node {
-                        margin: UiRect::vertical(Val::Px(2.0)),
-                        ..default()
-                    },
-                )).id();
-                commands.entity(tooltip).add_child(row);
-            }
+        for (stat, value) in &artifact.values {
+            let formats = display.get_format(&[*stat]);
+            let row = StatLineBuilder::spawn_line(
+                &mut commands,
+                &formats[0],
+                StatRenderMode::Fixed { values: &[*value] },
+                16.0,
+            );
+            commands.entity(row).insert(Node {
+                margin: UiRect::vertical(Val::Px(2.0)),
+                ..default()
+            });
+            commands.entity(tooltip).add_child(row);
         }
     } else {
-        for modifier_def in &def.modifiers {
-            let pairs: Vec<_> = modifier_def.stats.iter().map(|sr| match sr {
-                StatRange::Fixed { stat, value } => (*stat, *value),
-                StatRange::Range { stat, min, max } => (*stat, (*min + *max) / 2.0),
+        for m in &def.modifiers {
+            let has_range = m.stats.iter().any(|sr| matches!(sr, StatRange::Range { .. }));
+            let stat_ids: Vec<_> = m.stats.iter().map(|sr| match sr {
+                StatRange::Fixed { stat, .. } | StatRange::Range { stat, .. } => *stat,
             }).collect();
-            let lines = display.format(&pairs);
-            for line in lines {
-                let value = pairs.first().map(|(_, v)| *v).unwrap_or(0.0);
-                let color = if value > 0.0 { POSITIVE_COLOR } else { NEGATIVE_COLOR };
-                let row = commands.spawn((
-                    Text::new(line),
-                    TextFont { font_size: 16.0, ..default() },
-                    TextColor(color),
-                    Node {
+            let formats = display.get_format(&stat_ids);
+
+            if has_range {
+                let ranges: Vec<(f32, f32)> = m.stats.iter().map(|sr| match sr {
+                    StatRange::Fixed { value, .. } => (*value, *value),
+                    StatRange::Range { min, max, .. } => (*min, *max),
+                }).collect();
+                for line in &formats {
+                    let row = StatLineBuilder::spawn_line(
+                        &mut commands, line,
+                        StatRenderMode::Range { ranges: &ranges },
+                        16.0,
+                    );
+                    commands.entity(row).insert(Node {
                         margin: UiRect::vertical(Val::Px(2.0)),
                         ..default()
-                    },
-                )).id();
-                commands.entity(tooltip).add_child(row);
+                    });
+                    commands.entity(tooltip).add_child(row);
+                }
+            } else {
+                let values: Vec<f32> = m.stats.iter().map(|sr| match sr {
+                    StatRange::Fixed { value, .. } => *value,
+                    StatRange::Range { min, max, .. } => (*min + *max) / 2.0,
+                }).collect();
+                for line in &formats {
+                    let row = StatLineBuilder::spawn_line(
+                        &mut commands, line,
+                        StatRenderMode::Fixed { values: &values },
+                        16.0,
+                    );
+                    commands.entity(row).insert(Node {
+                        margin: UiRect::vertical(Val::Px(2.0)),
+                        ..default()
+                    });
+                    commands.entity(tooltip).add_child(row);
+                }
             }
         }
     }

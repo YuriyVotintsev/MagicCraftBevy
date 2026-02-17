@@ -15,7 +15,7 @@ pub(crate) mod systems;
 pub use calculators::StatCalculators;
 pub use computed_stats::{ComputedStats, DEFAULT_STATS};
 pub use dirty_stats::DirtyStats;
-pub use display::StatDisplayRegistry;
+pub use display::{FormatSpan, StatDisplayRegistry};
 pub use expression::Expression;
 pub use health::{Dead, death_system, DeathEvent};
 pub use modifier_def::{ModifierDef, ModifierDefRaw, StatRange};

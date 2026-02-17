@@ -4,6 +4,8 @@ use crate::game_state::GameState;
 use crate::player::{AvailableHeroes, SelectedHero};
 use crate::stats::{StatDisplayRegistry, StatRange};
 
+use super::stat_line_builder::{StatLineBuilder, StatRenderMode};
+
 #[derive(Component)]
 pub struct HeroButton {
     pub index: usize,
@@ -20,8 +22,6 @@ const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
 const SELECTED_BUTTON: Color = Color::srgb(0.2, 0.5, 0.2);
 const SELECTED_HOVERED_BUTTON: Color = Color::srgb(0.25, 0.6, 0.25);
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-const POSITIVE_COLOR: Color = Color::srgb(0.3, 0.9, 0.3);
-const NEGATIVE_COLOR: Color = Color::srgb(0.9, 0.3, 0.3);
 
 pub fn spawn_hero_selection(
     mut commands: Commands,
@@ -190,24 +190,24 @@ pub fn update_stats_panel(
     commands.entity(panel_entity).add_child(header);
 
     for modifier_def in &class.modifiers {
-        let pairs: Vec<_> = modifier_def.stats.iter().map(|sr| match sr {
-            StatRange::Fixed { stat, value } => (*stat, *value),
-            StatRange::Range { stat, min, max } => (*stat, (*min + *max) / 2.0),
+        let stat_ids: Vec<_> = modifier_def.stats.iter().map(|sr| match sr {
+            StatRange::Fixed { stat, .. } | StatRange::Range { stat, .. } => *stat,
         }).collect();
-        let lines = display.format(&pairs);
-        for line in lines {
-            let value = pairs.first().map(|(_, v)| *v).unwrap_or(0.0);
-            let color = if value > 0.0 { POSITIVE_COLOR } else { NEGATIVE_COLOR };
-
-            let row = commands.spawn((
-                Text::new(line),
-                TextFont { font_size: 18.0, ..default() },
-                TextColor(color),
-                Node {
-                    margin: UiRect::vertical(Val::Px(2.0)),
-                    ..default()
-                },
-            )).id();
+        let values: Vec<f32> = modifier_def.stats.iter().map(|sr| match sr {
+            StatRange::Fixed { value, .. } => *value,
+            StatRange::Range { min, max, .. } => (*min + *max) / 2.0,
+        }).collect();
+        let formats = display.get_format(&stat_ids);
+        for line in &formats {
+            let row = StatLineBuilder::spawn_line(
+                &mut commands, line,
+                StatRenderMode::Fixed { values: &values },
+                18.0,
+            );
+            commands.entity(row).insert(Node {
+                margin: UiRect::vertical(Val::Px(2.0)),
+                ..default()
+            });
             commands.entity(panel_entity).add_child(row);
         }
     }
