@@ -47,14 +47,12 @@ impl Modifiers {
 
     pub fn product(&self, stat: StatId) -> f32 {
         let mut result = 1.0;
-        let mut found = false;
         for m in &self.list {
             if m.stat == stat {
-                result *= m.value;
-                found = true;
+                result *= 1.0 + m.value;
             }
         }
-        if found { result } else { 1.0 }
+        result
     }
 
     #[allow(dead_code)]

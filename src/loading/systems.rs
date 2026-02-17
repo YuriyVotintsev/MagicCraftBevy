@@ -92,7 +92,7 @@ pub fn check_stats_loaded(
 
     let mut registry = StatRegistry::new();
     for def in &stats_config.stat_ids {
-        registry.insert(&def.name, def.aggregation.clone());
+        registry.insert(&def.name, def.aggregation.clone(), def.lower_is_better);
     }
 
     let mut calculators = StatCalculators::new(registry.len());

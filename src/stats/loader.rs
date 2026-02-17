@@ -8,6 +8,8 @@ use super::{AggregationType, StatCalculators, StatId, StatRegistry};
 pub struct StatDefRaw {
     pub name: String,
     pub aggregation: AggregationType,
+    #[serde(default)]
+    pub lower_is_better: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -37,7 +39,7 @@ pub fn load_stats(
 
     let mut registry = StatRegistry::new();
     for def in &stat_defs {
-        registry.insert(&def.name, def.aggregation.clone());
+        registry.insert(&def.name, def.aggregation.clone(), def.lower_is_better);
     }
 
     let mut calculators = StatCalculators::new(registry.len());

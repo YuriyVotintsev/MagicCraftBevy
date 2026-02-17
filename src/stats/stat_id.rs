@@ -23,6 +23,7 @@ pub enum AggregationType {
 pub struct StatDef {
     pub name: String,
     pub aggregation: AggregationType,
+    pub lower_is_better: bool,
 }
 
 #[derive(Resource, Default)]
@@ -36,7 +37,7 @@ impl StatRegistry {
         Self::default()
     }
 
-    pub fn insert(&mut self, name: &str, aggregation: AggregationType) -> StatId {
+    pub fn insert(&mut self, name: &str, aggregation: AggregationType, lower_is_better: bool) -> StatId {
         if let Some(&id) = self.name_to_id.get(name) {
             return id;
         }
@@ -46,6 +47,7 @@ impl StatRegistry {
         self.stats.push(StatDef {
             name: name.to_string(),
             aggregation,
+            lower_is_better,
         });
         id
     }

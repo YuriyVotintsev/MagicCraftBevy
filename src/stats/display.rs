@@ -6,12 +6,27 @@ use serde::Deserialize;
 use super::{StatId, StatRegistry};
 
 #[derive(Clone, Debug)]
+pub enum SignMode {
+    Default,
+    ShowSign,
+    Absolute,
+}
+
+#[derive(Clone, Debug)]
+pub struct ValueTemplate {
+    pub prefix: String,
+    pub suffix: String,
+    pub sign_mode: SignMode,
+}
+
+#[derive(Clone, Debug)]
 pub enum FormatSpan {
     Value {
         index: usize,
-        prefix: String,
-        suffix: String,
         is_percent: bool,
+        lower_is_better: bool,
+        template: ValueTemplate,
+        negative_template: Option<ValueTemplate>,
     },
     Label(String),
 }
@@ -33,6 +48,27 @@ pub struct StatDisplayRegistry {
     multi_stat_formats: HashMap<Vec<StatId>, MultiStatEntry>,
 }
 
+fn parse_template_half(half: &str) -> Option<(usize, ValueTemplate)> {
+    let brace_start = half.find('{')?;
+    let rel_brace_end = half[brace_start + 1..].find('}')?;
+    let brace_end = brace_start + 1 + rel_brace_end;
+    let inside = &half[brace_start + 1..brace_end];
+
+    let (sign_mode, index_str) = if inside.starts_with('+') {
+        (SignMode::ShowSign, &inside[1..])
+    } else if inside.starts_with('|') && inside.ends_with('|') && inside.len() >= 3 {
+        (SignMode::Absolute, &inside[1..inside.len() - 1])
+    } else {
+        (SignMode::Default, inside)
+    };
+
+    let index = index_str.parse::<usize>().ok()?;
+    let prefix = half[..brace_start].to_string();
+    let suffix = half[brace_end + 1..].to_string();
+
+    Some((index, ValueTemplate { prefix, suffix, sign_mode }))
+}
+
 fn parse_format_string(fmt: &str) -> Vec<FormatSpan> {
     let mut spans = Vec::new();
     let mut rest = fmt;
@@ -47,22 +83,27 @@ fn parse_format_string(fmt: &str) -> Vec<FormatSpan> {
                 let bracket_end = bracket_start + 1 + rel_end;
                 let inside = &rest[bracket_start + 1..bracket_end];
 
-                if let Some(brace_start) = inside.find('{') {
-                    if let Some(rel_brace_end) = inside[brace_start + 1..].find('}') {
-                        let brace_end = brace_start + 1 + rel_brace_end;
-                        let index_str = &inside[brace_start + 1..brace_end];
-                        if let Ok(index) = index_str.parse::<usize>() {
-                            let prefix = inside[..brace_start].to_string();
-                            let suffix = inside[brace_end + 1..].to_string();
-                            let is_percent = suffix.contains('%');
-                            spans.push(FormatSpan::Value {
-                                index,
-                                prefix,
-                                suffix,
-                                is_percent,
-                            });
-                        }
-                    }
+                let (pos_half, neg_half) = if let Some(semi) = inside.find(';') {
+                    (&inside[..semi], Some(&inside[semi + 1..]))
+                } else {
+                    (inside, None)
+                };
+
+                if let Some((index, template)) = parse_template_half(pos_half) {
+                    let negative_template = neg_half.and_then(|h| {
+                        parse_template_half(h).map(|(_, t)| t)
+                    });
+
+                    let is_percent = template.suffix.contains('%')
+                        || negative_template.as_ref().is_some_and(|t| t.suffix.contains('%'));
+
+                    spans.push(FormatSpan::Value {
+                        index,
+                        is_percent,
+                        lower_is_better: false,
+                        template,
+                        negative_template,
+                    });
                 }
 
                 rest = &rest[bracket_end + 1..];
@@ -77,6 +118,18 @@ fn parse_format_string(fmt: &str) -> Vec<FormatSpan> {
     }
 
     spans
+}
+
+fn embed_lower_is_better(spans: &mut [FormatSpan], stats: &[StatId], registry: &StatRegistry) {
+    for span in spans {
+        if let FormatSpan::Value { index, lower_is_better, .. } = span {
+            if let Some(stat_id) = stats.get(*index) {
+                if let Some(def) = registry.get_def(*stat_id) {
+                    *lower_is_better = def.lower_is_better;
+                }
+            }
+        }
+    }
 }
 
 fn to_title_case(name: &str) -> String {
@@ -107,7 +160,8 @@ impl StatDisplayRegistry {
                 continue;
             }
 
-            let spans = parse_format_string(&raw.format);
+            let mut spans = parse_format_string(&raw.format);
+            embed_lower_is_better(&mut spans, &stats, registry);
 
             if stats.len() == 1 {
                 single_stat_formats.insert(stats[0], spans);
@@ -127,8 +181,10 @@ impl StatDisplayRegistry {
         for (stat_id, def) in registry.iter() {
             if !single_stat_formats.contains_key(&stat_id) {
                 let title = to_title_case(&def.name);
-                let fallback_fmt = format!("[+{{0}}] {}", title);
-                single_stat_formats.insert(stat_id, parse_format_string(&fallback_fmt));
+                let fallback_fmt = format!("[{{+0}}] {}", title);
+                let mut spans = parse_format_string(&fallback_fmt);
+                embed_lower_is_better(&mut spans, &[stat_id], registry);
+                single_stat_formats.insert(stat_id, spans);
             }
         }
 
@@ -145,9 +201,14 @@ impl StatDisplayRegistry {
             }
             return vec![vec![FormatSpan::Value {
                 index: 0,
-                prefix: "+".to_string(),
-                suffix: String::new(),
                 is_percent: false,
+                lower_is_better: false,
+                template: ValueTemplate {
+                    prefix: String::new(),
+                    suffix: String::new(),
+                    sign_mode: SignMode::ShowSign,
+                },
+                negative_template: None,
             }]];
         }
 
@@ -170,14 +231,16 @@ impl StatDisplayRegistry {
                         .map(|span| match span {
                             FormatSpan::Value {
                                 index,
-                                prefix,
-                                suffix,
                                 is_percent,
+                                lower_is_better,
+                                template,
+                                negative_template,
                             } => FormatSpan::Value {
                                 index: remap.get(*index).copied().unwrap_or(*index),
-                                prefix: prefix.clone(),
-                                suffix: suffix.clone(),
                                 is_percent: *is_percent,
+                                lower_is_better: *lower_is_better,
+                                template: template.clone(),
+                                negative_template: negative_template.clone(),
                             },
                             other => other.clone(),
                         })

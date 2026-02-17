@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::stats::FormatSpan;
+use crate::stats::{FormatSpan, SignMode, ValueTemplate};
 
 pub const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 pub const POSITIVE_COLOR: Color = Color::srgb(0.3, 0.9, 0.3);
@@ -32,13 +32,45 @@ struct Segment {
     color: Color,
 }
 
-fn format_value(value: f32, prefix: &str, suffix: &str, is_percent: bool) -> String {
+fn format_value(value: f32, template: &ValueTemplate, is_percent: bool) -> String {
     let display_value = if is_percent {
         (value * 100.0).round() as i32
     } else {
         value.round() as i32
     };
-    format!("{}{}{}", prefix, display_value, suffix)
+
+    let formatted = match template.sign_mode {
+        SignMode::Default => format!("{}", display_value),
+        SignMode::ShowSign => {
+            if display_value >= 0 {
+                format!("+{}", display_value)
+            } else {
+                format!("{}", display_value)
+            }
+        }
+        SignMode::Absolute => format!("{}", display_value.abs()),
+    };
+
+    format!("{}{}{}", template.prefix, formatted, template.suffix)
+}
+
+fn pick_and_format(
+    value: f32,
+    template: &ValueTemplate,
+    negative_template: &Option<ValueTemplate>,
+    is_percent: bool,
+) -> String {
+    if value < 0.0 {
+        if let Some(neg) = negative_template {
+            return format_value(value, neg, is_percent);
+        }
+    }
+    format_value(value, template, is_percent)
+}
+
+fn benefit_color(value: f32, lower_is_better: bool) -> Color {
+    let is_beneficial = (value >= 0.0) != lower_is_better;
+    if is_beneficial { POSITIVE_COLOR } else { NEGATIVE_COLOR }
 }
 
 fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment> {
@@ -49,17 +81,14 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
                 match span {
                     FormatSpan::Value {
                         index,
-                        prefix,
-                        suffix,
                         is_percent,
+                        lower_is_better,
+                        template,
+                        negative_template,
                     } => {
                         let value = values.get(*index).copied().unwrap_or(0.0);
-                        let text = format_value(value, prefix, suffix, *is_percent);
-                        let color = if value >= 0.0 {
-                            POSITIVE_COLOR
-                        } else {
-                            NEGATIVE_COLOR
-                        };
+                        let text = pick_and_format(value, template, negative_template, *is_percent);
+                        let color = benefit_color(value, *lower_is_better);
                         segments.push(Segment { text, color });
                     }
                     FormatSpan::Label(text) => {
@@ -78,16 +107,19 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
                 match span {
                     FormatSpan::Value {
                         index,
-                        prefix,
-                        suffix,
                         is_percent,
+                        lower_is_better,
+                        template,
+                        negative_template,
                     } => {
                         let (min, max) = ranges.get(*index).copied().unwrap_or((0.0, 0.0));
-                        let min_text = format_value(min, prefix, suffix, *is_percent);
-                        let max_text = format_value(max, prefix, suffix, *is_percent);
+                        let min_text =
+                            pick_and_format(min, template, negative_template, *is_percent);
+                        let max_text =
+                            pick_and_format(max, template, negative_template, *is_percent);
                         segments.push(Segment {
                             text: min_text,
-                            color: GOLD_COLOR,
+                            color: benefit_color(min, *lower_is_better),
                         });
                         segments.push(Segment {
                             text: " - ".to_string(),
@@ -95,7 +127,7 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
                         });
                         segments.push(Segment {
                             text: max_text,
-                            color: GOLD_COLOR,
+                            color: benefit_color(max, *lower_is_better),
                         });
                     }
                     FormatSpan::Label(text) => {
@@ -108,7 +140,9 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
             }
             segments
         }
-        StatRenderMode::Diff { old, new, rerolled } => collect_diff_segments(spans, old, new, *rerolled),
+        StatRenderMode::Diff { old, new, rerolled } => {
+            collect_diff_segments(spans, old, new, *rerolled)
+        }
     }
 }
 
@@ -172,13 +206,14 @@ fn collect_uniform(spans: &[FormatSpan], values: &[f32], color: Color) -> Vec<Se
         match span {
             FormatSpan::Value {
                 index,
-                prefix,
-                suffix,
                 is_percent,
+                template,
+                negative_template,
+                ..
             } => {
                 let value = values.get(*index).copied().unwrap_or(0.0);
                 segments.push(Segment {
-                    text: format_value(value, prefix, suffix, *is_percent),
+                    text: pick_and_format(value, template, negative_template, *is_percent),
                     color,
                 });
             }
@@ -204,14 +239,15 @@ fn collect_inline_diff(
         match span {
             FormatSpan::Value {
                 index,
-                prefix,
-                suffix,
                 is_percent,
+                template,
+                negative_template,
+                ..
             } => {
                 let old_val = old_side.values.get(*index).copied().unwrap_or(0.0);
                 let new_val = new_side.values.get(*index).copied().unwrap_or(0.0);
                 segments.push(Segment {
-                    text: format_value(old_val, prefix, suffix, *is_percent),
+                    text: pick_and_format(old_val, template, negative_template, *is_percent),
                     color: NEGATIVE_COLOR,
                 });
                 segments.push(Segment {
@@ -219,7 +255,7 @@ fn collect_inline_diff(
                     color: TEXT_COLOR,
                 });
                 segments.push(Segment {
-                    text: format_value(new_val, prefix, suffix, *is_percent),
+                    text: pick_and_format(new_val, template, negative_template, *is_percent),
                     color: POSITIVE_COLOR,
                 });
             }
@@ -319,12 +355,18 @@ impl StatLineBuilder {
             match span {
                 FormatSpan::Value {
                     index,
-                    prefix,
-                    suffix,
                     is_percent,
+                    template,
+                    negative_template,
+                    ..
                 } => {
                     let value = values.get(*index).copied().unwrap_or(0.0);
-                    result.push_str(&format_value(value, prefix, suffix, *is_percent));
+                    result.push_str(&pick_and_format(
+                        value,
+                        template,
+                        negative_template,
+                        *is_percent,
+                    ));
                 }
                 FormatSpan::Label(text) => {
                     result.push_str(text);
