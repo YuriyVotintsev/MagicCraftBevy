@@ -1,4 +1,4 @@
-use crate::stats::{ModifierDef, ModifierDefRaw};
+use crate::stats::{ModifierDef, ModifierDefRaw, StatRegistry};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ArtifactId(pub u32);
@@ -22,4 +22,14 @@ pub struct ArtifactDefRaw {
     pub price: u32,
     #[serde(default)]
     pub modifiers: Vec<ModifierDefRaw>,
+}
+
+impl ArtifactDefRaw {
+    pub fn resolve(&self, stat_registry: &StatRegistry) -> ArtifactDef {
+        ArtifactDef {
+            name: self.name.clone(),
+            price: self.price,
+            modifiers: self.modifiers.iter().map(|m| m.resolve(stat_registry)).collect(),
+        }
+    }
 }

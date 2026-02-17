@@ -40,14 +40,6 @@ impl PlayerArtifacts {
         self.slots.iter().all(|s| s.is_some())
     }
 
-    pub fn equipped(&self) -> Vec<(usize, Entity)> {
-        self.slots
-            .iter()
-            .enumerate()
-            .filter_map(|(i, s)| s.map(|e| (i, e)))
-            .collect()
-    }
-
     pub fn reset(&mut self, commands: &mut Commands) {
         for entity in self.slots.iter_mut().filter_map(|s| s.take()) {
             commands.entity(entity).despawn();

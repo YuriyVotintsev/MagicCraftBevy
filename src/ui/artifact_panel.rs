@@ -80,16 +80,12 @@ pub fn rebuild_artifact_panel(
 
     commands.entity(panel_entity).despawn_children();
 
-    let equipped = artifacts.equipped();
-    if equipped.is_empty() {
-        return;
-    }
-
     let is_shop = wave_phase
         .as_ref()
         .map_or(false, |p| **p == WavePhase::Shop);
 
-    for (slot, artifact_entity) in &equipped {
+    for (slot, maybe) in artifacts.slots.iter().enumerate() {
+        let Some(artifact_entity) = maybe else { continue; };
         let Ok(artifact) = artifact_query.get(*artifact_entity) else {
             continue;
         };
@@ -97,13 +93,13 @@ pub fn rebuild_artifact_panel(
             continue;
         };
 
-        let is_selected = selected.0 == Some(*slot);
+        let is_selected = selected.0 == Some(slot);
         let sell_price = def.sell_price(balance.shop.sell_price_percent);
 
         if is_shop {
             let mut row = commands.spawn((
                 Button,
-                ArtifactPanelSlot { slot: *slot },
+                ArtifactPanelSlot { slot: slot },
                 ArtifactTooltipTarget(artifact.0),
                 Node {
                     flex_direction: FlexDirection::Row,
@@ -123,7 +119,7 @@ pub fn rebuild_artifact_panel(
                 if is_selected {
                     parent.spawn((
                         Button,
-                        ArtifactPanelSellButton { slot: *slot },
+                        ArtifactPanelSellButton { slot: slot },
                         ArtifactTooltipTarget(artifact.0),
                         Node {
                             padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),

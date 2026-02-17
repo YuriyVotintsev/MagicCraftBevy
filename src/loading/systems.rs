@@ -2,7 +2,7 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::affixes::{AffixDef, AffixRegistry, OrbDef, OrbRegistry};
-use crate::artifacts::{ArtifactDef, ArtifactRegistry, AvailableArtifacts};
+use crate::artifacts::{ArtifactRegistry, AvailableArtifacts};
 use crate::blueprints::BlueprintRegistry;
 use crate::player::hero_class::{AvailableHeroes, HeroClass};
 use crate::player::SpellSlot;
@@ -287,14 +287,7 @@ pub fn check_content_loaded(
             let typed_handle: Handle<ArtifactDefAsset> = handle.clone().typed();
             if let Some(artifact_asset) = artifact_assets.get(typed_handle.id()) {
                 let raw = &artifact_asset.0;
-                let modifiers = raw.modifiers.iter()
-                    .map(|m| m.resolve(&stat_registry))
-                    .collect();
-                let def = ArtifactDef {
-                    name: raw.name.clone(),
-                    price: raw.price,
-                    modifiers,
-                };
+                let def = raw.resolve(&stat_registry);
                 info!("Registered artifact: {}", raw.id);
                 let id = artifact_registry.register(&raw.id, def);
                 artifact_ids.push(id);
