@@ -156,7 +156,7 @@ pub fn update_hud(
     }
 
     if let Ok(mut text) = money_text.single_mut() {
-        **text = format!("Coins: {}", money.0);
+        **text = format!("Coins: {}", money.get());
     }
 
     if let Ok(mut text) = kill_text.single_mut() {
@@ -179,7 +179,7 @@ pub fn update_hud(
         let max_life = stat_registry
             .get("max_life")
             .map(|id| stats.get(id))
-            .unwrap_or(100.0);
+            .unwrap_or_default();
 
         if let Ok(mut text) = health_text.single_mut() {
             **text = format!("HP: {}/{}", health.current as i32, max_life as i32);

@@ -606,8 +606,7 @@ pub fn buy_orb_system(
         let Some(def) = orb_registry.get(buy_btn.0) else {
             continue;
         };
-        if money.0 >= def.price {
-            money.0 -= def.price;
+        if money.spend(def.price) {
             *flow_state = OrbFlowState::SelectSlot { orb_id: buy_btn.0 };
         }
     }

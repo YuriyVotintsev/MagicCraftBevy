@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::balance::{GameBalance, WaveBalance};
 use crate::blueprints::components::common::health::Health;
 use crate::money::PlayerMoney;
 use crate::schedule::{GameSet, PostGameSet};
@@ -15,14 +16,6 @@ pub enum CombatPhase {
     Paused,
 }
 
-const BASE_ENEMIES: u32 = 10;
-const ENEMIES_PER_WAVE: u32 = 3;
-const BASE_CONCURRENT: u32 = 5;
-const CONCURRENT_PER_WAVE: u32 = 1;
-const SPAWN_THRESHOLD: u32 = 2;
-const WAVE_REWARD: u32 = 10;
-const SHOP_DELAY: f32 = 2.0;
-
 #[derive(SubStates, Default, Clone, PartialEq, Eq, Hash, Debug)]
 #[source(GameState = GameState::Playing)]
 pub enum WavePhase {
@@ -32,7 +25,7 @@ pub enum WavePhase {
     Shop,
 }
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct WaveState {
     pub current_wave: u32,
     pub spawned_count: u32,
@@ -41,29 +34,23 @@ pub struct WaveState {
     pub max_concurrent: u32,
 }
 
-impl Default for WaveState {
-    fn default() -> Self {
+impl WaveState {
+    pub fn new(balance: &WaveBalance) -> Self {
         Self {
             current_wave: 1,
             spawned_count: 0,
             killed_count: 0,
-            target_count: BASE_ENEMIES,
-            max_concurrent: BASE_CONCURRENT,
+            target_count: balance.base_enemies,
+            max_concurrent: balance.base_concurrent,
         }
     }
-}
 
-impl WaveState {
-    fn calculate_target(wave: u32) -> u32 {
-        BASE_ENEMIES + (wave - 1) * ENEMIES_PER_WAVE
+    fn calculate_target(wave: u32, balance: &WaveBalance) -> u32 {
+        balance.base_enemies + (wave - 1) * balance.enemies_per_wave
     }
 
-    fn calculate_max_concurrent(wave: u32) -> u32 {
-        BASE_CONCURRENT + (wave - 1) * CONCURRENT_PER_WAVE
-    }
-
-    pub fn spawn_threshold() -> u32 {
-        SPAWN_THRESHOLD
+    fn calculate_max_concurrent(wave: u32, balance: &WaveBalance) -> u32 {
+        balance.base_concurrent + (wave - 1) * balance.concurrent_per_wave
     }
 }
 
@@ -88,16 +75,19 @@ impl InvulnerableStack {
 #[derive(Resource)]
 pub struct ShopDelayTimer(pub Timer);
 
+impl Default for ShopDelayTimer {
+    fn default() -> Self {
+        Self(Timer::from_seconds(1.0, TimerMode::Once))
+    }
+}
+
 pub struct WavePlugin;
 
 impl Plugin for WavePlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<WaveState>()
             .init_resource::<PlayerMoney>()
-            .insert_resource(ShopDelayTimer(Timer::from_seconds(
-                SHOP_DELAY,
-                TimerMode::Once,
-            )))
+            .init_resource::<ShopDelayTimer>()
             .add_systems(OnEnter(GameState::Playing), reset_wave_state)
             .add_systems(
                 Update,
@@ -125,10 +115,11 @@ fn reset_wave_state(
     mut money: ResMut<PlayerMoney>,
     mut shop_timer: ResMut<ShopDelayTimer>,
     mut virtual_time: ResMut<Time<Virtual>>,
+    balance: Res<GameBalance>,
 ) {
-    *wave_state = WaveState::default();
-    money.0 = 0;
-    shop_timer.0.reset();
+    *wave_state = WaveState::new(&balance.wave);
+    money.reset();
+    shop_timer.0 = Timer::from_seconds(balance.wave.shop_delay, TimerMode::Once);
     virtual_time.unpause();
 }
 
@@ -153,14 +144,15 @@ fn check_wave_completion(
     mut next_phase: ResMut<NextState<WavePhase>>,
     mut money: ResMut<PlayerMoney>,
     mut shop_timer: ResMut<ShopDelayTimer>,
+    balance: Res<GameBalance>,
 ) {
     let all_spawned = wave_state.spawned_count >= wave_state.target_count;
     let all_wave_enemies_killed = wave_state.killed_count >= wave_state.spawned_count;
     let no_enemies_alive = !enemies_query.iter().any(|f| *f == Faction::Enemy);
 
     if all_spawned && all_wave_enemies_killed && no_enemies_alive && wave_state.spawned_count > 0 {
-        money.0 += WAVE_REWARD;
-        shop_timer.0.reset();
+        money.earn(balance.wave.reward);
+        shop_timer.0 = Timer::from_seconds(balance.wave.shop_delay, TimerMode::Once);
 
         if let Ok(player_entity) = player_query.single() {
             if let Ok(mut stack) = invuln_query.get_mut(player_entity) {
@@ -189,12 +181,13 @@ fn start_next_wave(
     mut wave_state: ResMut<WaveState>,
     player_query: Query<Entity, With<crate::player::Player>>,
     mut invuln_query: Query<&mut InvulnerableStack>,
+    balance: Res<GameBalance>,
 ) {
     wave_state.current_wave += 1;
     wave_state.spawned_count = 0;
     wave_state.killed_count = 0;
-    wave_state.target_count = WaveState::calculate_target(wave_state.current_wave);
-    wave_state.max_concurrent = WaveState::calculate_max_concurrent(wave_state.current_wave);
+    wave_state.target_count = WaveState::calculate_target(wave_state.current_wave, &balance.wave);
+    wave_state.max_concurrent = WaveState::calculate_max_concurrent(wave_state.current_wave, &balance.wave);
 
     if let Ok(player_entity) = player_query.single() {
         if let Ok(mut stack) = invuln_query.get_mut(player_entity) {

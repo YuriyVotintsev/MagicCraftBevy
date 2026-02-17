@@ -1,0 +1,25 @@
+(
+    wave: (
+        base_enemies: 10,
+        enemies_per_wave: 3,
+        base_concurrent: 5,
+        concurrent_per_wave: 1,
+        spawn_threshold: 2,
+        reward: 10,
+        shop_delay: 2.0,
+        marker_duration: 2.0,
+    ),
+    arena: (
+        width: 3840.0,
+        height: 2160.0,
+        half_w: 1708.0,
+        half_h: 750.0,
+        corner_radius: 320.0,
+    ),
+    shop: (
+        artifact_slots: 5,
+        offerings_count: 3,
+        base_reroll_cost: 1,
+        sell_price_percent: 50,
+    ),
+)

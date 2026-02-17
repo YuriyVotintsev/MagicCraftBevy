@@ -5,6 +5,7 @@ use bevy::reflect::TypePath;
 
 use crate::affixes::{AffixDefRaw, OrbDefRaw};
 use crate::artifacts::ArtifactDefRaw;
+use crate::balance::GameBalance;
 use crate::blueprints::BlueprintDefRaw;
 use crate::player::hero_class::HeroClassRaw;
 use crate::stats::display::StatDisplayRuleRaw;
@@ -32,6 +33,12 @@ pub struct AffixPoolAsset(pub Vec<AffixDefRaw>);
 #[derive(Asset, TypePath)]
 pub struct OrbConfigAsset(pub Vec<OrbDefRaw>);
 
+#[derive(Asset, TypePath)]
+pub struct GameBalanceAsset(pub GameBalance);
+
+#[derive(Default, TypePath)]
+pub struct GameBalanceLoader;
+
 #[derive(Default, TypePath)]
 pub struct StatsConfigLoader;
 
@@ -49,6 +56,29 @@ pub struct AffixPoolLoader;
 
 #[derive(Default, TypePath)]
 pub struct OrbConfigLoader;
+
+impl AssetLoader for GameBalanceLoader {
+    type Asset = GameBalanceAsset;
+    type Settings = ();
+    type Error = anyhow::Error;
+
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes).await?;
+        let content = std::str::from_utf8(&bytes)?;
+        let balance: GameBalance = ron::from_str(content)?;
+        Ok(GameBalanceAsset(balance))
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["balance.ron"]
+    }
+}
 
 impl AssetLoader for StatsConfigLoader {
     type Asset = StatsConfigAsset;

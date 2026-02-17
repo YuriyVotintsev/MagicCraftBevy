@@ -9,6 +9,12 @@ pub struct ArtifactDef {
     pub modifiers: Vec<ModifierDef>,
 }
 
+impl ArtifactDef {
+    pub fn sell_price(&self, percent: u32) -> u32 {
+        self.price * percent / 100
+    }
+}
+
 #[derive(serde::Deserialize)]
 pub struct ArtifactDefRaw {
     pub id: String,

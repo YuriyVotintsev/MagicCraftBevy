@@ -30,7 +30,7 @@ fn move_toward_system(
         let Ok(target_transform) = transforms.get(move_toward.target) else {
             continue;
         };
-        let speed = speed_id.map(|id| stats.get(id)).unwrap_or(100.0);
+        let speed = speed_id.map(|id| stats.get(id)).unwrap_or_default();
         let direction = (target_transform.translation - transform.translation).truncate();
 
         velocity.0 = if direction.length_squared() > 1.0 {

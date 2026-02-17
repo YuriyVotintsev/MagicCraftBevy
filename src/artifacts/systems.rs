@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use rand::prelude::*;
 
+use crate::balance::GameBalance;
 use crate::money::PlayerMoney;
 use crate::player::Player;
 use crate::stats::{Modifiers, StatRange};
@@ -25,18 +26,19 @@ fn reroll_offerings(
     commands: &mut Commands,
     offerings: &mut ShopOfferings,
     available: &AvailableArtifacts,
+    offerings_count: usize,
 ) {
     offerings.clear(commands);
 
-    // By design: duplicates allowed — stacking works via stat modifiers
     let mut rng = rand::rng();
-    let mut ids = available.0.clone();
+    let mut ids = available.to_vec();
     ids.shuffle(&mut rng);
-    offerings.0 = ids
-        .into_iter()
-        .take(3)
-        .map(|id| commands.spawn(Artifact(id)).id())
-        .collect();
+    offerings.set(
+        ids.into_iter()
+            .take(offerings_count)
+            .map(|id| commands.spawn(Artifact(id)).id())
+            .collect(),
+    );
 }
 
 pub fn handle_reroll(
@@ -44,9 +46,10 @@ pub fn handle_reroll(
     mut events: MessageReader<RerollRequest>,
     mut offerings: ResMut<ShopOfferings>,
     available: Res<AvailableArtifacts>,
+    balance: If<Res<GameBalance>>,
 ) {
     for _ in events.read() {
-        reroll_offerings(&mut commands, &mut offerings, &available);
+        reroll_offerings(&mut commands, &mut offerings, &available, balance.shop.offerings_count);
     }
 }
 
@@ -60,20 +63,21 @@ pub fn handle_buy(
     mut player_query: Query<&mut Modifiers, With<Player>>,
 ) {
     for event in events.read() {
-        if event.index >= offerings.0.len() {
+        if event.index >= offerings.len() {
             continue;
         }
-        let artifact_entity = offerings.0[event.index];
+        let Some(artifact_entity) = offerings.get(event.index) else {
+            continue;
+        };
         let Ok(artifact) = artifact_query.get(artifact_entity) else {
             continue;
         };
         let Some(def) = registry.get(artifact.0) else {
             continue;
         };
-        if money.0 >= def.price && !artifacts.is_full() {
-            money.0 -= def.price;
+        if !artifacts.is_full() && money.spend(def.price) {
             artifacts.buy(artifact_entity);
-            offerings.0.remove(event.index);
+            offerings.remove(event.index);
             for mut modifiers in &mut player_query {
                 for modifier_def in &def.modifiers {
                     for sr in &modifier_def.stats {
@@ -100,12 +104,13 @@ pub fn handle_sell(
     registry: Res<ArtifactRegistry>,
     artifact_query: Query<&Artifact>,
     mut player_query: Query<&mut Modifiers, With<Player>>,
+    balance: If<Res<GameBalance>>,
 ) {
     for event in events.read() {
         if let Some(artifact_entity) = artifacts.sell(event.slot) {
             if let Ok(artifact) = artifact_query.get(artifact_entity) {
                 if let Some(def) = registry.get(artifact.0) {
-                    money.0 += (def.price + 1) / 2;
+                    money.earn(def.sell_price(balance.shop.sell_price_percent));
                 }
             }
             for mut modifiers in &mut player_query {
@@ -120,6 +125,7 @@ pub fn generate_shop_offerings(
     mut commands: Commands,
     mut offerings: ResMut<ShopOfferings>,
     available: Res<AvailableArtifacts>,
+    balance: Res<GameBalance>,
 ) {
-    reroll_offerings(&mut commands, &mut offerings, &available);
+    reroll_offerings(&mut commands, &mut offerings, &available, balance.shop.offerings_count);
 }

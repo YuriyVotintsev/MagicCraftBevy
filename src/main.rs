@@ -1,5 +1,6 @@
 mod affixes;
 mod artifacts;
+mod balance;
 mod blueprints;
 mod arena;
 mod common;

@@ -10,6 +10,7 @@ pub use types::{ArtifactDef, ArtifactDefRaw, ArtifactId};
 
 use bevy::prelude::*;
 
+use crate::balance::GameBalance;
 use crate::wave::WavePhase;
 use crate::GameState;
 use systems::generate_shop_offerings;
@@ -37,8 +38,10 @@ fn reset_artifacts(
     mut artifacts: ResMut<PlayerArtifacts>,
     mut offerings: ResMut<ShopOfferings>,
     mut reroll_cost: ResMut<RerollCost>,
+    balance: Res<GameBalance>,
 ) {
     artifacts.reset(&mut commands);
+    artifacts.slots = vec![None; balance.shop.artifact_slots];
     offerings.clear(&mut commands);
-    *reroll_cost = Default::default();
+    reroll_cost.reset_to(balance.shop.base_reroll_cost);
 }

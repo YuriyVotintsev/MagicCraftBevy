@@ -56,9 +56,29 @@ impl PlayerArtifacts {
 }
 
 #[derive(Resource, Default)]
-pub struct ShopOfferings(pub Vec<Entity>);
+pub struct ShopOfferings(Vec<Entity>);
 
 impl ShopOfferings {
+    pub fn set(&mut self, entities: Vec<Entity>) {
+        self.0 = entities;
+    }
+
+    pub fn get(&self, index: usize) -> Option<Entity> {
+        self.0.get(index).copied()
+    }
+
+    pub fn remove(&mut self, index: usize) -> Entity {
+        self.0.remove(index)
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn as_slice(&self) -> &[Entity] {
+        &self.0
+    }
+
     pub fn clear(&mut self, commands: &mut Commands) {
         for entity in self.0.drain(..) {
             commands.entity(entity).despawn();
@@ -67,10 +87,34 @@ impl ShopOfferings {
 }
 
 #[derive(Resource, Default)]
-pub struct AvailableArtifacts(pub Vec<ArtifactId>);
+pub struct AvailableArtifacts(Vec<ArtifactId>);
+
+impl AvailableArtifacts {
+    pub fn new(ids: Vec<ArtifactId>) -> Self {
+        Self(ids)
+    }
+
+    pub fn to_vec(&self) -> Vec<ArtifactId> {
+        self.0.clone()
+    }
+}
 
 #[derive(Resource)]
-pub struct RerollCost(pub u32);
+pub struct RerollCost(u32);
+
+impl RerollCost {
+    pub fn get(&self) -> u32 {
+        self.0
+    }
+
+    pub fn increment(&mut self) {
+        self.0 += 1;
+    }
+
+    pub fn reset_to(&mut self, base: u32) {
+        self.0 = base;
+    }
+}
 
 impl Default for RerollCost {
     fn default() -> Self {

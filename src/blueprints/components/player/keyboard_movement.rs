@@ -43,7 +43,7 @@ fn keyboard_movement_system(
         let speed = stat_registry
             .get("movement_speed")
             .map(|id| stats.get(id))
-            .unwrap_or(400.0);
+            .unwrap_or_default();
 
         velocity.0 = if direction != Vec2::ZERO {
             direction.normalize() * speed

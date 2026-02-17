@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::artifacts::{Artifact, ArtifactRegistry, PlayerArtifacts, SellRequest};
+use crate::balance::GameBalance;
 use crate::game_state::GameState;
 use crate::ui::artifact_tooltip::ArtifactTooltipTarget;
 use crate::wave::WavePhase;
@@ -60,6 +61,7 @@ pub fn rebuild_artifact_panel(
     registry: Res<ArtifactRegistry>,
     artifact_query: Query<&Artifact>,
     selected: Res<SelectedArtifactSlot>,
+    balance: Res<GameBalance>,
     wave_phase: Option<Res<State<WavePhase>>>,
 ) {
     if !artifacts.is_changed() && !selected.is_changed() {
@@ -96,7 +98,7 @@ pub fn rebuild_artifact_panel(
         };
 
         let is_selected = selected.0 == Some(*slot);
-        let sell_price = (def.price + 1) / 2;
+        let sell_price = def.sell_price(balance.shop.sell_price_percent);
 
         if is_shop {
             let mut row = commands.spawn((

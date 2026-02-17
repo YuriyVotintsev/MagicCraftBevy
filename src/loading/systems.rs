@@ -10,14 +10,15 @@ use crate::stats::display::StatDisplayRegistry;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
 use super::assets::{
-    AffixPoolAsset, ArtifactDefAsset, BlueprintDefAsset, HeroClassAsset, OrbConfigAsset,
-    StatsConfigAsset,
+    AffixPoolAsset, ArtifactDefAsset, BlueprintDefAsset, GameBalanceAsset, HeroClassAsset,
+    OrbConfigAsset, StatsConfigAsset,
 };
 
 #[derive(Resource, Default)]
 pub struct LoadingState {
     pub phase: LoadingPhase,
     pub stats_handle: Option<Handle<StatsConfigAsset>>,
+    pub balance_handle: Option<Handle<GameBalanceAsset>>,
     pub heroes_folder: Option<Handle<LoadedFolder>>,
     pub abilities_folder: Option<Handle<LoadedFolder>>,
     pub mobs_folder: Option<Handle<LoadedFolder>>,
@@ -39,6 +40,7 @@ pub enum LoadingPhase {
 pub fn start_loading(mut loading_state: ResMut<LoadingState>, asset_server: Res<AssetServer>) {
     info!("Starting asset loading...");
     loading_state.stats_handle = Some(asset_server.load("stats/config.stats.ron"));
+    loading_state.balance_handle = Some(asset_server.load("balance.ron"));
     loading_state.phase = LoadingPhase::WaitingForStats;
 }
 
@@ -47,6 +49,7 @@ pub fn check_stats_loaded(
     mut loading_state: ResMut<LoadingState>,
     asset_server: Res<AssetServer>,
     stats_assets: Res<Assets<StatsConfigAsset>>,
+    balance_assets: Res<Assets<GameBalanceAsset>>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForStats {
         return;
@@ -68,6 +71,22 @@ pub fn check_stats_loaded(
     let Some(stats_config) = stats_assets.get(handle.id()) else {
         return;
     };
+
+    let Some(balance_handle) = &loading_state.balance_handle else {
+        return;
+    };
+    match asset_server.get_load_state(balance_handle.id()) {
+        Some(LoadState::Loaded) => {}
+        Some(LoadState::Failed(err)) => {
+            error!("Failed to load balance config: {:?}", err);
+            return;
+        }
+        _ => return,
+    }
+    let Some(balance_asset) = balance_assets.get(balance_handle.id()) else {
+        return;
+    };
+    commands.insert_resource(balance_asset.0.clone());
 
     info!("Stats loaded, building registry...");
 
@@ -282,7 +301,7 @@ pub fn check_content_loaded(
             }
         }
     }
-    commands.insert_resource(AvailableArtifacts(artifact_ids));
+    commands.insert_resource(AvailableArtifacts::new(artifact_ids));
 
     if let Some(folder) = folders.get(affixes_folder_handle.id()) {
         for handle in &folder.handles {

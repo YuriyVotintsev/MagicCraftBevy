@@ -32,7 +32,7 @@ fn keep_distance_system(
         let Ok(target_transform) = transforms.get(keep_dist.target) else {
             continue;
         };
-        let speed = speed_id.map(|id| stats.get(id)).unwrap_or(100.0);
+        let speed = speed_id.map(|id| stats.get(id)).unwrap_or_default();
         let to_target = (target_transform.translation - transform.translation).truncate();
         let distance = to_target.length();
 

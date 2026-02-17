@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use bevy::camera::ScalingMode;
 use rand::Rng;
 
+use crate::balance::{ArenaBalance, GameBalance};
 use crate::GameState;
 use crate::Faction;
 use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
@@ -15,15 +16,8 @@ use crate::wave::{WaveEnemy, WavePhase, WaveState};
 pub const WINDOW_WIDTH: f32 = 1920.0;
 #[cfg(not(feature = "headless"))]
 pub const WINDOW_HEIGHT: f32 = 1080.0;
-pub const ARENA_WIDTH: f32 = 3840.0;
-pub const ARENA_HEIGHT: f32 = 2160.0;
-
-const ARENA_HALF_W: f32 = 1708.0;
-const ARENA_HALF_H: f32 = 750.0;
-const ARENA_CORNER_R: f32 = 320.0;
 
 const MARKER_SIZE: f32 = 30.0;
-const MARKER_DURATION: f32 = 2.0;
 
 #[derive(Component)]
 struct SpawnMarker {
@@ -35,7 +29,11 @@ pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, (setup_camera, spawn_arena))
+        app.add_systems(Startup, setup_camera)
+            .add_systems(
+                OnEnter(GameState::MainMenu),
+                spawn_arena.run_if(not(any_with_component::<Wall>)),
+            )
             .add_systems(OnEnter(GameState::Playing), cleanup_spawn_markers)
             .add_systems(OnExit(WavePhase::Combat), cleanup_spawn_markers)
             .add_systems(
@@ -72,20 +70,22 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
-fn spawn_arena(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn spawn_arena(mut commands: Commands, asset_server: Res<AssetServer>, balance: Res<GameBalance>) {
+    let arena = &balance.arena;
+
     commands.spawn((
         Name::new("Background"),
         Sprite {
             image: asset_server.load("images/sprites/Background.png"),
-            custom_size: Some(Vec2::new(ARENA_WIDTH, ARENA_HEIGHT)),
+            custom_size: Some(Vec2::new(arena.width, arena.height)),
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, -10.0),
     ));
 
-    let half_w = ARENA_HALF_W;
-    let half_h = ARENA_HALF_H;
-    let r = ARENA_CORNER_R;
+    let half_w = arena.half_w;
+    let half_h = arena.half_h;
+    let r = arena.corner_radius;
     let segments = 8_u32;
 
     let ix = half_w - r;
@@ -142,12 +142,13 @@ fn spawn_markers(
     wave_state: Res<WaveState>,
     markers_query: Query<(), With<SpawnMarker>>,
     enemies_query: Query<&Faction, With<Health>>,
+    balance: Res<GameBalance>,
 ) {
     let alive_enemies = enemies_query.iter().filter(|f| **f == Faction::Enemy).count() as u32;
     let active_markers = markers_query.iter().count() as u32;
     let total_on_arena = alive_enemies + active_markers;
 
-    if total_on_arena > WaveState::spawn_threshold() {
+    if total_on_arena > balance.wave.spawn_threshold {
         return;
     }
 
@@ -168,16 +169,17 @@ fn spawn_markers(
         return;
     }
 
+    let arena = &balance.arena;
     let mut rng = rand::rng();
     let margin = MARKER_SIZE;
-    let hw = ARENA_HALF_W - margin;
-    let hh = ARENA_HALF_H - margin;
+    let hw = arena.half_w - margin;
+    let hh = arena.half_h - margin;
 
     for _ in 0..to_spawn {
         let (x, y) = loop {
             let x = rng.random_range(-hw..hw);
             let y = rng.random_range(-hh..hh);
-            if is_inside_arena(Vec2::new(x, y), margin) {
+            if is_inside_arena(Vec2::new(x, y), margin, arena) {
                 break (x, y);
             }
         };
@@ -191,7 +193,7 @@ fn spawn_markers(
         commands.spawn((
             Name::new("SpawnMarker"),
             SpawnMarker {
-                timer: Timer::from_seconds(MARKER_DURATION, TimerMode::Once),
+                timer: Timer::from_seconds(balance.wave.marker_duration, TimerMode::Once),
                 blueprint_name: blueprint_name.to_string(),
             },
             Sprite {
@@ -224,10 +226,10 @@ fn process_spawn_markers(
     }
 }
 
-fn is_inside_arena(pos: Vec2, margin: f32) -> bool {
-    let hw = ARENA_HALF_W - margin;
-    let hh = ARENA_HALF_H - margin;
-    let r = (ARENA_CORNER_R - margin).max(0.0);
+fn is_inside_arena(pos: Vec2, margin: f32, arena: &ArenaBalance) -> bool {
+    let hw = arena.half_w - margin;
+    let hh = arena.half_h - margin;
+    let r = (arena.corner_radius - margin).max(0.0);
     let px = pos.x.abs();
     let py = pos.y.abs();
     if px > hw || py > hh {

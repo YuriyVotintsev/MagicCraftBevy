@@ -5,6 +5,7 @@ use crate::artifacts::{
     Artifact, ArtifactId, ArtifactRegistry, BuyRequest, PlayerArtifacts, RerollCost,
     RerollRequest, ShopOfferings,
 };
+use crate::balance::GameBalance;
 use crate::money::PlayerMoney;
 use crate::ui::affix_shop::{self, OrbSection};
 use crate::ui::artifact_tooltip::ArtifactTooltipTarget;
@@ -155,8 +156,9 @@ pub fn spawn_shop(
     orb_registry: Res<OrbRegistry>,
     flow_state: Res<OrbFlowState>,
     mut reroll_cost: ResMut<RerollCost>,
+    balance: Res<GameBalance>,
 ) {
-    reroll_cost.0 = 1;
+    reroll_cost.reset_to(balance.shop.base_reroll_cost);
 
     let shop_section = commands
         .spawn((
@@ -174,8 +176,8 @@ pub fn spawn_shop(
     build_shop_section(
         &mut commands,
         shop_section,
-        &offerings.0,
-        money.0,
+        offerings.as_slice(),
+        money.get(),
         &artifacts,
         &registry,
         &artifact_query,
@@ -198,7 +200,7 @@ pub fn spawn_shop(
         &mut commands,
         orb_section,
         &orb_registry,
-        money.0,
+        money.get(),
         &flow_state,
     );
 
@@ -230,7 +232,7 @@ pub fn spawn_shop(
     let money_text = commands
         .spawn((
             MoneyText,
-            Text(format!("Total: {} coins", money.0)),
+            Text(format!("Total: {} coins", money.get())),
             TextFont {
                 font_size: 28.0,
                 ..default()
@@ -243,7 +245,7 @@ pub fn spawn_shop(
         ))
         .id();
 
-    let can_reroll = money.0 >= reroll_cost.0;
+    let can_reroll = money.can_afford(reroll_cost.get());
     let reroll_btn = commands
         .spawn((
             Button,
@@ -261,7 +263,7 @@ pub fn spawn_shop(
         .with_children(|parent| {
             parent.spawn((
                 RerollText,
-                Text(format!("Reroll - {}g", reroll_cost.0)),
+                Text(format!("Reroll - {}g", reroll_cost.get())),
                 TextFont {
                     font_size: 20.0,
                     ..default()
@@ -350,22 +352,25 @@ pub fn reroll_system(
     mut reroll_events: MessageWriter<RerollRequest>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
-        let can_reroll = money.0 >= reroll_cost.0;
         match interaction {
             Interaction::Pressed => {
-                if can_reroll {
-                    money.0 -= reroll_cost.0;
-                    reroll_cost.0 += 1;
+                if money.spend(reroll_cost.get()) {
+                    reroll_cost.increment();
                     reroll_events.write(RerollRequest);
                 }
             }
             Interaction::Hovered => {
-                if can_reroll {
+                if money.can_afford(reroll_cost.get()) {
                     *color = HOVERED_BUTTON.into();
                 }
             }
             Interaction::None => {
-                *color = if can_reroll { NORMAL_BUTTON } else { DISABLED_BUTTON }.into();
+                *color = if money.can_afford(reroll_cost.get()) {
+                    NORMAL_BUTTON
+                } else {
+                    DISABLED_BUTTON
+                }
+                .into();
             }
         }
     }
@@ -397,12 +402,12 @@ pub fn update_shop_on_change(
     }
 
     for mut text in &mut money_text {
-        text.0 = format!("Total: {} coins", money.0);
+        text.0 = format!("Total: {} coins", money.get());
     }
 
-    let can_reroll = money.0 >= reroll_cost.0;
+    let can_reroll = money.can_afford(reroll_cost.get());
     for (mut text, mut color) in &mut reroll_text {
-        text.0 = format!("Reroll - {}g", reroll_cost.0);
+        text.0 = format!("Reroll - {}g", reroll_cost.get());
         *color = TextColor(if can_reroll {
             TEXT_COLOR
         } else {
@@ -422,8 +427,8 @@ pub fn update_shop_on_change(
         build_shop_section(
             &mut commands,
             entity,
-            &offerings.0,
-            money.0,
+            offerings.as_slice(),
+            money.get(),
             &artifacts,
             &registry,
             &artifact_query,
@@ -436,7 +441,7 @@ pub fn update_shop_on_change(
             &mut commands,
             entity,
             &orb_registry,
-            money.0,
+            money.get(),
             &flow_state,
         );
     }

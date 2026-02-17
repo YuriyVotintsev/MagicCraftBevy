@@ -26,7 +26,7 @@ pub fn animate(
             .get(child_of.parent())
             .ok()
             .and_then(|(vel, stats)| {
-                let max = speed_id.map(|id| stats.get(id)).unwrap_or(400.0);
+                let max = speed_id.map(|id| stats.get(id)).unwrap_or_default();
                 if max > 0.0 {
                     Some((vel.length() / max).clamp(0.0, 1.0))
                 } else {
