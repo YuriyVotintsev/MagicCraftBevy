@@ -1,7 +1,15 @@
+use bevy::prelude::*;
+
 use crate::stats::{ModifierDef, ModifierDefRaw, StatRegistry};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct ArtifactId(pub u32);
+
+#[derive(Component)]
+pub struct Artifact(pub ArtifactId);
+
+#[derive(Debug, Clone, Copy)]
+pub struct ArtifactEntity(pub Entity);
 
 pub struct ArtifactDef {
     pub name: String,

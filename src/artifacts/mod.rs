@@ -4,16 +4,16 @@ mod systems;
 mod types;
 
 pub use registry::ArtifactRegistry;
-pub use resources::{Artifact, AvailableArtifacts, PlayerArtifacts, RerollCost, ShopOfferings};
+pub use resources::{AvailableArtifacts, PlayerArtifacts, RerollCost, ShopOfferings};
 pub use systems::{BuyRequest, RerollRequest, SellRequest};
-pub use types::{ArtifactDef, ArtifactDefRaw, ArtifactId};
+pub use types::{Artifact, ArtifactDef, ArtifactDefRaw, ArtifactEntity, ArtifactId};
 
 use bevy::prelude::*;
 
 use crate::balance::GameBalance;
 use crate::wave::WavePhase;
 use crate::GameState;
-use systems::generate_shop_offerings;
+use systems::reset_shop;
 
 pub struct ArtifactPlugin;
 
@@ -28,7 +28,7 @@ impl Plugin for ArtifactPlugin {
             .add_message::<RerollRequest>()
             .add_message::<BuyRequest>()
             .add_message::<SellRequest>()
-            .add_systems(OnEnter(WavePhase::ShopDelay), generate_shop_offerings)
+            .add_systems(OnEnter(WavePhase::ShopDelay), reset_shop)
             .add_systems(Update, (systems::handle_reroll, systems::handle_buy, systems::handle_sell));
     }
 }
@@ -37,11 +37,9 @@ fn reset_artifacts(
     mut commands: Commands,
     mut artifacts: ResMut<PlayerArtifacts>,
     mut offerings: ResMut<ShopOfferings>,
-    mut reroll_cost: ResMut<RerollCost>,
     balance: Res<GameBalance>,
 ) {
     artifacts.reset(&mut commands);
     artifacts.slots = vec![None; balance.shop.artifact_slots];
     offerings.clear(&mut commands);
-    reroll_cost.reset_to(balance.shop.base_reroll_cost);
 }

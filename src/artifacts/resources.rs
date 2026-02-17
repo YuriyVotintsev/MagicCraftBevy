@@ -2,9 +2,6 @@ use bevy::prelude::*;
 
 use super::types::ArtifactId;
 
-#[derive(Component)]
-pub struct Artifact(pub ArtifactId);
-
 #[derive(Resource)]
 pub struct PlayerArtifacts {
     pub slots: Vec<Option<Entity>>,
@@ -59,6 +56,10 @@ impl ShopOfferings {
         self.0.get(index).copied()
     }
 
+    pub fn position(&self, entity: Entity) -> Option<usize> {
+        self.0.iter().position(|&e| e == entity)
+    }
+
     pub fn remove(&mut self, index: usize) -> Entity {
         self.0.remove(index)
     }
@@ -86,8 +87,8 @@ impl AvailableArtifacts {
         Self(ids)
     }
 
-    pub fn to_vec(&self) -> Vec<ArtifactId> {
-        self.0.clone()
+    pub fn as_slice(&self) -> &[ArtifactId] {
+        &self.0
     }
 }
 

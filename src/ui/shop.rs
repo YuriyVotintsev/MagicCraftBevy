@@ -2,10 +2,9 @@ use bevy::prelude::*;
 
 use crate::affixes::{OrbFlowState, OrbRegistry};
 use crate::artifacts::{
-    Artifact, ArtifactId, ArtifactRegistry, BuyRequest, PlayerArtifacts, RerollCost,
+    Artifact, ArtifactEntity, ArtifactId, ArtifactRegistry, BuyRequest, PlayerArtifacts, RerollCost,
     RerollRequest, ShopOfferings,
 };
-use crate::balance::GameBalance;
 use crate::money::PlayerMoney;
 use crate::ui::affix_shop::{self, OrbSection};
 use crate::ui::artifact_tooltip::ArtifactTooltipTarget;
@@ -19,7 +18,7 @@ pub struct NextWaveButton;
 
 #[derive(Component)]
 pub struct BuyButton {
-    pub index: usize,
+    pub artifact: ArtifactEntity,
 }
 
 #[derive(Component)]
@@ -57,7 +56,7 @@ fn section_header(label: &str) -> impl Bundle {
     )
 }
 
-fn shop_row(name: &str, price: u32, index: usize, can_buy: bool, artifact_id: ArtifactId) -> impl Bundle {
+fn shop_row(name: &str, price: u32, artifact: ArtifactEntity, can_buy: bool, artifact_id: ArtifactId) -> impl Bundle {
     (
         Interaction::default(),
         ArtifactTooltipTarget(artifact_id),
@@ -84,7 +83,7 @@ fn shop_row(name: &str, price: u32, index: usize, can_buy: bool, artifact_id: Ar
             ),
             (
                 Button,
-                BuyButton { index },
+                BuyButton { artifact },
                 ArtifactTooltipTarget(artifact_id),
                 Node {
                     width: Val::Px(70.0),
@@ -132,13 +131,13 @@ fn build_shop_section(
             .id();
         commands.entity(section).add_child(empty);
     } else {
-        for (i, &artifact_entity) in offerings.iter().enumerate() {
+        for &artifact_entity in offerings.iter() {
             let Ok(artifact) = artifact_query.get(artifact_entity) else {
                 continue;
             };
             if let Some(def) = registry.get(artifact.0) {
                 let can_buy = money >= def.price && !artifacts.is_full();
-                let row = commands.spawn(shop_row(&def.name, def.price, i, can_buy, artifact.0)).id();
+                let row = commands.spawn(shop_row(&def.name, def.price, ArtifactEntity(artifact_entity), can_buy, artifact.0)).id();
                 commands.entity(section).add_child(row);
             }
         }
@@ -155,11 +154,8 @@ pub fn spawn_shop(
     artifact_query: Query<&Artifact>,
     orb_registry: Res<OrbRegistry>,
     flow_state: Res<OrbFlowState>,
-    mut reroll_cost: ResMut<RerollCost>,
-    balance: Res<GameBalance>,
+    reroll_cost: Res<RerollCost>,
 ) {
-    reroll_cost.reset_to(balance.shop.base_reroll_cost);
-
     let shop_section = commands
         .spawn((
             ShopSection,
@@ -337,7 +333,7 @@ pub fn buy_system(
 ) {
     for (interaction, buy_btn) in &interaction_query {
         if *interaction == Interaction::Pressed {
-            buy_events.write(BuyRequest { index: buy_btn.index });
+            buy_events.write(BuyRequest { artifact: buy_btn.artifact });
         }
     }
 }
@@ -347,15 +343,14 @@ pub fn reroll_system(
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<RerollButton>),
     >,
-    mut money: ResMut<PlayerMoney>,
-    mut reroll_cost: ResMut<RerollCost>,
+    money: Res<PlayerMoney>,
+    reroll_cost: Res<RerollCost>,
     mut reroll_events: MessageWriter<RerollRequest>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match interaction {
             Interaction::Pressed => {
-                if money.spend(reroll_cost.get()) {
-                    reroll_cost.increment();
+                if money.can_afford(reroll_cost.get()) {
                     reroll_events.write(RerollRequest);
                 }
             }
