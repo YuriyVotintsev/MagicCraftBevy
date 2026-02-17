@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 
-use crate::artifacts::{ArtifactId, ArtifactRegistry};
+use crate::artifacts::{Artifact, ArtifactRegistry};
 use crate::game_state::GameState;
 use crate::stats::{StatDisplayRegistry, StatRange};
 
 #[derive(Component)]
-pub struct ArtifactTooltipTarget(pub ArtifactId);
+pub struct ArtifactTooltipTarget(pub Entity);
 
 #[derive(Component)]
 pub struct ArtifactTooltip;
@@ -19,17 +19,20 @@ pub fn update_artifact_tooltip(
     mut commands: Commands,
     tooltip_targets: Query<(Entity, &Interaction, &ArtifactTooltipTarget, &UiGlobalTransform, &ComputedNode)>,
     existing_tooltip: Query<Entity, With<ArtifactTooltip>>,
+    artifact_query: Query<&Artifact>,
     registry: Res<ArtifactRegistry>,
     display: Res<StatDisplayRegistry>,
-    mut last_hovered: Local<Option<(ArtifactId, Entity)>>,
+    mut last_hovered: Local<Option<Entity>>,
 ) {
     let mut hovered = None;
+    let mut hovered_artifact = None;
     let mut hovered_center = Vec2::ZERO;
     let mut hovered_size = Vec2::ZERO;
     let mut inv_scale = 1.0_f32;
     for (entity, interaction, target, gt, cn) in &tooltip_targets {
         if matches!(interaction, Interaction::Hovered | Interaction::Pressed) {
-            hovered = Some((target.0, entity));
+            hovered = Some(entity);
+            hovered_artifact = Some(target.0);
             hovered_center = gt.translation;
             hovered_size = cn.size();
             inv_scale = cn.inverse_scale_factor();
@@ -46,13 +49,16 @@ pub fn update_artifact_tooltip(
         commands.entity(entity).despawn();
     }
 
-    let Some((artifact_id, _)) = hovered else {
+    let Some(artifact_entity) = hovered_artifact else {
         return;
     };
-    let Some(def) = registry.get(artifact_id) else {
+    let Ok(artifact) = artifact_query.get(artifact_entity) else {
         return;
     };
-    if def.modifiers.is_empty() {
+    let Some(def) = registry.get(artifact.artifact_id) else {
+        return;
+    };
+    if def.modifiers.is_empty() && artifact.values.is_empty() {
         return;
     }
 
@@ -96,26 +102,44 @@ pub fn update_artifact_tooltip(
         .id();
     commands.entity(tooltip).add_child(header);
 
-    for modifier_def in &def.modifiers {
-        let pairs: Vec<_> = modifier_def.stats.iter().map(|sr| match sr {
-            StatRange::Fixed { stat, value } => (*stat, *value),
-            StatRange::Range { stat, min, max } => (*stat, (*min + *max) / 2.0),
-        }).collect();
-        let lines = display.format(&pairs);
-        for line in lines {
-            let value = pairs.first().map(|(_, v)| *v).unwrap_or(0.0);
-            let color = if value > 0.0 { POSITIVE_COLOR } else { NEGATIVE_COLOR };
-
-            let row = commands.spawn((
-                Text::new(line),
-                TextFont { font_size: 16.0, ..default() },
-                TextColor(color),
-                Node {
-                    margin: UiRect::vertical(Val::Px(2.0)),
-                    ..default()
-                },
-            )).id();
-            commands.entity(tooltip).add_child(row);
+    if !artifact.values.is_empty() {
+        for &(stat, value) in &artifact.values {
+            let lines = display.format(&[(stat, value)]);
+            for line in lines {
+                let color = if value > 0.0 { POSITIVE_COLOR } else { NEGATIVE_COLOR };
+                let row = commands.spawn((
+                    Text::new(line),
+                    TextFont { font_size: 16.0, ..default() },
+                    TextColor(color),
+                    Node {
+                        margin: UiRect::vertical(Val::Px(2.0)),
+                        ..default()
+                    },
+                )).id();
+                commands.entity(tooltip).add_child(row);
+            }
+        }
+    } else {
+        for modifier_def in &def.modifiers {
+            let pairs: Vec<_> = modifier_def.stats.iter().map(|sr| match sr {
+                StatRange::Fixed { stat, value } => (*stat, *value),
+                StatRange::Range { stat, min, max } => (*stat, (*min + *max) / 2.0),
+            }).collect();
+            let lines = display.format(&pairs);
+            for line in lines {
+                let value = pairs.first().map(|(_, v)| *v).unwrap_or(0.0);
+                let color = if value > 0.0 { POSITIVE_COLOR } else { NEGATIVE_COLOR };
+                let row = commands.spawn((
+                    Text::new(line),
+                    TextFont { font_size: 16.0, ..default() },
+                    TextColor(color),
+                    Node {
+                        margin: UiRect::vertical(Val::Px(2.0)),
+                        ..default()
+                    },
+                )).id();
+                commands.entity(tooltip).add_child(row);
+            }
         }
     }
 }

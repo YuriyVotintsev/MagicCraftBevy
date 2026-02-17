@@ -4,7 +4,7 @@ use rand::prelude::*;
 use crate::balance::GameBalance;
 use crate::money::PlayerMoney;
 use crate::player::Player;
-use crate::stats::{Modifiers, StatRange};
+use crate::stats::Modifiers;
 
 use super::registry::ArtifactRegistry;
 use super::resources::{AvailableArtifacts, PlayerArtifacts, RerollCost, ShopOfferings};
@@ -36,7 +36,14 @@ fn reroll_offerings(
     let pool = available.as_slice();
     offerings.set(
         (0..offerings_count)
-            .map(|_| commands.spawn(Artifact(*pool.choose(&mut rng).unwrap())).id())
+            .map(|_| {
+                commands
+                    .spawn(Artifact {
+                        artifact_id: *pool.choose(&mut rng).unwrap(),
+                        values: vec![],
+                    })
+                    .id()
+            })
             .collect(),
     );
 }
@@ -64,7 +71,7 @@ pub fn handle_buy(
     mut artifacts: ResMut<PlayerArtifacts>,
     mut offerings: ResMut<ShopOfferings>,
     registry: Res<ArtifactRegistry>,
-    artifact_query: Query<&Artifact>,
+    mut artifact_query: Query<&mut Artifact>,
     mut player_query: Query<&mut Modifiers, With<Player>>,
 ) {
     for event in events.read() {
@@ -72,27 +79,21 @@ pub fn handle_buy(
         let Some(index) = offerings.position(artifact_entity) else {
             continue;
         };
-        let Ok(artifact) = artifact_query.get(artifact_entity) else {
+        let Ok(mut artifact) = artifact_query.get_mut(artifact_entity) else {
             continue;
         };
-        let Some(def) = registry.get(artifact.0) else {
+        let artifact_id = artifact.artifact_id;
+        let Some(def) = registry.get(artifact_id) else {
             continue;
         };
         if !artifacts.is_full() && money.spend(def.price) {
+            let mut rng = rand::rng();
+            artifact.values = def.roll_values(&mut rng);
             artifacts.buy(artifact_entity);
             offerings.remove(index);
             for mut modifiers in &mut player_query {
-                for modifier_def in &def.modifiers {
-                    for sr in &modifier_def.stats {
-                        match sr {
-                            StatRange::Fixed { stat, value } => {
-                                modifiers.add(*stat, *value, Some(artifact_entity));
-                            }
-                            StatRange::Range { stat, min, max } => {
-                                modifiers.add(*stat, (*min + *max) / 2.0, Some(artifact_entity));
-                            }
-                        }
-                    }
+                for &(stat, value) in &artifact.values {
+                    modifiers.add(stat, value, Some(artifact_entity));
                 }
             }
         }
@@ -112,7 +113,7 @@ pub fn handle_sell(
     for event in events.read() {
         if let Some(artifact_entity) = artifacts.sell(event.slot) {
             if let Ok(artifact) = artifact_query.get(artifact_entity) {
-                if let Some(def) = registry.get(artifact.0) {
+                if let Some(def) = registry.get(artifact.artifact_id) {
                     money.earn(def.sell_price(balance.shop.sell_price_percent));
                 }
             }

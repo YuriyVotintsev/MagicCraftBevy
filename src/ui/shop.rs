@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::affixes::{OrbFlowState, OrbRegistry};
 use crate::artifacts::{
-    Artifact, ArtifactEntity, ArtifactId, ArtifactRegistry, BuyRequest, PlayerArtifacts, RerollCost,
+    Artifact, ArtifactEntity, ArtifactRegistry, BuyRequest, PlayerArtifacts, RerollCost,
     RerollRequest, ShopOfferings,
 };
 use crate::money::PlayerMoney;
@@ -56,10 +56,10 @@ fn section_header(label: &str) -> impl Bundle {
     )
 }
 
-fn shop_row(name: &str, price: u32, artifact: ArtifactEntity, can_buy: bool, artifact_id: ArtifactId) -> impl Bundle {
+fn shop_row(name: &str, price: u32, artifact: ArtifactEntity, can_buy: bool) -> impl Bundle {
     (
         Interaction::default(),
-        ArtifactTooltipTarget(artifact_id),
+        ArtifactTooltipTarget(artifact.0),
         Node {
             flex_direction: FlexDirection::Row,
             align_items: AlignItems::Center,
@@ -84,7 +84,7 @@ fn shop_row(name: &str, price: u32, artifact: ArtifactEntity, can_buy: bool, art
             (
                 Button,
                 BuyButton { artifact },
-                ArtifactTooltipTarget(artifact_id),
+                ArtifactTooltipTarget(artifact.0),
                 Node {
                     width: Val::Px(70.0),
                     height: Val::Px(36.0),
@@ -135,9 +135,9 @@ fn build_shop_section(
             let Ok(artifact) = artifact_query.get(artifact_entity) else {
                 continue;
             };
-            if let Some(def) = registry.get(artifact.0) {
+            if let Some(def) = registry.get(artifact.artifact_id) {
                 let can_buy = money >= def.price && !artifacts.is_full();
-                let row = commands.spawn(shop_row(&def.name, def.price, ArtifactEntity(artifact_entity), can_buy, artifact.0)).id();
+                let row = commands.spawn(shop_row(&def.name, def.price, ArtifactEntity(artifact_entity), can_buy)).id();
                 commands.entity(section).add_child(row);
             }
         }

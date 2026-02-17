@@ -89,7 +89,7 @@ pub fn rebuild_artifact_panel(
         let Ok(artifact) = artifact_query.get(*artifact_entity) else {
             continue;
         };
-        let Some(def) = registry.get(artifact.0) else {
+        let Some(def) = registry.get(artifact.artifact_id) else {
             continue;
         };
 
@@ -100,7 +100,7 @@ pub fn rebuild_artifact_panel(
             let mut row = commands.spawn((
                 Button,
                 ArtifactPanelSlot { slot: slot },
-                ArtifactTooltipTarget(artifact.0),
+                ArtifactTooltipTarget(*artifact_entity),
                 Node {
                     flex_direction: FlexDirection::Row,
                     align_items: AlignItems::Center,
@@ -120,7 +120,7 @@ pub fn rebuild_artifact_panel(
                     parent.spawn((
                         Button,
                         ArtifactPanelSellButton { slot: slot },
-                        ArtifactTooltipTarget(artifact.0),
+                        ArtifactTooltipTarget(*artifact_entity),
                         Node {
                             padding: UiRect::axes(Val::Px(8.0), Val::Px(4.0)),
                             justify_content: JustifyContent::Center,
@@ -155,7 +155,7 @@ pub fn rebuild_artifact_panel(
             let row = commands
                 .spawn((
                     Interaction::default(),
-                    ArtifactTooltipTarget(artifact.0),
+                    ArtifactTooltipTarget(*artifact_entity),
                     Node {
                         padding: UiRect::axes(Val::Px(10.0), Val::Px(4.0)),
                         ..default()
