@@ -16,6 +16,9 @@ mod stats;
 mod ui;
 mod wave;
 
+#[cfg(test)]
+mod validation_tests;
+
 pub use faction::Faction;
 pub use game_state::GameState;
 pub use movement::MovementLocked;

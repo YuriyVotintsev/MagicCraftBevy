@@ -33,11 +33,12 @@ impl Plugin for ArtifactPlugin {
 }
 
 fn reset_artifacts(
+    mut commands: Commands,
     mut artifacts: ResMut<PlayerArtifacts>,
     mut offerings: ResMut<ShopOfferings>,
     mut reroll_cost: ResMut<RerollCost>,
 ) {
-    *artifacts = Default::default();
-    offerings.0.clear();
+    artifacts.reset(&mut commands);
+    offerings.clear(&mut commands);
     *reroll_cost = Default::default();
 }

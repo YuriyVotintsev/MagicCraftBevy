@@ -47,10 +47,24 @@ impl PlayerArtifacts {
             .filter_map(|(i, s)| s.map(|e| (i, e)))
             .collect()
     }
+
+    pub fn reset(&mut self, commands: &mut Commands) {
+        for entity in self.slots.iter_mut().filter_map(|s| s.take()) {
+            commands.entity(entity).despawn();
+        }
+    }
 }
 
 #[derive(Resource, Default)]
 pub struct ShopOfferings(pub Vec<Entity>);
+
+impl ShopOfferings {
+    pub fn clear(&mut self, commands: &mut Commands) {
+        for entity in self.0.drain(..) {
+            commands.entity(entity).despawn();
+        }
+    }
+}
 
 #[derive(Resource, Default)]
 pub struct AvailableArtifacts(pub Vec<ArtifactId>);

@@ -26,10 +26,9 @@ fn reroll_offerings(
     offerings: &mut ShopOfferings,
     available: &AvailableArtifacts,
 ) {
-    for entity in offerings.0.drain(..) {
-        commands.entity(entity).despawn();
-    }
+    offerings.clear(commands);
 
+    // By design: duplicates allowed — stacking works via stat modifiers
     let mut rng = rand::rng();
     let mut ids = available.0.clone();
     ids.shuffle(&mut rng);
