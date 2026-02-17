@@ -1,1 +1,4 @@
-(id: "ruby_ring", name: "Ruby Ring", price: 6, modifiers: {"physical_damage_base": 8, "crit_chance_base": 0.02})
+(id: "ruby_ring", name: "Ruby Ring", price: 6, modifiers: [
+    (stats: [Fixed(stat: "physical_damage_base", value: 8)]),
+    (stats: [Fixed(stat: "crit_chance_base", value: 0.02)]),
+])

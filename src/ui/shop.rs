@@ -359,8 +359,17 @@ pub fn buy_system(
             artifacts.buy(artifact_entity);
             offerings.0.remove(buy_btn.index);
             for mut modifiers in &mut player_query {
-                for m in &def.modifiers {
-                    modifiers.add(m.stat, m.value, Some(artifact_entity));
+                for modifier_def in &def.modifiers {
+                    for sr in &modifier_def.stats {
+                        match sr {
+                            crate::stats::StatRange::Fixed { stat, value } => {
+                                modifiers.add(*stat, *value, Some(artifact_entity));
+                            }
+                            crate::stats::StatRange::Range { stat, min, max } => {
+                                modifiers.add(*stat, (*min + *max) / 2.0, Some(artifact_entity));
+                            }
+                        }
+                    }
                 }
             }
         }

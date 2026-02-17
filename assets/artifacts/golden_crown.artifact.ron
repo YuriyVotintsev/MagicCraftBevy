@@ -1,1 +1,4 @@
-(id: "golden_crown", name: "Golden Crown", price: 10, modifiers: {"max_life_base": 30, "physical_damage_base": 5})
+(id: "golden_crown", name: "Golden Crown", price: 10, modifiers: [
+    (stats: [Fixed(stat: "max_life_base", value: 30)]),
+    (stats: [Fixed(stat: "physical_damage_base", value: 5)]),
+])

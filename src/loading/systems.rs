@@ -2,10 +2,11 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::affixes::{AffixDef, AffixRegistry, OrbDef, OrbRegistry};
-use crate::artifacts::{ArtifactDef, ArtifactModifier, ArtifactRegistry, AvailableArtifacts};
+use crate::artifacts::{ArtifactDef, ArtifactRegistry, AvailableArtifacts};
 use crate::blueprints::BlueprintRegistry;
-use crate::player::hero_class::{AvailableHeroes, HeroClass, HeroClassModifier};
+use crate::player::hero_class::{AvailableHeroes, HeroClass};
 use crate::player::SpellSlot;
+use crate::stats::display::StatDisplayRegistry;
 use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
 
 use super::assets::{
@@ -92,22 +93,26 @@ pub fn check_stats_loaded(
                     .unwrap_or_else(|| panic!("Stat '{}' (base for '{}') not found in registry", base, def.name));
                 let increased_id = registry.get(increased)
                     .unwrap_or_else(|| panic!("Stat '{}' (increased for '{}') not found in registry", increased, def.name));
-                let more_id = registry.get(more)
-                    .unwrap_or_else(|| panic!("Stat '{}' (more for '{}') not found in registry", more, def.name));
 
-                let formula = Expression::Mul(
-                    Box::new(Expression::Mul(
-                        Box::new(Expression::Stat(base_id)),
-                        Box::new(Expression::Add(
-                            Box::new(Expression::Constant(1.0)),
-                            Box::new(Expression::Stat(increased_id)),
-                        )),
+                let base_increased = Expression::Mul(
+                    Box::new(Expression::Stat(base_id)),
+                    Box::new(Expression::Add(
+                        Box::new(Expression::Constant(1.0)),
+                        Box::new(Expression::Stat(increased_id)),
                     )),
-                    Box::new(Expression::Stat(more_id)),
                 );
 
-                let depends_on = vec![base_id, increased_id, more_id];
-                calculators.set(stat_id, formula, depends_on);
+                if let Some(more) = more {
+                    let more_id = registry.get(more)
+                        .unwrap_or_else(|| panic!("Stat '{}' (more for '{}') not found in registry", more, def.name));
+                    let formula = Expression::Mul(
+                        Box::new(base_increased),
+                        Box::new(Expression::Stat(more_id)),
+                    );
+                    calculators.set(stat_id, formula, vec![base_id, increased_id, more_id]);
+                } else {
+                    calculators.set(stat_id, base_increased, vec![base_id, increased_id]);
+                }
             }
             AggregationType::Custom => {}
         }
@@ -127,6 +132,8 @@ pub fn check_stats_loaded(
 
     calculators.rebuild();
 
+    let display_registry = StatDisplayRegistry::new(stats_config.display.clone(), &registry);
+    commands.insert_resource(display_registry);
     commands.insert_resource(registry);
     commands.insert_resource(calculators);
 
@@ -224,14 +231,8 @@ pub fn check_content_loaded(
             if let Ok(typed_class) = handle.clone().try_typed::<HeroClassAsset>() {
                 if let Some(class_asset) = hero_class_assets.get(typed_class.id()) {
                     let raw = &class_asset.0;
-                    let modifiers: Vec<_> = raw.modifiers.iter()
-                        .filter_map(|(name, &value)| {
-                            stat_registry.get(name).map(|stat| HeroClassModifier {
-                                stat,
-                                value,
-                                name: name.clone(),
-                            })
-                        })
+                    let modifiers = raw.modifiers.iter()
+                        .map(|m| m.resolve(&stat_registry))
                         .collect();
                     info!("Registered hero class: {}", raw.id);
                     classes.push(HeroClass {
@@ -267,14 +268,8 @@ pub fn check_content_loaded(
             let typed_handle: Handle<ArtifactDefAsset> = handle.clone().typed();
             if let Some(artifact_asset) = artifact_assets.get(typed_handle.id()) {
                 let raw = &artifact_asset.0;
-                let modifiers: Vec<_> = raw.modifiers.iter()
-                    .filter_map(|(name, &value)| {
-                        stat_registry.get(name).map(|stat| ArtifactModifier {
-                            stat,
-                            value,
-                            name: name.clone(),
-                        })
-                    })
+                let modifiers = raw.modifiers.iter()
+                    .map(|m| m.resolve(&stat_registry))
                     .collect();
                 let def = ArtifactDef {
                     name: raw.name.clone(),
@@ -308,17 +303,12 @@ pub fn check_content_loaded(
                     continue;
                 };
                 for raw in &pool_asset.0 {
-                    if let Some(stat_id) = stat_registry.get(&raw.stat) {
-                        let def = AffixDef {
-                            name: raw.name.clone(),
-                            stat: stat_id,
-                            tiers: raw.tiers.clone(),
-                        };
-                        let id = affix_registry.register(def, slot);
-                        info!("Registered affix: {} ({:?}) for {:?}", raw.id, id, slot);
-                    } else {
-                        warn!("Affix '{}' references unknown stat '{}'", raw.id, raw.stat);
-                    }
+                    let tiers = raw.tiers.iter()
+                        .map(|t| t.resolve(&stat_registry))
+                        .collect();
+                    let def = AffixDef { tiers };
+                    let id = affix_registry.register(def, slot);
+                    info!("Registered affix: {} ({:?}) for {:?}", raw.id, id, slot);
                 }
             }
         }

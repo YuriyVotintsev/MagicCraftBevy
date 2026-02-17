@@ -59,7 +59,12 @@ pub fn spawn_player(
         }
     }
 
-    let modifier_tuples: Vec<_> = class.modifiers.iter().map(|m| (m.stat, m.value)).collect();
+    let modifier_tuples: Vec<_> = class.modifiers.iter()
+        .flat_map(|m| m.stats.iter().map(|sr| match sr {
+            crate::stats::StatRange::Fixed { stat, value } => (*stat, *value),
+            crate::stats::StatRange::Range { stat, min, max } => (*stat, (*min + *max) / 2.0),
+        }))
+        .collect();
     let entity = spawner.spawn_root(&entity_def, Faction::Player, &modifier_tuples);
     spawner.commands.entity(entity).insert((
         Name::new("Player"),

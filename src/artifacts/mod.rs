@@ -6,7 +6,7 @@ mod types;
 pub use registry::ArtifactRegistry;
 pub use resources::{Artifact, AvailableArtifacts, PlayerArtifacts, RerollCost, ShopOfferings};
 pub use systems::reroll_offerings;
-pub use types::{ArtifactDef, ArtifactDefRaw, ArtifactId, ArtifactModifier};
+pub use types::{ArtifactDef, ArtifactDefRaw, ArtifactId};
 
 use bevy::prelude::*;
 

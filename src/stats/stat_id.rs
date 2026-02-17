@@ -12,7 +12,8 @@ pub enum AggregationType {
     Standard {
         base: String,
         increased: String,
-        more: String,
+        #[serde(default)]
+        more: Option<String>,
     },
     Custom,
 }

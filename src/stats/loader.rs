@@ -64,26 +64,30 @@ pub fn load_stats(
                         def.name, increased
                     )
                 });
-                let more_id = registry.get(more).unwrap_or_else(|| {
-                    panic!(
-                        "Standard aggregation for '{}' references unknown more stat: '{}'",
-                        def.name, more
-                    )
-                });
 
-                let formula = Expression::Mul(
-                    Box::new(Expression::Mul(
-                        Box::new(Expression::Stat(base_id)),
-                        Box::new(Expression::Add(
-                            Box::new(Expression::Constant(1.0)),
-                            Box::new(Expression::Stat(increased_id)),
-                        )),
+                let base_increased = Expression::Mul(
+                    Box::new(Expression::Stat(base_id)),
+                    Box::new(Expression::Add(
+                        Box::new(Expression::Constant(1.0)),
+                        Box::new(Expression::Stat(increased_id)),
                     )),
-                    Box::new(Expression::Stat(more_id)),
                 );
 
-                let depends_on = vec![base_id, increased_id, more_id];
-                calculators.set(stat_id, formula, depends_on);
+                if let Some(more) = more {
+                    let more_id = registry.get(more).unwrap_or_else(|| {
+                        panic!(
+                            "Standard aggregation for '{}' references unknown more stat: '{}'",
+                            def.name, more
+                        )
+                    });
+                    let formula = Expression::Mul(
+                        Box::new(base_increased),
+                        Box::new(Expression::Stat(more_id)),
+                    );
+                    calculators.set(stat_id, formula, vec![base_id, increased_id, more_id]);
+                } else {
+                    calculators.set(stat_id, base_increased, vec![base_id, increased_id]);
+                }
             }
             AggregationType::Custom => {}
         }

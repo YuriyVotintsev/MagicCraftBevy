@@ -3,11 +3,18 @@
         (name: "max_life_base", aggregation: Sum),
         (name: "max_life_increased", aggregation: Sum),
         (name: "max_life_more", aggregation: Product),
-        (name: "max_life", aggregation: Custom),
+        (name: "max_life", aggregation: Standard(
+            base: "max_life_base",
+            increased: "max_life_increased",
+            more: Some("max_life_more"),
+        )),
 
         (name: "max_mana_base", aggregation: Sum),
         (name: "max_mana_increased", aggregation: Sum),
-        (name: "max_mana", aggregation: Custom),
+        (name: "max_mana", aggregation: Standard(
+            base: "max_mana_base",
+            increased: "max_mana_increased",
+        )),
 
         (name: "physical_damage_base", aggregation: Sum),
         (name: "physical_damage_increased", aggregation: Sum),
@@ -15,7 +22,10 @@
 
         (name: "movement_speed_base", aggregation: Sum),
         (name: "movement_speed_increased", aggregation: Sum),
-        (name: "movement_speed", aggregation: Custom),
+        (name: "movement_speed", aggregation: Standard(
+            base: "movement_speed_base",
+            increased: "movement_speed_increased",
+        )),
 
         (name: "projectile_speed_increased", aggregation: Sum),
         (name: "projectile_count", aggregation: Sum),
@@ -30,33 +40,6 @@
     ],
     calculators: [
         (
-            stat: "max_life",
-            formula: Mul(
-                Mul(
-                    Stat("max_life_base"),
-                    Add(Constant(1.0), Stat("max_life_increased")),
-                ),
-                Stat("max_life_more"),
-            ),
-            depends_on: ["max_life_base", "max_life_increased", "max_life_more"],
-        ),
-        (
-            stat: "max_mana",
-            formula: Mul(
-                Stat("max_mana_base"),
-                Add(Constant(1.0), Stat("max_mana_increased")),
-            ),
-            depends_on: ["max_mana_base", "max_mana_increased"],
-        ),
-        (
-            stat: "movement_speed",
-            formula: Mul(
-                Stat("movement_speed_base"),
-                Add(Constant(1.0), Stat("movement_speed_increased")),
-            ),
-            depends_on: ["movement_speed_base", "movement_speed_increased"],
-        ),
-        (
             stat: "crit_chance",
             formula: Clamp(
                 value: Mul(
@@ -68,5 +51,21 @@
             ),
             depends_on: ["crit_chance_base", "crit_chance_increased"],
         ),
+    ],
+    display: [
+        (stats: ["physical_damage_base"], format: "+{0} physical damage"),
+        (stats: ["physical_damage_increased"], format: "+{0}% physical damage"),
+        (stats: ["max_life_base"], format: "+{0} max life"),
+        (stats: ["max_life_increased"], format: "+{0}% max life"),
+        (stats: ["movement_speed_base"], format: "+{0} movement speed"),
+        (stats: ["movement_speed_increased"], format: "+{0}% movement speed"),
+        (stats: ["crit_chance_base"], format: "+{0}% crit chance"),
+        (stats: ["crit_multiplier"], format: "+{0}% crit multiplier"),
+        (stats: ["projectile_speed_increased"], format: "+{0}% projectile speed"),
+        (stats: ["projectile_count"], format: "+{0} projectile"),
+        (stats: ["max_mana_base"], format: "+{0} max mana"),
+        (stats: ["max_mana_increased"], format: "+{0}% max mana"),
+        (stats: ["area_of_effect_increased"], format: "+{0}% area of effect"),
+        (stats: ["duration_increased"], format: "+{0}% duration"),
     ],
 )

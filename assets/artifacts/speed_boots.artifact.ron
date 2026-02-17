@@ -1,1 +1,1 @@
-(id: "speed_boots", name: "Speed Boots", price: 5, modifiers: {"movement_speed_increased": 0.10})
+(id: "speed_boots", name: "Speed Boots", price: 5, modifiers: [(stats: [Fixed(stat: "movement_speed_increased", value: 0.10)])])

@@ -1,1 +1,1 @@
-(id: "emerald_amulet", name: "Emerald Amulet", price: 7, modifiers: {"projectile_count": 1})
+(id: "emerald_amulet", name: "Emerald Amulet", price: 7, modifiers: [(stats: [Fixed(stat: "projectile_count", value: 1)])])

@@ -24,17 +24,17 @@ pub fn apply_alteration(
         .iter()
         .enumerate()
         .filter(|(i, a)| *i != index && a.is_some())
-        .filter_map(|(_, a)| a.map(|a| a.affix_id))
+        .filter_map(|(_, a)| a.as_ref().map(|a| a.affix_id))
         .collect();
     let available: Vec<&AffixId> = pool.iter().filter(|id| !existing.contains(id)).collect();
     if let Some(&&new_id) = available.choose(&mut *rng) {
         if let Some(def) = registry.get(new_id) {
             let tier = rng.random_range(0..=def.max_tier());
-            let value = def.roll_value(tier, rng);
+            let values = def.roll_values(tier, rng);
             affixes.affixes[index] = Some(Affix {
                 affix_id: new_id,
                 tier,
-                value,
+                values,
             });
         }
     }
@@ -64,17 +64,17 @@ pub fn apply_chaos(
         let existing: Vec<AffixId> = affixes
             .affixes
             .iter()
-            .filter_map(|a| a.map(|a| a.affix_id))
+            .filter_map(|a| a.as_ref().map(|a| a.affix_id))
             .collect();
         let available: Vec<&AffixId> = pool.iter().filter(|id| !existing.contains(id)).collect();
         if let Some(&&new_id) = available.choose(&mut *rng) {
             if let Some(def) = registry.get(new_id) {
                 let tier = rng.random_range(0..=def.max_tier());
-                let value = def.roll_value(tier, rng);
+                let values = def.roll_values(tier, rng);
                 affixes.affixes[i] = Some(Affix {
                     affix_id: new_id,
                     tier,
-                    value,
+                    values,
                 });
             }
         }
@@ -93,7 +93,7 @@ pub fn apply_augmentation(
         .iter()
         .enumerate()
         .filter_map(|(i, a)| {
-            a.and_then(|affix| {
+            a.as_ref().and_then(|affix| {
                 let def = registry.get(affix.affix_id)?;
                 if affix.tier < def.max_tier() {
                     Some(i)
@@ -109,7 +109,7 @@ pub fn apply_augmentation(
         if let Some(affix) = &mut affixes.affixes[index] {
             let new_tier = affix.tier + 1;
             if let Some(def) = registry.get(affix.affix_id) {
-                affix.value = def.roll_value(new_tier, rng);
+                affix.values = def.roll_values(new_tier, rng);
             }
             affix.tier = new_tier;
         }
@@ -120,7 +120,7 @@ pub fn apply_augmentation(
 pub fn sync_affix_modifiers(
     slot_entity: Entity,
     affixes: &Affixes,
-    affix_registry: &AffixRegistry,
+    _affix_registry: &AffixRegistry,
     modifiers: &mut Modifiers,
     dirty: &mut DirtyStats,
 ) {
@@ -128,9 +128,9 @@ pub fn sync_affix_modifiers(
     dirty.mark_all(removed);
 
     for affix in affixes.affixes.iter().flatten() {
-        if let Some(def) = affix_registry.get(affix.affix_id) {
-            modifiers.add(def.stat, affix.value, Some(slot_entity));
-            dirty.mark(def.stat);
+        for (stat, value) in &affix.values {
+            modifiers.add(*stat, *value, Some(slot_entity));
+            dirty.mark(*stat);
         }
     }
 }

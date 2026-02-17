@@ -1,9 +1,8 @@
-use std::collections::HashMap;
 use bevy::prelude::*;
 use serde::Deserialize;
 
 use crate::blueprints::BlueprintId;
-use crate::stats::StatId;
+use crate::stats::{ModifierDef, ModifierDefRaw};
 
 #[derive(Deserialize)]
 pub struct HeroClassRaw {
@@ -12,20 +11,14 @@ pub struct HeroClassRaw {
     pub color: (f32, f32, f32, f32),
     #[serde(default)]
     pub sprite: Option<String>,
-    pub modifiers: HashMap<String, f32>,
-}
-
-pub struct HeroClassModifier {
-    pub stat: StatId,
-    pub value: f32,
-    pub name: String,
+    pub modifiers: Vec<ModifierDefRaw>,
 }
 
 pub struct HeroClass {
     pub display_name: String,
     pub color: (f32, f32, f32, f32),
     pub sprite: Option<String>,
-    pub modifiers: Vec<HeroClassModifier>,
+    pub modifiers: Vec<ModifierDef>,
 }
 
 #[derive(Resource)]

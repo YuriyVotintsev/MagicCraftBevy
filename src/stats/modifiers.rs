@@ -7,7 +7,6 @@ use super::StatId;
 pub struct Modifier {
     pub stat: StatId,
     pub value: f32,
-    #[allow(dead_code)]
     pub source: Option<Entity>,
 }
 
@@ -25,7 +24,6 @@ impl Modifiers {
         self.list.push(Modifier { stat, value, source });
     }
 
-    #[allow(dead_code)]
     pub fn remove_by_source(&mut self, source: Entity) -> Vec<StatId> {
         let mut affected = Vec::new();
         self.list.retain(|m| {

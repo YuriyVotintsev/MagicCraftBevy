@@ -1,1 +1,4 @@
-(id: "crystal_orb", name: "Crystal Orb", price: 9, modifiers: {"physical_damage_base": 8, "crit_multiplier_base": 0.3})
+(id: "crystal_orb", name: "Crystal Orb", price: 9, modifiers: [
+    (stats: [Fixed(stat: "physical_damage_base", value: 8)]),
+    (stats: [Fixed(stat: "crit_multiplier", value: 0.3)]),
+])

@@ -7,12 +7,14 @@ use crate::affixes::{AffixDefRaw, OrbDefRaw};
 use crate::artifacts::ArtifactDefRaw;
 use crate::blueprints::BlueprintDefRaw;
 use crate::player::hero_class::HeroClassRaw;
+use crate::stats::display::StatDisplayRuleRaw;
 use crate::stats::loader::{CalculatorDefRaw, StatDefRaw};
 
 #[derive(Asset, TypePath)]
 pub struct StatsConfigAsset {
     pub stat_ids: Vec<StatDefRaw>,
     pub calculators: Vec<CalculatorDefRaw>,
+    pub display: Vec<StatDisplayRuleRaw>,
 }
 
 #[derive(Asset, TypePath)]
@@ -66,6 +68,7 @@ impl AssetLoader for StatsConfigLoader {
         Ok(StatsConfigAsset {
             stat_ids: asset.stat_ids,
             calculators: asset.calculators,
+            display: asset.display,
         })
     }
 
@@ -78,6 +81,8 @@ impl AssetLoader for StatsConfigLoader {
 struct StatsConfigRaw {
     stat_ids: Vec<StatDefRaw>,
     calculators: Vec<CalculatorDefRaw>,
+    #[serde(default)]
+    display: Vec<StatDisplayRuleRaw>,
 }
 
 impl AssetLoader for BlueprintDefLoader {

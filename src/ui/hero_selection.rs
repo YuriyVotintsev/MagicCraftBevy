@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::game_state::GameState;
 use crate::player::{AvailableHeroes, SelectedHero};
+use crate::stats::{StatDisplayRegistry, StatRange};
 
 #[derive(Component)]
 pub struct HeroButton {
@@ -21,35 +22,6 @@ const SELECTED_HOVERED_BUTTON: Color = Color::srgb(0.25, 0.6, 0.25);
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 const POSITIVE_COLOR: Color = Color::srgb(0.3, 0.9, 0.3);
 const NEGATIVE_COLOR: Color = Color::srgb(0.9, 0.3, 0.3);
-
-fn format_stat_name(raw: &str) -> String {
-    let name = raw
-        .strip_suffix("_base").or_else(|| raw.strip_suffix("_more")).unwrap_or(raw);
-    name.split('_')
-        .map(|word| {
-            let mut chars: Vec<char> = word.chars().collect();
-            if let Some(first) = chars.first_mut() {
-                *first = first.to_ascii_uppercase();
-            }
-            chars.into_iter().collect::<String>()
-        })
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
-fn format_modifier_value(value: f32) -> String {
-    if value > 0.0 {
-        if value.fract() == 0.0 {
-            format!("+{}", value as i32)
-        } else {
-            format!("+{:.2}", value)
-        }
-    } else if value.fract() == 0.0 {
-        format!("{}", value as i32)
-    } else {
-        format!("{:.2}", value)
-    }
-}
 
 pub fn spawn_hero_selection(
     mut commands: Commands,
@@ -186,6 +158,7 @@ pub fn update_stats_panel(
     mut commands: Commands,
     selected_hero: Res<SelectedHero>,
     available_heroes: Res<AvailableHeroes>,
+    display: Res<StatDisplayRegistry>,
     panel_query: Query<(Entity, Option<&Children>), With<StatsPanel>>,
 ) {
     if !selected_hero.is_changed() {
@@ -216,43 +189,27 @@ pub fn update_stats_panel(
     )).id();
     commands.entity(panel_entity).add_child(header);
 
-    let mut sorted_mods: Vec<_> = class.modifiers.iter().collect();
-    sorted_mods.sort_by(|a, b| a.name.cmp(&b.name));
+    for modifier_def in &class.modifiers {
+        let pairs: Vec<_> = modifier_def.stats.iter().map(|sr| match sr {
+            StatRange::Fixed { stat, value } => (*stat, *value),
+            StatRange::Range { stat, min, max } => (*stat, (*min + *max) / 2.0),
+        }).collect();
+        let lines = display.format(&pairs);
+        for line in lines {
+            let value = pairs.first().map(|(_, v)| *v).unwrap_or(0.0);
+            let color = if value > 0.0 { POSITIVE_COLOR } else { NEGATIVE_COLOR };
 
-    for modifier in sorted_mods {
-        let display_name = format_stat_name(&modifier.name);
-        let value_str = format_modifier_value(modifier.value);
-        let color = if modifier.value > 0.0 { POSITIVE_COLOR } else { NEGATIVE_COLOR };
-
-        let row = commands.spawn((
-            Node {
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::SpaceBetween,
-                width: Val::Percent(100.0),
-                margin: UiRect::vertical(Val::Px(2.0)),
-                ..default()
-            },
-        )).id();
-
-        let name_text = commands.spawn((
-            Text::new(display_name),
-            TextFont { font_size: 18.0, ..default() },
-            TextColor(TEXT_COLOR),
-        )).id();
-
-        let value_text = commands.spawn((
-            Text::new(value_str),
-            TextFont { font_size: 18.0, ..default() },
-            TextColor(color),
-            Node {
-                margin: UiRect::left(Val::Px(20.0)),
-                ..default()
-            },
-        )).id();
-
-        commands.entity(row).add_child(name_text);
-        commands.entity(row).add_child(value_text);
-        commands.entity(panel_entity).add_child(row);
+            let row = commands.spawn((
+                Text::new(line),
+                TextFont { font_size: 18.0, ..default() },
+                TextColor(color),
+                Node {
+                    margin: UiRect::vertical(Val::Px(2.0)),
+                    ..default()
+                },
+            )).id();
+            commands.entity(panel_entity).add_child(row);
+        }
     }
 }
 

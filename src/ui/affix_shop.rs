@@ -7,7 +7,7 @@ use crate::affixes::{
 use crate::blueprints::BlueprintRegistry;
 use crate::money::PlayerMoney;
 use crate::player::{Player, SelectedSpells, SpellSlot};
-use crate::stats::{DirtyStats, Modifiers};
+use crate::stats::{DirtyStats, Modifiers, StatDisplayRegistry};
 
 const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
@@ -247,13 +247,19 @@ fn spawn_slot_select_popup(
     let _ = popup;
 }
 
+fn format_affix_display(affix: &Affix, display: &StatDisplayRegistry) -> String {
+    let lines = display.format(&affix.values);
+    let tier_str = format!(" [T{}]", affix.tier + 1);
+    lines.join(", ") + &tier_str
+}
+
 fn spawn_preview_popup(
     commands: &mut Commands,
     original: &Affixes,
     preview: &Affixes,
     slot_type: SpellSlot,
     rerolled: &[bool; 6],
-    affix_registry: &AffixRegistry,
+    display: &StatDisplayRegistry,
     selected_spells: &SelectedSpells,
     blueprint_registry: &BlueprintRegistry,
 ) {
@@ -306,7 +312,7 @@ fn spawn_preview_popup(
         }
         let old = &original.affixes[i];
         let new = &preview.affixes[i];
-        build_affix_diff_row(commands, panel, old, new, rerolled[i], affix_registry);
+        build_affix_diff_row(commands, panel, old, new, rerolled[i], display);
     }
 
     let accept_text = commands
@@ -398,7 +404,7 @@ fn build_affix_diff_row(
     old: &Option<Affix>,
     new: &Option<Affix>,
     rerolled: bool,
-    registry: &AffixRegistry,
+    display: &StatDisplayRegistry,
 ) {
     let row_height = Val::Px(28.0);
     let font_size = 18.0;
@@ -422,29 +428,50 @@ fn build_affix_diff_row(
             commands.entity(parent_entity).add_child(child);
         }
         (None, Some(new_affix)) => {
-            if let Some(def) = registry.get(new_affix.affix_id) {
-                let child = commands
-                    .spawn((
-                        Text(def.format_display(new_affix)),
-                        TextFont {
-                            font_size,
-                            ..default()
-                        },
-                        TextColor(GREEN_COLOR),
-                        Node {
-                            height: row_height,
-                            ..default()
-                        },
-                    ))
-                    .id();
-                commands.entity(parent_entity).add_child(child);
-            }
+            let child = commands
+                .spawn((
+                    Text(format_affix_display(new_affix, display)),
+                    TextFont {
+                        font_size,
+                        ..default()
+                    },
+                    TextColor(GREEN_COLOR),
+                    Node {
+                        height: row_height,
+                        ..default()
+                    },
+                ))
+                .id();
+            commands.entity(parent_entity).add_child(child);
         }
         (Some(old_affix), None) => {
-            if let Some(def) = registry.get(old_affix.affix_id) {
-                let child = commands
+            let child = commands
+                .spawn((
+                    Text(format_affix_display(old_affix, display)),
+                    TextFont {
+                        font_size,
+                        ..default()
+                    },
+                    TextColor(RED_COLOR),
+                    Node {
+                        height: row_height,
+                        ..default()
+                    },
+                ))
+                .id();
+            commands.entity(parent_entity).add_child(child);
+        }
+        (Some(old_affix), Some(new_affix)) => {
+            if old_affix.affix_id != new_affix.affix_id {
+                let col = commands
+                    .spawn(Node {
+                        flex_direction: FlexDirection::Column,
+                        ..default()
+                    })
+                    .id();
+                let old_child = commands
                     .spawn((
-                        Text(def.format_display(old_affix)),
+                        Text(format_affix_display(old_affix, display)),
                         TextFont {
                             font_size,
                             ..default()
@@ -456,137 +483,99 @@ fn build_affix_diff_row(
                         },
                     ))
                     .id();
+                commands.entity(col).add_child(old_child);
+                let new_child = commands
+                    .spawn((
+                        Text(format_affix_display(new_affix, display)),
+                        TextFont {
+                            font_size,
+                            ..default()
+                        },
+                        TextColor(GREEN_COLOR),
+                        Node {
+                            height: row_height,
+                            ..default()
+                        },
+                    ))
+                    .id();
+                commands.entity(col).add_child(new_child);
+                commands.entity(parent_entity).add_child(col);
+            } else if old_affix.tier != new_affix.tier || old_affix.values != new_affix.values {
+                build_affix_value_diff(commands, parent_entity, old_affix, new_affix, font_size, row_height, display);
+            } else {
+                let color = if rerolled { GOLD_COLOR } else { TEXT_COLOR };
+                let child = commands
+                    .spawn((
+                        Text(format_affix_display(old_affix, display)),
+                        TextFont {
+                            font_size,
+                            ..default()
+                        },
+                        TextColor(color),
+                        Node {
+                            height: row_height,
+                            ..default()
+                        },
+                    ))
+                    .id();
                 commands.entity(parent_entity).add_child(child);
             }
         }
-        (Some(old_affix), Some(new_affix)) => {
-            if old_affix.affix_id != new_affix.affix_id {
-                let col = commands
-                    .spawn(Node {
-                        flex_direction: FlexDirection::Column,
-                        ..default()
-                    })
-                    .id();
-                if let Some(def) = registry.get(old_affix.affix_id) {
-                    let old_child = commands
-                        .spawn((
-                            Text(def.format_display(old_affix)),
-                            TextFont {
-                                font_size,
-                                ..default()
-                            },
-                            TextColor(RED_COLOR),
-                            Node {
-                                height: row_height,
-                                ..default()
-                            },
-                        ))
-                        .id();
-                    commands.entity(col).add_child(old_child);
-                }
-                if let Some(def) = registry.get(new_affix.affix_id) {
-                    let new_child = commands
-                        .spawn((
-                            Text(def.format_display(new_affix)),
-                            TextFont {
-                                font_size,
-                                ..default()
-                            },
-                            TextColor(GREEN_COLOR),
-                            Node {
-                                height: row_height,
-                                ..default()
-                            },
-                        ))
-                        .id();
-                    commands.entity(col).add_child(new_child);
-                }
-                commands.entity(parent_entity).add_child(col);
-            } else if let Some(def) = registry.get(old_affix.affix_id) {
-                let old_num = def.format_number(old_affix.value);
-                let new_num = def.format_number(new_affix.value);
-                let (prefix, suffix) = def.name_parts();
-
-                if old_affix.tier != new_affix.tier {
-                    let child = commands
-                        .spawn((
-                            Text::new(prefix),
-                            TextFont {
-                                font_size,
-                                ..default()
-                            },
-                            TextColor(TEXT_COLOR),
-                            Node {
-                                height: row_height,
-                                ..default()
-                            },
-                        ))
-                        .with_children(|p| {
-                            p.spawn((TextSpan::new(&old_num), TextColor(RED_COLOR)));
-                            p.spawn((TextSpan::new("->"), TextColor(TEXT_COLOR)));
-                            p.spawn((TextSpan::new(&new_num), TextColor(GREEN_COLOR)));
-                            p.spawn((TextSpan::new(suffix), TextColor(TEXT_COLOR)));
-                            p.spawn((TextSpan::new(" ["), TextColor(TEXT_COLOR)));
-                            p.spawn((
-                                TextSpan::new(format!("T{}", old_affix.tier + 1)),
-                                TextColor(RED_COLOR),
-                            ));
-                            p.spawn((TextSpan::new("->"), TextColor(TEXT_COLOR)));
-                            p.spawn((
-                                TextSpan::new(format!("T{}", new_affix.tier + 1)),
-                                TextColor(GREEN_COLOR),
-                            ));
-                            p.spawn((TextSpan::new("]"), TextColor(TEXT_COLOR)));
-                        })
-                        .id();
-                    commands.entity(parent_entity).add_child(child);
-                } else if old_num != new_num {
-                    let child = commands
-                        .spawn((
-                            Text::new(prefix),
-                            TextFont {
-                                font_size,
-                                ..default()
-                            },
-                            TextColor(TEXT_COLOR),
-                            Node {
-                                height: row_height,
-                                ..default()
-                            },
-                        ))
-                        .with_children(|p| {
-                            p.spawn((TextSpan::new(&old_num), TextColor(RED_COLOR)));
-                            p.spawn((TextSpan::new("->"), TextColor(TEXT_COLOR)));
-                            p.spawn((TextSpan::new(&new_num), TextColor(GREEN_COLOR)));
-                            p.spawn((TextSpan::new(suffix), TextColor(TEXT_COLOR)));
-                            p.spawn((
-                                TextSpan::new(format!(" [T{}]", old_affix.tier + 1)),
-                                TextColor(TEXT_COLOR),
-                            ));
-                        })
-                        .id();
-                    commands.entity(parent_entity).add_child(child);
-                } else {
-                    let color = if rerolled { GOLD_COLOR } else { TEXT_COLOR };
-                    let child = commands
-                        .spawn((
-                            Text(def.format_display(old_affix)),
-                            TextFont {
-                                font_size,
-                                ..default()
-                            },
-                            TextColor(color),
-                            Node {
-                                height: row_height,
-                                ..default()
-                            },
-                        ))
-                        .id();
-                    commands.entity(parent_entity).add_child(child);
-                }
-            }
-        }
     }
+}
+
+fn build_affix_value_diff(
+    commands: &mut Commands,
+    parent_entity: Entity,
+    old_affix: &Affix,
+    new_affix: &Affix,
+    font_size: f32,
+    row_height: Val,
+    display: &StatDisplayRegistry,
+) {
+    let old_lines = display.format(&old_affix.values);
+    let new_lines = display.format(&new_affix.values);
+
+    let old_text = old_lines.join(", ");
+    let new_text = new_lines.join(", ");
+
+    let child = commands
+        .spawn((
+            Text::new(&old_text),
+            TextFont {
+                font_size,
+                ..default()
+            },
+            TextColor(TEXT_COLOR),
+            Node {
+                height: row_height,
+                ..default()
+            },
+        ))
+        .with_children(|p| {
+            p.spawn((TextSpan::new(" -> "), TextColor(TEXT_COLOR)));
+            p.spawn((TextSpan::new(&new_text), TextColor(GREEN_COLOR)));
+            if old_affix.tier != new_affix.tier {
+                p.spawn((TextSpan::new(" ["), TextColor(TEXT_COLOR)));
+                p.spawn((
+                    TextSpan::new(format!("T{}", old_affix.tier + 1)),
+                    TextColor(RED_COLOR),
+                ));
+                p.spawn((TextSpan::new("->"), TextColor(TEXT_COLOR)));
+                p.spawn((
+                    TextSpan::new(format!("T{}", new_affix.tier + 1)),
+                    TextColor(GREEN_COLOR),
+                ));
+                p.spawn((TextSpan::new("]"), TextColor(TEXT_COLOR)));
+            } else {
+                p.spawn((
+                    TextSpan::new(format!(" [T{}]", old_affix.tier + 1)),
+                    TextColor(TEXT_COLOR),
+                ));
+            }
+        })
+        .id();
+    commands.entity(parent_entity).add_child(child);
 }
 
 fn get_spell_name(
@@ -733,7 +722,7 @@ pub fn manage_orb_popup(
     slot_query: Query<(Entity, &SpellSlotTag)>,
     selected_spells: Res<SelectedSpells>,
     blueprint_registry: Res<BlueprintRegistry>,
-    affix_registry: Res<AffixRegistry>,
+    display: Res<StatDisplayRegistry>,
 ) {
     if !flow_state.is_changed() {
         return;
@@ -766,7 +755,7 @@ pub fn manage_orb_popup(
                 preview,
                 *slot_type,
                 rerolled,
-                &affix_registry,
+                &display,
                 &selected_spells,
                 &blueprint_registry,
             );
