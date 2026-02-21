@@ -1,9 +1,9 @@
 [
     (id: "flat_max_life", tiers: [
-        (stats: [Range(stat: "max_life_base", min: 10.0, max: 14.0)]),
-        (stats: [Range(stat: "max_life_base", min: 20.0, max: 28.0)]),
-        (stats: [Range(stat: "max_life_base", min: 34.0, max: 46.0)]),
-        (stats: [Range(stat: "max_life_base", min: 50.0, max: 70.0)]),
+        (stats: [Range(stat: "max_life_flat", min: 10.0, max: 14.0)]),
+        (stats: [Range(stat: "max_life_flat", min: 20.0, max: 28.0)]),
+        (stats: [Range(stat: "max_life_flat", min: 34.0, max: 46.0)]),
+        (stats: [Range(stat: "max_life_flat", min: 50.0, max: 70.0)]),
     ]),
     (id: "increased_max_life", tiers: [
         (stats: [Range(stat: "max_life_increased", min: 0.04, max: 0.06)]),
@@ -17,9 +17,9 @@
         (stats: [Range(stat: "movement_speed_increased", min: 0.15, max: 0.21)]),
     ]),
     (id: "flat_max_mana", tiers: [
-        (stats: [Range(stat: "max_mana_base", min: 10.0, max: 14.0)]),
-        (stats: [Range(stat: "max_mana_base", min: 20.0, max: 28.0)]),
-        (stats: [Range(stat: "max_mana_base", min: 34.0, max: 46.0)]),
+        (stats: [Range(stat: "max_mana_flat", min: 10.0, max: 14.0)]),
+        (stats: [Range(stat: "max_mana_flat", min: 20.0, max: 28.0)]),
+        (stats: [Range(stat: "max_mana_flat", min: 34.0, max: 46.0)]),
     ]),
     (id: "increased_max_mana", tiers: [
         (stats: [Range(stat: "max_mana_increased", min: 0.03, max: 0.05)]),
@@ -27,14 +27,14 @@
         (stats: [Range(stat: "max_mana_increased", min: 0.11, max: 0.17)]),
     ]),
     (id: "flat_phys_damage", tiers: [
-        (stats: [Range(stat: "physical_damage_base", min: 1.0, max: 3.0)]),
-        (stats: [Range(stat: "physical_damage_base", min: 3.0, max: 5.0)]),
-        (stats: [Range(stat: "physical_damage_base", min: 5.0, max: 9.0)]),
+        (stats: [Range(stat: "physical_damage_flat", min: 1.0, max: 3.0)]),
+        (stats: [Range(stat: "physical_damage_flat", min: 3.0, max: 5.0)]),
+        (stats: [Range(stat: "physical_damage_flat", min: 5.0, max: 9.0)]),
     ]),
     (id: "crit_chance", tiers: [
-        (stats: [Range(stat: "crit_chance_base", min: 0.01, max: 0.03)]),
-        (stats: [Range(stat: "crit_chance_base", min: 0.03, max: 0.05)]),
-        (stats: [Range(stat: "crit_chance_base", min: 0.05, max: 0.09)]),
+        (stats: [Range(stat: "crit_chance_flat", min: 0.01, max: 0.03)]),
+        (stats: [Range(stat: "crit_chance_flat", min: 0.03, max: 0.05)]),
+        (stats: [Range(stat: "crit_chance_flat", min: 0.05, max: 0.09)]),
     ]),
     (id: "projectile_speed", tiers: [
         (stats: [Range(stat: "projectile_speed_increased", min: 0.02, max: 0.04)]),

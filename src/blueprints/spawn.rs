@@ -7,6 +7,7 @@ use crate::stats::{ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId
 use super::components::ComponentDef;
 use super::context::TargetInfo;
 use super::entity_def::{EntityDef, StatesBlock};
+use super::expr::EvalCtx;
 use super::recalc::StoredComponentDefs;
 use super::state::{CurrentState, StoredStatesBlock};
 use super::{SpawnSource, BlueprintId, BlueprintRegistry, spawn_blueprint_entity};
@@ -26,9 +27,10 @@ impl EntitySpawner<'_, '_> {
         parent_source: &SpawnSource,
         caster_stats: &ComputedStats,
     ) -> Vec<Entity> {
+        let ctx = EvalCtx::from_source(parent_source, caster_stats);
         let count = entity_def.count
             .as_ref()
-            .map(|c| c.eval(parent_source, caster_stats).max(1.0) as usize)
+            .map(|c| c.eval(&ctx).max(1.0) as usize)
             .unwrap_or(1);
 
         let mut entities = Vec::with_capacity(count);

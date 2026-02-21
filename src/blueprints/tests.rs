@@ -130,8 +130,12 @@ fn load_stat_names() -> HashSet<String> {
     #[derive(serde::Deserialize)]
     struct StatsConfig {
         stat_ids: Vec<crate::stats::loader::StatDefRaw>,
+        #[serde(default)]
         #[allow(dead_code)]
-        calculators: Vec<crate::stats::loader::CalculatorDefRaw>,
+        calcs: Vec<crate::expr::calc::CalcTemplateRaw>,
+        #[serde(default)]
+        #[allow(dead_code)]
+        display: Vec<crate::stats::display::StatDisplayRuleRaw>,
     }
     let content = std::fs::read_to_string("assets/stats/config.stats.ron").unwrap();
     let config: StatsConfig = ron::from_str(&content).unwrap();

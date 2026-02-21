@@ -4,7 +4,7 @@
     color: (0.2, 0.6, 1.0, 1.0),
     sprite: Some("images/Shaman.png"),
     modifiers: [
-        (stats: [Fixed(stat: "max_life_base", value: 50.0)]),
-        (stats: [Fixed(stat: "movement_speed_base", value: 50.0)]),
+        (stats: [Fixed(stat: "max_life_flat", value: 50.0)]),
+        (stats: [Fixed(stat: "movement_speed_flat", value: 50.0)]),
     ],
 )

@@ -4,6 +4,7 @@ use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::wave::{WaveEnemy, WavePhase};
 use super::core_components::{BlueprintActivationCooldown, BlueprintActivationInput, TrackedSpawns};
 use super::context::TargetInfo;
+use super::expr::EvalCtx;
 use super::registry::BlueprintRegistry;
 use super::spawn::EntitySpawner;
 use super::SpawnSource;
@@ -95,7 +96,8 @@ pub fn blueprint_activation_system(
             spawner.commands.entity(bp_entity).insert(TrackedSpawns { entities: all_spawned });
         }
 
-        cd.timer = blueprint_def.cooldown.eval(&spawn_source, caster_stats);
+        let ctx = EvalCtx::from_source(&spawn_source, caster_stats);
+        cd.timer = blueprint_def.cooldown.eval(&ctx);
     }
 }
 
@@ -109,9 +111,10 @@ pub fn respawn_on_count_change(
         let Ok(stats) = stats_query.get(caster_entity) else { continue };
         let Some(blueprint_def) = blueprint_registry.get(source.blueprint_id) else { continue };
 
+        let ctx = EvalCtx::from_source(source, stats);
         let new_count: usize = blueprint_def.entities.iter()
             .map(|e| e.count.as_ref()
-                .map(|c| c.eval(source, stats).max(1.0) as usize)
+                .map(|c| c.eval(&ctx).max(1.0) as usize)
                 .unwrap_or(1))
             .sum();
 

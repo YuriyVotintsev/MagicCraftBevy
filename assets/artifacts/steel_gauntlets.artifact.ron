@@ -1,1 +1,1 @@
-(id: "steel_gauntlets", name: "Steel Gauntlets", price: 4, modifiers: [(stats: [Fixed(stat: "physical_damage_base", value: 8)])])
+(id: "steel_gauntlets", name: "Steel Gauntlets", price: 4, modifiers: [(stats: [Fixed(stat: "physical_damage_flat", value: 8)])])

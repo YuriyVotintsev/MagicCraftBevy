@@ -4,10 +4,10 @@
     color: (0.6, 0.2, 0.8, 1.0),
     sprite: Some("images/Mage.png"),
     modifiers: [
-        (stats: [Fixed(stat: "physical_damage_base", value: 5.0)]),
+        (stats: [Fixed(stat: "physical_damage_flat", value: 5.0)]),
         (stats: [Fixed(stat: "projectile_speed_increased", value: 0.15)]),
-        (stats: [Fixed(stat: "max_life_base", value: -30.0)]),
-        (stats: [Fixed(stat: "crit_chance_base", value: 0.05)]),
+        (stats: [Fixed(stat: "max_life_flat", value: -30.0)]),
+        (stats: [Fixed(stat: "crit_chance_flat", value: 0.05)]),
         (stats: [Fixed(stat: "crit_multiplier", value: 0.5)]),
     ],
 )

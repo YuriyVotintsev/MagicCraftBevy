@@ -1,9 +1,9 @@
 [
     (id: "flat_phys_damage", tiers: [
-        (stats: [Range(stat: "physical_damage_base", min: 2.0, max: 4.0)]),
-        (stats: [Range(stat: "physical_damage_base", min: 5.0, max: 7.0)]),
-        (stats: [Range(stat: "physical_damage_base", min: 8.0, max: 12.0)]),
-        (stats: [Range(stat: "physical_damage_base", min: 13.0, max: 17.0)]),
+        (stats: [Range(stat: "physical_damage_flat", min: 2.0, max: 4.0)]),
+        (stats: [Range(stat: "physical_damage_flat", min: 5.0, max: 7.0)]),
+        (stats: [Range(stat: "physical_damage_flat", min: 8.0, max: 12.0)]),
+        (stats: [Range(stat: "physical_damage_flat", min: 13.0, max: 17.0)]),
     ]),
     (id: "increased_phys_damage", tiers: [
         (stats: [Range(stat: "physical_damage_increased", min: 0.04, max: 0.06)]),
@@ -12,14 +12,14 @@
         (stats: [Range(stat: "physical_damage_increased", min: 0.24, max: 0.32)]),
     ]),
     (id: "flat_max_life", tiers: [
-        (stats: [Range(stat: "max_life_base", min: 8.0, max: 12.0)]),
-        (stats: [Range(stat: "max_life_base", min: 16.0, max: 24.0)]),
-        (stats: [Range(stat: "max_life_base", min: 28.0, max: 42.0)]),
+        (stats: [Range(stat: "max_life_flat", min: 8.0, max: 12.0)]),
+        (stats: [Range(stat: "max_life_flat", min: 16.0, max: 24.0)]),
+        (stats: [Range(stat: "max_life_flat", min: 28.0, max: 42.0)]),
     ]),
     (id: "crit_chance", tiers: [
-        (stats: [Range(stat: "crit_chance_base", min: 0.02, max: 0.04)]),
-        (stats: [Range(stat: "crit_chance_base", min: 0.05, max: 0.07)]),
-        (stats: [Range(stat: "crit_chance_base", min: 0.08, max: 0.12)]),
+        (stats: [Range(stat: "crit_chance_flat", min: 0.02, max: 0.04)]),
+        (stats: [Range(stat: "crit_chance_flat", min: 0.05, max: 0.07)]),
+        (stats: [Range(stat: "crit_chance_flat", min: 0.08, max: 0.12)]),
     ]),
     (id: "crit_multiplier", tiers: [
         (stats: [Range(stat: "crit_multiplier", min: 0.08, max: 0.12)]),
@@ -41,8 +41,8 @@
         (stats: [Range(stat: "movement_speed_increased", min: 0.11, max: 0.17)]),
     ]),
     (id: "flat_max_mana", tiers: [
-        (stats: [Range(stat: "max_mana_base", min: 8.0, max: 12.0)]),
-        (stats: [Range(stat: "max_mana_base", min: 16.0, max: 24.0)]),
-        (stats: [Range(stat: "max_mana_base", min: 28.0, max: 42.0)]),
+        (stats: [Range(stat: "max_mana_flat", min: 8.0, max: 12.0)]),
+        (stats: [Range(stat: "max_mana_flat", min: 16.0, max: 24.0)]),
+        (stats: [Range(stat: "max_mana_flat", min: 28.0, max: 42.0)]),
     ]),
 ]

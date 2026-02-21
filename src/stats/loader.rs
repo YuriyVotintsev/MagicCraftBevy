@@ -1,134 +1,77 @@
 use serde::Deserialize;
 use std::fs;
 
-use super::expression::{Expression, ExpressionRaw};
-use super::{AggregationType, StatCalculators, StatId, StatRegistry};
+use crate::expr::parser::{TypedExpr, StatAtomParser, parse_expr_string_with};
+use super::stat_id::StatEvalKind;
+use super::{StatCalculators, StatId, StatRegistry};
 
 #[derive(Debug, Deserialize)]
 pub struct StatDefRaw {
     pub name: String,
-    pub aggregation: AggregationType,
+    pub eval: StatEvalKindRaw,
     #[serde(default)]
     pub lower_is_better: bool,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct CalculatorDefRaw {
-    pub stat: String,
-    pub formula: ExpressionRaw,
-    pub depends_on: Vec<String>,
+#[derive(Debug, Clone, Deserialize)]
+pub enum StatEvalKindRaw {
+    Sum,
+    Product,
+    Formula(String),
+}
+
+fn resolve_formula(formula_str: &str, stat_name: &str, registry: &StatRegistry) -> (StatEvalKind, Vec<StatId>) {
+    let parsed = match parse_expr_string_with(formula_str, &StatAtomParser) {
+        Ok(TypedExpr::Scalar(expr)) => expr,
+        Ok(_) => panic!("Stat '{}' formula must be a scalar expression, got vec/entity", stat_name),
+        Err(e) => panic!("Failed to parse formula for stat '{}': {}\nFormula: {}", stat_name, e, formula_str),
+    };
+
+    let resolved = parsed.resolve(registry);
+
+    let mut deps = Vec::new();
+    resolved.collect_stat_deps(&mut deps);
+    deps.dedup();
+
+    (StatEvalKind::Formula(resolved), deps)
 }
 
 #[allow(dead_code)]
-pub fn load_stats(
-    stat_ids_path: &str,
-    calculators_path: &str,
-) -> (StatRegistry, StatCalculators) {
-    let stat_defs_content = fs::read_to_string(stat_ids_path).unwrap_or_else(|e| {
-        panic!(
-            "Failed to read stat_ids file '{}': {}",
-            stat_ids_path, e
-        )
+pub fn load_stats(config_path: &str) -> (StatRegistry, StatCalculators) {
+    let content = fs::read_to_string(config_path).unwrap_or_else(|e| {
+        panic!("Failed to read stats config '{}': {}", config_path, e)
     });
-    let stat_defs: Vec<StatDefRaw> = ron::from_str(&stat_defs_content).unwrap_or_else(|e| {
-        panic!(
-            "Failed to parse stat_ids RON '{}': {}\nContent:\n{}",
-            stat_ids_path, e, stat_defs_content
-        )
+
+    #[derive(Deserialize)]
+    struct StatsFile {
+        stat_ids: Vec<StatDefRaw>,
+    }
+
+    let config: StatsFile = ron::from_str(&content).unwrap_or_else(|e| {
+        panic!("Failed to parse stats config '{}': {}\nContent:\n{}", config_path, e, content)
     });
 
     let mut registry = StatRegistry::new();
-    for def in &stat_defs {
-        registry.insert(&def.name, def.aggregation.clone(), def.lower_is_better);
+    for def in &config.stat_ids {
+        registry.insert(&def.name, def.lower_is_better);
     }
 
     let mut calculators = StatCalculators::new(registry.len());
 
-    for def in &stat_defs {
+    for def in &config.stat_ids {
         let stat_id = registry.get(&def.name).unwrap();
-        match &def.aggregation {
-            AggregationType::Sum => {
-                calculators.set(stat_id, Expression::ModifierSum(stat_id), vec![]);
+        match &def.eval {
+            StatEvalKindRaw::Sum => {
+                calculators.set(stat_id, StatEvalKind::Sum, vec![]);
             }
-            AggregationType::Product => {
-                calculators.set(stat_id, Expression::ModifierProduct(stat_id), vec![]);
+            StatEvalKindRaw::Product => {
+                calculators.set(stat_id, StatEvalKind::Product, vec![]);
             }
-            AggregationType::Standard { base, increased, more } => {
-                let base_id = registry.get(base).unwrap_or_else(|| {
-                    panic!(
-                        "Standard aggregation for '{}' references unknown base stat: '{}'",
-                        def.name, base
-                    )
-                });
-                let increased_id = registry.get(increased).unwrap_or_else(|| {
-                    panic!(
-                        "Standard aggregation for '{}' references unknown increased stat: '{}'",
-                        def.name, increased
-                    )
-                });
-
-                let base_increased = Expression::Mul(
-                    Box::new(Expression::Stat(base_id)),
-                    Box::new(Expression::Add(
-                        Box::new(Expression::Constant(1.0)),
-                        Box::new(Expression::Stat(increased_id)),
-                    )),
-                );
-
-                if let Some(more) = more {
-                    let more_id = registry.get(more).unwrap_or_else(|| {
-                        panic!(
-                            "Standard aggregation for '{}' references unknown more stat: '{}'",
-                            def.name, more
-                        )
-                    });
-                    let formula = Expression::Mul(
-                        Box::new(base_increased),
-                        Box::new(Expression::Stat(more_id)),
-                    );
-                    calculators.set(stat_id, formula, vec![base_id, increased_id, more_id]);
-                } else {
-                    calculators.set(stat_id, base_increased, vec![base_id, increased_id]);
-                }
+            StatEvalKindRaw::Formula(formula_str) => {
+                let (eval, deps) = resolve_formula(formula_str, &def.name, &registry);
+                calculators.set(stat_id, eval, deps);
             }
-            AggregationType::Custom => {}
         }
-    }
-
-    let custom_calcs_content = fs::read_to_string(calculators_path).unwrap_or_else(|e| {
-        panic!(
-            "Failed to read calculators file '{}': {}",
-            calculators_path, e
-        )
-    });
-    let custom_calcs: Vec<CalculatorDefRaw> = ron::from_str(&custom_calcs_content).unwrap_or_else(|e| {
-        panic!(
-            "Failed to parse calculators RON '{}': {}\nContent:\n{}",
-            calculators_path, e, custom_calcs_content
-        )
-    });
-
-    for calc in custom_calcs {
-        let stat_id = registry.get(&calc.stat).unwrap_or_else(|| {
-            panic!(
-                "Calculator references unknown stat: '{}' (calculators file: {})",
-                calc.stat, calculators_path
-            )
-        });
-        let formula = calc.formula.resolve(&registry);
-        let deps: Vec<StatId> = calc
-            .depends_on
-            .iter()
-            .map(|s| {
-                registry.get(s).unwrap_or_else(|| {
-                    panic!(
-                        "Calculator for '{}' references unknown dependency stat: '{}'",
-                        calc.stat, s
-                    )
-                })
-            })
-            .collect();
-        calculators.set(stat_id, formula, deps);
     }
 
     calculators.rebuild();

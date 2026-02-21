@@ -1,11 +1,12 @@
 use bevy::prelude::*;
 
-use super::expression::Expression;
+use crate::expr::EvalCtx;
+use super::stat_id::StatEvalKind;
 use super::{ComputedStats, DirtyStats, Modifiers, StatId};
 
 #[derive(Clone)]
 pub struct CalculatorEntry {
-    pub formula: Expression,
+    pub eval: StatEvalKind,
     pub depends_on: Vec<StatId>,
 }
 
@@ -25,13 +26,13 @@ impl StatCalculators {
         }
     }
 
-    pub fn set(&mut self, stat: StatId, formula: Expression, depends_on: Vec<StatId>) {
+    pub fn set(&mut self, stat: StatId, eval: StatEvalKind, depends_on: Vec<StatId>) {
         let idx = stat.0 as usize;
         if idx >= self.entries.len() {
             self.entries.resize_with(idx + 1, || None);
             self.reverse_deps.resize(idx + 1, Vec::new());
         }
-        self.entries[idx] = Some(CalculatorEntry { formula, depends_on });
+        self.entries[idx] = Some(CalculatorEntry { eval, depends_on });
     }
 
     pub fn rebuild(&mut self) {
@@ -121,7 +122,14 @@ impl StatCalculators {
 
     pub fn calculate(&self, stat: StatId, modifiers: &Modifiers, computed: &ComputedStats) -> f32 {
         if let Some(Some(entry)) = self.entries.get(stat.0 as usize) {
-            entry.formula.evaluate(modifiers, computed)
+            match &entry.eval {
+                StatEvalKind::Sum => modifiers.sum(stat),
+                StatEvalKind::Product => modifiers.product(stat),
+                StatEvalKind::Formula(expr) => {
+                    let ctx = EvalCtx::stat_only(computed);
+                    expr.eval(&ctx)
+                }
+            }
         } else {
             0.0
         }

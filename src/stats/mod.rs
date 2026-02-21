@@ -3,7 +3,6 @@ mod computed_stats;
 mod damage;
 pub mod display;
 mod dirty_stats;
-mod expression;
 mod health;
 pub mod loader;
 pub mod modifier_def;
@@ -14,15 +13,16 @@ pub(crate) mod systems;
 
 pub use calculators::StatCalculators;
 pub use computed_stats::{ComputedStats, DEFAULT_STATS};
+#[allow(unused_imports)]
+pub use crate::expr::StatProvider;
 pub use dirty_stats::DirtyStats;
 pub use display::{FormatSpan, SignMode, StatDisplayRegistry, ValueTemplate};
-pub use expression::Expression;
 pub use health::{Dead, death_system, DeathEvent};
 pub use modifier_def::{ModifierDef, ModifierDefRaw, StatRange};
 pub use modifiers::Modifiers;
 pub use damage::DamageEvent;
 pub use pending_damage::PendingDamage;
-pub use stat_id::{AggregationType, StatId, StatRegistry};
+pub use stat_id::{StatEvalKind, StatId, StatRegistry};
 
 use bevy::prelude::*;
 

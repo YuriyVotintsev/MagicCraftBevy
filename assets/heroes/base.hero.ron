@@ -3,9 +3,9 @@
     entities: [
         (
             base_stats: {
-                "max_life_base": 70.0,
-                "movement_speed_base": 350.0,
-                "crit_chance_base": 0.05,
+                "max_life_flat": 70.0,
+                "movement_speed_flat": 350.0,
+                "crit_chance_flat": 0.05,
                 "crit_multiplier": 1.5,
             },
             components: [

@@ -10,7 +10,7 @@
             Collider((shape: Circle)),
             Sprite((color: (1.0, 0.3, 0.0, 1.0), shape: Circle)),
             OnCollision((entities: [
-                (components: [DamagePayload((amount: "(0.5 + stat(physical_damage_base) * 0.03) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
+                (components: [DamagePayload((amount: "(0.5 + stat(physical_damage_flat) * 0.03) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
             ]))
         ])
     ]

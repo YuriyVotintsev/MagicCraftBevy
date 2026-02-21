@@ -1,28 +1,21 @@
 use bevy::prelude::*;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect)]
-pub struct StatId(pub u32);
+pub use crate::expr::StatId;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum AggregationType {
+use crate::expr::ScalarExpr;
+
+#[derive(Debug, Clone)]
+pub enum StatEvalKind {
     Sum,
     Product,
-    Standard {
-        base: String,
-        increased: String,
-        #[serde(default)]
-        more: Option<String>,
-    },
-    Custom,
+    Formula(ScalarExpr),
 }
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct StatDef {
     pub name: String,
-    pub aggregation: AggregationType,
     pub lower_is_better: bool,
 }
 
@@ -37,7 +30,7 @@ impl StatRegistry {
         Self::default()
     }
 
-    pub fn insert(&mut self, name: &str, aggregation: AggregationType, lower_is_better: bool) -> StatId {
+    pub fn insert(&mut self, name: &str, lower_is_better: bool) -> StatId {
         if let Some(&id) = self.name_to_id.get(name) {
             return id;
         }
@@ -46,7 +39,6 @@ impl StatRegistry {
         self.name_to_id.insert(name.to_string(), id);
         self.stats.push(StatDef {
             name: name.to_string(),
-            aggregation,
             lower_is_better,
         });
         id
@@ -64,11 +56,6 @@ impl StatRegistry {
     #[allow(dead_code)]
     pub fn name(&self, id: StatId) -> Option<&str> {
         self.stats.get(id.0 as usize).map(|d| d.name.as_str())
-    }
-
-    #[allow(dead_code)]
-    pub fn aggregation(&self, id: StatId) -> Option<&AggregationType> {
-        self.stats.get(id.0 as usize).map(|d| &d.aggregation)
     }
 
     pub fn len(&self) -> usize {

@@ -10,7 +10,7 @@
                 Sprite((color: (0.3, 0.7, 1.0, 1.0), shape: Circle)),
                 Pierce(()),
                 OnCollision((entities: [
-                    (components: [DamagePayload((amount: "(8.0 + stat(physical_damage_base) * 0.5) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
+                    (components: [DamagePayload((amount: "(8.0 + stat(physical_damage_flat) * 0.5) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
                 ]))
             ]
         )

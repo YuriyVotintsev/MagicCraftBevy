@@ -3,6 +3,7 @@ mod artifacts;
 mod balance;
 mod blueprints;
 mod arena;
+pub mod expr;
 mod common;
 mod faction;
 mod game_state;

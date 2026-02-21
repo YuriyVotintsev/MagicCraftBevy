@@ -185,7 +185,7 @@ fn get_update_parts(field_name: &syn::Ident, ty: &Type) -> Option<UpdateParts> {
     if is_scalar_expr_type(ty) || is_vec_expr_type(ty) {
         Some(UpdateParts {
             eval: quote! {
-                let #var = if def.#field_name.uses_recalc() { Some(def.#field_name.eval(source, stats)) } else { None };
+                let #var = if def.#field_name.uses_recalc() { Some(def.#field_name.eval(&__ctx)) } else { None };
             },
             apply: quote! {
                 if let Some(v) = #var { comp.#field_name = v; }
@@ -196,7 +196,7 @@ fn get_update_parts(field_name: &syn::Ident, ty: &Type) -> Option<UpdateParts> {
         Some(UpdateParts {
             eval: quote! {
                 let #var = match def.#field_name {
-                    Some(ref expr) if expr.uses_recalc() => Some(expr.eval(source, stats)),
+                    Some(ref expr) if expr.uses_recalc() => Some(expr.eval(&__ctx)),
                     _ => None,
                 };
             },
@@ -438,7 +438,7 @@ fn generate_blueprint_component_named(
             }
 
             component_fields.push(quote! { pub #field_name: f32 });
-            insert_fields.push(quote! { #field_name: def.#field_name.eval(source, stats) });
+            insert_fields.push(quote! { #field_name: def.#field_name.eval(&__ctx) });
 
         } else if is_vec_expr_type(field_ty) {
             def_fields.push(quote! { pub #field_name: crate::blueprints::expr::VecExpr });
@@ -477,7 +477,7 @@ fn generate_blueprint_component_named(
             }
 
             component_fields.push(quote! { pub #field_name: bevy::prelude::Vec2 });
-            insert_fields.push(quote! { #field_name: def.#field_name.eval(source, stats) });
+            insert_fields.push(quote! { #field_name: def.#field_name.eval(&__ctx) });
 
         } else if is_entity_expr_type(field_ty) {
             def_fields.push(quote! { pub #field_name: crate::blueprints::expr::EntityExpr });
@@ -516,7 +516,7 @@ fn generate_blueprint_component_named(
             }
 
             component_fields.push(quote! { pub #field_name: bevy::prelude::Entity });
-            insert_fields.push(quote! { #field_name: def.#field_name.eval(source).unwrap() });
+            insert_fields.push(quote! { #field_name: def.#field_name.eval(&__ctx).unwrap() });
 
         } else if is_option_scalar_expr(field_ty) {
             def_fields.push(quote! { pub #field_name: Option<crate::blueprints::expr::ScalarExpr> });
@@ -537,7 +537,7 @@ fn generate_blueprint_component_named(
             });
 
             component_fields.push(quote! { pub #field_name: Option<f32> });
-            insert_fields.push(quote! { #field_name: def.#field_name.as_ref().map(|e| e.eval(source, stats)) });
+            insert_fields.push(quote! { #field_name: def.#field_name.as_ref().map(|e| e.eval(&__ctx)) });
 
         } else if is_vec_entity_def(field_ty) {
             def_fields.push(quote! { pub #field_name: Vec<crate::blueprints::entity_def::EntityDef> });
@@ -677,6 +677,7 @@ fn generate_blueprint_component_named(
     } else {
         quote! {
             pub fn update_component(commands: &mut bevy::prelude::EntityCommands, def: &Def, source: &crate::blueprints::core_components::SpawnSource, stats: &crate::stats::ComputedStats) {
+                let __ctx = crate::blueprints::expr::EvalCtx::from_source(source, stats);
                 #(#update_evals)*
                 if !(#(#update_checks.is_some())||*) { return; }
                 commands.queue(move |mut entity: bevy::ecs::world::EntityWorldMut| {
@@ -723,6 +724,7 @@ fn generate_blueprint_component_named(
         }
 
         pub fn insert_component(commands: &mut bevy::prelude::EntityCommands, def: &Def, source: &crate::blueprints::core_components::SpawnSource, stats: &crate::stats::ComputedStats) {
+            let __ctx = crate::blueprints::expr::EvalCtx::from_source(source, stats);
             commands.insert(#component_name {
                 #(#insert_fields,)*
             });

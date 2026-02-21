@@ -7,7 +7,10 @@ use crate::blueprints::BlueprintRegistry;
 use crate::player::hero_class::{AvailableHeroes, HeroClass};
 use crate::player::SpellSlot;
 use crate::stats::display::StatDisplayRegistry;
-use crate::stats::{AggregationType, Expression, StatCalculators, StatId, StatRegistry};
+use crate::expr::calc::CalcRegistry;
+use crate::expr::parser::{TypedExpr, StatAtomParser, parse_expr_string_with};
+use crate::stats::{StatEvalKind, StatCalculators, StatRegistry};
+use crate::stats::loader::StatEvalKindRaw;
 
 use super::assets::{
     AffixPoolAsset, ArtifactDefAsset, BlueprintDefAsset, GameBalanceAsset, HeroClassAsset,
@@ -90,9 +93,11 @@ pub fn check_stats_loaded(
 
     info!("Stats loaded, building registry...");
 
+    let calc_registry = CalcRegistry::from_raw(&stats_config.calcs);
+
     let mut registry = StatRegistry::new();
     for def in &stats_config.stat_ids {
-        registry.insert(&def.name, def.aggregation.clone(), def.lower_is_better);
+        registry.insert(&def.name, def.lower_is_better);
     }
 
     let mut calculators = StatCalculators::new(registry.len());
@@ -100,53 +105,28 @@ pub fn check_stats_loaded(
     for def in &stats_config.stat_ids {
         let stat_id = registry.get(&def.name)
             .unwrap_or_else(|| panic!("Stat '{}' not found in registry", def.name));
-        match &def.aggregation {
-            AggregationType::Sum => {
-                calculators.set(stat_id, Expression::ModifierSum(stat_id), vec![]);
+        match &def.eval {
+            StatEvalKindRaw::Sum => {
+                calculators.set(stat_id, StatEvalKind::Sum, vec![]);
             }
-            AggregationType::Product => {
-                calculators.set(stat_id, Expression::ModifierProduct(stat_id), vec![]);
+            StatEvalKindRaw::Product => {
+                calculators.set(stat_id, StatEvalKind::Product, vec![]);
             }
-            AggregationType::Standard { base, increased, more } => {
-                let base_id = registry.get(base)
-                    .unwrap_or_else(|| panic!("Stat '{}' (base for '{}') not found in registry", base, def.name));
-                let increased_id = registry.get(increased)
-                    .unwrap_or_else(|| panic!("Stat '{}' (increased for '{}') not found in registry", increased, def.name));
-
-                let base_increased = Expression::Mul(
-                    Box::new(Expression::Stat(base_id)),
-                    Box::new(Expression::Add(
-                        Box::new(Expression::Constant(1.0)),
-                        Box::new(Expression::Stat(increased_id)),
-                    )),
-                );
-
-                if let Some(more) = more {
-                    let more_id = registry.get(more)
-                        .unwrap_or_else(|| panic!("Stat '{}' (more for '{}') not found in registry", more, def.name));
-                    let formula = Expression::Mul(
-                        Box::new(base_increased),
-                        Box::new(Expression::Stat(more_id)),
-                    );
-                    calculators.set(stat_id, formula, vec![base_id, increased_id, more_id]);
-                } else {
-                    calculators.set(stat_id, base_increased, vec![base_id, increased_id]);
-                }
+            StatEvalKindRaw::Formula(formula_str) => {
+                let expanded = calc_registry.expand(formula_str)
+                    .unwrap_or_else(|e| panic!("Failed to expand calc in stat '{}': {}", def.name, e));
+                let parsed = match parse_expr_string_with(&expanded, &StatAtomParser) {
+                    Ok(TypedExpr::Scalar(expr)) => expr,
+                    Ok(_) => panic!("Stat '{}' formula must be a scalar expression", def.name),
+                    Err(e) => panic!("Failed to parse formula for stat '{}': {}\nFormula: {}", def.name, e, formula_str),
+                };
+                let resolved = parsed.resolve(&registry);
+                let mut deps = Vec::new();
+                resolved.collect_stat_deps(&mut deps);
+                deps.dedup();
+                calculators.set(stat_id, StatEvalKind::Formula(resolved), deps);
             }
-            AggregationType::Custom => {}
         }
-    }
-
-    for calc in &stats_config.calculators {
-        let stat_id = registry.get(&calc.stat)
-            .unwrap_or_else(|| panic!("Calculator references unknown stat '{}'", calc.stat));
-        let formula = calc.formula.resolve(&registry);
-        let deps: Vec<StatId> = calc
-            .depends_on
-            .iter()
-            .filter_map(|s| registry.get(s))
-            .collect();
-        calculators.set(stat_id, formula, deps);
     }
 
     calculators.rebuild();
@@ -155,6 +135,7 @@ pub fn check_stats_loaded(
     commands.insert_resource(display_registry);
     commands.insert_resource(registry);
     commands.insert_resource(calculators);
+    commands.insert_resource(calc_registry);
 
     loading_state.heroes_folder = Some(asset_server.load_folder("heroes"));
     loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
@@ -178,6 +159,7 @@ pub fn check_content_loaded(
     orb_config_assets: Res<Assets<OrbConfigAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
+    calc_registry: Option<Res<CalcRegistry>>,
     mut blueprint_registry: ResMut<BlueprintRegistry>,
     mut artifact_registry: ResMut<ArtifactRegistry>,
     mut affix_registry: ResMut<AffixRegistry>,
@@ -188,6 +170,9 @@ pub fn check_content_loaded(
     }
 
     let Some(stat_registry) = stat_registry else {
+        return;
+    };
+    let Some(calc_registry) = calc_registry else {
         return;
     };
 

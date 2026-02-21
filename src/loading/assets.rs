@@ -8,13 +8,15 @@ use crate::artifacts::ArtifactDefRaw;
 use crate::balance::GameBalance;
 use crate::blueprints::BlueprintDefRaw;
 use crate::player::hero_class::HeroClassRaw;
+use crate::expr::calc::CalcTemplateRaw;
 use crate::stats::display::StatDisplayRuleRaw;
-use crate::stats::loader::{CalculatorDefRaw, StatDefRaw};
+use crate::stats::loader::StatDefRaw;
 
 #[derive(Asset, TypePath)]
 pub struct StatsConfigAsset {
     pub stat_ids: Vec<StatDefRaw>,
-    pub calculators: Vec<CalculatorDefRaw>,
+    #[allow(dead_code)]
+    pub calcs: Vec<CalcTemplateRaw>,
     pub display: Vec<StatDisplayRuleRaw>,
 }
 
@@ -97,7 +99,7 @@ impl AssetLoader for StatsConfigLoader {
         let asset: StatsConfigRaw = ron::from_str(content)?;
         Ok(StatsConfigAsset {
             stat_ids: asset.stat_ids,
-            calculators: asset.calculators,
+            calcs: asset.calcs,
             display: asset.display,
         })
     }
@@ -110,7 +112,8 @@ impl AssetLoader for StatsConfigLoader {
 #[derive(serde::Deserialize)]
 struct StatsConfigRaw {
     stat_ids: Vec<StatDefRaw>,
-    calculators: Vec<CalculatorDefRaw>,
+    #[serde(default)]
+    calcs: Vec<CalcTemplateRaw>,
     #[serde(default)]
     display: Vec<StatDisplayRuleRaw>,
 }

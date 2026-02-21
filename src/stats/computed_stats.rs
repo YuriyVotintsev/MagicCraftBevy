@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 use bevy::prelude::*;
 
+use crate::expr::StatProvider;
 use super::StatId;
 
 pub static DEFAULT_STATS: LazyLock<ComputedStats> = LazyLock::new(ComputedStats::default);
@@ -28,5 +29,10 @@ impl ComputedStats {
         }
         self.values[idx] = value;
     }
+}
 
+impl StatProvider for ComputedStats {
+    fn get_stat(&self, id: StatId) -> f32 {
+        self.get(id)
+    }
 }

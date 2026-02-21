@@ -3,9 +3,9 @@
     entities: [
         (
             base_stats: {
-                "movement_speed_base": 320.0,
-                "max_life_base": 30.0,
-                "physical_damage_base": 7.0,
+                "movement_speed_flat": 320.0,
+                "max_life_flat": 30.0,
+                "physical_damage_flat": 7.0,
             },
             abilities: ["melee_attack"],
             components: [

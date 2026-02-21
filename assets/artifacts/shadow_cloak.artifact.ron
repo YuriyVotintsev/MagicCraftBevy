@@ -1,4 +1,4 @@
 (id: "shadow_cloak", name: "Shadow Cloak", price: 8, modifiers: [
     (stats: [Fixed(stat: "movement_speed_increased", value: 0.08)]),
-    (stats: [Fixed(stat: "crit_chance_base", value: 0.05)]),
+    (stats: [Fixed(stat: "crit_chance_flat", value: 0.05)]),
 ])
