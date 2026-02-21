@@ -11,6 +11,7 @@ pub use types::{Artifact, ArtifactDef, ArtifactDefRaw, ArtifactEntity, ArtifactI
 use bevy::prelude::*;
 
 use crate::balance::GameBalance;
+use crate::schedule::ShopSet;
 use crate::wave::WavePhase;
 use crate::GameState;
 use systems::reset_shop;
@@ -29,7 +30,11 @@ impl Plugin for ArtifactPlugin {
             .add_message::<BuyRequest>()
             .add_message::<SellRequest>()
             .add_systems(OnEnter(WavePhase::ShopDelay), reset_shop)
-            .add_systems(Update, (systems::handle_reroll, systems::handle_buy, systems::handle_sell));
+            .add_systems(
+                Update,
+                (systems::handle_reroll, systems::handle_buy, systems::handle_sell)
+                    .in_set(ShopSet::Process),
+            );
     }
 }
 

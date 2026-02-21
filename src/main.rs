@@ -46,7 +46,7 @@ use common::CommonPlugin;
 use hit_flash::HitFlashPlugin;
 use loading::LoadingPlugin;
 use player::PlayerPlugin;
-use schedule::{GameSet, PostGameSet};
+use schedule::{GameSet, PostGameSet, ShopSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
@@ -163,6 +163,12 @@ fn main() {
             )
                 .chain()
                 .run_if(in_state(CombatPhase::Running)),
+        )
+        .configure_sets(
+            Update,
+            (ShopSet::Input, ShopSet::Process, ShopSet::Display)
+                .chain()
+                .run_if(in_state(WavePhase::Shop)),
         )
         .configure_sets(PostUpdate, PostGameSet.run_if(in_state(CombatPhase::Running)))
         .add_systems(

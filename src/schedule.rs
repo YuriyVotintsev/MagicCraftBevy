@@ -15,3 +15,10 @@ pub enum GameSet {
 
 #[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PostGameSet;
+
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ShopSet {
+    Input,
+    Process,
+    Display,
+}

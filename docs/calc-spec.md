@@ -45,126 +45,135 @@ DamagePayload((amount: "(2 + stat(physical_damage_base) * 0.15) * (1 + stat(phys
 
 ## 2. Целевое состояние
 
-### 2.1. Макро-система послойных выражений
+### 2.1. Единый тип выражений
 
-Выражения строятся послойно через накопительные декларативные макросы. Каждый уровень определяет два макроса — для вариантов enum и для match-армов eval. Макрос добавляет свои варианты к накопленным и делегирует предыдущему уровню через callback-паттерн:
+Один `ScalarExpr` содержит **все** варианты — математику, статы и blueprint-контекст.
+
+Raw-версии (`ScalarExprRaw`, `VecExprRaw`) используют `String` для имён статов. Resolved-версии (`ScalarExpr`, `VecExpr`) используют `StatId`. Два отдельных enum — без generic-параметризации, как и в остальных Raw→Resolved парах проекта.
+
+Существующий `ExprFamily` trait удаляется полностью. Все типы, которые сейчас параметризованы через `ExprFamily` (`EntityDef<F>`, `StateDef<F>` и т.д.), переделываются на прямые Raw/Resolved пары (`EntityDefRaw`/`EntityDef`, `StateDefRaw`/`StateDef`) — без generic-параметризации.
 
 ```rust
-macro_rules! with_level_n {
-    ($cb:ident ! { $($accumulated:tt)* }) => {
-        with_level_n_minus_1! { $cb ! {
-            NewVariant,
-            $($accumulated)*
-        }}
-    };
+// src/expr/
+
+pub enum ScalarExpr {
+    // Математика
+    Literal(f32),
+    Add(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Mul(Box<Self>, Box<Self>),
+    Div(Box<Self>, Box<Self>),
+    Neg(Box<Self>),
+    Min(Box<Self>, Box<Self>),
+    Max(Box<Self>, Box<Self>),
+    Clamp { value: Box<Self>, min: Box<Self>, max: Box<Self> },
+    // Статы
+    Stat(StatId),
+    // Blueprint-контекст (spawn)
+    Index,
+    Count,
+    Recalc(Box<Self>),
+    // Vec → Scalar
+    Length(Box<VecExpr>),
+    Distance(Box<VecExpr>, Box<VecExpr>),
+    Dot(Box<VecExpr>, Box<VecExpr>),
+    X(Box<VecExpr>),
+    Y(Box<VecExpr>),
+    Angle(Box<VecExpr>),
+}
+
+// ScalarExprRaw — идентичный enum, но Stat(String) вместо Stat(StatId),
+// и VecExprRaw вместо VecExpr. Аналогично для VecExpr/VecExprRaw.
+
+pub enum VecExpr {
+    // Математика
+    Add(Box<Self>, Box<Self>),
+    Sub(Box<Self>, Box<Self>),
+    Scale(Box<Self>, Box<ScalarExpr>),
+    Normalize(Box<Self>),
+    Rotate(Box<Self>, Box<ScalarExpr>),
+    Lerp(Box<Self>, Box<Self>, Box<ScalarExpr>),
+    Vec2Expr(Box<ScalarExpr>, Box<ScalarExpr>),
+    FromAngle(Box<ScalarExpr>),
+    // Blueprint-контекст (spawn)
+    CasterPos,
+    SourcePos,
+    SourceDir,
+    TargetPos,
+    TargetDir,
+    Recalc(Box<Self>),
+}
+
+pub enum EntityExpr {
+    Caster, Source, Target, Recalc(Box<Self>),
 }
 ```
 
-**Генераторы** — полностью generic, ничего не знают о содержимом:
+`StatId` — тривиальный newtype, живёт в `src/expr/`:
 
 ```rust
-// src/expr/macros.rs
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+pub struct StatId(pub usize);
+```
 
-macro_rules! make_scalar_enum {
-    { $name:ident; $($body:tt)* } => {
-        #[derive(Debug, Clone)]
-        pub enum $name { $($body)* }
-    };
+### 2.2. EvalCtx и StatProvider
+
+`expr/` не зависит ни от `stats/`, ни от `blueprints/`. Доступ к вычисленным статам — через trait:
+
+```rust
+// src/expr/
+
+pub trait StatProvider {
+    fn get_stat(&self, id: StatId) -> f32;
 }
 
-macro_rules! make_scalar_eval {
-    { $name:ty, $ctx:ty; $($pat:pat => $expr:expr),* $(,)? } => {
-        impl $name {
-            pub fn eval(&self, ctx: &$ctx) -> f32 {
-                match self { $($pat => $expr),* }
-            }
+pub struct EvalCtx<'a> {
+    pub stats: &'a dyn StatProvider,
+    // Blueprint-контекст (spawn) — заполняется нулями если не нужен
+    pub index: usize,
+    pub count: usize,
+    pub caster_pos: Vec2,
+    pub source_pos: Vec2,
+    pub source_dir: Vec2,
+    pub target_pos: Vec2,
+    pub target_dir: Vec2,
+    pub caster_entity: Option<Entity>,
+    pub source_entity: Option<Entity>,
+    pub target_entity: Option<Entity>,
+}
+
+impl EvalCtx<'_> {
+    /// Контекст для stat-формул: blueprint-поля заполнены нулями.
+    pub fn stat_only(stats: &dyn StatProvider) -> EvalCtx {
+        EvalCtx {
+            stats,
+            index: 0, count: 0,
+            caster_pos: Vec2::ZERO, source_pos: Vec2::ZERO, source_dir: Vec2::ZERO,
+            target_pos: Vec2::ZERO, target_dir: Vec2::ZERO,
+            caster_entity: None, source_entity: None, target_entity: None,
         }
-    };
+    }
 }
 ```
 
-Аналогичные `make_vec_enum!` и `make_vec_eval!` для `VecExpr` (возвращает `Vec2`).
-
-#### Уровень 1 — Базовая математика (`src/expr/`)
+Eval — один метод, один match:
 
 ```rust
-macro_rules! with_math {
-    ($cb:ident ! { $name:ident; $($rest:tt)* }) => {
-        $cb! { $name;
-            Literal(f32),
-            Add(Box<Self>, Box<Self>),
-            Sub(Box<Self>, Box<Self>),
-            Mul(Box<Self>, Box<Self>),
-            Div(Box<Self>, Box<Self>),
-            Neg(Box<Self>),
-            Min(Box<Self>, Box<Self>),
-            Max(Box<Self>, Box<Self>),
-            Clamp { value: Box<Self>, min: f32, max: f32 },
-            $($rest)*
-        }
-    };
-}
-
-macro_rules! with_math_eval {
-    ($cb:ident ! { $($rest:tt)* }) => {
-        $cb! {
+impl ScalarExpr {
+    pub fn eval(&self, ctx: &EvalCtx) -> f32 {
+        match self {
             Self::Literal(v) => *v,
             Self::Add(a, b) => a.eval(ctx) + b.eval(ctx),
             Self::Sub(a, b) => a.eval(ctx) - b.eval(ctx),
             Self::Mul(a, b) => a.eval(ctx) * b.eval(ctx),
-            Self::Div(a, b) => safe_div(a.eval(ctx), b.eval(ctx)),
+            Self::Div(a, b) => { let d = b.eval(ctx); if d.abs() < f32::EPSILON { 0.0 } else { a.eval(ctx) / d } },
             Self::Neg(a) => -a.eval(ctx),
             Self::Min(a, b) => a.eval(ctx).min(b.eval(ctx)),
             Self::Max(a, b) => a.eval(ctx).max(b.eval(ctx)),
-            Self::Clamp { value, min, max } => value.eval(ctx).clamp(*min, *max),
-            $($rest)*
-        }
-    };
-}
-```
-
-#### Уровень 2 — Статы (`src/stats/`)
-
-Добавляет `Stat(S)`. Параметр `$S` — тип ссылки на стат (`String` для Raw, `StatId` для Resolved):
-
-```rust
-macro_rules! with_stat {
-    ($cb:ident ! { $name:ident; $S:ty; $($rest:tt)* }) => {
-        with_math! { $cb ! { $name; Stat($S), $($rest)* } }
-    };
-}
-
-macro_rules! with_stat_eval {
-    ($cb:ident ! { $($rest:tt)* }) => {
-        with_math_eval! { $cb ! {
-            Self::Stat(id) => ctx.stats.get(*id),
-            $($rest)*
-        }}
-    };
-}
-```
-
-#### Уровень 3 — Блупринты (`src/blueprints/`)
-
-Добавляет `Index`, `Count`, `Recalc` и vec→scalar операции к скалярам. Параметр `$V` — тип VecExpr:
-
-```rust
-macro_rules! with_blueprint_scalar {
-    ($cb:ident ! { $name:ident; $S:ty; $V:ty; $($rest:tt)* }) => {
-        with_stat! { $cb ! { $name; $S;
-            Index, Count, Recalc(Box<Self>),
-            Length(Box<$V>), Distance(Box<$V>, Box<$V>), Dot(Box<$V>, Box<$V>),
-            X(Box<$V>), Y(Box<$V>), Angle(Box<$V>),
-            $($rest)*
-        }}
-    };
-}
-
-macro_rules! with_blueprint_scalar_eval {
-    ($cb:ident ! { $($rest:tt)* }) => {
-        with_stat_eval! { $cb ! {
-            Self::Index => ctx.source.index as f32,
-            Self::Count => ctx.source.count as f32,
+            Self::Clamp { value, min, max } => value.eval(ctx).clamp(min.eval(ctx), max.eval(ctx)),
+            Self::Stat(id) => ctx.stats.get_stat(*id),
+            Self::Index => ctx.index as f32,
+            Self::Count => ctx.count as f32,
             Self::Recalc(e) => e.eval(ctx),
             Self::Length(v) => v.eval(ctx).length(),
             Self::Distance(a, b) => a.eval(ctx).distance(b.eval(ctx)),
@@ -172,150 +181,99 @@ macro_rules! with_blueprint_scalar_eval {
             Self::X(v) => v.eval(ctx).x,
             Self::Y(v) => v.eval(ctx).y,
             Self::Angle(v) => { let v = v.eval(ctx); v.y.atan2(v.x) },
-            $($rest)*
-        }}
-    };
-}
-```
-
-VecExpr — два уровня (статы не используют векторы):
-
-```rust
-// src/expr/ — базовая векторная математика
-macro_rules! with_vec_math {
-    ($cb:ident ! { $name:ident; $Scalar:ty; $($rest:tt)* }) => {
-        $cb! { $name;
-            Add(Box<Self>, Box<Self>),
-            Sub(Box<Self>, Box<Self>),
-            Scale(Box<Self>, Box<$Scalar>),
-            Normalize(Box<Self>),
-            Rotate(Box<Self>, Box<$Scalar>),
-            Lerp(Box<Self>, Box<Self>, Box<$Scalar>),
-            Vec2Expr(Box<$Scalar>, Box<$Scalar>),
-            FromAngle(Box<$Scalar>),
-            $($rest)*
-        }
-    };
-}
-
-// src/blueprints/ — + spawn context
-macro_rules! with_vec_blueprint {
-    ($cb:ident ! { $name:ident; $Scalar:ty; $($rest:tt)* }) => {
-        with_vec_math! { $cb ! { $name; $Scalar;
-            CasterPos, SourcePos, SourceDir, TargetPos, TargetDir,
-            Recalc(Box<Self>),
-            $($rest)*
-        }}
-    };
-}
-```
-
-Аналогичные `with_vec_math_eval!` и `with_vec_blueprint_eval!` для eval-армов VecExpr.
-
-EntityRef — не параметризован, обычный enum:
-
-```rust
-pub enum EntityRef {
-    Caster, Source, Target, Recalc(Box<Self>),
-}
-```
-
-**Генерация типов:**
-
-```rust
-// src/stats/
-with_stat! { make_scalar_enum ! { StatExprRaw; String; } }
-with_stat! { make_scalar_enum ! { StatExpr;    StatId; } }
-
-// src/blueprints/
-with_blueprint_scalar! { make_scalar_enum ! { BlueprintExprRaw; String; BlueprintVecExprRaw; } }
-with_blueprint_scalar! { make_scalar_enum ! { BlueprintExpr;    StatId; BlueprintVecExpr;    } }
-
-with_vec_blueprint! { make_vec_enum ! { BlueprintVecExprRaw; BlueprintExprRaw; } }
-with_vec_blueprint! { make_vec_enum ! { BlueprintVecExpr;    BlueprintExpr;    } }
-```
-
-**Результат после раскрытия — плоские enum'ы без обёрток:**
-
-```rust
-// StatExpr — 10 вариантов
-pub enum StatExpr {
-    Literal(f32), Add(..), Sub(..), Mul(..), Div(..), Neg(..), Min(..), Max(..), Clamp{..},
-    Stat(StatId),
-}
-
-// BlueprintExpr — 22 варианта
-pub enum BlueprintExpr {
-    Literal(f32), Add(..), Sub(..), Mul(..), Div(..), Neg(..), Min(..), Max(..), Clamp{..},
-    Stat(StatId), Index, Count, Recalc(..),
-    Length(..), Distance(..), Dot(..), X(..), Y(..), Angle(..),
-}
-```
-
-### 2.2. Контексты eval
-
-Каждый уровень определяет struct-контекст. Контексты — суперсеты: каждый следующий содержит все поля предыдущих.
-
-```rust
-// src/stats/
-pub struct StatCtx<'a> {
-    pub stats: &'a ComputedStats,
-}
-
-// src/blueprints/
-pub struct BlueprintCtx<'a> {
-    pub stats: &'a ComputedStats,     // суперсет StatCtx
-    pub source: &'a SpawnSource,
-}
-```
-
-Конвенция: `ctx.stats` доступно на всех уровнях ≥ 2. Макрос `with_stat_eval!` генерирует `Self::Stat(id) => ctx.stats.get(*id)` — работает с любым контекстом, содержащим поле `stats`.
-
-**Генерация eval:**
-
-```rust
-// src/stats/
-with_stat_eval!             { make_scalar_eval ! { StatExpr,      StatCtx;      } }
-
-// src/blueprints/
-with_blueprint_scalar_eval! { make_scalar_eval ! { BlueprintExpr, BlueprintCtx; } }
-with_vec_blueprint_eval!    { make_vec_eval !    { BlueprintVecExpr, BlueprintCtx; } }
-```
-
-Eval после раскрытия — один плоский match, без делегирования:
-
-```rust
-impl BlueprintExpr {
-    pub fn eval(&self, ctx: &BlueprintCtx) -> f32 {
-        match self {
-            Self::Literal(v) => *v,
-            Self::Add(a, b) => a.eval(ctx) + b.eval(ctx),
-            // ... арифметика ...
-            Self::Stat(id) => ctx.stats.get(*id),       // из with_stat_eval!
-            Self::Index => ctx.source.index as f32,      // из with_blueprint_scalar_eval!
-            Self::Count => ctx.source.count as f32,
-            Self::Recalc(e) => e.eval(ctx),
-            Self::Length(v) => v.eval(ctx).length(),
-            // ...
         }
     }
 }
 ```
 
-**Resolve** Raw → Resolved — отдельная функция per level, конвертирует `String` → `StatId` через `StatRegistry`:
+Аналогичный `eval` для `VecExpr` (возвращает `Vec2`) и `EntityExpr` (возвращает `Option<Entity>`).
+
+Каждый модуль конструирует `EvalCtx` из своих типов:
 
 ```rust
-impl StatExprRaw {
-    pub fn resolve(&self, reg: &StatRegistry) -> StatExpr { ... }
+// src/stats/ — impl trait
+impl StatProvider for ComputedStats {
+    fn get_stat(&self, id: StatId) -> f32 { self.get(id) }
 }
-impl BlueprintExprRaw {
-    pub fn resolve(&self, reg: &StatRegistry) -> BlueprintExpr { ... }
+
+// Использование в stat evaluator:
+let ctx = EvalCtx::stat_only(&computed_stats);
+let value = formula.eval(&ctx);
+
+// src/blueprints/ — полный контекст из SpawnSource
+let ctx = EvalCtx {
+    stats: computed_stats,
+    index: source.index,
+    count: source.count,
+    caster_pos: source.caster.position.unwrap_or(Vec2::ZERO),
+    source_pos: source.source.position.unwrap_or(Vec2::ZERO),
+    source_dir: source.source.direction.unwrap_or(Vec2::ZERO),
+    target_pos: source.target.position.unwrap_or(Vec2::ZERO),
+    target_dir: source.target.direction.unwrap_or(Vec2::ZERO),
+    caster_entity: source.caster.entity,
+    source_entity: source.source.entity,
+    target_entity: source.target.entity,
+};
+let value = expr.eval(&ctx);
+```
+
+### 2.3. Парсер и ограничение контекста
+
+Единый Pratt-парсер обрабатывает общий синтаксис: числа, операторы, скобки. Доменные атомы (`stat(...)`, `index`, `caster_pos` и т.д.) делегируются через trait:
+
+```rust
+// src/expr/
+
+pub trait AtomParser {
+    fn try_parse_scalar(&mut self, name: &str, lexer: &mut Lexer) -> Result<Option<ScalarExprRaw>, ParseError>;
+    fn try_parse_vec(&mut self, name: &str, lexer: &mut Lexer) -> Result<Option<VecExprRaw>, ParseError>;
 }
 ```
 
-Resolve — рекурсивный обход дерева. Арифметические варианты копируют структуру, `Stat(name)` → `Stat(reg.get(name))`. Можно генерировать макросом по аналогии с eval.
+Две реализации:
 
-### 2.3. Formula вместо Standard/Custom/calculators
+- **`StatAtomParser`** (в `src/stats/`) — распознаёт только `stat(name)`. Отвергает `index`, `count`, `caster_pos` и прочие blueprint-атомы с ошибкой.
+- **`BlueprintAtomParser`** (в `src/blueprints/`) — распознаёт все атомы.
+
+Ошибки ловятся на этапе парсинга, до runtime:
+
+```ron
+// config.stats.ron — ошибка парсинга
+(name: "max_life", eval: Formula("index + stat(max_life_flat)"))
+// → ParseError: unknown atom 'index' in stat formula context
+```
+
+### 2.4. Resolve: Raw → Resolved
+
+`resolve()` конвертирует `ScalarExprRaw` → `ScalarExpr` (`String` → `StatId`). Чтобы `expr/` не зависел от `StatRegistry` (живёт в `stats/`), resolve принимает замыкание:
+
+```rust
+// src/expr/
+impl ScalarExprRaw {
+    pub fn resolve(self, lookup: &impl Fn(&str) -> StatId) -> ScalarExpr {
+        match self {
+            Self::Literal(v) => ScalarExpr::Literal(v),
+            Self::Stat(name) => ScalarExpr::Stat(lookup(&name)),
+            Self::Add(a, b) => ScalarExpr::Add(
+                Box::new(a.resolve(lookup)),
+                Box::new(b.resolve(lookup)),
+            ),
+            Self::Index => ScalarExpr::Index,
+            // ... аналогично для всех вариантов
+        }
+    }
+}
+```
+
+Вызов из `stats/` и `blueprints/`:
+
+```rust
+let resolved = raw_expr.resolve(&|name| stat_registry.get_id(name));
+```
+
+Аналогичный `resolve` для `VecExprRaw` → `VecExpr`.
+
+### 2.5. Formula вместо Standard/Custom/calculators
 
 Было — три вида агрегации + отдельная секция `calculators`:
 ```ron
@@ -336,15 +294,38 @@ calculators: [(stat: "crit_chance", formula: Clamp(...), depends_on: [...])],
 `StatEvalKindRaw`:
 - `Sum` — `modifiers.sum(stat_id)`
 - `Product` — `modifiers.product(stat_id)`
-- `Formula(String)` — парсится, резолвится в `StatExpr`, вычисляется через `expr.eval(&StatCtx { stats: computed })`
+- `Formula(String)` — парсится через `StatAtomParser`, резолвится в `ScalarExpr`, вычисляется через `expr.eval(&EvalCtx::stat_only(computed))`
 
-`depends_on` извлекается автоматически из дерева формулы (все `Stat(id)` ноды).
+```rust
+// RON — десериализация (Raw)
+pub enum StatEvalKindRaw {
+    Sum,
+    Product,
+    Formula(String),
+}
 
-### 2.4. Шаблоны calc()
+// После парсинга и резолва
+pub enum StatEvalKind {
+    Sum,
+    Product,
+    Formula(ScalarExpr),    // единый тип
+}
 
-Шаблоны определяются в `assets/stats/calcs.ron` рядом с `config.stats.ron`. Эти шаблоны используют максимум уровень 2 (StatExpr) — арифметику и `stat(...)`.
+// В StatEvaluator:
+pub fn evaluate(&self, stat: StatId, modifiers: &Modifiers, computed: &ComputedStats) -> f32 {
+    match &entry.kind {
+        StatEvalKind::Sum => modifiers.sum(stat),
+        StatEvalKind::Product => modifiers.product(stat),
+        StatEvalKind::Formula(expr) => expr.eval(&EvalCtx::stat_only(computed)),
+    }
+}
+```
 
-Если в будущем блупринтам понадобятся шаблоны с `index`, `count`, `caster` и др. — они будут в отдельном файле (например `assets/blueprints/calcs.ron`). Пока не требуется.
+Выражение ничего не знает о модификаторах. `depends_on` для Formula извлекается автоматически из дерева (все `Stat(id)` ноды).
+
+### 2.6. Шаблоны calc()
+
+Шаблоны определяются в `assets/stats/calcs.ron` рядом с `config.stats.ron`. Шаблоны используют арифметику и `stat(...)`.
 
 ```ron
 // assets/stats/calcs.ron
@@ -387,7 +368,7 @@ Lifetime((remaining: "calc(duration, 4)"))
 
 Шаблоны рекурсивные: `physical_damage` вызывает `flat_increased_more` внутри. Лимит глубины — 16.
 
-### 2.5. Как работает подстановка
+### 2.7. Как работает подстановка
 
 Подстановка — текстовая: `CalcRegistry::expand()` работает со строками **до** парсинга. Парсер никогда не видит `calc()` — они полностью раскрыты.
 
@@ -402,40 +383,15 @@ Lifetime((remaining: "calc(duration, 4)"))
 - **Выражение-аргумент** (числа, формулы): `base = 15` → подставляется как текст
 - **Имя стата**: `flat = physical_damage_flat` → подставляется как имя в `stat(...)`
 
-### 2.6. Агрегация модификаторов — в эвалюаторе, не в выражениях
+Подстановка по word boundaries: параметр заменяется только если символы до и после не являются `[a-zA-Z0-9_]`. Это исключает ложные замены внутри слов (например, параметр `flat` не затронет `flatline`).
+
+### 2.8. Агрегация модификаторов — в эвалюаторе, не в выражениях
 
 Старый подход: `ModifierSum(id)` и `ModifierProduct(id)` были вариантами `Expression`.
 
-Новый подход: `StatEvalKind` напрямую определяет как вычислять стат. `ModifierSum`/`ModifierProduct` убраны из выражений:
+Новый подход: `StatEvalKind` напрямую определяет как вычислять стат. `ModifierSum`/`ModifierProduct` убраны из выражений (§2.5).
 
-```rust
-// RON — десериализация (Raw)
-pub enum StatEvalKindRaw {
-    Sum,                // modifiers.sum(stat_id)
-    Product,            // modifiers.product(stat_id)
-    Formula(String),    // парсится → StatExpr → eval(&StatCtx { stats: computed })
-}
-
-// После резолва
-pub enum StatEvalKind {
-    Sum,
-    Product,
-    Formula(StatExpr),  // уже распарсена и зарезолвлена
-}
-
-// В StatEvaluator:
-pub fn evaluate(&self, stat: StatId, modifiers: &Modifiers, computed: &ComputedStats) -> f32 {
-    match &entry.kind {
-        StatEvalKind::Sum => modifiers.sum(stat),
-        StatEvalKind::Product => modifiers.product(stat),
-        StatEvalKind::Formula(expr) => expr.eval(&StatCtx { stats: computed }),
-    }
-}
-```
-
-Выражение ничего не знает о модификаторах. `depends_on` для Formula извлекается автоматически из дерева (все `Stat` ноды).
-
-### 2.7. Суффикс `_flat`
+### 2.9. Суффикс `_flat`
 
 Все статы с `_base` переименовываются в `_flat`. Затрагивает ~30 RON-файлов и 3 места в Rust-коде.
 
@@ -450,31 +406,29 @@ assets/
   stats/calcs.ron              — шаблоны calc() (текстовые шаблоны)
   stats/config.stats.ron       — stat_ids (eval: Sum, Product, Formula), display
 
-src/expr/                      — Инфраструктура (без зависимостей от stats/blueprints)
-  macros.rs                    — Генераторы: make_scalar_enum!, make_scalar_eval!,
-                                   make_vec_enum!, make_vec_eval!
-                                 Уровень 1: with_math!, with_math_eval!,
-                                   with_vec_math!, with_vec_math_eval!
+src/expr/                      — Автономный модуль (ни от кого не зависит)
+  mod.rs                       — ScalarExpr, VecExpr, EntityExpr
+                                 ExprFamily, Raw, Resolved
+                                 StatId
+                                 StatProvider trait
+                                 EvalCtx struct + stat_only()
+                                 resolve(), uses_stats(), uses_recalc(), collect_stat_deps()
   parser.rs                    — Pratt parser + AtomParser trait
-                                 stat(), clamp(), min(), max() — общий для всех уровней
-  calc.rs                      — CalcTemplate, CalcRegistry (Resource)
+  calc.rs                      — CalcTemplate, CalcRegistry (Bevy Resource)
                                  Текстовая подстановка: expand()
 
-src/stats/                     — Уровень 2: + stat(...)
-  expr.rs                      — with_stat!, with_stat_eval!
-                                 StatExpr, StatExprRaw, resolve()
-                                 StatCtx, StatAtomParser
-  evaluator.rs                 — StatEvaluator, StatEvalKind { Sum, Product, Formula(StatExpr) }
+src/stats/                     — Зависит от expr
+  stat_registry.rs             — StatRegistry (name → StatId mapping)
+                                 impl StatProvider for ComputedStats
+                                 StatAtomParser
+  evaluator.rs                 — StatEvaluator, StatEvalKind { Sum, Product, Formula(ScalarExpr) }
 
-src/blueprints/                — Уровень 3: + spawn context
-  expr.rs                      — with_blueprint_scalar!, with_blueprint_scalar_eval!
-                                 with_vec_blueprint!, with_vec_blueprint_eval!
-                                 BlueprintExpr, BlueprintVecExpr, resolve()
-                                 BlueprintCtx, BlueprintAtomParser
-                                 EntityRef { Caster, Source, Target, Recalc }
+src/blueprints/                — Зависит от expr, stats
+  expr.rs                      — BlueprintAtomParser
+                                 EvalCtx конструирование из SpawnSource
 ```
 
-Зависимости (каждый уровень видит только предыдущие):
+Зависимости:
 ```
 src/expr/       → ничего
 src/stats/      → expr
@@ -485,21 +439,38 @@ src/blueprints/ → expr, stats
 
 ## 4. Жизненный цикл выражения
 
+### 4.1. Blueprint выражение
+
 ```
 RON строка "calc(physical_damage, 15)"
     ↓ AssetLoader: Serde десериализация — строка сохраняется as-is
-ScalarExprRaw("calc(physical_damage, 15)")
-    ↓ Finalization system: CalcRegistry::expand() — текстовая подстановка
+ScalarExprRaw (нераспарсенная строка)
+    ↓ Finalization: CalcRegistry::expand() — текстовая подстановка
 "(15 + stat(physical_damage_flat)) * (1 + stat(physical_damage_increased)) * stat(physical_damage_more)"
-    ↓ parse() — Pratt parser
-BlueprintExprRaw: Mul(Add(Literal(15), Stat("physical_damage_flat")), ...)
-    ↓ resolve(&stat_registry) — String → StatId
-BlueprintExpr: Mul(Add(Literal(15), Stat(#7)), Mul(Add(Literal(1), Stat(#8)), Stat(#9)))
-    ↓ eval(&BlueprintCtx { source, stats })
+    ↓ parse(BlueprintAtomParser) — Pratt parser, все атомы разрешены
+ScalarExpr<Raw>: Mul(Add(Literal(15), Stat("physical_damage_flat")), ...)
+    ↓ resolve(|name| stat_registry.get_id(name)) — String → StatId
+ScalarExpr: Mul(Add(Literal(15), Stat(#7)), Mul(Add(Literal(1), Stat(#8)), Stat(#9)))
+    ↓ eval(&EvalCtx { stats, index, count, caster_pos, ... })
 f32 = 42.0
 ```
 
-Raw-типы выражений (`ScalarExprRaw`, `StatEvalKindRaw::Formula`) хранят неразобранные строки. Expand, парсинг и resolve происходят в finalization-системе, где доступны `Res<CalcRegistry>` и `Res<StatRegistry>`. Это стандартный паттерн проекта: AssetLoader только десериализует, resolve — позже.
+### 4.2. Stat формула
+
+```
+RON строка "clamp(stat(crit_chance_flat) * (1 + stat(crit_chance_increased)), 0, 1)"
+    ↓ Finalization: CalcRegistry::expand() (если есть calc() вызовы)
+    ↓ parse(StatAtomParser) — только stat(), index/count/caster_pos → ParseError
+ScalarExpr<Raw>: Clamp { value: Mul(Stat("crit_chance_flat"), ...), min: 0.0, max: 1.0 }
+    ↓ resolve(|name| stat_registry.get_id(name))
+ScalarExpr: Clamp { value: Mul(Stat(#3), Add(Literal(1), Stat(#4))), min: 0.0, max: 1.0 }
+    ↓ eval(&EvalCtx::stat_only(computed))
+f32 = 0.35
+```
+
+Тот же тип `ScalarExpr`, та же функция `eval`. Разница — в `AtomParser` при парсинге и в конструкторе `EvalCtx` при вызове.
+
+Raw-типы выражений хранят неразобранные строки. Expand, парсинг и resolve происходят в finalization-системе, где доступны `Res<CalcRegistry>` и `Res<StatRegistry>`. Это стандартный паттерн проекта: AssetLoader только десериализует, resolve — позже.
 
 После expand() шаблонов в строке не остаётся — `calc()` полностью раскрыты. Парсер видит чистое выражение из арифметики и `stat()`. Runtime работает с плоским деревом без обращений к CalcRegistry.
 
@@ -517,16 +488,15 @@ Raw-типы выражений (`ScalarExprRaw`, `StatEvalKindRaw::Formula`) х
 - Количество аргументов совпадает с `params`
 - Нет циклических ссылок
 - `stat(name)` ссылаются на существующие статы
-- Нет blueprint-уровневых узлов (`index`, `count`, `caster_pos`, `target_dir` и др.)
 
 **config.stats.ron:**
-- Все `Formula("...")` парсятся
+- Все `Formula("...")` парсятся через `StatAtomParser`
 - `stat(name)` внутри формул ссылаются на существующие статы
 - `calc()` внутри формул ссылаются на существующие шаблоны с правильной арностью
-- Нет blueprint-уровневых узлов (`index`, `count`, `caster_pos`, `target_dir` и др.)
+- Blueprint-атомы (`index`, `count`, `caster_pos` и др.) отвергнуты парсером
 
 **Блупринты (ability/mob RON):**
-- Все строковые выражения в компонентах парсятся
+- Все строковые выражения парсятся через `BlueprintAtomParser`
 - `stat(name)` ссылаются на существующие статы
 - `calc()` ссылаются на существующие шаблоны с правильной арностью
 
@@ -551,7 +521,7 @@ Raw-типы выражений (`ScalarExprRaw`, `StatEvalKindRaw::Formula`) х
 | `Standard { base, increased, more }` | `StatEvalKind::Formula(...)` | Удаляется. Заменяется на `Formula("calc(flat_increased_more, ...)")` или аналог |
 | `Custom` | `StatEvalKind::Formula(...)` | Удаляется. Формула из `calculators` переносится inline |
 
-Enum `AggregationType` удаляется целиком, заменяется на `StatEvalKindRaw` (§2.6).
+Enum `AggregationType` удаляется целиком, заменяется на `StatEvalKindRaw` (§2.5).
 
 ### 6.2. Секция `calculators` в `config.stats.ron`
 
@@ -559,13 +529,17 @@ Enum `AggregationType` удаляется целиком, заменяется �
 
 ### 6.3. `stats::Expression`
 
-Enum `stats::Expression<S>` и файл `src/stats/expression.rs` удаляются. Замена — макро-генерируемый `StatExpr` (§2.1, уровень 2).
+Enum `stats::Expression<S>` и файл `src/stats/expression.rs` удаляются. Замена — единый `ScalarExpr` из `src/expr/`.
 
-### 6.4. Промежуточные статы
+### 6.4. `blueprints::ScalarExpr` → `expr::ScalarExpr`
+
+Enum `blueprints::ScalarExpr<F>` переезжает в `src/expr/`. Добавляется `Clamp` (был только в stats). Остальные варианты остаются.
+
+### 6.5. Промежуточные статы
 
 Статы `*_base`/`*_increased`/`*_more` (после переименования — `*_flat`/`*_increased`/`*_more`) **остаются**. Они по-прежнему `eval: Sum` или `eval: Product` и собирают модификаторы. `Formula`-статы ссылаются на них через `stat(...)`.
 
-### 6.5. `config.stats.ron` — формат до/после
+### 6.6. `config.stats.ron` — формат до/после
 
 **До:**
 ```ron

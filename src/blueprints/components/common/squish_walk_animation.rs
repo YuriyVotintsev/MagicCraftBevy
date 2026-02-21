@@ -16,10 +16,13 @@ pub fn register_systems(app: &mut App) {
 }
 
 pub fn animate(
-    stat_registry: Res<StatRegistry>,
+    stat_registry: Option<Res<StatRegistry>>,
     mut query: Query<(&SquishWalkAnimation, &SpriteComp, &mut Transform, &ChildOf)>,
     parent_query: Query<(&LinearVelocity, &ComputedStats)>,
 ) {
+    let Some(stat_registry) = stat_registry else {
+        return;
+    };
     let speed_id = stat_registry.get("movement_speed");
     for (anim, sprite, mut transform, child_of) in &mut query {
         let t = parent_query

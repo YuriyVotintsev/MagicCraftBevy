@@ -15,7 +15,7 @@ pub mod stat_line_builder;
 use bevy::prelude::*;
 
 use crate::game_state::GameState;
-use crate::schedule::GameSet;
+use crate::schedule::{GameSet, ShopSet};
 use crate::wave::{CombatPhase, WavePhase};
 
 pub struct UiPlugin;
@@ -88,13 +88,17 @@ impl Plugin for UiPlugin {
                         affix_shop::accept_orb_system,
                         affix_shop::cancel_orb_system,
                     ),
-                    (
-                        shop::update_shop_on_change,
-                        affix_shop::manage_orb_popup,
-                    ),
                 )
                     .chain()
-                    .run_if(in_state(WavePhase::Shop)),
+                    .in_set(ShopSet::Input),
+            )
+            .add_systems(
+                Update,
+                (
+                    shop::update_shop_on_change,
+                    affix_shop::manage_orb_popup,
+                )
+                    .in_set(ShopSet::Display),
             )
             .add_systems(
                 Update,
