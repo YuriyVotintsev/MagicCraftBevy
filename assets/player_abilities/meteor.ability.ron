@@ -20,8 +20,8 @@
                                     Size((value: "320.0")),
                                     Sprite((color: (1.0, 0.7, 0.3, 1.0), shape: Circle)),
                                     Lifetime((remaining: "0.3")),
-                                    OnArea((size: "160.0 * (1.0 + stat(area_of_effect_increased))", entities: [
-                                        (components: [DamagePayload((amount: "(50.0 + stat(physical_damage_flat)) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
+                                    OnArea((size: "calc(area_of_effect, 160.0)", entities: [
+                                        (components: [DamagePayload((amount: "calc(physical_damage, 50.0, 1)"))])
                                     ]))
                                 ])
                             ])),

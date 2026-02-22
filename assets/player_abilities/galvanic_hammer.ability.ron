@@ -7,13 +7,13 @@
             components: [
             Projectile(()),
             Radial(()),
-            Boomerang((speed: "700.0 * (1.0 + stat(projectile_speed_increased))", max_distance: "600.0")),
+            Boomerang((speed: "calc(projectile_speed, 700.0)", max_distance: "600.0")),
             Size((value: "120.0")),
             Collider((shape: Circle)),
             Sprite((color: (0.6, 0.8, 1.0, 1.0), shape: Square)),
             Pierce(()),
             OnCollision((entities: [
-                (components: [DamagePayload((amount: "(15.0 + stat(physical_damage_flat)) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
+                (components: [DamagePayload((amount: "calc(physical_damage, 15.0, 1)"))])
             ]))
         ])
     ]

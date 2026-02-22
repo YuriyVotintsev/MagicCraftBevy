@@ -309,7 +309,7 @@ fn generate_blueprint_component_unit(
         pub struct Def;
 
         impl DefRaw {
-            pub fn resolve(&self, _stat_registry: &crate::stats::StatRegistry, _state_indices: Option<&std::collections::HashMap<String, usize>>) -> Def {
+            pub fn resolve(&self, _lookup: &dyn Fn(&str) -> Option<crate::expr::StatId>, _state_indices: Option<&std::collections::HashMap<String, usize>>, _calc_reg: &crate::expr::calc::CalcRegistry) -> Def {
                 Def
             }
         }
@@ -388,52 +388,50 @@ fn generate_blueprint_component_named(
             if let Some(ref default_str) = default_expr {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::blueprints::expr::ScalarExprRaw>
+                    pub #field_name: Option<String>
                 });
 
                 resolve_fields.push(quote! {
-                    #field_name: self.#field_name.as_ref()
-                        .map(|v| v.resolve(stat_registry))
-                        .unwrap_or_else(|| crate::blueprints::expr::parse_and_resolve_scalar(#default_str, stat_registry))
+                    #field_name: crate::blueprints::expr::expand_parse_resolve_scalar(
+                        self.#field_name.as_deref().unwrap_or(#default_str), lookup, calc_reg)
                 });
 
                 required_fields_code.push(quote! {
                     fields = fields.union(
-                        raw.#field_name.as_ref()
-                            .map(|v| v.required_fields())
-                            .unwrap_or_else(|| crate::blueprints::expr::parse_required_fields(#default_str))
+                        crate::blueprints::expr::parse_required_fields(
+                            raw.#field_name.as_deref().unwrap_or(#default_str))
                     );
                 });
             } else if let Some(default) = raw_default {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::blueprints::expr::ScalarExprRaw>
+                    pub #field_name: Option<String>
                 });
 
                 resolve_fields.push(quote! {
                     #field_name: self.#field_name.as_ref()
-                        .map(|v| v.resolve(stat_registry))
+                        .map(|s| crate::blueprints::expr::expand_parse_resolve_scalar(s, lookup, calc_reg))
                         .unwrap_or(crate::blueprints::expr::ScalarExpr::Literal(#default as f32))
                 });
 
                 required_fields_code.push(quote! {
                     fields = fields.union(
                         raw.#field_name.as_ref()
-                            .map(|v| v.required_fields())
+                            .map(|s| crate::blueprints::expr::parse_required_fields(s))
                             .unwrap_or(crate::blueprints::context::ProvidedFields::NONE)
                     );
                 });
             } else {
                 raw_fields.push(quote! {
-                    pub #field_name: crate::blueprints::expr::ScalarExprRaw
+                    pub #field_name: String
                 });
 
                 resolve_fields.push(quote! {
-                    #field_name: self.#field_name.resolve(stat_registry)
+                    #field_name: crate::blueprints::expr::expand_parse_resolve_scalar(&self.#field_name, lookup, calc_reg)
                 });
 
                 required_fields_code.push(quote! {
-                    fields = fields.union(raw.#field_name.required_fields());
+                    fields = fields.union(crate::blueprints::expr::parse_required_fields(&raw.#field_name));
                 });
             }
 
@@ -446,33 +444,31 @@ fn generate_blueprint_component_named(
             if let Some(ref default_str) = default_expr {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::blueprints::expr::VecExprRaw>
+                    pub #field_name: Option<String>
                 });
 
                 resolve_fields.push(quote! {
-                    #field_name: self.#field_name.as_ref()
-                        .map(|v| v.resolve(stat_registry))
-                        .unwrap_or_else(|| crate::blueprints::expr::parse_and_resolve_vec(#default_str, stat_registry))
+                    #field_name: crate::blueprints::expr::expand_parse_resolve_vec(
+                        self.#field_name.as_deref().unwrap_or(#default_str), lookup, calc_reg)
                 });
 
                 required_fields_code.push(quote! {
                     fields = fields.union(
-                        raw.#field_name.as_ref()
-                            .map(|v| v.required_fields())
-                            .unwrap_or_else(|| crate::blueprints::expr::parse_required_fields(#default_str))
+                        crate::blueprints::expr::parse_required_fields(
+                            raw.#field_name.as_deref().unwrap_or(#default_str))
                     );
                 });
             } else {
                 raw_fields.push(quote! {
-                    pub #field_name: crate::blueprints::expr::VecExprRaw
+                    pub #field_name: String
                 });
 
                 resolve_fields.push(quote! {
-                    #field_name: self.#field_name.resolve(stat_registry)
+                    #field_name: crate::blueprints::expr::expand_parse_resolve_vec(&self.#field_name, lookup, calc_reg)
                 });
 
                 required_fields_code.push(quote! {
-                    fields = fields.union(raw.#field_name.required_fields());
+                    fields = fields.union(crate::blueprints::expr::parse_required_fields(&raw.#field_name));
                 });
             }
 
@@ -485,33 +481,31 @@ fn generate_blueprint_component_named(
             if let Some(ref default_str) = default_expr {
                 raw_fields.push(quote! {
                     #[serde(default)]
-                    pub #field_name: Option<crate::blueprints::expr::EntityExprRaw>
+                    pub #field_name: Option<String>
                 });
 
                 resolve_fields.push(quote! {
-                    #field_name: self.#field_name.as_ref()
-                        .map(|v| v.resolve(stat_registry))
-                        .unwrap_or_else(|| crate::blueprints::expr::parse_and_resolve_entity(#default_str, stat_registry))
+                    #field_name: crate::blueprints::expr::expand_parse_resolve_entity(
+                        self.#field_name.as_deref().unwrap_or(#default_str), lookup, calc_reg)
                 });
 
                 required_fields_code.push(quote! {
                     fields = fields.union(
-                        raw.#field_name.as_ref()
-                            .map(|v| v.required_fields())
-                            .unwrap_or_else(|| crate::blueprints::expr::parse_required_fields(#default_str))
+                        crate::blueprints::expr::parse_required_fields(
+                            raw.#field_name.as_deref().unwrap_or(#default_str))
                     );
                 });
             } else {
                 raw_fields.push(quote! {
-                    pub #field_name: crate::blueprints::expr::EntityExprRaw
+                    pub #field_name: String
                 });
 
                 resolve_fields.push(quote! {
-                    #field_name: self.#field_name.resolve(stat_registry)
+                    #field_name: crate::blueprints::expr::expand_parse_resolve_entity(&self.#field_name, lookup, calc_reg)
                 });
 
                 required_fields_code.push(quote! {
-                    fields = fields.union(raw.#field_name.required_fields());
+                    fields = fields.union(crate::blueprints::expr::parse_required_fields(&raw.#field_name));
                 });
             }
 
@@ -523,16 +517,16 @@ fn generate_blueprint_component_named(
 
             raw_fields.push(quote! {
                 #[serde(default)]
-                pub #field_name: Option<crate::blueprints::expr::ScalarExprRaw>
+                pub #field_name: Option<String>
             });
 
             resolve_fields.push(quote! {
-                #field_name: self.#field_name.as_ref().map(|v| v.resolve(stat_registry))
+                #field_name: self.#field_name.as_ref().map(|s| crate::blueprints::expr::expand_parse_resolve_scalar(s, lookup, calc_reg))
             });
 
             required_fields_code.push(quote! {
-                if let Some(ref expr) = raw.#field_name {
-                    fields = fields.union(expr.required_fields());
+                if let Some(ref s) = raw.#field_name {
+                    fields = fields.union(crate::blueprints::expr::parse_required_fields(s));
                 }
             });
 
@@ -548,7 +542,7 @@ fn generate_blueprint_component_named(
             });
 
             resolve_fields.push(quote! {
-                #field_name: self.#field_name.iter().map(|e| e.resolve(stat_registry)).collect()
+                #field_name: self.#field_name.iter().map(|e| e.resolve(lookup, calc_reg)).collect()
             });
 
             component_fields.push(quote! { pub #field_name: Vec<crate::blueprints::entity_def::EntityDef> });
@@ -701,7 +695,7 @@ fn generate_blueprint_component_named(
         }
 
         impl DefRaw {
-            pub fn resolve(&self, stat_registry: &crate::stats::StatRegistry, state_indices: Option<&std::collections::HashMap<String, usize>>) -> Def {
+            pub fn resolve(&self, lookup: &dyn Fn(&str) -> Option<crate::expr::StatId>, state_indices: Option<&std::collections::HashMap<String, usize>>, calc_reg: &crate::expr::calc::CalcRegistry) -> Def {
                 Def {
                     #(#resolve_fields,)*
                 }

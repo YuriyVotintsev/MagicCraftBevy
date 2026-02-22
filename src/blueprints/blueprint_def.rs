@@ -1,8 +1,9 @@
 use serde::Deserialize;
 
 use super::entity_def::{EntityDef, EntityDefRaw};
-use crate::blueprints::expr::{ScalarExpr, ScalarExprRaw};
-use crate::stats::StatRegistry;
+use crate::blueprints::expr::ScalarExpr;
+use crate::expr::StatId;
+use crate::expr::calc::CalcRegistry;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BlueprintDefRaw {
@@ -10,7 +11,7 @@ pub struct BlueprintDefRaw {
     #[serde(default)]
     pub name: Option<String>,
     #[serde(default)]
-    pub cooldown: Option<ScalarExprRaw>,
+    pub cooldown: Option<String>,
     pub entities: Vec<EntityDefRaw>,
 }
 
@@ -22,13 +23,13 @@ pub struct BlueprintDef {
 }
 
 impl BlueprintDefRaw {
-    pub fn resolve(&self, stat_registry: &StatRegistry) -> BlueprintDef {
+    pub fn resolve(&self, lookup: &dyn Fn(&str) -> Option<StatId>, calc_reg: &CalcRegistry) -> BlueprintDef {
         BlueprintDef {
             name: self.name.clone(),
             cooldown: self.cooldown.as_ref()
-                .map(|c| c.resolve(stat_registry))
+                .map(|c| crate::expr::expand_parse_resolve_scalar(c, lookup, calc_reg))
                 .unwrap_or(ScalarExpr::Literal(f32::INFINITY)),
-            entities: self.entities.iter().map(|e| e.resolve(stat_registry)).collect(),
+            entities: self.entities.iter().map(|e| e.resolve(lookup, calc_reg)).collect(),
         }
     }
 }

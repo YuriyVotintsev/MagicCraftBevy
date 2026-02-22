@@ -81,7 +81,30 @@ impl EntityExpr {
 #[cfg(test)]
 pub fn parse_required_fields(expr_str: &str) -> ProvidedFields {
     use crate::expr::parser::{TypedExpr, parse_expr_string};
-    match parse_expr_string(expr_str) {
+    use crate::expr::calc::CalcRegistry;
+
+    let expanded = if expr_str.contains("calc(") {
+        use std::sync::OnceLock;
+        static CALC_REG: OnceLock<CalcRegistry> = OnceLock::new();
+        let reg = CALC_REG.get_or_init(|| {
+            #[derive(serde::Deserialize)]
+            struct Cfg {
+                #[serde(default)]
+                #[allow(dead_code)]
+                stat_ids: Vec<crate::stats::loader::StatDefRaw>,
+                #[serde(default)]
+                calcs: Vec<crate::expr::calc::CalcTemplateRaw>,
+            }
+            let content = std::fs::read_to_string("assets/stats/config.stats.ron").unwrap();
+            let cfg: Cfg = ron::from_str(&content).unwrap();
+            CalcRegistry::from_raw(&cfg.calcs)
+        });
+        reg.expand(expr_str).unwrap_or_else(|e| panic!("Failed to expand calc in '{}': {}", expr_str, e))
+    } else {
+        expr_str.to_string()
+    };
+
+    match parse_expr_string(&expanded) {
         Ok(TypedExpr::Scalar(e)) => e.required_fields(),
         Ok(TypedExpr::Vec2(e)) => e.required_fields(),
         Ok(TypedExpr::Entity(e)) => e.required_fields(),

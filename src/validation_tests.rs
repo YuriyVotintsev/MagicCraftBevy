@@ -173,7 +173,7 @@ fn validate_stat_formulas() {
 
             match parse_expr_string_with(&expanded, &StatAtomParser) {
                 Ok(TypedExpr::Scalar(raw)) => {
-                    let resolved = raw.resolve(&registry);
+                    let resolved = raw.resolve(&|name: &str| registry.get(name));
                     let mut deps = Vec::new();
                     resolved.collect_stat_deps(&mut deps);
                     if let Some(self_id) = registry.get(&def.name) {

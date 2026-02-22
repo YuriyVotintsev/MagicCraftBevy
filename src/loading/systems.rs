@@ -120,7 +120,7 @@ pub fn check_stats_loaded(
                     Ok(_) => panic!("Stat '{}' formula must be a scalar expression", def.name),
                     Err(e) => panic!("Failed to parse formula for stat '{}': {}\nFormula: {}", def.name, e, formula_str),
                 };
-                let resolved = parsed.resolve(&registry);
+                let resolved = parsed.resolve(&|name: &str| registry.get(name));
                 let mut deps = Vec::new();
                 resolved.collect_stat_deps(&mut deps);
                 deps.dedup();
@@ -219,13 +219,15 @@ pub fn check_content_loaded(
 
     info!("All content loaded, finalizing...");
 
+    let lookup = |name: &str| stat_registry.get(name);
+
     let mut base_blueprint = None;
     let mut classes = Vec::new();
     if let Some(folder) = folders.get(heroes_folder_handle.id()) {
         for handle in &folder.handles {
             if let Ok(typed_bp) = handle.clone().try_typed::<BlueprintDefAsset>() {
                 if let Some(blueprint_asset) = blueprint_assets.get(typed_bp.id()) {
-                    let blueprint_def = blueprint_asset.0.resolve(&stat_registry);
+                    let blueprint_def = blueprint_asset.0.resolve(&lookup, &calc_registry);
                     info!("Registered base hero: {}", blueprint_asset.0.id);
                     let id = blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
                     base_blueprint = Some(id);
@@ -258,7 +260,7 @@ pub fn check_content_loaded(
             for handle in &folder.handles {
                 let typed_handle: Handle<BlueprintDefAsset> = handle.clone().typed();
                 if let Some(blueprint_asset) = blueprint_assets.get(typed_handle.id()) {
-                    let blueprint_def = blueprint_asset.0.resolve(&stat_registry);
+                    let blueprint_def = blueprint_asset.0.resolve(&lookup, &calc_registry);
                     info!("Registered blueprint: {}", blueprint_asset.0.id);
                     blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
                 }

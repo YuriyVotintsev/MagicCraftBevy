@@ -27,7 +27,7 @@ fn resolve_formula(formula_str: &str, stat_name: &str, registry: &StatRegistry) 
         Err(e) => panic!("Failed to parse formula for stat '{}': {}\nFormula: {}", stat_name, e, formula_str),
     };
 
-    let resolved = parsed.resolve(registry);
+    let resolved = parsed.resolve(&|name: &str| registry.get(name));
 
     let mut deps = Vec::new();
     resolved.collect_stat_deps(&mut deps);

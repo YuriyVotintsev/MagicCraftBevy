@@ -4,13 +4,13 @@
         (
             count: Some("recalc(3 + stat(projectile_count))"),
             components: [
-                Orbiting((radius: "80.0 * (1.0 + stat(area_of_effect_increased))", angular_speed: "3.5 * (1.0 + stat(projectile_speed_increased))")),
-                Size((value: "40.0 * (1.0 + stat(area_of_effect_increased))")),
+                Orbiting((radius: "calc(area_of_effect, 80.0)", angular_speed: "calc(projectile_speed, 3.5)")),
+                Size((value: "calc(area_of_effect, 40.0)")),
                 Collider((shape: Circle)),
                 Sprite((color: (0.3, 0.7, 1.0, 1.0), shape: Circle)),
                 Pierce(()),
                 OnCollision((entities: [
-                    (components: [DamagePayload((amount: "(8.0 + stat(physical_damage_flat) * 0.5) * (1.0 + stat(physical_damage_increased)) * stat(physical_damage_more)"))])
+                    (components: [DamagePayload((amount: "calc(physical_damage, 8.0, 0.5)"))])
                 ]))
             ]
         )

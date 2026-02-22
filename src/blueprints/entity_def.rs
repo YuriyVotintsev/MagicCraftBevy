@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use serde::Deserialize;
 
-use crate::blueprints::expr::{ScalarExpr, ScalarExprRaw};
-use crate::stats::{StatId, StatRegistry};
+use crate::blueprints::expr::ScalarExpr;
+use crate::expr::StatId;
+use crate::expr::calc::CalcRegistry;
 
 use super::components::{ComponentDef, ComponentDefRaw};
 
@@ -36,7 +37,7 @@ pub struct StatesBlock {
 #[derive(Debug, Clone, Deserialize)]
 pub struct EntityDefRaw {
     #[serde(default)]
-    pub count: Option<ScalarExprRaw>,
+    pub count: Option<String>,
     #[serde(default)]
     pub base_stats: HashMap<String, f32>,
     #[serde(default)]
@@ -56,16 +57,16 @@ pub struct EntityDef {
 }
 
 impl StateDefRaw {
-    pub fn resolve(&self, stat_registry: &StatRegistry, state_indices: &HashMap<String, usize>) -> StateDef {
+    pub fn resolve(&self, lookup: &dyn Fn(&str) -> Option<StatId>, state_indices: &HashMap<String, usize>, calc_reg: &CalcRegistry) -> StateDef {
         StateDef {
-            components: self.components.iter().map(|c| c.resolve(stat_registry, Some(state_indices))).collect(),
-            transitions: self.transitions.iter().map(|c| c.resolve(stat_registry, Some(state_indices))).collect(),
+            components: self.components.iter().map(|c| c.resolve(lookup, Some(state_indices), calc_reg)).collect(),
+            transitions: self.transitions.iter().map(|c| c.resolve(lookup, Some(state_indices), calc_reg)).collect(),
         }
     }
 }
 
 impl StatesBlockRaw {
-    pub fn resolve(&self, stat_registry: &StatRegistry) -> StatesBlock {
+    pub fn resolve(&self, lookup: &dyn Fn(&str) -> Option<StatId>, calc_reg: &CalcRegistry) -> StatesBlock {
         let state_names: Vec<String> = self.states.keys().cloned().collect();
         let state_indices: HashMap<String, usize> = state_names.iter()
             .enumerate()
@@ -76,7 +77,7 @@ impl StatesBlockRaw {
             .unwrap_or_else(|| panic!("unknown initial state '{}'", self.initial));
 
         let states = state_names.iter()
-            .map(|name| self.states[name].resolve(stat_registry, &state_indices))
+            .map(|name| self.states[name].resolve(lookup, &state_indices, calc_reg))
             .collect();
 
         StatesBlock { initial, states, state_names }
@@ -84,17 +85,17 @@ impl StatesBlockRaw {
 }
 
 impl EntityDefRaw {
-    pub fn resolve(&self, stat_registry: &StatRegistry) -> EntityDef {
+    pub fn resolve(&self, lookup: &dyn Fn(&str) -> Option<StatId>, calc_reg: &CalcRegistry) -> EntityDef {
         EntityDef {
-            count: self.count.as_ref().map(|c| c.resolve(stat_registry)),
+            count: self.count.as_ref().map(|c| crate::expr::expand_parse_resolve_scalar(c, lookup, calc_reg)),
             base_stats: self.base_stats.iter()
                 .filter_map(|(name, value)| {
-                    stat_registry.get(name).map(|id| (id, *value))
+                    lookup(name).map(|id| (id, *value))
                 })
                 .collect(),
             abilities: self.abilities.clone(),
-            components: self.components.iter().map(|c| c.resolve(stat_registry, None)).collect(),
-            states: self.states.as_ref().map(|s| s.resolve(stat_registry)),
+            components: self.components.iter().map(|c| c.resolve(lookup, None, calc_reg)).collect(),
+            states: self.states.as_ref().map(|s| s.resolve(lookup, calc_reg)),
         }
     }
 }

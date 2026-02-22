@@ -22,7 +22,7 @@ fn validate_entity_fields(
     }
 
     if let Some(count) = &entity_raw.count {
-        let required = count.required_fields();
+        let required = crate::blueprints::expr::parse_required_fields(count);
         if !provided.contains(required) {
             let missing = provided.missing(required);
             errors.push(format!(

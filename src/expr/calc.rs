@@ -46,8 +46,18 @@ impl CalcRegistry {
             return Err(format!("calc() expansion depth exceeded 16, possible cycle in: {}", input));
         }
 
-        let Some(calc_start) = input.find("calc(") else {
-            return Ok(input.to_string());
+        let calc_start = {
+            let mut search_from = 0;
+            loop {
+                let Some(pos) = input[search_from..].find("calc(") else {
+                    return Ok(input.to_string());
+                };
+                let abs_pos = search_from + pos;
+                if abs_pos == 0 || !input.as_bytes()[abs_pos - 1].is_ascii_alphabetic() {
+                    break abs_pos;
+                }
+                search_from = abs_pos + 5;
+            }
         };
 
         let before = &input[..calc_start];
@@ -157,6 +167,14 @@ mod tests {
         let mut reg = CalcRegistry::new();
         reg.add("wrap".to_string(), vec!["x".to_string()], "({x})".to_string());
         assert_eq!(reg.expand("calc(wrap, stat(foo) + 1)").unwrap(), "(stat(foo) + 1)");
+    }
+
+    #[test]
+    fn test_recalc_not_matched() {
+        let mut reg = CalcRegistry::new();
+        reg.add("double".to_string(), vec!["x".to_string()], "{x} * 2".to_string());
+        assert_eq!(reg.expand("recalc(3 + stat(foo))").unwrap(), "recalc(3 + stat(foo))");
+        assert_eq!(reg.expand("recalc(calc(double, 5))").unwrap(), "recalc(5 * 2)");
     }
 
     #[test]

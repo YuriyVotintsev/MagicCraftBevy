@@ -2,9 +2,7 @@ pub mod calc;
 pub mod parser;
 
 use bevy::prelude::*;
-use serde::{Deserialize, Deserializer};
 
-use crate::stats::StatRegistry;
 use parser::{TypedExpr, parse_expr_string};
 
 // --- StatId ---
@@ -180,36 +178,35 @@ impl ScalarExprRaw {
         }
     }
 
-    pub fn resolve(&self, reg: &StatRegistry) -> ScalarExpr {
+    pub fn resolve(&self, lookup: &dyn Fn(&str) -> Option<StatId>) -> ScalarExpr {
         match self {
             Self::Literal(v) => ScalarExpr::Literal(*v),
             Self::Stat(name) => {
-                let id = reg
-                    .get(name)
+                let id = lookup(name)
                     .unwrap_or_else(|| panic!("Unknown stat '{}'", name));
                 ScalarExpr::Stat(id)
             }
             Self::Index => ScalarExpr::Index,
             Self::Count => ScalarExpr::Count,
-            Self::Add(a, b) => ScalarExpr::Add(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::Sub(a, b) => ScalarExpr::Sub(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::Mul(a, b) => ScalarExpr::Mul(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::Div(a, b) => ScalarExpr::Div(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::Neg(a) => ScalarExpr::Neg(Box::new(a.resolve(reg))),
-            Self::Min(a, b) => ScalarExpr::Min(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::Max(a, b) => ScalarExpr::Max(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
+            Self::Add(a, b) => ScalarExpr::Add(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::Sub(a, b) => ScalarExpr::Sub(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::Mul(a, b) => ScalarExpr::Mul(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::Div(a, b) => ScalarExpr::Div(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::Neg(a) => ScalarExpr::Neg(Box::new(a.resolve(lookup))),
+            Self::Min(a, b) => ScalarExpr::Min(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::Max(a, b) => ScalarExpr::Max(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
             Self::Clamp(v, lo, hi) => ScalarExpr::Clamp(
-                Box::new(v.resolve(reg)),
-                Box::new(lo.resolve(reg)),
-                Box::new(hi.resolve(reg)),
+                Box::new(v.resolve(lookup)),
+                Box::new(lo.resolve(lookup)),
+                Box::new(hi.resolve(lookup)),
             ),
-            Self::Length(v) => ScalarExpr::Length(Box::new(v.resolve(reg))),
-            Self::Distance(a, b) => ScalarExpr::Distance(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::Dot(a, b) => ScalarExpr::Dot(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::X(v) => ScalarExpr::X(Box::new(v.resolve(reg))),
-            Self::Y(v) => ScalarExpr::Y(Box::new(v.resolve(reg))),
-            Self::Angle(v) => ScalarExpr::Angle(Box::new(v.resolve(reg))),
-            Self::Recalc(e) => ScalarExpr::Recalc(Box::new(e.resolve(reg))),
+            Self::Length(v) => ScalarExpr::Length(Box::new(v.resolve(lookup))),
+            Self::Distance(a, b) => ScalarExpr::Distance(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::Dot(a, b) => ScalarExpr::Dot(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::X(v) => ScalarExpr::X(Box::new(v.resolve(lookup))),
+            Self::Y(v) => ScalarExpr::Y(Box::new(v.resolve(lookup))),
+            Self::Angle(v) => ScalarExpr::Angle(Box::new(v.resolve(lookup))),
+            Self::Recalc(e) => ScalarExpr::Recalc(Box::new(e.resolve(lookup))),
         }
     }
 }
@@ -232,26 +229,26 @@ impl VecExprRaw {
         }
     }
 
-    pub fn resolve(&self, reg: &StatRegistry) -> VecExpr {
+    pub fn resolve(&self, lookup: &dyn Fn(&str) -> Option<StatId>) -> VecExpr {
         match self {
             Self::CasterPos => VecExpr::CasterPos,
             Self::SourcePos => VecExpr::SourcePos,
             Self::SourceDir => VecExpr::SourceDir,
             Self::TargetPos => VecExpr::TargetPos,
             Self::TargetDir => VecExpr::TargetDir,
-            Self::Add(a, b) => VecExpr::Add(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::Sub(a, b) => VecExpr::Sub(Box::new(a.resolve(reg)), Box::new(b.resolve(reg))),
-            Self::Scale(v, s) => VecExpr::Scale(Box::new(v.resolve(reg)), Box::new(s.resolve(reg))),
-            Self::Normalize(v) => VecExpr::Normalize(Box::new(v.resolve(reg))),
-            Self::Rotate(v, a) => VecExpr::Rotate(Box::new(v.resolve(reg)), Box::new(a.resolve(reg))),
+            Self::Add(a, b) => VecExpr::Add(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::Sub(a, b) => VecExpr::Sub(Box::new(a.resolve(lookup)), Box::new(b.resolve(lookup))),
+            Self::Scale(v, s) => VecExpr::Scale(Box::new(v.resolve(lookup)), Box::new(s.resolve(lookup))),
+            Self::Normalize(v) => VecExpr::Normalize(Box::new(v.resolve(lookup))),
+            Self::Rotate(v, a) => VecExpr::Rotate(Box::new(v.resolve(lookup)), Box::new(a.resolve(lookup))),
             Self::Lerp(a, b, t) => VecExpr::Lerp(
-                Box::new(a.resolve(reg)),
-                Box::new(b.resolve(reg)),
-                Box::new(t.resolve(reg)),
+                Box::new(a.resolve(lookup)),
+                Box::new(b.resolve(lookup)),
+                Box::new(t.resolve(lookup)),
             ),
-            Self::Vec2Expr(x, y) => VecExpr::Vec2Expr(Box::new(x.resolve(reg)), Box::new(y.resolve(reg))),
-            Self::FromAngle(a) => VecExpr::FromAngle(Box::new(a.resolve(reg))),
-            Self::Recalc(e) => VecExpr::Recalc(Box::new(e.resolve(reg))),
+            Self::Vec2Expr(x, y) => VecExpr::Vec2Expr(Box::new(x.resolve(lookup)), Box::new(y.resolve(lookup))),
+            Self::FromAngle(a) => VecExpr::FromAngle(Box::new(a.resolve(lookup))),
+            Self::Recalc(e) => VecExpr::Recalc(Box::new(e.resolve(lookup))),
         }
     }
 }
@@ -426,7 +423,7 @@ impl VecExpr {
 // --- EntityExpr impls ---
 
 impl EntityExpr {
-    pub fn resolve(&self, _reg: &StatRegistry) -> EntityExpr {
+    pub fn resolve(&self, _lookup: &dyn Fn(&str) -> Option<StatId>) -> EntityExpr {
         self.clone()
     }
 
@@ -440,99 +437,43 @@ impl EntityExpr {
     }
 }
 
-// --- Deserialization (Raw only) ---
-
-impl<'de> Deserialize<'de> for ScalarExprRaw {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        match parse_expr_string(&s) {
-            Ok(TypedExpr::Scalar(e)) => Ok(e),
-            Ok(TypedExpr::Vec2(_)) => Err(serde::de::Error::custom(format!(
-                "Expected scalar expression, got vec2: '{}'", s
-            ))),
-            Ok(TypedExpr::Entity(_)) => Err(serde::de::Error::custom(format!(
-                "Expected scalar expression, got entity: '{}'", s
-            ))),
-            Err(e) => Err(serde::de::Error::custom(format!(
-                "Failed to parse scalar expression '{}': {}", s, e
-            ))),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for VecExprRaw {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        match parse_expr_string(&s) {
-            Ok(TypedExpr::Vec2(e)) => Ok(e),
-            Ok(TypedExpr::Scalar(_)) => Err(serde::de::Error::custom(format!(
-                "Expected vec2 expression, got scalar: '{}'", s
-            ))),
-            Ok(TypedExpr::Entity(_)) => Err(serde::de::Error::custom(format!(
-                "Expected vec2 expression, got entity: '{}'", s
-            ))),
-            Err(e) => Err(serde::de::Error::custom(format!(
-                "Failed to parse vec2 expression '{}': {}", s, e
-            ))),
-        }
-    }
-}
-
-impl<'de> Deserialize<'de> for EntityExpr {
-    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let s = String::deserialize(deserializer)?;
-        match parse_expr_string(&s) {
-            Ok(TypedExpr::Entity(e)) => Ok(e),
-            Ok(TypedExpr::Scalar(_)) => Err(serde::de::Error::custom(format!(
-                "Expected entity expression, got scalar: '{}'", s
-            ))),
-            Ok(TypedExpr::Vec2(_)) => Err(serde::de::Error::custom(format!(
-                "Expected entity expression, got vec2: '{}'", s
-            ))),
-            Err(e) => Err(serde::de::Error::custom(format!(
-                "Failed to parse entity expression '{}': {}", s, e
-            ))),
-        }
-    }
-}
-
 // --- Utility functions ---
 
-pub fn expand_parse_resolve_scalar(expr_str: &str, reg: &StatRegistry, calc_reg: &calc::CalcRegistry) -> ScalarExpr {
+pub fn expand_parse_resolve_scalar(expr_str: &str, lookup: &dyn Fn(&str) -> Option<StatId>, calc_reg: &calc::CalcRegistry) -> ScalarExpr {
     let expanded = calc_reg.expand(expr_str)
         .unwrap_or_else(|e| panic!("Failed to expand calc in '{}': {}", expr_str, e));
-    parse_and_resolve_scalar(&expanded, reg)
+    parse_and_resolve_scalar(&expanded, lookup)
 }
 
-pub fn expand_parse_resolve_vec(expr_str: &str, reg: &StatRegistry, calc_reg: &calc::CalcRegistry) -> VecExpr {
+pub fn expand_parse_resolve_vec(expr_str: &str, lookup: &dyn Fn(&str) -> Option<StatId>, calc_reg: &calc::CalcRegistry) -> VecExpr {
     let expanded = calc_reg.expand(expr_str)
         .unwrap_or_else(|e| panic!("Failed to expand calc in '{}': {}", expr_str, e));
-    parse_and_resolve_vec(&expanded, reg)
+    parse_and_resolve_vec(&expanded, lookup)
 }
 
-pub fn expand_parse_resolve_entity(expr_str: &str, reg: &StatRegistry, calc_reg: &calc::CalcRegistry) -> EntityExpr {
+pub fn expand_parse_resolve_entity(expr_str: &str, lookup: &dyn Fn(&str) -> Option<StatId>, calc_reg: &calc::CalcRegistry) -> EntityExpr {
     let expanded = calc_reg.expand(expr_str)
         .unwrap_or_else(|e| panic!("Failed to expand calc in '{}': {}", expr_str, e));
-    parse_and_resolve_entity(&expanded, reg)
+    parse_and_resolve_entity(&expanded, lookup)
 }
 
-pub fn parse_and_resolve_scalar(expr_str: &str, reg: &StatRegistry) -> ScalarExpr {
+pub fn parse_and_resolve_scalar(expr_str: &str, lookup: &dyn Fn(&str) -> Option<StatId>) -> ScalarExpr {
     match parse_expr_string(expr_str) {
-        Ok(TypedExpr::Scalar(e)) => e.resolve(reg),
+        Ok(TypedExpr::Scalar(e)) => e.resolve(lookup),
         Ok(_) => panic!("Expected scalar expression, got different type: '{}'", expr_str),
         Err(e) => panic!("Failed to parse scalar expression '{}': {}", expr_str, e),
     }
 }
 
-pub fn parse_and_resolve_vec(expr_str: &str, reg: &StatRegistry) -> VecExpr {
+pub fn parse_and_resolve_vec(expr_str: &str, lookup: &dyn Fn(&str) -> Option<StatId>) -> VecExpr {
     match parse_expr_string(expr_str) {
-        Ok(TypedExpr::Vec2(e)) => e.resolve(reg),
+        Ok(TypedExpr::Vec2(e)) => e.resolve(lookup),
         Ok(_) => panic!("Expected vec2 expression, got different type: '{}'", expr_str),
         Err(e) => panic!("Failed to parse vec2 expression '{}': {}", expr_str, e),
     }
 }
 
-pub fn parse_and_resolve_entity(expr_str: &str, _reg: &StatRegistry) -> EntityExpr {
+pub fn parse_and_resolve_entity(expr_str: &str, _lookup: &dyn Fn(&str) -> Option<StatId>) -> EntityExpr {
     match parse_expr_string(expr_str) {
         Ok(TypedExpr::Entity(e)) => e,
         Ok(_) => panic!("Expected entity expression, got different type: '{}'", expr_str),

@@ -17,6 +17,7 @@
         (name: "movement_speed_increased", eval: Sum),
         (name: "movement_speed", eval: Formula("calc(flat_increased, 0, movement_speed_flat, movement_speed_increased)")),
 
+        (name: "projectile_speed_flat", eval: Sum),
         (name: "projectile_speed_increased", eval: Sum),
         (name: "projectile_count", eval: Sum),
 
@@ -25,7 +26,9 @@
         (name: "crit_chance", eval: Formula("clamp(stat(crit_chance_flat) * (1 + stat(crit_chance_increased)), 0, 1)")),
         (name: "crit_multiplier", eval: Sum),
 
+        (name: "area_of_effect_flat", eval: Sum),
         (name: "area_of_effect_increased", eval: Sum),
+        (name: "duration_flat", eval: Sum),
         (name: "duration_increased", eval: Sum),
     ],
     calcs: [
@@ -39,6 +42,26 @@
             params: ["default", "flat", "increased"],
             formula: "(stat({flat}) + {default}) * (1 + stat({increased}))",
         ),
+        (
+            name: "physical_damage",
+            params: ["base", "scale"],
+            formula: "({base} + stat(physical_damage_flat) * {scale}) * (1 + stat(physical_damage_increased)) * stat(physical_damage_more)",
+        ),
+        (
+            name: "projectile_speed",
+            params: ["base"],
+            formula: "calc(flat_increased, {base}, projectile_speed_flat, projectile_speed_increased)",
+        ),
+        (
+            name: "area_of_effect",
+            params: ["base"],
+            formula: "calc(flat_increased, {base}, area_of_effect_flat, area_of_effect_increased)",
+        ),
+        (
+            name: "duration",
+            params: ["base"],
+            formula: "calc(flat_increased, {base}, duration_flat, duration_increased)",
+        ),
     ],
     display: [
         (stats: ["physical_damage_flat"], format: "[{+0}] physical damage"),
@@ -51,11 +74,14 @@
         (stats: ["movement_speed_increased"], format: "[{+0}%] movement speed"),
         (stats: ["crit_chance_flat"], format: "[{+0}%] crit chance"),
         (stats: ["crit_multiplier"], format: "[{+0}%] crit multiplier"),
+        (stats: ["projectile_speed_flat"], format: "[{+0}] projectile speed"),
         (stats: ["projectile_speed_increased"], format: "[{+0}%] projectile speed"),
         (stats: ["projectile_count"], format: "[{+0}] projectile"),
         (stats: ["max_mana_flat"], format: "[{+0}] max mana"),
         (stats: ["max_mana_increased"], format: "[{+0}%] max mana"),
+        (stats: ["area_of_effect_flat"], format: "[{+0}] area of effect"),
         (stats: ["area_of_effect_increased"], format: "[{+0}%] area of effect"),
+        (stats: ["duration_flat"], format: "[{+0}] duration"),
         (stats: ["duration_increased"], format: "[{+0}%] duration"),
     ],
 )
