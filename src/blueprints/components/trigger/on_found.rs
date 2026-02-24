@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::coords::vec3_to_2d;
 use crate::blueprints::context::TargetInfo;
 use crate::blueprints::spawn::EntitySpawner;
 use crate::blueprints::SpawnSource;
@@ -31,7 +32,7 @@ fn on_found_trigger_system(
     transforms: Query<&Transform>,
 ) {
     for (entity, trigger, found, source) in &query {
-        let found_pos = found.1.truncate();
+        let found_pos = vec3_to_2d(found.1);
         spawner.spawn_triggered(
             entity,
             source,

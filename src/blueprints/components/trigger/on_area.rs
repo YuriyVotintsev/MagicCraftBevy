@@ -1,10 +1,11 @@
 use bevy::prelude::*;
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::context::TargetInfo;
 use crate::blueprints::spawn::EntitySpawner;
 use crate::blueprints::SpawnSource;
+use crate::coords::{vec3_to_2d, COLLIDER_HALF_HEIGHT};
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
@@ -60,7 +61,7 @@ fn on_area_trigger_system(
             timer.timer = 0.0;
         }
 
-        let position = transform.translation.truncate();
+        let position_2d = vec3_to_2d(transform.translation);
 
         let target_layer = match source.caster_faction {
             Faction::Player => GameLayer::Enemy,
@@ -68,14 +69,14 @@ fn on_area_trigger_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(target_layer);
-        let shape = Collider::circle(trigger.size / 2.0);
-        let hits = spatial_query.shape_intersections(&shape, position, 0.0, &filter);
+        let shape = Collider::cylinder(trigger.size / 2.0, COLLIDER_HALF_HEIGHT);
+        let hits = spatial_query.shape_intersections(&shape, transform.translation, Quat::IDENTITY, &filter);
 
-        let source_info = TargetInfo::from_entity_and_position(entity, position);
+        let source_info = TargetInfo::from_entity_and_position(entity, position_2d);
 
         for target_entity in hits {
             let target_pos = transforms.get(target_entity)
-                .map(|t| t.translation.truncate())
+                .map(|t| vec3_to_2d(t.translation))
                 .unwrap_or(Vec2::ZERO);
 
             spawner.spawn_triggered(

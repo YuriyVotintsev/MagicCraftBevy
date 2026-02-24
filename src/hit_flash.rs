@@ -35,7 +35,8 @@ fn tick_hit_flash(
     mut commands: Commands,
     time: Res<Time>,
     mut flash_query: Query<(Entity, &mut HitFlash, &Children)>,
-    mut sprite_query: Query<(&mut Sprite, &mut Transform)>,
+    mut child_query: Query<(&MeshMaterial3d<StandardMaterial>, &mut Transform)>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, mut flash, children) in &mut flash_query {
         flash.elapsed += time.delta_secs();
@@ -44,16 +45,18 @@ fn tick_hit_flash(
         let done = t >= 1.0;
 
         for child in children.iter() {
-            if let Ok((mut sprite, mut transform)) = sprite_query.get_mut(child) {
-                if done {
-                    sprite.color = Color::WHITE;
-                } else {
-                    let brightness = 6.0_f32.lerp(1.0, t);
-                    let scale_x = 0.7_f32.lerp(1.0, t);
-                    let scale_y = 1.3_f32.lerp(1.0, t);
-                    sprite.color = Color::srgb(brightness, brightness, brightness);
-                    transform.scale.x *= scale_x;
-                    transform.scale.y *= scale_y;
+            if let Ok((mat_handle, mut transform)) = child_query.get_mut(child) {
+                if let Some(material) = materials.get_mut(&mat_handle.0) {
+                    if done {
+                        material.base_color = Color::WHITE;
+                    } else {
+                        let brightness = 6.0_f32.lerp(1.0, t);
+                        let scale_x = 0.7_f32.lerp(1.0, t);
+                        let scale_y = 1.3_f32.lerp(1.0, t);
+                        material.base_color = Color::srgb(brightness, brightness, brightness);
+                        transform.scale.x *= scale_x;
+                        transform.scale.y *= scale_y;
+                    }
                 }
             }
         }

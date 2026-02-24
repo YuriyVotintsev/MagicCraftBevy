@@ -2,6 +2,7 @@ use bevy::ecs::query::QueryFilter;
 use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 
+use crate::coords::{vec2_to_3d, vec3_to_2d};
 use crate::Faction;
 use crate::stats::{ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry, DEFAULT_STATS};
 use super::components::ComponentDef;
@@ -61,7 +62,7 @@ impl EntitySpawner<'_, '_> {
             .unwrap_or(&DEFAULT_STATS);
         let caster_pos = transforms
             .get(caster_entity)
-            .map(|t| t.translation.truncate())
+            .map(|t| vec3_to_2d(t.translation))
             .unwrap_or(Vec2::ZERO);
 
         let spawn_source = SpawnSource {
@@ -102,7 +103,7 @@ impl EntitySpawner<'_, '_> {
         let position = source.source.position.or(source.caster.position).unwrap_or(Vec2::ZERO);
         self.commands
             .entity(entity_id)
-            .insert(Transform::from_translation(position.extend(0.0)));
+            .insert(Transform::from_translation(vec2_to_3d(position)));
 
         let base_recalc = insert_components(
             &mut self.commands.entity(entity_id),
@@ -137,7 +138,7 @@ impl EntitySpawner<'_, '_> {
         let position = source.source.position.or(source.caster.position).unwrap_or(Vec2::ZERO);
         self.commands
             .entity(entity_id)
-            .insert(Transform::from_translation(position.extend(0.0)));
+            .insert(Transform::from_translation(vec2_to_3d(position)));
 
         let base_recalc = insert_components(
             &mut self.commands.entity(entity_id),

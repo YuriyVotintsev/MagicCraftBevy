@@ -3,6 +3,7 @@ use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::SpawnSource;
 use crate::blueprints::context::TargetInfo;
+use crate::coords::vec3_to_2d;
 use crate::blueprints::components::ability::find_nearest_enemy::FoundTarget;
 
 #[blueprint_component]
@@ -23,7 +24,7 @@ fn when_found_target_system(
     mut events: MessageWriter<crate::blueprints::state::StateTransition>,
 ) {
     for (entity, when_found, found_target, mut source) in &mut query {
-        source.target = TargetInfo::from_entity_and_position(found_target.0, found_target.1.truncate());
+        source.target = TargetInfo::from_entity_and_position(found_target.0, vec3_to_2d(found_target.1));
         commands.entity(entity).remove::<FoundTarget>();
         events.write(crate::blueprints::state::StateTransition {
             entity,

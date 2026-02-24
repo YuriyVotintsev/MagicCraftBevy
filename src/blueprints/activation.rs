@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::coords::vec3_to_2d;
 use crate::stats::{ComputedStats, DEFAULT_STATS};
 use crate::wave::{WaveEnemy, WavePhase};
 use super::core_components::{BlueprintActivationCooldown, BlueprintActivationInput, TrackedSpawns};
@@ -48,7 +49,7 @@ pub fn blueprint_activation_system(
             .get(caster_entity)
             .unwrap_or(&DEFAULT_STATS);
 
-        let caster_pos = transform.translation.truncate();
+        let caster_pos = vec3_to_2d(transform.translation);
         let source_info = TargetInfo::from_entity_and_position(caster_entity, caster_pos);
 
         let spawn_source = SpawnSource {

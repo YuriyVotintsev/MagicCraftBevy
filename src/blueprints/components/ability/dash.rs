@@ -1,7 +1,8 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::coords::vec2_to_3d;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::wave::InvulnerableStack;
@@ -86,7 +87,7 @@ fn update_dashing(
     mut invuln_query: Query<&mut InvulnerableStack>,
 ) {
     for (entity, mut dashing, mut velocity, pre_dash_layers) in &mut query {
-        velocity.0 = dashing.direction * dashing.speed;
+        velocity.0 = vec2_to_3d(dashing.direction) * dashing.speed;
 
         if dashing.timer.tick(time.delta()).just_finished() {
             let restored_layers = pre_dash_layers.0;

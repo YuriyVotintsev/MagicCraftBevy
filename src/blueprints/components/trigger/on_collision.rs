@@ -1,5 +1,7 @@
 use bevy::prelude::*;
-use avian2d::prelude::*;
+use avian3d::prelude::*;
+
+use crate::coords::vec3_to_2d;
 use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::context::TargetInfo;
@@ -67,8 +69,8 @@ fn on_collision_trigger_system(
             continue;
         }
 
-        let source_pos = hittable_transform.translation.truncate();
-        let target_pos = target_transform.translation.truncate();
+        let source_pos = vec3_to_2d(hittable_transform.translation);
+        let target_pos = vec3_to_2d(target_transform.translation);
 
         spawner.spawn_triggered(
             hittable_entity,

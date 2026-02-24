@@ -1,8 +1,9 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 use rand::Rng;
 
+use crate::coords::vec2_to_3d;
 use crate::blueprints::SpawnSource;
 use crate::schedule::GameSet;
 use crate::GameState;
@@ -56,7 +57,7 @@ fn init_straight(
         if let Some(parallel) = parallel {
             let offset = parallel.gap * (source.index as f32 - (source.count as f32 - 1.0) / 2.0);
             let perpendicular = Vec2::new(-base_direction.y, base_direction.x);
-            transform.translation += (perpendicular * offset).extend(0.0);
+            transform.translation += vec2_to_3d(perpendicular * offset);
         } else if let Some(fan) = fan {
             if source.count > 1 {
                 let t = source.index as f32 / (source.count as f32 - 1.0) - 0.5;
@@ -75,7 +76,7 @@ fn init_straight(
 
         commands.entity(entity).insert((
             RigidBody::Kinematic,
-            LinearVelocity(direction * straight.speed),
+            LinearVelocity(vec2_to_3d(direction) * straight.speed),
         ));
     }
 }

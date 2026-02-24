@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::coords::vec3_to_2d;
 use crate::blueprints::context::TargetInfo;
 use crate::blueprints::spawn::EntitySpawner;
 use crate::blueprints::SpawnSource;
@@ -28,7 +29,7 @@ fn on_expire_trigger_system(
             continue;
         }
 
-        let source_pos = transform.translation.truncate();
+        let source_pos = vec3_to_2d(transform.translation);
         spawner.spawn_triggered(
             entity,
             source,

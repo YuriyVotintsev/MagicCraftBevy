@@ -3,6 +3,7 @@ use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::{BlueprintActivationInput, BlueprintRegistry, SpawnSource};
 use crate::blueprints::context::TargetInfo;
+use crate::coords::vec3_to_2d;
 
 #[blueprint_component]
 pub struct UseAbilities {
@@ -64,7 +65,7 @@ fn use_abilities_system(
                 for (source, mut input) in &mut activation_input_query {
                     if source.blueprint_id == bid && source.caster.entity == Some(caster_entity) {
                         input.pressed = true;
-                        input.target = TargetInfo::from_direction(direction.truncate());
+                        input.target = TargetInfo::from_direction(vec3_to_2d(direction));
                     }
                 }
             }

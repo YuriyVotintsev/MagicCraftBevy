@@ -34,7 +34,8 @@
       "Bash(cargo fix:*)",
       "Bash(cargo test:*)",
       "Bash(git log:*)",
-      "WebFetch(domain:www.pathofexile.com)"
+      "WebFetch(domain:www.pathofexile.com)",
+      "WebFetch(domain:idanarye.github.io)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"

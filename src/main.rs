@@ -3,6 +3,7 @@ mod artifacts;
 mod balance;
 mod blueprints;
 mod arena;
+pub mod coords;
 pub mod expr;
 mod common;
 mod faction;
@@ -36,7 +37,7 @@ fn toggle_physics_debug(key: Res<ButtonInput<KeyCode>>, mut store: ResMut<GizmoC
     }
 }
 
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use affixes::AffixPlugin;

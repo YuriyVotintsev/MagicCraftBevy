@@ -18,7 +18,10 @@ pub fn register_systems(app: &mut App) {
 }
 
 fn setup_shadow_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    let mesh = meshes.add(Ellipse::new(0.4, 0.1));
+    let mesh = meshes.add(
+        Mesh::from(Circle::new(0.5))
+            .rotated_by(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2)),
+    );
     commands.insert_resource(ShadowMeshHandle(mesh));
 }
 
@@ -26,18 +29,20 @@ fn init_shadow(
     mut commands: Commands,
     query: Query<(Entity, &Shadow), Added<Shadow>>,
     shadow_mesh: Option<Res<ShadowMeshHandle>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     let Some(shadow_mesh) = shadow_mesh else { return };
 
     for (entity, shadow) in &query {
-        let material = materials.add(ColorMaterial::from_color(
-            Color::srgba(0.0, 0.0, 0.0, shadow.opacity),
-        ));
+        let material = materials.add(StandardMaterial {
+            base_color: Color::srgba(0.0, 0.0, 0.0, shadow.opacity),
+            unlit: true,
+            alpha_mode: AlphaMode::Blend,
+            ..default()
+        });
         commands.entity(entity).insert((
-            Mesh2d(shadow_mesh.0.clone()),
-            MeshMaterial2d(material),
-            Transform::from_translation(Vec3::new(0.0, shadow.y_offset, -0.001)),
+            Mesh3d(shadow_mesh.0.clone()),
+            MeshMaterial3d(material),
         ));
     }
 }

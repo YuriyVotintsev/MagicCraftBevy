@@ -1,8 +1,9 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::SpawnSource;
+use crate::coords::{vec2_to_3d, vec3_to_2d, COLLIDER_HALF_HEIGHT};
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
@@ -34,10 +35,11 @@ fn find_nearest_enemy_system(
     transforms: Query<&Transform>,
 ) {
     for (entity, finder, source) in &query {
-        let caster_pos = transforms
+        let caster_pos_2d = transforms
             .get(finder.center)
-            .map(|t| t.translation.truncate())
+            .map(|t| vec3_to_2d(t.translation))
             .unwrap_or(Vec2::ZERO);
+        let caster_pos_3d = vec2_to_3d(caster_pos_2d);
 
         let target_layer = match source.caster_faction {
             Faction::Player => GameLayer::Enemy,
@@ -45,17 +47,17 @@ fn find_nearest_enemy_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(target_layer);
-        let shape = Collider::circle(finder.size / 2.0);
-        let hits = spatial_query.shape_intersections(&shape, caster_pos, 0.0, &filter);
+        let shape = Collider::cylinder(finder.size / 2.0, COLLIDER_HALF_HEIGHT);
+        let hits = spatial_query.shape_intersections(&shape, caster_pos_3d, Quat::IDENTITY, &filter);
 
         let target = hits
             .iter()
             .filter_map(|&e| {
-                let pos = transforms.get(e).ok()?.translation.truncate();
-                Some((caster_pos.distance_squared(pos), e, pos))
+                let pos = vec3_to_2d(transforms.get(e).ok()?.translation);
+                Some((caster_pos_2d.distance_squared(pos), e, pos))
             })
             .min_by(|(dist_a, _, _), (dist_b, _, _)| dist_a.total_cmp(dist_b))
-            .map(|(_, e, pos)| (e, pos.extend(0.0)));
+            .map(|(_, e, pos)| (e, vec2_to_3d(pos)));
 
         if let Some((target_entity, target_pos)) = target {
             commands.entity(entity).insert(FoundTarget(target_entity, target_pos));

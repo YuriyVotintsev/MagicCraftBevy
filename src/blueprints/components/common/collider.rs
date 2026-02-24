@@ -1,8 +1,9 @@
-use avian2d::prelude::{Collider as AvianCollider, *};
+use avian3d::prelude::{Collider as AvianCollider, *};
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 use serde::Deserialize;
 
+use crate::coords::COLLIDER_HALF_HEIGHT;
 use crate::physics::GameLayer;
 use crate::Faction;
 
@@ -29,8 +30,8 @@ fn init_collider(
 ) {
     for (entity, collider, faction) in &query {
         let avian_collider = match collider.shape {
-            Shape::Circle => AvianCollider::circle(0.5),
-            Shape::Rectangle => AvianCollider::rectangle(1.0, 1.0),
+            Shape::Circle => AvianCollider::cylinder(0.5, COLLIDER_HALF_HEIGHT),
+            Shape::Rectangle => AvianCollider::cuboid(1.0, COLLIDER_HALF_HEIGHT * 2.0, 1.0),
         };
 
         if collider.sensor {

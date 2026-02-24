@@ -1,7 +1,8 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::coords::{vec2_to_3d, vec3_to_2d};
 use crate::blueprints::SpawnSource;
 use crate::common::AttachedTo;
 use crate::schedule::GameSet;
@@ -72,9 +73,9 @@ fn init_boomerang(
         commands.entity(entity).insert((
             AttachedTo { owner: boomerang.return_to },
             RigidBody::Kinematic,
-            LinearVelocity(direction * boomerang.speed),
+            LinearVelocity(vec2_to_3d(direction) * boomerang.speed),
             BoomerangState::default(),
-            Transform::from_translation(position.extend(0.0)),
+            Transform::from_translation(vec2_to_3d(position)),
         ));
     }
 }
@@ -86,7 +87,7 @@ fn boomerang_system(
 ) {
     for (entity, attached, boomerang, mut state, transform, mut velocity) in &mut query {
         if !state.returning {
-            let distance = transform.translation.truncate().distance(boomerang.spawn_position);
+            let distance = vec3_to_2d(transform.translation).distance(boomerang.spawn_position);
             if distance >= boomerang.max_distance {
                 state.returning = true;
             }
@@ -102,8 +103,8 @@ fn boomerang_system(
                     continue;
                 }
 
-                let direction = to_owner.truncate().normalize();
-                velocity.0 = direction * boomerang.speed;
+                let direction = vec3_to_2d(to_owner).normalize();
+                velocity.0 = vec2_to_3d(direction) * boomerang.speed;
             } else {
                 commands.entity(entity).despawn();
             }

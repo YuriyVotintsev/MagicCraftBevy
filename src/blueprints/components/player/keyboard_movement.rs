@@ -1,7 +1,9 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::arena::CameraYaw;
+use crate::coords::vec2_to_3d;
 use crate::MovementLocked;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, StatRegistry};
@@ -21,6 +23,7 @@ pub fn register_systems(app: &mut App) {
 
 fn keyboard_movement_system(
     keyboard: Res<ButtonInput<KeyCode>>,
+    camera_yaw: Res<CameraYaw>,
     stat_registry: Res<StatRegistry>,
     mut query: Query<(&mut LinearVelocity, &ComputedStats), (With<KeyboardMovement>, Without<MovementLocked>)>,
 ) {
@@ -46,9 +49,13 @@ fn keyboard_movement_system(
             .unwrap_or_default();
 
         velocity.0 = if direction != Vec2::ZERO {
-            direction.normalize() * speed
+            let yaw = camera_yaw.0;
+            let forward = Vec2::new(-yaw.sin(), yaw.cos());
+            let right = Vec2::new(yaw.cos(), yaw.sin());
+            let rotated = forward * direction.y + right * direction.x;
+            vec2_to_3d(rotated.normalize()) * speed
         } else {
-            Vec2::ZERO
+            Vec3::ZERO
         };
     }
 }

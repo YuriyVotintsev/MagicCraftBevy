@@ -1,10 +1,12 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 use serde::Deserialize;
 
+use crate::arena::CameraYaw;
 use crate::blueprints::{BlueprintActivationInput, SpawnSource};
 use crate::blueprints::context::TargetInfo;
+use crate::coords::vec3_to_2d;
 use crate::player::{SelectedSpells, SpellSlot};
 use crate::schedule::GameSet;
 use crate::wave::WavePhase;
@@ -77,13 +79,12 @@ pub fn register_systems(app: &mut App) {
 fn player_input_system(
     mouse: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    windows: Query<&Window>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
-    player_query: Query<(Entity, &Transform, &LinearVelocity, &PlayerInput)>,
+    camera_yaw: Res<CameraYaw>,
+    player_query: Query<(Entity, &LinearVelocity, &PlayerInput)>,
     selected_spells: Res<SelectedSpells>,
     mut activation_query: Query<(&SpawnSource, &mut BlueprintActivationInput)>,
 ) {
-    for (player_entity, player_transform, velocity, player_input) in &player_query {
+    for (player_entity, velocity, player_input) in &player_query {
         for binding in &player_input.bindings {
             let triggered = match binding.trigger {
                 InputTrigger::MouseHold(btn) => mouse.pressed(btn.into()),
@@ -101,19 +102,12 @@ fn player_input_system(
 
             let target = match binding.targeting {
                 TargetingMode::Cursor => {
-                    let Ok(window) = windows.single() else { continue };
-                    let Ok((camera, camera_transform)) = camera_query.single() else { continue };
-                    let Some(cursor_pos) = window.cursor_position() else { continue };
-                    let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else { continue };
-                    let player_pos = player_transform.translation.truncate();
-                    let direction = (world_pos - player_pos).normalize_or_zero();
-                    if direction == Vec2::ZERO {
-                        continue;
-                    }
+                    let yaw = camera_yaw.0;
+                    let direction = Vec2::new(-yaw.sin(), yaw.cos());
                     TargetInfo::from_direction(direction)
                 }
                 TargetingMode::MovementDirection => {
-                    TargetInfo::from_direction(velocity.0.normalize_or_zero())
+                    TargetInfo::from_direction(vec3_to_2d(velocity.0).normalize_or_zero())
                 }
                 TargetingMode::Untargeted => TargetInfo::EMPTY,
             };

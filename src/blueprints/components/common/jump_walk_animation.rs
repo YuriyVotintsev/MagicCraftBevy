@@ -1,6 +1,8 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
+
+use crate::arena::{CameraYaw, RenderSettings};
 
 #[blueprint_component]
 pub struct JumpWalkAnimation {
@@ -32,6 +34,8 @@ fn init(mut commands: Commands, query: Query<Entity, Added<JumpWalkAnimation>>) 
 
 pub fn animate(
     time: Res<Time>,
+    settings: Res<RenderSettings>,
+    yaw: Res<CameraYaw>,
     mut query: Query<(
         &JumpWalkAnimation,
         &mut JumpWalkAnimationState,
@@ -41,6 +45,7 @@ pub fn animate(
     velocity_query: Query<&LinearVelocity>,
 ) {
     let dt = time.delta_secs();
+    let sprite_tilt = Quat::from_rotation_x(-settings.sprite_tilt.to_radians());
     for (anim, mut state, mut transform, child_of) in &mut query {
         let moving = velocity_query
             .get(child_of.parent())
@@ -60,7 +65,7 @@ pub fn animate(
         let y = state.phase.sin().abs() * anim.bounce_height * state.amplitude;
         let tilt = state.phase.cos() * anim.max_tilt.to_radians() * state.amplitude;
         transform.translation.y = y;
-        transform.rotation = Quat::from_rotation_z(tilt);
+        transform.rotation = Quat::from_rotation_y(yaw.0) * sprite_tilt * Quat::from_rotation_z(tilt);
         transform.scale = Vec3::ONE;
     }
 }

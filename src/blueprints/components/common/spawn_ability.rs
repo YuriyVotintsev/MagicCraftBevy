@@ -3,6 +3,7 @@ use magic_craft_macros::blueprint_component;
 use rand::Rng;
 
 use crate::blueprints::{BlueprintRegistry, SpawnSource, spawn_blueprint_entity};
+use crate::coords::vec2_to_3d;
 use crate::schedule::GameSet;
 
 #[blueprint_component]
@@ -31,7 +32,7 @@ fn init_spawn(
         );
         let spawn_pos = pos + offset;
 
-        commands.entity(entity).insert(Transform::from_translation(spawn_pos.extend(0.0)));
+        commands.entity(entity).insert(Transform::from_translation(vec2_to_3d(spawn_pos)));
 
         if let Some(bid) = blueprint_registry.get_id(&spawn.blueprint) {
             spawn_blueprint_entity(&mut commands, entity, source.caster_faction, bid, true);

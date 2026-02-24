@@ -321,13 +321,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
-name = "avian2d"
+name = "avian3d"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "060ae40aced85ed01296f556ed1909fcafe81a5e5059889bed126339ccd55b43"
+checksum = "b82608b43397affac139547dfa9beb3208034c53e1a3cfe5d4079db1af362104"
 dependencies = [
  "approx",
- "arrayvec",
  "avian_derive",
  "bevy",
  "bevy_heavy",
@@ -339,8 +338,8 @@ dependencies = [
  "glam_matrix_extras",
  "itertools 0.13.0",
  "nalgebra",
- "parry2d",
- "parry2d-f64",
+ "parry3d",
+ "parry3d-f64",
  "slab",
  "smallvec",
  "thiserror 2.0.18",
@@ -1435,7 +1434,7 @@ dependencies = [
  "crossbeam-queue",
  "derive_more",
  "futures-lite",
- "heapless",
+ "heapless 0.9.2",
  "pin-project",
 ]
 
@@ -2926,6 +2925,16 @@ dependencies = [
 
 [[package]]
 name = "heapless"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bfb9eb618601c89945a70e254898da93b13be0388091d42117462b265bb3fad"
+dependencies = [
+ "hash32",
+ "stable_deref_trait",
+]
+
+[[package]]
+name = "heapless"
 version = "0.9.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af2455f757db2b292a9b1768c4b70186d443bcb3b316252d6b540aec1cd89ed"
@@ -3223,7 +3232,7 @@ name = "magic_craft_bevy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "avian2d",
+ "avian3d",
  "bevy",
  "bevy_tweening",
  "magic_craft_macros",
@@ -3941,10 +3950,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "parry2d"
+name = "parry3d"
 version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef681740349cec3ab9b5996b03b459b383b6998e1ffcb2804e8b57eb1e8491d9"
+checksum = "e99471b7b6870f7fe406d5611dd4b4c9b07aa3e5436b1d27e1515f9832bb0c6b"
 dependencies = [
  "approx",
  "arrayvec",
@@ -3960,18 +3969,20 @@ dependencies = [
  "num-traits",
  "ordered-float",
  "rayon",
+ "rstar",
  "simba",
  "slab",
  "smallvec",
  "spade",
+ "static_assertions",
  "thiserror 2.0.18",
 ]
 
 [[package]]
-name = "parry2d-f64"
+name = "parry3d-f64"
 version = "0.25.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "835d4ca2b68026b04a75ca6196da961d8c0895420eacc9cc2201f7ad54775780"
+checksum = "38fe282b81b60a2aee7f24db25ea73b3c82f6451888eeb5936b621adb87aa653"
 dependencies = [
  "approx",
  "arrayvec",
@@ -3987,6 +3998,7 @@ dependencies = [
  "num-traits",
  "ordered-float",
  "rayon",
+ "rstar",
  "simba",
  "slab",
  "smallvec",
@@ -4426,6 +4438,17 @@ name = "roxmltree"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c20b6793b5c2fa6553b250154b78d6d0db37e72700ae35fad9387a46f487c97"
+
+[[package]]
+name = "rstar"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "421400d13ccfd26dfa5858199c30a5d76f9c54e0dba7575273025b43c5175dbb"
+dependencies = [
+ "heapless 0.8.0",
+ "num-traits",
+ "smallvec",
+]
 
 [[package]]
 name = "rustc-hash"

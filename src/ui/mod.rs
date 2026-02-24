@@ -68,6 +68,7 @@ impl Plugin for UiPlugin {
                 Update,
                 (
                     hud::update_hud.after(GameSet::Damage),
+                    hud::slider_system,
                     artifact_panel::rebuild_artifact_panel,
                 )
                     .run_if(in_state(GameState::Playing)),
@@ -122,6 +123,11 @@ impl Plugin for UiPlugin {
                     artifact_tooltip::update_artifact_tooltip,
                     affix_shop::update_orb_tooltip,
                 )
+                    .run_if(in_state(GameState::Playing)),
+            )
+            .add_systems(
+                PostUpdate,
+                damage_numbers::project_damage_numbers
                     .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnEnter(CombatPhase::Paused), pause_menu::spawn_pause_menu)
