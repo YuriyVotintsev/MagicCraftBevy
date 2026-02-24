@@ -7,7 +7,8 @@ use crate::GameState;
 use assets::{
     AffixPoolAsset, AffixPoolLoader, ArtifactDefAsset, ArtifactDefLoader, BlueprintDefAsset,
     BlueprintDefLoader, GameBalanceAsset, GameBalanceLoader, HeroClassAsset, HeroClassLoader,
-    OrbConfigAsset, OrbConfigLoader, StatsConfigAsset, StatsConfigLoader,
+    OrbConfigAsset, OrbConfigLoader, PassivePoolAsset, PassivePoolLoader, StatsConfigAsset,
+    StatsConfigLoader,
 };
 use systems::LoadingState;
 
@@ -22,6 +23,7 @@ impl Plugin for LoadingPlugin {
             .init_asset::<AffixPoolAsset>()
             .init_asset::<OrbConfigAsset>()
             .init_asset::<GameBalanceAsset>()
+            .init_asset::<PassivePoolAsset>()
             .register_asset_loader(StatsConfigLoader)
             .register_asset_loader(BlueprintDefLoader)
             .register_asset_loader(ArtifactDefLoader)
@@ -29,6 +31,7 @@ impl Plugin for LoadingPlugin {
             .register_asset_loader(AffixPoolLoader)
             .register_asset_loader(OrbConfigLoader)
             .register_asset_loader(GameBalanceLoader)
+            .register_asset_loader(PassivePoolLoader)
             .init_resource::<LoadingState>()
             .add_systems(OnEnter(GameState::Loading), systems::start_loading)
             .add_systems(

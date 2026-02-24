@@ -12,9 +12,11 @@ use crate::expr::parser::{TypedExpr, StatAtomParser, parse_expr_string_with};
 use crate::stats::{StatEvalKind, StatCalculators, StatRegistry};
 use crate::stats::loader::StatEvalKindRaw;
 
+use crate::skill_tree::types::PassiveNodePool;
+
 use super::assets::{
     AffixPoolAsset, ArtifactDefAsset, BlueprintDefAsset, GameBalanceAsset, HeroClassAsset,
-    OrbConfigAsset, StatsConfigAsset,
+    OrbConfigAsset, PassivePoolAsset, StatsConfigAsset,
 };
 
 #[derive(Resource, Default)]
@@ -28,6 +30,7 @@ pub struct LoadingState {
     pub artifacts_folder: Option<Handle<LoadedFolder>>,
     pub affixes_folder: Option<Handle<LoadedFolder>>,
     pub orbs_handle: Option<Handle<OrbConfigAsset>>,
+    pub passives_handle: Option<Handle<PassivePoolAsset>>,
 }
 
 #[derive(Default, PartialEq, Clone, Copy)]
@@ -143,6 +146,7 @@ pub fn check_stats_loaded(
     loading_state.artifacts_folder = Some(asset_server.load_folder("artifacts"));
     loading_state.affixes_folder = Some(asset_server.load_folder("affixes"));
     loading_state.orbs_handle = Some(asset_server.load("orbs/config.orbs.ron"));
+    loading_state.passives_handle = Some(asset_server.load("skill_tree/passives.ron"));
 
     loading_state.phase = LoadingPhase::WaitingForContent;
     info!("Loading content assets...");
@@ -157,6 +161,7 @@ pub fn check_content_loaded(
     artifact_assets: Res<Assets<ArtifactDefAsset>>,
     affix_pool_assets: Res<Assets<AffixPoolAsset>>,
     orb_config_assets: Res<Assets<OrbConfigAsset>>,
+    passive_pool_assets: Res<Assets<PassivePoolAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
     calc_registry: Option<Res<CalcRegistry>>,
@@ -194,6 +199,9 @@ pub fn check_content_loaded(
     let Some(orbs_handle) = &loading_state.orbs_handle else {
         return;
     };
+    let Some(passives_handle) = &loading_state.passives_handle else {
+        return;
+    };
 
     for handle in [
         heroes_folder_handle,
@@ -212,6 +220,12 @@ pub fn check_content_loaded(
 
     if !matches!(
         asset_server.get_load_state(orbs_handle.id()),
+        Some(LoadState::Loaded)
+    ) {
+        return;
+    }
+    if !matches!(
+        asset_server.get_load_state(passives_handle.id()),
         Some(LoadState::Loaded)
     ) {
         return;
@@ -324,6 +338,12 @@ pub fn check_content_loaded(
             let id = orb_registry.register(&raw.id, def);
             info!("Registered orb: {} ({:?})", raw.name, id);
         }
+    }
+
+    if let Some(passive_asset) = passive_pool_assets.get(passives_handle.id()) {
+        let pool = PassiveNodePool::from_raw(&passive_asset.0, &stat_registry);
+        info!("Loaded passive node pool: {} definitions", pool.defs.len());
+        commands.insert_resource(pool);
     }
 
     loading_state.phase = LoadingPhase::Finalizing;

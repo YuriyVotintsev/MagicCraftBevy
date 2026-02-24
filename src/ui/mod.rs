@@ -9,6 +9,7 @@ mod loading;
 mod main_menu;
 mod pause_menu;
 mod shop;
+pub mod skill_tree_view;
 mod spell_selection;
 pub mod stat_line_builder;
 
@@ -22,7 +23,10 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Loading), loading::spawn_loading_screen)
+        app.init_resource::<skill_tree_view::ShopView>()
+            .init_resource::<skill_tree_view::PanState>()
+            .init_resource::<skill_tree_view::ZoomLevel>()
+            .add_systems(OnEnter(GameState::Loading), loading::spawn_loading_screen)
             .add_systems(OnEnter(GameState::MainMenu), main_menu::spawn_main_menu)
             .add_systems(
                 Update,
@@ -60,6 +64,7 @@ impl Plugin for UiPlugin {
                 Update,
                 game_over::game_over_button_system.run_if(in_state(GameState::GameOver)),
             )
+            .add_systems(Startup, skill_tree_view::setup_skill_tree_meshes)
             .add_systems(
                 OnEnter(GameState::Playing),
                 (hud::spawn_hud, artifact_panel::spawn_artifact_panel),
@@ -72,7 +77,14 @@ impl Plugin for UiPlugin {
                 )
                     .run_if(in_state(GameState::Playing)),
             )
-            .add_systems(OnEnter(WavePhase::Shop), shop::spawn_shop)
+            .add_systems(
+                OnEnter(WavePhase::Shop),
+                (
+                    shop::spawn_shop,
+                    skill_tree_view::reset_shop_view,
+                    skill_tree_view::spawn_tab_overlay,
+                ),
+            )
             .add_systems(
                 Update,
                 (
@@ -103,16 +115,33 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
+                    skill_tree_view::toggle_shop_view,
+                    skill_tree_view::on_shop_view_changed,
+                    skill_tree_view::skill_tree_click.in_set(ShopSet::Input),
+                )
+                    .run_if(in_state(WavePhase::Shop)),
+            )
+            .add_systems(
+                Update,
+                (
                     shop::next_wave_system,
                     shop::update_button_colors,
                     artifact_panel::update_panel_button_colors,
                     affix_shop::update_orb_button_colors,
+                    skill_tree_view::update_tab_colors,
+                    skill_tree_view::update_node_visuals,
+                    skill_tree_view::skill_tree_pan_zoom,
+                    skill_tree_view::skill_tree_hover,
+                    skill_tree_view::update_skill_points_text,
                 )
                     .run_if(in_state(WavePhase::Shop)),
             )
             .add_systems(
                 OnExit(WavePhase::Shop),
-                artifact_panel::clear_artifact_selection,
+                (
+                    artifact_panel::clear_artifact_selection,
+                    skill_tree_view::cleanup_skill_tree_view,
+                ),
             )
             .add_systems(
                 Update,

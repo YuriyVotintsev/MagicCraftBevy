@@ -14,6 +14,7 @@ mod movement;
 mod physics;
 mod player;
 mod schedule;
+mod skill_tree;
 mod stats;
 mod ui;
 mod wave;
@@ -51,6 +52,7 @@ use schedule::{GameSet, PostGameSet, ShopSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
+use skill_tree::SkillTreePlugin;
 use wave::{CombatPhase, WavePhase, WavePlugin};
 
 #[cfg(not(feature = "headless"))]
@@ -199,6 +201,7 @@ fn main() {
             BlueprintPlugin,
             ArtifactPlugin,
             AffixPlugin,
+            SkillTreePlugin,
             HitFlashPlugin,
             TweeningPlugin,
             UiPlugin,
