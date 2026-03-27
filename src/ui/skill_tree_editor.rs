@@ -25,6 +25,7 @@ pub struct EditorMode(pub bool);
 #[derive(Resource, Default)]
 struct EditorState {
     dragging: Option<usize>,
+    drag_offset: Vec2,
     drag_moved: bool,
     selected: Option<usize>,
     edge_start: Option<usize>,
@@ -103,6 +104,15 @@ struct RemoveStatBtn(usize, usize);
 struct StatNameBtn(usize, usize);
 
 #[derive(Component)]
+struct CreateNodePopup;
+
+#[derive(Component)]
+struct CreateNodeBtn {
+    position: Vec2,
+    grid_cell: IVec2,
+}
+
+#[derive(Component)]
 struct StatDropdown;
 
 #[derive(Component)]
@@ -134,6 +144,7 @@ impl Plugin for SkillTreeEditorPlugin {
                 Update,
                 (
                     editor_node_drag,
+                    editor_update_node_transforms,
                     editor_update_edge_transforms,
                     editor_edge_mode,
                     editor_delete,
@@ -152,6 +163,8 @@ impl Plugin for SkillTreeEditorPlugin {
                     editor_stat_buttons,
                     editor_stat_name_click,
                     editor_stat_dropdown_select,
+                    editor_create_node_confirm,
+                    editor_dismiss_popups,
                     editor_update_grid_lines,
                     editor_update_selected_outline,
                     editor_update_edge_preview,
@@ -177,6 +190,8 @@ fn toggle_editor(
     outline_query: Query<Entity, With<EditorSelectedOutline>>,
     preview_query: Query<Entity, With<EditorEdgePreview>>,
     prop_query: Query<Entity, With<NodePropertyPanel>>,
+    popup_query: Query<Entity, With<CreateNodePopup>>,
+    dropdown_query: Query<Entity, With<StatDropdown>>,
     grid_settings: Option<Res<GridSettings>>,
 ) {
     if !keyboard.just_pressed(KeyCode::Backquote) {
@@ -196,6 +211,8 @@ fn toggle_editor(
             .chain(outline_query.iter())
             .chain(preview_query.iter())
             .chain(prop_query.iter())
+            .chain(popup_query.iter())
+            .chain(dropdown_query.iter())
         {
             commands.entity(entity).despawn();
         }
@@ -364,62 +381,73 @@ fn editor_node_drag(
         best_idx
     };
 
-    // LMB: drag nodes
+    // LMB: drag nodes + select on click (no drag)
     if mouse.just_pressed(MouseButton::Left) && editor_state.dragging.is_none() {
         if let Some(idx) = find_node_at(world_pos, graph) {
             editor_state.dragging = Some(idx);
+            editor_state.drag_offset = graph.nodes[idx].position - world_pos;
             editor_state.drag_moved = false;
         }
     }
 
     if let Some(idx) = editor_state.dragging {
+        let offset = editor_state.drag_offset;
         if mouse.pressed(MouseButton::Left) {
-            graph.nodes[idx].position = world_pos;
-            for (stn, mut transform) in &mut node_query {
-                if stn.graph_index == idx {
-                    transform.translation = world_pos.extend(1.0);
+            let new_pos = world_pos + offset;
+            if new_pos.distance(graph.nodes[idx].position) > 2.0 {
+                graph.nodes[idx].position = new_pos;
+                for (stn, mut transform) in &mut node_query {
+                    if stn.graph_index == idx {
+                        transform.translation = new_pos.extend(1.0);
+                    }
                 }
+                editor_state.drag_moved = true;
             }
-            editor_state.drag_moved = true;
         }
 
         if mouse.just_released(MouseButton::Left) {
-            let snapped = snap_to_grid(world_pos, grid_size);
-            graph.nodes[idx].position = snapped;
-            graph.nodes[idx].grid_cell = world_to_grid(snapped, grid_size);
-            for (stn, mut transform) in &mut node_query {
-                if stn.graph_index == idx {
-                    transform.translation = snapped.extend(1.0);
+            if editor_state.drag_moved {
+                let snapped = snap_to_grid(world_pos + offset, grid_size);
+                graph.nodes[idx].position = snapped;
+                graph.nodes[idx].grid_cell = world_to_grid(snapped, grid_size);
+                for (stn, mut transform) in &mut node_query {
+                    if stn.graph_index == idx {
+                        transform.translation = snapped.extend(1.0);
+                    }
                 }
             }
+
+            if !editor_state.drag_moved {
+                editor_state.selected = Some(idx);
+                spawn_property_panel(&mut commands, graph, idx, &prop_query, &stat_registry);
+            }
+
             editor_state.dragging = None;
             editor_state.drag_moved = false;
             graph.set_changed();
         }
     }
 
-    // RMB: click on node → select + open property panel; click on empty → create node
+    // RMB on empty → show "Create Node" confirmation popup
     if mouse.just_pressed(MouseButton::Right) {
-        if let Some(idx) = find_node_at(world_pos, graph) {
-            editor_state.selected = Some(idx);
-            spawn_property_panel(&mut commands, graph, idx, &prop_query, &stat_registry);
-        } else {
+        if find_node_at(world_pos, graph).is_none() {
             let snapped = snap_to_grid(world_pos, grid_size);
-            let grid_cell = world_to_grid(snapped, grid_size);
-            let new_idx = graph.nodes.len();
+            spawn_create_node_popup(&mut commands, cursor_pos, snapped, grid_size);
+        }
+    }
+}
 
-            graph.nodes.push(GraphNode {
-                def_index: new_idx,
-                position: snapped,
-                grid_cell,
-                rarity: Rarity(0),
-                rolled_values: Vec::new(),
-                allocated: false,
-                name: format!("Node {}", new_idx),
-            });
-            graph.adjacency.push(Vec::new());
-            editor_state.selected = Some(new_idx);
-            graph.set_changed();
+fn editor_update_node_transforms(
+    graph: Option<Res<SkillGraph>>,
+    mut node_query: Query<(&SkillTreeNode, &mut Transform)>,
+) {
+    let Some(graph) = graph else { return };
+    if !graph.is_changed() {
+        return;
+    }
+    for (stn, mut transform) in &mut node_query {
+        if let Some(node) = graph.nodes.get(stn.graph_index) {
+            transform.translation = node.position.extend(1.0);
         }
     }
 }
@@ -528,7 +556,7 @@ fn editor_delete(
     let Some(mut graph) = graph else { return };
     let Some(idx) = editor_state.selected else { return };
 
-    if graph.nodes[idx].is_start() {
+    if idx == graph.start_node {
         return;
     }
 
@@ -548,10 +576,8 @@ fn editor_delete(
     }
     graph.adjacency = adjacency;
 
-    for node in &mut graph.nodes {
-        if node.def_index != usize::MAX && node.def_index > idx {
-            node.def_index -= 1;
-        }
+    if graph.start_node > idx {
+        graph.start_node -= 1;
     }
 
     editor_state.selected = None;
@@ -625,21 +651,17 @@ fn editor_save(
 
 fn graph_to_raw(graph: &SkillGraph, stat_registry: &StatRegistry, grid_size: f32) -> SkillTreeDefRaw {
     let nodes = graph.nodes.iter().map(|node| {
-        let modifiers = if node.is_start() {
+        let modifiers = if node.rolled_values.is_empty() {
             vec![]
         } else {
-            if node.rolled_values.is_empty() {
-                vec![]
-            } else {
-                vec![ModifierDefRaw {
-                    stats: node.rolled_values.iter().map(|(stat_id, value)| {
-                        StatRangeRaw::Fixed {
-                            stat: stat_registry.name(*stat_id).unwrap_or("unknown").to_string(),
-                            value: *value,
-                        }
-                    }).collect()
-                }]
-            }
+            vec![ModifierDefRaw {
+                stats: node.rolled_values.iter().map(|(stat_id, value)| {
+                    StatRangeRaw::Fixed {
+                        stat: stat_registry.name(*stat_id).unwrap_or("unknown").to_string(),
+                        value: *value,
+                    }
+                }).collect()
+            }]
         };
         SkillTreeNodeRaw {
             name: node.name.clone(),
@@ -957,6 +979,7 @@ fn editor_grid_size_buttons(
     mut grid_settings: Option<ResMut<GridSettings>>,
     mut graph: Option<ResMut<SkillGraph>>,
     mut grid_text: Query<&mut Text, With<GridSizeInput>>,
+    mut node_query: Query<(&SkillTreeNode, &mut Transform)>,
 ) {
     let mut delta = 0.0_f32;
     for interaction in &plus_query {
@@ -977,6 +1000,11 @@ fn editor_grid_size_buttons(
                 node.grid_cell.x as f32 * new_size,
                 node.grid_cell.y as f32 * new_size,
             );
+        }
+        for (stn, mut transform) in &mut node_query {
+            if let Some(node) = graph.nodes.get(stn.graph_index) {
+                transform.translation = node.position.extend(1.0);
+            }
         }
         graph.set_changed();
     }
@@ -1127,7 +1155,7 @@ fn spawn_property_panel(
         children_list.push(row);
     }
 
-    if !node.is_start() {
+    {
         children_list.push(commands.spawn((
             Button,
             AddStatBtn(idx),
@@ -1303,6 +1331,102 @@ fn editor_stat_dropdown_select(
 
         if let (Some(idx), Some(ref graph)) = (editor_state.selected, &graph) {
             spawn_property_panel(&mut commands, graph, idx, &prop_query, &stat_registry);
+        }
+    }
+}
+
+fn spawn_create_node_popup(commands: &mut Commands, cursor_pos: Vec2, snapped: Vec2, grid_size: f32) {
+    let grid_cell = IVec2::new(
+        (snapped.x / grid_size).round() as i32,
+        (snapped.y / grid_size).round() as i32,
+    );
+
+    commands.spawn((
+        CreateNodePopup,
+        DespawnOnExit(WavePhase::Shop),
+        GlobalZIndex(150),
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(cursor_pos.x),
+            top: Val::Px(cursor_pos.y),
+            ..default()
+        },
+        children![(
+            Button,
+            CreateNodeBtn { position: snapped, grid_cell },
+            Node {
+                padding: UiRect::all(Val::Px(8.0)),
+                ..default()
+            },
+            BackgroundColor(BUTTON_BG),
+            children![(
+                Text(format!("Create Node ({}, {})", grid_cell.x, grid_cell.y)),
+                TextFont { font_size: 14.0, ..default() },
+                TextColor(TEXT_COLOR),
+            )]
+        )],
+    ));
+}
+
+fn editor_create_node_confirm(
+    mut commands: Commands,
+    interaction_query: Query<(&Interaction, &CreateNodeBtn), Changed<Interaction>>,
+    mut graph: Option<ResMut<SkillGraph>>,
+    mut editor_state: ResMut<EditorState>,
+    popup_query: Query<Entity, With<CreateNodePopup>>,
+) {
+    for (interaction, btn) in &interaction_query {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        let Some(ref mut graph) = graph else { continue };
+        let new_idx = graph.nodes.len();
+
+        graph.nodes.push(GraphNode {
+            position: btn.position,
+            grid_cell: btn.grid_cell,
+            rarity: Rarity(0),
+            rolled_values: Vec::new(),
+            allocated: false,
+            name: format!("Node {}", new_idx),
+        });
+        graph.adjacency.push(Vec::new());
+        editor_state.selected = Some(new_idx);
+        graph.set_changed();
+
+        for entity in &popup_query {
+            commands.entity(entity).despawn();
+        }
+    }
+}
+
+fn editor_dismiss_popups(
+    mut commands: Commands,
+    mouse: Res<ButtonInput<MouseButton>>,
+    popup_query: Query<Entity, With<CreateNodePopup>>,
+    dropdown_query: Query<Entity, With<StatDropdown>>,
+    popup_btn: Query<&Interaction, With<CreateNodeBtn>>,
+    dropdown_btn: Query<&Interaction, With<StatDropdownItem>>,
+) {
+    if !mouse.just_pressed(MouseButton::Left) && !mouse.just_pressed(MouseButton::Right) {
+        return;
+    }
+    if popup_query.is_empty() && dropdown_query.is_empty() {
+        return;
+    }
+
+    let clicking_popup = popup_btn.iter().any(|i| *i == Interaction::Pressed || *i == Interaction::Hovered);
+    let clicking_dropdown = dropdown_btn.iter().any(|i| *i == Interaction::Pressed || *i == Interaction::Hovered);
+
+    if !clicking_popup {
+        for entity in &popup_query {
+            commands.entity(entity).despawn();
+        }
+    }
+    if !clicking_dropdown {
+        for entity in &dropdown_query {
+            commands.entity(entity).despawn();
         }
     }
 }

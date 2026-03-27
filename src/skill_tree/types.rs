@@ -35,7 +35,6 @@ impl SkillTreeDefRaw {
         let mut nodes = Vec::with_capacity(self.nodes.len());
 
         for (i, raw) in self.nodes.iter().enumerate() {
-            let is_start = raw.modifiers.is_empty();
             let grid_cell = IVec2::new(raw.position.0, raw.position.1);
 
             let rolled_values: Vec<(StatId, f32)> = raw
@@ -51,12 +50,11 @@ impl SkillTreeDefRaw {
                 .collect();
 
             nodes.push(GraphNode {
-                def_index: if is_start { usize::MAX } else { i },
                 position: Vec2::new(grid_cell.x as f32 * grid_size, grid_cell.y as f32 * grid_size),
                 grid_cell,
                 rarity: Rarity(0),
                 rolled_values,
-                allocated: is_start,
+                allocated: false,
                 name: raw.name.clone(),
             });
         }

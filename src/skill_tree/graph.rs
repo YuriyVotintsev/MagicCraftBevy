@@ -17,19 +17,12 @@ impl Default for GridSettings {
 
 #[derive(Debug, Clone)]
 pub struct GraphNode {
-    pub def_index: usize,
     pub position: Vec2,
     pub grid_cell: IVec2,
     pub rarity: Rarity,
     pub rolled_values: Vec<(StatId, f32)>,
     pub allocated: bool,
     pub name: String,
-}
-
-impl GraphNode {
-    pub fn is_start(&self) -> bool {
-        self.def_index == usize::MAX
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -51,6 +44,9 @@ impl SkillGraph {
         let node = &self.nodes[node_idx];
         if node.allocated {
             return false;
+        }
+        if node_idx == self.start_node {
+            return true;
         }
         self.adjacency[node_idx]
             .iter()

@@ -1,10 +1,12 @@
 (
-    grid_size: 100.0,
+    grid_size: 50.0,
     nodes: [
         (
-            name: "Start",
+            name: "Super Power!!",
             position: (0, 0),
-            modifiers: [],
+            modifiers: [
+                (stats: [Fixed(stat: "projectile_count", value: 10.0), Fixed(stat: "max_stamina_flat", value: 1.0)]),
+            ],
         ),
         (
             name: "Thick Skin",
@@ -50,9 +52,9 @@
         ),
         (
             name: "Brute Force",
-            position: (4, 1),
+            position: (4, 0),
             modifiers: [
-                (stats: [Fixed(stat: "physical_damage_flat", value: 8.0)]),
+                (stats: [Fixed(stat: "physical_damage_flat", value: 80.0)]),
             ],
         ),
         (
@@ -127,22 +129,32 @@
         ),
         (
             name: "Node 19",
-            position: (5, -1),
+            position: (9, -1),
             modifiers: [],
         ),
         (
             name: "Node 19",
-            position: (7, 1),
+            position: (6, 0),
             modifiers: [],
         ),
         (
             name: "Node 20",
-            position: (8, -1),
+            position: (7, -1),
             modifiers: [],
         ),
         (
-            name: "Node 21",
-            position: (8, -1),
+            name: "Node 22",
+            position: (7, 1),
+            modifiers: [],
+        ),
+        (
+            name: "Node 22",
+            position: (10, 0),
+            modifiers: [],
+        ),
+        (
+            name: "Node 23",
+            position: (9, 1),
             modifiers: [],
         ),
     ],
@@ -169,7 +181,11 @@
         (9, 14),
         (11, 15),
         (7, 19),
-        (18, 19),
         (19, 20),
+        (19, 21),
+        (18, 20),
+        (21, 23),
+        (23, 22),
+        (22, 18),
     ],
 )

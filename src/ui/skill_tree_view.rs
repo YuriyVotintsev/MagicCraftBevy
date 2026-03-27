@@ -111,10 +111,6 @@ fn rarity_radius(rarity: Rarity) -> f32 {
 
 fn node_color(graph: &SkillGraph, idx: usize) -> Color {
     let node = &graph.nodes[idx];
-    if node.is_start() {
-        return START_NODE_COLOR;
-    }
-
     let base_color = rarity_color(node.rarity);
     let brightness = if node.allocated {
         ALLOCATED_BRIGHTNESS
@@ -336,11 +332,7 @@ pub(crate) fn spawn_skill_tree_world(
 
     for (idx, node) in graph.nodes.iter().enumerate() {
         let color = node_color(graph, idx);
-        let radius = if node.is_start() {
-            START_NODE_RADIUS
-        } else {
-            rarity_radius(node.rarity)
-        };
+        let radius = rarity_radius(node.rarity);
 
         let mat = materials.add(ColorMaterial::from_color(color));
 
@@ -556,9 +548,6 @@ fn spawn_tooltip(
     cursor_pos: Vec2,
 ) {
     let node = &graph.nodes[idx];
-    if node.is_start() {
-        return;
-    }
 
     let left = (cursor_pos.x + 16.0).max(0.0);
     let top = (cursor_pos.y - 16.0).max(0.0);
