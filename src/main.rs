@@ -2,6 +2,7 @@ mod affixes;
 mod artifacts;
 mod balance;
 mod blueprints;
+mod coin;
 mod arena;
 pub mod expr;
 mod common;
@@ -53,6 +54,7 @@ use schedule::{GameSet, PostGameSet, ShopSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
+use coin::CoinPlugin;
 use run::RunPlugin;
 use skill_tree::SkillTreePlugin;
 use wave::{CombatPhase, WavePhase, WavePlugin};
@@ -205,6 +207,7 @@ fn main() {
             AffixPlugin,
             SkillTreePlugin,
             RunPlugin,
+            CoinPlugin,
             HitFlashPlugin,
             TweeningPlugin,
             UiPlugin,

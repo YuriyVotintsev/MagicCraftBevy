@@ -44,4 +44,5 @@ pub struct RunBalance {
     pub node_cost: u32,
     pub hp_scale_per_sec: f32,
     pub dmg_scale_per_sec: f32,
+    pub coin_attraction_duration: f32,
 }

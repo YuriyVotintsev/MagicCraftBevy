@@ -35,6 +35,10 @@
         (name: "area_of_effect_increased", eval: Sum),
         (name: "duration_flat", eval: Sum),
         (name: "duration_increased", eval: Sum),
+
+        (name: "pickup_radius_flat", eval: Sum),
+        (name: "pickup_radius_increased", eval: Sum),
+        (name: "pickup_radius", eval: Formula("calc(flat_increased, 0, pickup_radius_flat, pickup_radius_increased)")),
     ],
     calcs: [
         (
@@ -91,5 +95,7 @@
         (stats: ["area_of_effect_increased"], format: "[{+0}%] area of effect"),
         (stats: ["duration_flat"], format: "[{+0}] duration"),
         (stats: ["duration_increased"], format: "[{+0}%] duration"),
+        (stats: ["pickup_radius_flat"], format: "[{+0}] pickup radius"),
+        (stats: ["pickup_radius_increased"], format: "[{+0}%] pickup radius"),
     ],
 )

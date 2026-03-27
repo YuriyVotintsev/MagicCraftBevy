@@ -103,13 +103,10 @@ fn track_wave_kills(
     mut death_events: MessageReader<DeathEvent>,
     mut wave_state: ResMut<WaveState>,
     wave_enemy_query: Query<(), With<WaveEnemy>>,
-    mut money: ResMut<PlayerMoney>,
-    balance: Res<GameBalance>,
 ) {
     for event in death_events.read() {
         if wave_enemy_query.contains(event.entity) {
             wave_state.killed_count += 1;
-            money.earn(balance.run.coins_per_kill);
         }
     }
 }
