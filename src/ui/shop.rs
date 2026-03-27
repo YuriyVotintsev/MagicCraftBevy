@@ -212,7 +212,7 @@ pub fn spawn_shop(
 
     let header = commands
         .spawn((
-            Text(format!("Wave {} Complete!", wave_state.current_wave)),
+            Text(format!("Wave Complete!")),
             TextFont {
                 font_size: 48.0,
                 ..default()

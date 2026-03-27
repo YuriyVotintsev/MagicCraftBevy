@@ -6,6 +6,7 @@ pub struct GameBalance {
     pub wave: WaveBalance,
     pub arena: ArenaBalance,
     pub shop: ShopBalance,
+    pub run: RunBalance,
 }
 
 #[derive(Clone, Deserialize)]
@@ -35,4 +36,11 @@ pub struct ShopBalance {
     pub offerings_count: usize,
     pub base_reroll_cost: u32,
     pub sell_price_percent: u32,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct RunBalance {
+    pub coins_per_kill: u32,
+    pub hp_scale_per_sec: f32,
+    pub dmg_scale_per_sec: f32,
 }

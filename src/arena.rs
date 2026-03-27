@@ -9,7 +9,9 @@ use crate::Faction;
 use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
 use crate::blueprints::components::common::health::Health;
 use crate::physics::{GameLayer, Wall};
+use crate::run::RunState;
 use crate::schedule::GameSet;
+use crate::stats::{DirtyStats, Modifiers, StatRegistry};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 
 #[cfg(not(feature = "headless"))]
@@ -41,6 +43,12 @@ impl Plugin for ArenaPlugin {
                 (spawn_markers, process_spawn_markers, tag_wave_enemies)
                     .chain()
                     .in_set(GameSet::Spawning)
+                    .run_if(in_state(WavePhase::Combat)),
+            )
+            .add_systems(
+                Update,
+                apply_enemy_scaling
+                    .in_set(GameSet::BlueprintActivation)
                     .run_if(in_state(WavePhase::Combat)),
             )
             .add_systems(
@@ -152,22 +160,15 @@ fn spawn_markers(
         return;
     }
 
-    let remaining_to_spawn = wave_state
-        .target_count
-        .saturating_sub(wave_state.spawned_count)
-        .saturating_sub(active_markers);
-    if remaining_to_spawn == 0 {
-        return;
-    }
-
     let can_spawn = wave_state
         .max_concurrent
         .saturating_sub(total_on_arena);
-    let to_spawn = can_spawn.min(remaining_to_spawn);
 
-    if to_spawn == 0 {
+    if can_spawn == 0 {
         return;
     }
+
+    let to_spawn = can_spawn;
 
     let arena = &balance.arena;
     let mut rng = rand::rng();
@@ -222,6 +223,33 @@ fn process_spawn_markers(
 
             commands.entity(marker_entity).remove::<(Sprite, SpawnMarker)>();
             commands.entity(marker_entity).insert((WaveEnemy, DespawnOnExit(WavePhase::Combat)));
+        }
+    }
+}
+
+fn apply_enemy_scaling(
+    mut query: Query<(&mut Modifiers, &mut DirtyStats), Added<WaveEnemy>>,
+    run_state: Res<RunState>,
+    stat_registry: Res<StatRegistry>,
+    balance: Res<GameBalance>,
+) {
+    let elapsed = run_state.elapsed;
+    if elapsed <= 0.0 {
+        return;
+    }
+    let hp_bonus = elapsed * balance.run.hp_scale_per_sec;
+    let dmg_bonus = elapsed * balance.run.dmg_scale_per_sec;
+    let hp_stat = stat_registry.get("max_life_increased");
+    let dmg_stat = stat_registry.get("physical_damage_increased");
+
+    for (mut modifiers, mut dirty) in &mut query {
+        if let Some(stat) = hp_stat {
+            modifiers.add(stat, hp_bonus, None);
+            dirty.mark(stat);
+        }
+        if let Some(stat) = dmg_stat {
+            modifiers.add(stat, dmg_bonus, None);
+            dirty.mark(stat);
         }
     }
 }

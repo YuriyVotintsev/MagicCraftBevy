@@ -13,6 +13,7 @@ mod money;
 mod movement;
 mod physics;
 mod player;
+mod run;
 mod schedule;
 mod skill_tree;
 mod stats;
@@ -52,6 +53,7 @@ use schedule::{GameSet, PostGameSet, ShopSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
+use run::RunPlugin;
 use skill_tree::SkillTreePlugin;
 use wave::{CombatPhase, WavePhase, WavePlugin};
 
@@ -202,6 +204,7 @@ fn main() {
             ArtifactPlugin,
             AffixPlugin,
             SkillTreePlugin,
+            RunPlugin,
             HitFlashPlugin,
             TweeningPlugin,
             UiPlugin,

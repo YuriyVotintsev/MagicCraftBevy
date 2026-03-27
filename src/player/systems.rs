@@ -2,13 +2,13 @@ use avian2d::prelude::*;
 use bevy::prelude::*;
 
 use crate::Faction;
-use crate::GameState;
 use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
-use crate::blueprints::components::ComponentDef;
 use crate::blueprints::spawn::EntitySpawner;
-use crate::stats::DeathEvent;
+use crate::player::selected_spells::SpellSlot;
+use crate::skill_tree::graph::SkillGraph;
+use crate::wave::WavePhase;
 
-use super::{AvailableHeroes, SelectedHero, SelectedSpells};
+use super::{AvailableHeroes, SelectedSpells};
 
 #[derive(Component)]
 pub struct Player;
@@ -21,19 +21,11 @@ pub fn reset_player_velocity(mut query: Query<&mut LinearVelocity, With<Player>>
 
 pub fn spawn_player(
     mut spawner: EntitySpawner,
-    selected_hero: Res<SelectedHero>,
     available_heroes: Res<AvailableHeroes>,
     blueprint_registry: Res<BlueprintRegistry>,
-    selected_spells: Res<SelectedSpells>,
+    skill_graph: Option<Res<SkillGraph>>,
+    mut selected_spells: ResMut<SelectedSpells>,
 ) {
-    let Some(class_index) = selected_hero.0 else {
-        warn!("No hero selected, cannot spawn player");
-        return;
-    };
-    let Some(class) = available_heroes.classes.get(class_index) else {
-        warn!("Hero class index out of bounds: {}", class_index);
-        return;
-    };
     let Some(blueprint_def) = blueprint_registry.get(available_heroes.base_blueprint) else {
         warn!("Base hero blueprint not found");
         return;
@@ -43,54 +35,27 @@ pub fn spawn_player(
         return;
     };
 
-    let mut entity_def = base_entity_def.clone();
+    let entity_def = base_entity_def.clone();
 
-    if let Some(ref sprite_path) = class.sprite {
-        for comp in &mut entity_def.components {
-            if let ComponentDef::Visual(visual_def) = comp {
-                for child in &mut visual_def.children {
-                    for child_comp in &mut child.components {
-                        if let ComponentDef::Sprite(sprite_def) = child_comp {
-                            sprite_def.image = Some(sprite_path.clone());
-                        }
-                    }
-                }
+    let mut modifier_tuples: Vec<_> = Vec::new();
+    if let Some(graph) = &skill_graph {
+        for node in &graph.nodes {
+            if node.allocated && !node.is_start() {
+                modifier_tuples.extend(node.rolled_values.iter().copied());
             }
         }
     }
 
-    let modifier_tuples: Vec<_> = class.modifiers.iter()
-        .flat_map(|m| m.stats.iter().map(|sr| match sr {
-            crate::stats::StatRange::Fixed { stat, value } => (*stat, *value),
-            crate::stats::StatRange::Range { stat, min, max } => (*stat, (*min + *max) / 2.0),
-        }))
-        .collect();
     let entity = spawner.spawn_root(&entity_def, Faction::Player, &modifier_tuples);
     spawner.commands.entity(entity).insert((
         Name::new("Player"),
         Player,
-        DespawnOnExit(GameState::Playing),
+        DespawnOnExit(WavePhase::Combat),
     ));
 
-    if let Some(active_id) = selected_spells.active {
-        spawn_blueprint_entity(&mut spawner.commands, entity, Faction::Player, active_id, false);
-    }
-    if let Some(passive_id) = selected_spells.passive {
-        spawn_blueprint_entity(&mut spawner.commands, entity, Faction::Player, passive_id, false);
-    }
-    if let Some(defensive_id) = selected_spells.defensive {
-        spawn_blueprint_entity(&mut spawner.commands, entity, Faction::Player, defensive_id, false);
+    if let Some(fireball_id) = blueprint_registry.get_id("fireball") {
+        selected_spells.set(SpellSlot::Active, fireball_id);
+        spawn_blueprint_entity(&mut spawner.commands, entity, Faction::Player, fireball_id, false);
     }
 }
 
-pub fn handle_player_death(
-    mut death_events: MessageReader<DeathEvent>,
-    mut next_state: ResMut<NextState<GameState>>,
-    player_query: Query<(), With<Player>>,
-) {
-    for event in death_events.read() {
-        if player_query.contains(event.entity) {
-            next_state.set(GameState::GameOver);
-        }
-    }
-}

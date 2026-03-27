@@ -8,7 +8,8 @@ use super::types::{PassiveNodePool, Rarity};
 const TARGET_NODES: usize = 400;
 const GRAPH_RADIUS: f32 = 2000.0;
 const MIN_DISTANCE: f32 = 140.0;
-const PRUNE_LENGTH_FACTOR: f32 = 1.5;
+const MAX_NEIGHBORS: usize = 4;
+const MIN_NEIGHBORS: usize = 2;
 
 pub fn generate_skill_graph(pool: &PassiveNodePool, seed: u64) -> SkillGraph {
     let mut rng = StdRng::seed_from_u64(seed);
@@ -181,34 +182,43 @@ fn delaunay_edges(points: &[Vec2]) -> Vec<GraphEdge> {
 }
 
 fn prune_edges(points: &[Vec2], edges: &[GraphEdge]) -> Vec<GraphEdge> {
-    let mut lengths: Vec<f32> = edges
-        .iter()
-        .map(|e| points[e.a].distance(points[e.b]))
-        .collect();
-    lengths.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let n = points.len();
+    let mut keep = vec![true; edges.len()];
+    let mut degree = vec![0usize; n];
 
-    let median = lengths[lengths.len() / 2];
-    let threshold = median * PRUNE_LENGTH_FACTOR;
+    for edge in edges {
+        degree[edge.a] += 1;
+        degree[edge.b] += 1;
+    }
 
-    let mut sorted_edges: Vec<(usize, f32)> = edges
+    let mut sorted: Vec<(usize, f32)> = edges
         .iter()
         .enumerate()
         .map(|(i, e)| (i, points[e.a].distance(points[e.b])))
         .collect();
-    sorted_edges.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
+    sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap());
 
-    let mut keep = vec![true; edges.len()];
-    let n = points.len();
+    for &(edge_idx, _) in &sorted {
+        let edge = &edges[edge_idx];
+        let da = degree[edge.a];
+        let db = degree[edge.b];
 
-    for &(edge_idx, length) in &sorted_edges {
-        if length <= threshold {
-            break;
+        if da <= MIN_NEIGHBORS || db <= MIN_NEIGHBORS {
+            continue;
+        }
+
+        if da <= MAX_NEIGHBORS && db <= MAX_NEIGHBORS {
+            continue;
         }
 
         keep[edge_idx] = false;
+        degree[edge.a] -= 1;
+        degree[edge.b] -= 1;
 
         if !is_connected_without(edges, &keep, n) {
             keep[edge_idx] = true;
+            degree[edge.a] += 1;
+            degree[edge.b] += 1;
         }
     }
 

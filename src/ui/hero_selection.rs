@@ -34,7 +34,7 @@ pub fn spawn_hero_selection(
 
     let root = commands.spawn((
         Name::new("HeroSelectionRoot"),
-        DespawnOnExit(GameState::HeroSelection),
+        DespawnOnExit(GameState::Playing),
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
@@ -256,7 +256,7 @@ pub fn continue_button_system(
         match interaction {
             Interaction::Pressed => {
                 if selected_hero.0.is_some() {
-                    next_state.set(GameState::SpellSelection);
+                    next_state.set(GameState::Playing);
                 }
             }
             Interaction::Hovered => *color = HOVERED_BUTTON.into(),

@@ -3,7 +3,7 @@
     entities: [
         (
             base_stats: {
-                "max_life_flat": 70.0,
+                "max_stamina_flat": 60.0,
                 "movement_speed_flat": 350.0,
                 "crit_chance_flat": 0.05,
                 "crit_multiplier": 1.5,
@@ -19,7 +19,7 @@
                 ])),
                 Collider((shape: Rectangle, sensor: Some(false))),
                 DynamicBody(()),
-                Health(()),
+                Health((current: Some("stat(max_stamina)"))),
                 KeyboardMovement(()),
                 PlayerInput((bindings: [
                     (slot: Active, trigger: MouseHold(Left), targeting: Cursor),

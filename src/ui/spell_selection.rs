@@ -28,7 +28,7 @@ pub fn spawn_spell_selection(
 
     let root = commands.spawn((
         Name::new("SpellSelectionRoot"),
-        DespawnOnExit(GameState::SpellSelection),
+        DespawnOnExit(GameState::Playing),
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),

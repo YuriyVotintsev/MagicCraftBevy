@@ -3,11 +3,12 @@ use bevy::camera::visibility::RenderLayers;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 
+use crate::money::PlayerMoney;
+use crate::run::RunState;
 use crate::skill_tree::graph::SkillGraph;
 use crate::skill_tree::systems::{AllocateNodeRequest, SkillPoints};
 use crate::skill_tree::types::{PassiveNodePool, Rarity};
 use crate::stats::StatDisplayRegistry;
-use crate::ui::shop::{NextWaveButton, ShopRoot};
 use crate::ui::stat_line_builder::{StatLineBuilder, StatRenderMode, GOLD_COLOR};
 use crate::wave::WavePhase;
 
@@ -24,6 +25,7 @@ const START_NODE_RADIUS: f32 = 24.0;
 
 const LOCKED_BRIGHTNESS: f32 = 0.3;
 const AVAILABLE_BRIGHTNESS: f32 = 0.8;
+const ALLOCATED_BRIGHTNESS: f32 = 1.4;
 
 const EDGE_WIDTH: f32 = 2.5;
 const EDGE_DIM_ALPHA: f32 = 0.15;
@@ -34,7 +36,7 @@ const BG_COLOR: Color = Color::srgb(0.03, 0.03, 0.08);
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
 const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
-const ACTIVE_TAB: Color = Color::srgb(0.2, 0.2, 0.4);
+const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
 const TOOLTIP_BG: Color = Color::srgba(0.06, 0.06, 0.12, 0.95);
 
 const PAN_SPEED: f32 = 1.0;
@@ -42,13 +44,6 @@ const ZOOM_SPEED: f32 = 0.15;
 const ZOOM_MIN: f32 = 0.3;
 const ZOOM_MAX: f32 = 3.0;
 const NODE_CLICK_RADIUS: f32 = 40.0;
-
-#[derive(Resource, Default, PartialEq, Eq, Clone, Copy)]
-pub enum ShopView {
-    #[default]
-    Shop,
-    SkillTree,
-}
 
 #[derive(Component)]
 pub struct SkillTreeCamera;
@@ -73,19 +68,13 @@ pub struct SkillTreeOverlay;
 pub struct SkillPointsText;
 
 #[derive(Component)]
+pub struct ShopCoinsText;
+
+#[derive(Component)]
 pub struct SkillTreeTooltip;
 
 #[derive(Component)]
-pub struct TabButton(ShopView);
-
-#[derive(Component)]
-pub struct SkillTreeNextWave;
-
-#[derive(Resource)]
-pub(crate) struct SkillTreeMeshes {
-    circle: Handle<Mesh>,
-    rect: Handle<Mesh>,
-}
+pub struct StartRunButton;
 
 #[derive(Resource, Default)]
 pub(crate) struct PanState {
@@ -100,6 +89,12 @@ impl Default for ZoomLevel {
     fn default() -> Self {
         Self(1.0)
     }
+}
+
+#[derive(Resource)]
+pub(crate) struct SkillTreeMeshes {
+    circle: Handle<Mesh>,
+    rect: Handle<Mesh>,
 }
 
 fn rarity_color(rarity: Rarity) -> Color {
@@ -124,7 +119,7 @@ fn node_color(graph: &SkillGraph, idx: usize) -> Color {
 
     let base_color = rarity_color(node.rarity);
     let brightness = if node.allocated {
-        1.0
+        ALLOCATED_BRIGHTNESS
     } else if graph.is_allocatable(idx) {
         AVAILABLE_BRIGHTNESS
     } else {
@@ -160,157 +155,139 @@ pub fn setup_skill_tree_meshes(
     commands.insert_resource(SkillTreeMeshes { circle, rect });
 }
 
-pub fn reset_shop_view(
-    mut shop_view: ResMut<ShopView>,
-    mut pan_state: ResMut<PanState>,
-    mut zoom_level: ResMut<ZoomLevel>,
-) {
-    *shop_view = ShopView::Shop;
-    *pan_state = PanState::default();
-    *zoom_level = ZoomLevel::default();
-}
-
-pub fn spawn_tab_overlay(mut commands: Commands) {
-    let tab_bar = commands
-        .spawn((
-            SkillTreeOverlay,
-            DespawnOnExit(WavePhase::Shop),
-            GlobalZIndex(50),
-            Node {
-                position_type: PositionType::Absolute,
-                top: Val::Px(8.0),
-                left: Val::Px(0.0),
-                width: Val::Percent(100.0),
-                flex_direction: FlexDirection::Row,
-                justify_content: JustifyContent::Center,
-                column_gap: Val::Px(8.0),
-                align_items: AlignItems::Center,
-                ..default()
-            },
-        ))
-        .id();
-
-    let shop_tab = spawn_tab_button(&mut commands, "Shop", ShopView::Shop, true);
-    let tree_tab = spawn_tab_button(&mut commands, "Skill Tree", ShopView::SkillTree, false);
-
-    let sp_text = commands
-        .spawn((
-            SkillPointsText,
-            Text::new("Skill Points: 0"),
-            TextFont {
-                font_size: 22.0,
-                ..default()
-            },
-            TextColor(GOLD_COLOR),
-            Node {
-                margin: UiRect::left(Val::Px(24.0)),
-                ..default()
-            },
-        ))
-        .id();
-
-    commands
-        .entity(tab_bar)
-        .add_children(&[shop_tab, tree_tab, sp_text]);
-}
-
-fn spawn_tab_button(commands: &mut Commands, label: &str, view: ShopView, active: bool) -> Entity {
-    let bg = if active { ACTIVE_TAB } else { NORMAL_BUTTON };
-    commands
-        .spawn((
-            Button,
-            TabButton(view),
-            Node {
-                width: Val::Px(120.0),
-                height: Val::Px(36.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            BackgroundColor(bg),
-        ))
-        .with_children(|parent| {
-            parent.spawn((
-                Text::new(label),
-                TextFont {
-                    font_size: 20.0,
-                    ..default()
-                },
-                TextColor(TEXT_COLOR),
-            ));
-        })
-        .id()
-}
-
-pub fn toggle_shop_view(
-    interaction_query: Query<(&Interaction, &TabButton), Changed<Interaction>>,
-    mut shop_view: ResMut<ShopView>,
-) {
-    for (interaction, tab) in &interaction_query {
-        if *interaction == Interaction::Pressed && *shop_view != tab.0 {
-            *shop_view = tab.0;
-        }
-    }
-}
-
-pub fn update_tab_colors(
-    shop_view: Res<ShopView>,
-    mut tab_query: Query<(&TabButton, &mut BackgroundColor)>,
-) {
-    if !shop_view.is_changed() {
-        return;
-    }
-    for (tab, mut bg) in &mut tab_query {
-        *bg = if tab.0 == *shop_view {
-            ACTIVE_TAB
-        } else {
-            NORMAL_BUTTON
-        }
-        .into();
-    }
-}
-
-pub fn on_shop_view_changed(
+pub fn spawn_shop_screen(
     mut commands: Commands,
-    shop_view: Res<ShopView>,
-    mut shop_root: Query<&mut Visibility, With<ShopRoot>>,
-    camera_query: Query<Entity, With<SkillTreeCamera>>,
-    existing_world: Query<Entity, With<SkillTreeWorld>>,
-    existing_next_wave: Query<Entity, With<SkillTreeNextWave>>,
     graph: Option<Res<SkillGraph>>,
     pool: Option<Res<PassiveNodePool>>,
     st_meshes: Option<Res<SkillTreeMeshes>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
+    mut pan_state: ResMut<PanState>,
+    mut zoom_level: ResMut<ZoomLevel>,
+    run_state: Res<RunState>,
+    money: Res<PlayerMoney>,
+    skill_points: Option<Res<SkillPoints>>,
 ) {
-    if !shop_view.is_changed() {
-        return;
+    *pan_state = PanState::default();
+    *zoom_level = ZoomLevel::default();
+
+    commands.spawn((
+        SkillTreeCamera,
+        DespawnOnExit(WavePhase::Shop),
+        Camera2d,
+        Camera {
+            order: 10,
+            clear_color: ClearColorConfig::Custom(BG_COLOR),
+            ..default()
+        },
+        Projection::Orthographic(OrthographicProjection {
+            scaling_mode: ScalingMode::FixedVertical {
+                viewport_height: 1080.0,
+            },
+            ..OrthographicProjection::default_2d()
+        }),
+        RenderLayers::layer(SKILL_TREE_LAYER),
+    ));
+
+    if let (Some(graph), Some(_pool), Some(st_meshes)) = (graph, pool, st_meshes) {
+        spawn_skill_tree_world(&mut commands, &graph, &st_meshes, &mut materials);
     }
 
-    for mut vis in &mut shop_root {
-        *vis = if *shop_view == ShopView::Shop {
-            Visibility::Inherited
-        } else {
-            Visibility::Hidden
-        };
-    }
+    let sp_count = skill_points.map(|sp| sp.0).unwrap_or(0);
 
-    if *shop_view == ShopView::SkillTree {
-        if camera_query.is_empty() {
-            spawn_skill_tree_camera_entity(&mut commands);
-        }
-        if let (Some(graph), Some(_pool), Some(st_meshes)) = (graph, pool, st_meshes) {
-            spawn_skill_tree_world(&mut commands, &graph, &st_meshes, &mut materials);
-            spawn_skill_tree_next_wave(&mut commands);
-        }
-    } else {
-        for entity in &camera_query {
-            commands.entity(entity).despawn();
-        }
-        for entity in &existing_world {
-            commands.entity(entity).despawn();
-        }
-        for entity in &existing_next_wave {
-            commands.entity(entity).despawn();
+    commands.spawn((
+        SkillTreeOverlay,
+        DespawnOnExit(WavePhase::Shop),
+        GlobalZIndex(50),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(8.0),
+            left: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::Center,
+            column_gap: Val::Px(24.0),
+            align_items: AlignItems::Center,
+            ..default()
+        },
+        children![
+            (
+                Text(format!("Run {}", run_state.attempt)),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(TEXT_COLOR),
+            ),
+            (
+                ShopCoinsText,
+                Text(format!("Coins: {}", money.get())),
+                TextFont {
+                    font_size: 22.0,
+                    ..default()
+                },
+                TextColor(GOLD_COLOR),
+            ),
+            (
+                SkillPointsText,
+                Text(format!("Skill Points: {}", sp_count)),
+                TextFont {
+                    font_size: 22.0,
+                    ..default()
+                },
+                TextColor(GOLD_COLOR),
+            ),
+        ],
+    ));
+
+    commands.spawn((
+        DespawnOnExit(WavePhase::Shop),
+        GlobalZIndex(50),
+        Node {
+            position_type: PositionType::Absolute,
+            bottom: Val::Px(30.0),
+            left: Val::Px(0.0),
+            width: Val::Percent(100.0),
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        children![(
+            Button,
+            StartRunButton,
+            Node {
+                width: Val::Px(200.0),
+                height: Val::Px(60.0),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(NORMAL_BUTTON),
+            children![(
+                Text::new("Start Run"),
+                TextFont {
+                    font_size: 28.0,
+                    ..default()
+                },
+                TextColor(TEXT_COLOR),
+            )]
+        )],
+    ));
+}
+
+pub fn start_run_system(
+    mut interaction_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<StartRunButton>),
+    >,
+    mut next_phase: ResMut<NextState<WavePhase>>,
+) {
+    for (interaction, mut color) in &mut interaction_query {
+        match interaction {
+            Interaction::Pressed => {
+                *color = PRESSED_BUTTON.into();
+                next_phase.set(WavePhase::Combat);
+            }
+            Interaction::Hovered => *color = HOVERED_BUTTON.into(),
+            Interaction::None => *color = NORMAL_BUTTON.into(),
         }
     }
 }
@@ -330,6 +307,18 @@ fn spawn_skill_tree_world(
             Visibility::Inherited,
         ))
         .id();
+
+    let bg_mat = materials.add(ColorMaterial::from_color(BG_COLOR));
+    let bg_entity = commands
+        .spawn((
+            Mesh2d(st_meshes.rect.clone()),
+            MeshMaterial2d(bg_mat),
+            Transform::from_translation(Vec3::new(0.0, 0.0, -10.0))
+                .with_scale(Vec3::new(10000.0, 10000.0, 1.0)),
+            render_layer.clone(),
+        ))
+        .id();
+    commands.entity(world).add_child(bg_entity);
 
     for (edge_idx, edge) in graph.edges.iter().enumerate() {
         let pos_a = graph.nodes[edge.a].position;
@@ -384,62 +373,6 @@ fn spawn_skill_tree_world(
     }
 }
 
-fn spawn_skill_tree_next_wave(commands: &mut Commands) {
-    commands.spawn((
-        SkillTreeNextWave,
-        DespawnOnExit(WavePhase::Shop),
-        GlobalZIndex(50),
-        Node {
-            position_type: PositionType::Absolute,
-            bottom: Val::Px(30.0),
-            left: Val::Px(0.0),
-            width: Val::Percent(100.0),
-            justify_content: JustifyContent::Center,
-            ..default()
-        },
-        children![(
-            Button,
-            NextWaveButton,
-            Node {
-                width: Val::Px(200.0),
-                height: Val::Px(60.0),
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::Center,
-                ..default()
-            },
-            BackgroundColor(NORMAL_BUTTON),
-            children![(
-                Text::new("Next Wave"),
-                TextFont {
-                    font_size: 28.0,
-                    ..default()
-                },
-                TextColor(TEXT_COLOR),
-            )]
-        )],
-    ));
-}
-
-fn spawn_skill_tree_camera_entity(commands: &mut Commands) {
-    commands.spawn((
-        SkillTreeCamera,
-        DespawnOnExit(WavePhase::Shop),
-        Camera2d,
-        Camera {
-            order: 10,
-            clear_color: ClearColorConfig::Custom(BG_COLOR),
-            ..default()
-        },
-        Projection::Orthographic(OrthographicProjection {
-            scaling_mode: ScalingMode::FixedVertical {
-                viewport_height: 1080.0,
-            },
-            ..OrthographicProjection::default_2d()
-        }),
-        RenderLayers::layer(SKILL_TREE_LAYER),
-    ));
-}
-
 pub fn skill_tree_pan_zoom(
     mouse: Res<ButtonInput<MouseButton>>,
     mut scroll_events: MessageReader<MouseWheel>,
@@ -447,12 +380,7 @@ pub fn skill_tree_pan_zoom(
     mut camera_query: Query<&mut Transform, With<SkillTreeCamera>>,
     mut pan_state: ResMut<PanState>,
     mut zoom_level: ResMut<ZoomLevel>,
-    shop_view: Res<ShopView>,
 ) {
-    if *shop_view != ShopView::SkillTree {
-        return;
-    }
-
     let Ok(window) = windows.single() else {
         return;
     };
@@ -494,11 +422,7 @@ pub fn skill_tree_click(
     graph: Option<Res<SkillGraph>>,
     skill_points: Option<Res<SkillPoints>>,
     mut allocate_events: MessageWriter<AllocateNodeRequest>,
-    shop_view: Res<ShopView>,
 ) {
-    if *shop_view != ShopView::SkillTree {
-        return;
-    }
     if !mouse.just_pressed(MouseButton::Left) {
         return;
     }
@@ -576,15 +500,9 @@ pub fn skill_tree_hover(
     display: Option<Res<StatDisplayRegistry>>,
     existing_tooltip: Query<Entity, With<SkillTreeTooltip>>,
     mut last_hovered: Local<Option<usize>>,
-    shop_view: Res<ShopView>,
 ) {
     for entity in &existing_tooltip {
         commands.entity(entity).despawn();
-    }
-
-    if *shop_view != ShopView::SkillTree {
-        *last_hovered = None;
-        return;
     }
 
     let Some(graph) = graph else {
@@ -727,19 +645,27 @@ pub fn update_skill_points_text(
     }
 }
 
+pub fn update_coins_text(
+    money: Res<PlayerMoney>,
+    mut text_query: Query<&mut Text, With<ShopCoinsText>>,
+) {
+    if !money.is_changed() {
+        return;
+    }
+    for mut text in &mut text_query {
+        text.0 = format!("Coins: {}", money.get());
+    }
+}
+
 pub fn cleanup_skill_tree_view(
     mut commands: Commands,
     camera_query: Query<Entity, With<SkillTreeCamera>>,
     world_query: Query<Entity, With<SkillTreeWorld>>,
-    next_wave_query: Query<Entity, With<SkillTreeNextWave>>,
 ) {
     for entity in &camera_query {
         commands.entity(entity).despawn();
     }
     for entity in &world_query {
-        commands.entity(entity).despawn();
-    }
-    for entity in &next_wave_query {
         commands.entity(entity).despawn();
     }
 }

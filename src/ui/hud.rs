@@ -4,34 +4,23 @@ use crate::money::PlayerMoney;
 use crate::player::Player;
 use crate::blueprints::components::common::health::Health;
 use crate::stats::{ComputedStats, StatRegistry};
-use crate::wave::WaveState;
 use crate::GameState;
 
 #[derive(Component)]
 pub struct HudRoot;
 
 #[derive(Component)]
-pub struct WaveText;
-
-#[derive(Component)]
 pub struct MoneyText;
 
 #[derive(Component)]
-pub struct KillCountText;
+pub struct StaminaText;
 
 #[derive(Component)]
-pub struct KillProgressBar;
-
-#[derive(Component)]
-pub struct HealthText;
-
-#[derive(Component)]
-pub struct HealthBar;
+pub struct StaminaBar;
 
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 const BAR_BG_COLOR: Color = Color::srgb(0.2, 0.2, 0.2);
-const HEALTH_BAR_COLOR: Color = Color::srgb(0.8, 0.2, 0.2);
-const KILL_BAR_COLOR: Color = Color::srgb(0.2, 0.6, 0.8);
+const STAMINA_BAR_COLOR: Color = Color::srgb(0.3, 0.8, 0.3);
 
 pub fn spawn_hud(mut commands: Commands) {
     commands.spawn((
@@ -49,19 +38,6 @@ pub fn spawn_hud(mut commands: Commands) {
         BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
         children![
             (
-                WaveText,
-                Text::new("Wave: 1"),
-                TextFont {
-                    font_size: 24.0,
-                    ..default()
-                },
-                TextColor(TEXT_COLOR),
-                Node {
-                    margin: UiRect::bottom(Val::Px(5.0)),
-                    ..default()
-                }
-            ),
-            (
                 MoneyText,
                 Text::new("Coins: 0"),
                 TextFont {
@@ -75,39 +51,8 @@ pub fn spawn_hud(mut commands: Commands) {
                 }
             ),
             (
-                KillCountText,
-                Text::new("Enemies: 0/5"),
-                TextFont {
-                    font_size: 18.0,
-                    ..default()
-                },
-                TextColor(TEXT_COLOR),
-                Node {
-                    margin: UiRect::bottom(Val::Px(3.0)),
-                    ..default()
-                }
-            ),
-            (
-                Node {
-                    width: Val::Px(200.0),
-                    height: Val::Px(12.0),
-                    margin: UiRect::bottom(Val::Px(10.0)),
-                    ..default()
-                },
-                BackgroundColor(BAR_BG_COLOR),
-                children![(
-                    KillProgressBar,
-                    Node {
-                        width: Val::Percent(0.0),
-                        height: Val::Percent(100.0),
-                        ..default()
-                    },
-                    BackgroundColor(KILL_BAR_COLOR)
-                )]
-            ),
-            (
-                HealthText,
-                Text::new("HP: 100/100"),
+                StaminaText,
+                Text::new("Stamina: 0/0"),
                 TextFont {
                     font_size: 18.0,
                     ..default()
@@ -126,13 +71,13 @@ pub fn spawn_hud(mut commands: Commands) {
                 },
                 BackgroundColor(BAR_BG_COLOR),
                 children![(
-                    HealthBar,
+                    StaminaBar,
                     Node {
                         width: Val::Percent(100.0),
                         height: Val::Percent(100.0),
                         ..default()
                     },
-                    BackgroundColor(HEALTH_BAR_COLOR)
+                    BackgroundColor(STAMINA_BAR_COLOR)
                 )]
             ),
         ],
@@ -140,53 +85,33 @@ pub fn spawn_hud(mut commands: Commands) {
 }
 
 pub fn update_hud(
-    wave_state: Res<WaveState>,
     money: Res<PlayerMoney>,
     stat_registry: Res<StatRegistry>,
     player_query: Query<(&Health, &ComputedStats), With<Player>>,
-    mut wave_text: Query<&mut Text, (With<WaveText>, Without<MoneyText>, Without<KillCountText>, Without<HealthText>)>,
-    mut money_text: Query<&mut Text, (With<MoneyText>, Without<WaveText>, Without<KillCountText>, Without<HealthText>)>,
-    mut kill_text: Query<&mut Text, (With<KillCountText>, Without<WaveText>, Without<MoneyText>, Without<HealthText>)>,
-    mut kill_bar: Query<&mut Node, (With<KillProgressBar>, Without<HealthBar>)>,
-    mut health_text: Query<&mut Text, (With<HealthText>, Without<WaveText>, Without<MoneyText>, Without<KillCountText>)>,
-    mut health_bar: Query<&mut Node, (With<HealthBar>, Without<KillProgressBar>)>,
+    mut money_text: Query<&mut Text, (With<MoneyText>, Without<StaminaText>)>,
+    mut stamina_text: Query<&mut Text, (With<StaminaText>, Without<MoneyText>)>,
+    mut stamina_bar: Query<&mut Node, With<StaminaBar>>,
 ) {
-    if let Ok(mut text) = wave_text.single_mut() {
-        **text = format!("Wave: {}", wave_state.current_wave);
-    }
-
     if let Ok(mut text) = money_text.single_mut() {
         **text = format!("Coins: {}", money.get());
     }
 
-    if let Ok(mut text) = kill_text.single_mut() {
-        **text = format!(
-            "Enemies: {}/{}",
-            wave_state.killed_count, wave_state.target_count
-        );
-    }
-
-    if let Ok(mut node) = kill_bar.single_mut() {
-        let progress = if wave_state.target_count > 0 {
-            (wave_state.killed_count as f32 / wave_state.target_count as f32 * 100.0).min(100.0)
-        } else {
-            0.0
-        };
-        node.width = Val::Percent(progress);
-    }
-
     if let Ok((health, stats)) = player_query.single() {
-        let max_life = stat_registry
-            .get("max_life")
+        let max_stamina = stat_registry
+            .get("max_stamina")
             .map(|id| stats.get(id))
             .unwrap_or_default();
 
-        if let Ok(mut text) = health_text.single_mut() {
-            **text = format!("HP: {}/{}", health.current as i32, max_life as i32);
+        if let Ok(mut text) = stamina_text.single_mut() {
+            **text = format!("Stamina: {}/{}", health.current as i32, max_stamina as i32);
         }
 
-        if let Ok(mut node) = health_bar.single_mut() {
-            let progress = (health.current / max_life * 100.0).clamp(0.0, 100.0);
+        if let Ok(mut node) = stamina_bar.single_mut() {
+            let progress = if max_stamina > 0.0 {
+                (health.current / max_stamina * 100.0).clamp(0.0, 100.0)
+            } else {
+                0.0
+            };
             node.width = Val::Percent(progress);
         }
     }

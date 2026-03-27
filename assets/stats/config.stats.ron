@@ -5,6 +5,11 @@
         (name: "max_life_more", eval: Product),
         (name: "max_life", eval: Formula("calc(flat_increased_more, 0, max_life_flat, max_life_increased, max_life_more)")),
 
+        (name: "max_stamina_flat", eval: Sum),
+        (name: "max_stamina_increased", eval: Sum),
+        (name: "max_stamina_more", eval: Product),
+        (name: "max_stamina", eval: Formula("calc(flat_increased_more, 0, max_stamina_flat, max_stamina_increased, max_stamina_more)")),
+
         (name: "max_mana_flat", eval: Sum),
         (name: "max_mana_increased", eval: Sum),
         (name: "max_mana", eval: Formula("calc(flat_increased, 0, max_mana_flat, max_mana_increased)")),
@@ -70,6 +75,9 @@
         (stats: ["max_life_flat"], format: "[{+0}] max life"),
         (stats: ["max_life_increased"], format: "[{+0}%] max life"),
         (stats: ["max_life_more"], format: "[{|0|}% more;{|0|}% less] max life"),
+        (stats: ["max_stamina_flat"], format: "[{+0}] max stamina"),
+        (stats: ["max_stamina_increased"], format: "[{+0}%] max stamina"),
+        (stats: ["max_stamina_more"], format: "[{|0|}% more;{|0|}% less] max stamina"),
         (stats: ["movement_speed_flat"], format: "[{+0}] movement speed"),
         (stats: ["movement_speed_increased"], format: "[{+0}%] movement speed"),
         (stats: ["crit_chance_flat"], format: "[{+0}%] crit chance"),

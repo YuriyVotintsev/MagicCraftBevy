@@ -21,7 +21,6 @@ impl Plugin for SkillTreePlugin {
                 systems::handle_allocate_node
                     .in_set(ShopSet::Process)
                     .run_if(in_state(WavePhase::Shop)),
-            )
-            .add_systems(OnExit(GameState::Playing), systems::cleanup_skill_tree);
+            );
     }
 }

@@ -16,15 +16,14 @@ pub mod stat_line_builder;
 use bevy::prelude::*;
 
 use crate::game_state::GameState;
-use crate::schedule::{GameSet, ShopSet};
+use crate::schedule::ShopSet;
 use crate::wave::{CombatPhase, WavePhase};
 
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<skill_tree_view::ShopView>()
-            .init_resource::<skill_tree_view::PanState>()
+        app.init_resource::<skill_tree_view::PanState>()
             .init_resource::<skill_tree_view::ZoomLevel>()
             .add_systems(OnEnter(GameState::Loading), loading::spawn_loading_screen)
             .add_systems(OnEnter(GameState::MainMenu), main_menu::spawn_main_menu)
@@ -32,124 +31,47 @@ impl Plugin for UiPlugin {
                 Update,
                 main_menu::menu_button_system.run_if(in_state(GameState::MainMenu)),
             )
-            .add_systems(
-                OnEnter(GameState::HeroSelection),
-                hero_selection::spawn_hero_selection,
-            )
-            .add_systems(
-                Update,
-                (
-                    hero_selection::hero_button_system,
-                    hero_selection::update_hero_button_colors,
-                    hero_selection::update_stats_panel,
-                    hero_selection::continue_button_system,
-                )
-                    .run_if(in_state(GameState::HeroSelection)),
-            )
-            .add_systems(
-                OnEnter(GameState::SpellSelection),
-                spell_selection::spawn_spell_selection,
-            )
-            .add_systems(
-                Update,
-                (
-                    spell_selection::spell_button_system,
-                    spell_selection::update_spell_button_colors,
-                    spell_selection::start_button_system,
-                )
-                    .run_if(in_state(GameState::SpellSelection)),
-            )
-            .add_systems(OnEnter(GameState::GameOver), game_over::spawn_game_over)
-            .add_systems(
-                Update,
-                game_over::game_over_button_system.run_if(in_state(GameState::GameOver)),
-            )
             .add_systems(Startup, skill_tree_view::setup_skill_tree_meshes)
             .add_systems(
                 OnEnter(GameState::Playing),
-                (hud::spawn_hud, artifact_panel::spawn_artifact_panel),
+                hud::spawn_hud,
             )
             .add_systems(
                 Update,
-                (
-                    hud::update_hud.after(GameSet::Damage),
-                    artifact_panel::rebuild_artifact_panel,
-                )
-                    .run_if(in_state(GameState::Playing)),
+                hud::update_hud
+                    .run_if(in_state(WavePhase::Combat)),
             )
             .add_systems(
                 OnEnter(WavePhase::Shop),
-                (
-                    shop::spawn_shop,
-                    skill_tree_view::reset_shop_view,
-                    skill_tree_view::spawn_tab_overlay,
-                ),
+                skill_tree_view::spawn_shop_screen,
             )
             .add_systems(
                 Update,
-                (
-                    (
-                        shop::buy_system,
-                        shop::reroll_system,
-                        affix_shop::buy_orb_system,
-                        artifact_panel::handle_artifact_slot_click,
-                        artifact_panel::handle_panel_sell_click,
-                    ),
-                    (
-                        affix_shop::slot_select_system,
-                        affix_shop::accept_orb_system,
-                        affix_shop::cancel_orb_system,
-                    ),
-                )
-                    .chain()
-                    .in_set(ShopSet::Input),
-            )
-            .add_systems(
-                Update,
-                (
-                    shop::update_shop_on_change,
-                    affix_shop::manage_orb_popup,
-                )
-                    .in_set(ShopSet::Display),
-            )
-            .add_systems(
-                Update,
-                (
-                    skill_tree_view::toggle_shop_view,
-                    skill_tree_view::on_shop_view_changed,
-                    skill_tree_view::skill_tree_click.in_set(ShopSet::Input),
-                )
+                skill_tree_view::skill_tree_click
+                    .in_set(ShopSet::Input)
                     .run_if(in_state(WavePhase::Shop)),
             )
             .add_systems(
                 Update,
                 (
-                    shop::next_wave_system,
-                    shop::update_button_colors,
-                    artifact_panel::update_panel_button_colors,
-                    affix_shop::update_orb_button_colors,
-                    skill_tree_view::update_tab_colors,
+                    skill_tree_view::start_run_system,
                     skill_tree_view::update_node_visuals,
                     skill_tree_view::skill_tree_pan_zoom,
                     skill_tree_view::skill_tree_hover,
                     skill_tree_view::update_skill_points_text,
+                    skill_tree_view::update_coins_text,
                 )
                     .run_if(in_state(WavePhase::Shop)),
             )
             .add_systems(
                 OnExit(WavePhase::Shop),
-                (
-                    artifact_panel::clear_artifact_selection,
-                    skill_tree_view::cleanup_skill_tree_view,
-                ),
+                skill_tree_view::cleanup_skill_tree_view,
             )
             .add_systems(
                 Update,
                 (
                     damage_numbers::spawn_damage_numbers,
                     damage_numbers::update_damage_numbers,
-                    artifact_tooltip::update_artifact_tooltip,
-                    affix_shop::update_orb_tooltip,
                 )
                     .run_if(in_state(GameState::Playing)),
             )

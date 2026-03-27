@@ -22,4 +22,9 @@
         base_reroll_cost: 1,
         sell_price_percent: 50,
     ),
+    run: (
+        coins_per_kill: 1,
+        hp_scale_per_sec: 0.02,
+        dmg_scale_per_sec: 0.015,
+    ),
 )

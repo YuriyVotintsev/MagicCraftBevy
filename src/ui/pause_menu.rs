@@ -135,7 +135,7 @@ pub(super) fn pause_button_system(
                     }
                     PauseButton::EndRun => {
                         virtual_time.unpause();
-                        next_game_state.set(GameState::GameOver);
+                        next_game_state.set(GameState::MainMenu);
                     }
                 }
             }

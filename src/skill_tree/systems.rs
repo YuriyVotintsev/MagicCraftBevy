@@ -15,7 +15,15 @@ pub struct AllocateNodeRequest {
     pub node_index: usize,
 }
 
-pub fn generate_skill_tree(mut commands: Commands, pool: Option<Res<PassiveNodePool>>) {
+pub fn generate_skill_tree(
+    mut commands: Commands,
+    pool: Option<Res<PassiveNodePool>>,
+    existing_graph: Option<Res<SkillGraph>>,
+) {
+    if existing_graph.is_some() {
+        return;
+    }
+
     let Some(pool) = pool else {
         warn!("PassiveNodePool not available, skipping skill tree generation");
         return;

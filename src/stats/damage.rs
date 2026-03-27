@@ -25,6 +25,7 @@ pub fn apply_pending_damage(
     invulnerable: Query<(), With<InvulnerableStack>>,
 ) {
     let max_life_id = stat_registry.get("max_life");
+    let max_stamina_id = stat_registry.get("max_stamina");
     let crit_chance_id = stat_registry.get("crit_chance");
     let crit_multiplier_id = stat_registry.get("crit_multiplier");
 
@@ -51,7 +52,9 @@ pub fn apply_pending_damage(
             }
         }
 
-        let max = max_life_id.map(|id| stats.get(id)).unwrap_or(f32::MAX);
+        let max_life = max_life_id.map(|id| stats.get(id)).unwrap_or(0.0);
+        let max_stamina = max_stamina_id.map(|id| stats.get(id)).unwrap_or(0.0);
+        let max = max_life.max(max_stamina).max(1.0);
         health.current = (health.current - amount).clamp(0.0, max);
 
         damage_events.write(DamageEvent {

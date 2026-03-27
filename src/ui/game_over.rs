@@ -16,7 +16,7 @@ const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 pub(super) fn spawn_game_over(mut commands: Commands) {
     commands.spawn((
         Name::new("GameOverRoot"),
-        DespawnOnExit(GameState::GameOver),
+        DespawnOnExit(GameState::Playing),
         Node {
             width: Val::Percent(100.0),
             height: Val::Percent(100.0),
@@ -104,7 +104,7 @@ pub(super) fn game_over_button_system(
             Interaction::Pressed => {
                 *color = PRESSED_BUTTON.into();
                 match button {
-                    GameOverButton::Retry => next_state.set(GameState::HeroSelection),
+                    GameOverButton::Retry => next_state.set(GameState::Playing),
                     GameOverButton::MainMenu => next_state.set(GameState::MainMenu),
                 }
             }

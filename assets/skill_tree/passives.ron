@@ -14,12 +14,12 @@
         (
             name: "Thick Skin",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_flat", value: 8.0)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_flat", value: 8.0)])],
         ),
         (
             name: "Endurance",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_flat", value: 12.0)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_flat", value: 12.0)])],
         ),
         (
             name: "Light Step",
@@ -54,7 +54,7 @@
         (
             name: "Toughness",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_increased", value: 0.03)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_increased", value: 0.03)])],
         ),
         (
             name: "Fury",
@@ -89,7 +89,7 @@
         (
             name: "Resilience",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_flat", value: 10.0)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_flat", value: 10.0)])],
         ),
         (
             name: "Swiftness",
@@ -124,7 +124,7 @@
         (
             name: "Vitality",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_increased", value: 0.04)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_increased", value: 0.04)])],
         ),
         (
             name: "Aggression",
@@ -159,7 +159,7 @@
         (
             name: "Bone Plating",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_flat", value: 15.0)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_flat", value: 15.0)])],
         ),
         (
             name: "Sprint",
@@ -189,7 +189,7 @@
         (
             name: "Hardened Skin",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_flat", value: 6.0)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_flat", value: 6.0)])],
         ),
         (
             name: "Piercing Gaze",
@@ -219,7 +219,7 @@
         (
             name: "Constitution",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_increased", value: 0.05)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_increased", value: 0.05)])],
         ),
         (
             name: "Arcane Spark",
@@ -254,7 +254,7 @@
         (
             name: "Sturdy Build",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_flat", value: 14.0)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_flat", value: 14.0)])],
         ),
         (
             name: "Dash",
@@ -294,7 +294,7 @@
         (
             name: "Vigor",
             rarity: "common",
-            modifiers: [(stats: [Fixed(stat: "max_life_increased", value: 0.03)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_increased", value: 0.03)])],
         ),
         (
             name: "Rage",
@@ -315,7 +315,7 @@
             name: "Fortified Mind",
             rarity: "uncommon",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 15.0)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 15.0)]),
                 (stats: [Fixed(stat: "max_mana_flat", value: 8.0)]),
             ],
         ),
@@ -331,7 +331,7 @@
             name: "Battle Hardened",
             rarity: "uncommon",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_increased", value: 0.05)]),
+                (stats: [Fixed(stat: "max_stamina_increased", value: 0.05)]),
                 (stats: [Fixed(stat: "physical_damage_flat", value: 3.0)]),
             ],
         ),
@@ -354,7 +354,7 @@
         (
             name: "Vital Surge",
             rarity: "uncommon",
-            modifiers: [(stats: [Fixed(stat: "max_life_flat", value: 20.0)])],
+            modifiers: [(stats: [Fixed(stat: "max_stamina_flat", value: 20.0)])],
         ),
         (
             name: "Heavy Strike",
@@ -413,7 +413,7 @@
             rarity: "uncommon",
             modifiers: [
                 (stats: [Fixed(stat: "physical_damage_flat", value: 4.0)]),
-                (stats: [Fixed(stat: "max_life_flat", value: 10.0)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 10.0)]),
             ],
         ),
         (
@@ -437,7 +437,7 @@
             rarity: "uncommon",
             modifiers: [
                 (stats: [Fixed(stat: "max_mana_flat", value: 15.0)]),
-                (stats: [Fixed(stat: "max_life_flat", value: 10.0)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 10.0)]),
             ],
         ),
         (
@@ -452,7 +452,7 @@
             name: "Iron Will",
             rarity: "uncommon",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_increased", value: 0.06)]),
+                (stats: [Fixed(stat: "max_stamina_increased", value: 0.06)]),
                 (stats: [Fixed(stat: "max_mana_increased", value: 0.04)]),
             ],
         ),
@@ -484,8 +484,8 @@
             name: "Sturdy Shield",
             rarity: "uncommon",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 18.0)]),
-                (stats: [Fixed(stat: "max_life_increased", value: 0.03)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 18.0)]),
+                (stats: [Fixed(stat: "max_stamina_increased", value: 0.03)]),
             ],
         ),
         (
@@ -540,7 +540,7 @@
             name: "Second Wind",
             rarity: "uncommon",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 12.0)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 12.0)]),
                 (stats: [Fixed(stat: "movement_speed_increased", value: 0.04)]),
             ],
         ),
@@ -573,7 +573,7 @@
             rarity: "uncommon",
             modifiers: [
                 (stats: [Fixed(stat: "max_mana_increased", value: 0.06)]),
-                (stats: [Fixed(stat: "max_life_flat", value: 8.0)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 8.0)]),
             ],
         ),
         (
@@ -596,7 +596,7 @@
             name: "Tenacity",
             rarity: "uncommon",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_increased", value: 0.06)]),
+                (stats: [Fixed(stat: "max_stamina_increased", value: 0.06)]),
                 (stats: [Fixed(stat: "duration_flat", value: 0.1)]),
             ],
         ),
@@ -630,8 +630,8 @@
             name: "Ironclad",
             rarity: "rare",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 30.0)]),
-                (stats: [Fixed(stat: "max_life_increased", value: 0.06)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 30.0)]),
+                (stats: [Fixed(stat: "max_stamina_increased", value: 0.06)]),
             ],
         ),
         (
@@ -654,8 +654,8 @@
             name: "Titan's Blood",
             rarity: "rare",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 40.0)]),
-                (stats: [Fixed(stat: "max_life_more", value: 0.05)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 40.0)]),
+                (stats: [Fixed(stat: "max_stamina_more", value: 0.05)]),
             ],
         ),
         (
@@ -696,7 +696,7 @@
             modifiers: [
                 (stats: [Fixed(stat: "physical_damage_flat", value: 8.0)]),
                 (stats: [Fixed(stat: "physical_damage_increased", value: 0.10)]),
-                (stats: [Fixed(stat: "max_life_flat", value: 15.0)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 15.0)]),
             ],
         ),
         (
@@ -720,8 +720,8 @@
             name: "Juggernaut",
             rarity: "rare",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 25.0)]),
-                (stats: [Fixed(stat: "max_life_increased", value: 0.08)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 25.0)]),
+                (stats: [Fixed(stat: "max_stamina_increased", value: 0.08)]),
                 (stats: [Fixed(stat: "movement_speed_increased", value: 0.04)]),
             ],
         ),
@@ -753,7 +753,7 @@
             name: "Fortification",
             rarity: "rare",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 35.0)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 35.0)]),
                 (stats: [Fixed(stat: "max_mana_flat", value: 15.0)]),
             ],
         ),
@@ -820,8 +820,8 @@
             name: "Unbreakable",
             rarity: "rare",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_more", value: 0.04)]),
-                (stats: [Fixed(stat: "max_life_flat", value: 20.0)]),
+                (stats: [Fixed(stat: "max_stamina_more", value: 0.04)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 20.0)]),
             ],
         ),
 
@@ -839,9 +839,9 @@
             name: "Undying Will",
             rarity: "epic",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 50.0)]),
-                (stats: [Fixed(stat: "max_life_increased", value: 0.10)]),
-                (stats: [Fixed(stat: "max_life_more", value: 0.08)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 50.0)]),
+                (stats: [Fixed(stat: "max_stamina_increased", value: 0.10)]),
+                (stats: [Fixed(stat: "max_stamina_more", value: 0.08)]),
             ],
         ),
         (
@@ -882,8 +882,8 @@
             name: "Immortal Bastion",
             rarity: "epic",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 60.0)]),
-                (stats: [Fixed(stat: "max_life_more", value: 0.06)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 60.0)]),
+                (stats: [Fixed(stat: "max_stamina_more", value: 0.06)]),
                 (stats: [Fixed(stat: "max_mana_flat", value: 20.0)]),
             ],
         ),
@@ -927,7 +927,7 @@
             name: "Vanguard",
             rarity: "epic",
             modifiers: [
-                (stats: [Fixed(stat: "max_life_flat", value: 40.0)]),
+                (stats: [Fixed(stat: "max_stamina_flat", value: 40.0)]),
                 (stats: [Fixed(stat: "physical_damage_flat", value: 10.0)]),
                 (stats: [Fixed(stat: "movement_speed_increased", value: 0.08)]),
             ],
