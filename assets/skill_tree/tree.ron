@@ -1,0 +1,175 @@
+(
+    grid_size: 100.0,
+    nodes: [
+        (
+            name: "Start",
+            position: (0, 0),
+            modifiers: [],
+        ),
+        (
+            name: "Thick Skin",
+            position: (0, 2),
+            modifiers: [
+                (stats: [Fixed(stat: "max_stamina_flat", value: 10.0)]),
+            ],
+        ),
+        (
+            name: "Sharp Claws",
+            position: (2, 0),
+            modifiers: [
+                (stats: [Fixed(stat: "physical_damage_flat", value: 5.0)]),
+            ],
+        ),
+        (
+            name: "Light Step",
+            position: (0, -2),
+            modifiers: [
+                (stats: [Fixed(stat: "movement_speed_increased", value: 0.06)]),
+            ],
+        ),
+        (
+            name: "Keen Edge",
+            position: (-2, 0),
+            modifiers: [
+                (stats: [Fixed(stat: "crit_chance_flat", value: 0.02)]),
+            ],
+        ),
+        (
+            name: "Endurance",
+            position: (0, 4),
+            modifiers: [
+                (stats: [Fixed(stat: "max_stamina_flat", value: 15.0)]),
+            ],
+        ),
+        (
+            name: "Vital Strike",
+            position: (2, 3),
+            modifiers: [
+                (stats: [Fixed(stat: "max_stamina_flat", value: 5.0), Fixed(stat: "physical_damage_flat", value: 3.0)]),
+            ],
+        ),
+        (
+            name: "Brute Force",
+            position: (4, 1),
+            modifiers: [
+                (stats: [Fixed(stat: "physical_damage_flat", value: 8.0)]),
+            ],
+        ),
+        (
+            name: "Swift Strike",
+            position: (2, -3),
+            modifiers: [
+                (stats: [Fixed(stat: "physical_damage_flat", value: 3.0), Fixed(stat: "movement_speed_increased", value: 0.03)]),
+            ],
+        ),
+        (
+            name: "Quick Feet",
+            position: (0, -4),
+            modifiers: [
+                (stats: [Fixed(stat: "movement_speed_increased", value: 0.08)]),
+            ],
+        ),
+        (
+            name: "Evasive Instinct",
+            position: (-2, -3),
+            modifiers: [
+                (stats: [Fixed(stat: "movement_speed_increased", value: 0.03), Fixed(stat: "crit_chance_flat", value: 0.01)]),
+            ],
+        ),
+        (
+            name: "Precision",
+            position: (-4, 0),
+            modifiers: [
+                (stats: [Fixed(stat: "crit_chance_flat", value: 0.03)]),
+            ],
+        ),
+        (
+            name: "Resilient Mind",
+            position: (-2, 3),
+            modifiers: [
+                (stats: [Fixed(stat: "max_stamina_flat", value: 5.0), Fixed(stat: "crit_chance_flat", value: 0.01)]),
+            ],
+        ),
+        (
+            name: "Iron Will",
+            position: (0, 6),
+            modifiers: [
+                (stats: [Fixed(stat: "max_stamina_increased", value: 0.15)]),
+            ],
+        ),
+        (
+            name: "Wind Walker",
+            position: (0, -6),
+            modifiers: [
+                (stats: [Fixed(stat: "movement_speed_increased", value: 0.15)]),
+            ],
+        ),
+        (
+            name: "Lethal Precision",
+            position: (-6, 0),
+            modifiers: [
+                (stats: [Fixed(stat: "crit_chance_flat", value: 0.05), Fixed(stat: "crit_multiplier", value: 0.25)]),
+            ],
+        ),
+        (
+            name: "Projectile Mastery",
+            position: (4, 4),
+            modifiers: [
+                (stats: [Fixed(stat: "projectile_speed_increased", value: 0.15)]),
+            ],
+        ),
+        (
+            name: "Extra Projectile",
+            position: (4, -4),
+            modifiers: [
+                (stats: [Fixed(stat: "projectile_count", value: 1.0)]),
+            ],
+        ),
+        (
+            name: "Node 19",
+            position: (5, -1),
+            modifiers: [],
+        ),
+        (
+            name: "Node 19",
+            position: (7, 1),
+            modifiers: [],
+        ),
+        (
+            name: "Node 20",
+            position: (8, -1),
+            modifiers: [],
+        ),
+        (
+            name: "Node 21",
+            position: (8, -1),
+            modifiers: [],
+        ),
+    ],
+    edges: [
+        (0, 1),
+        (0, 2),
+        (0, 3),
+        (0, 4),
+        (1, 5),
+        (1, 6),
+        (1, 12),
+        (2, 7),
+        (2, 6),
+        (2, 8),
+        (3, 9),
+        (3, 8),
+        (3, 10),
+        (4, 11),
+        (4, 10),
+        (4, 12),
+        (5, 13),
+        (6, 16),
+        (8, 17),
+        (9, 14),
+        (11, 15),
+        (7, 19),
+        (18, 19),
+        (19, 20),
+    ],
+)

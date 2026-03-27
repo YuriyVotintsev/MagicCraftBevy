@@ -4,13 +4,26 @@ use crate::stats::StatId;
 
 use super::types::Rarity;
 
+#[derive(Resource)]
+pub struct GridSettings {
+    pub size: f32,
+}
+
+impl Default for GridSettings {
+    fn default() -> Self {
+        Self { size: 100.0 }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct GraphNode {
     pub def_index: usize,
     pub position: Vec2,
+    pub grid_cell: IVec2,
     pub rarity: Rarity,
     pub rolled_values: Vec<(StatId, f32)>,
     pub allocated: bool,
+    pub name: String,
 }
 
 impl GraphNode {
@@ -31,7 +44,6 @@ pub struct SkillGraph {
     pub edges: Vec<GraphEdge>,
     pub adjacency: Vec<Vec<usize>>,
     pub start_node: usize,
-    pub seed: u64,
 }
 
 impl SkillGraph {

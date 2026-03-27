@@ -9,6 +9,8 @@ mod loading;
 mod main_menu;
 mod pause_menu;
 mod shop;
+#[cfg(feature = "dev")]
+pub mod skill_tree_editor;
 pub mod skill_tree_view;
 mod spell_selection;
 pub mod stat_line_builder;
@@ -83,5 +85,8 @@ impl Plugin for UiPlugin {
                 Update,
                 pause_menu::pause_button_system.run_if(in_state(CombatPhase::Paused)),
             );
+
+        #[cfg(feature = "dev")]
+        app.add_plugins(skill_tree_editor::SkillTreeEditorPlugin);
     }
 }

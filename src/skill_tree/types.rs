@@ -2,9 +2,85 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 use rand::prelude::*;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::stats::{ModifierDef, ModifierDefRaw, StatId, StatRange, StatRegistry};
+
+use super::graph::{GraphEdge, GraphNode, SkillGraph};
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SkillTreeNodeRaw {
+    pub name: String,
+    #[serde(default)]
+    pub position: (i32, i32),
+    #[serde(default)]
+    pub modifiers: Vec<ModifierDefRaw>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SkillTreeDefRaw {
+    #[serde(default = "default_grid_size")]
+    pub grid_size: f32,
+    pub nodes: Vec<SkillTreeNodeRaw>,
+    pub edges: Vec<(usize, usize)>,
+}
+
+fn default_grid_size() -> f32 {
+    100.0
+}
+
+impl SkillTreeDefRaw {
+    pub fn resolve(&self, stat_registry: &StatRegistry) -> (SkillGraph, f32) {
+        let grid_size = self.grid_size;
+        let mut nodes = Vec::with_capacity(self.nodes.len());
+
+        for (i, raw) in self.nodes.iter().enumerate() {
+            let is_start = raw.modifiers.is_empty();
+            let grid_cell = IVec2::new(raw.position.0, raw.position.1);
+
+            let rolled_values: Vec<(StatId, f32)> = raw
+                .modifiers
+                .iter()
+                .flat_map(|m| {
+                    let def = m.resolve(stat_registry);
+                    def.stats.into_iter().map(|sr| match sr {
+                        StatRange::Fixed { stat, value } => (stat, value),
+                        StatRange::Range { stat, min, max } => (stat, (min + max) / 2.0),
+                    })
+                })
+                .collect();
+
+            nodes.push(GraphNode {
+                def_index: if is_start { usize::MAX } else { i },
+                position: Vec2::new(grid_cell.x as f32 * grid_size, grid_cell.y as f32 * grid_size),
+                grid_cell,
+                rarity: Rarity(0),
+                rolled_values,
+                allocated: is_start,
+                name: raw.name.clone(),
+            });
+        }
+
+        let edges: Vec<GraphEdge> = self
+            .edges
+            .iter()
+            .map(|&(a, b)| GraphEdge { a, b })
+            .collect();
+
+        let mut adjacency = vec![Vec::new(); nodes.len()];
+        for edge in &edges {
+            adjacency[edge.a].push(edge.b);
+            adjacency[edge.b].push(edge.a);
+        }
+
+        (SkillGraph {
+            start_node: 0,
+            nodes,
+            edges,
+            adjacency,
+        }, grid_size)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct Rarity(pub u8);

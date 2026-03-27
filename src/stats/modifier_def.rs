@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::{StatId, StatRegistry};
 
@@ -13,13 +13,13 @@ pub struct ModifierDef {
     pub stats: Vec<StatRange>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub enum StatRangeRaw {
     Fixed { stat: String, value: f32 },
     Range { stat: String, min: f32, max: f32 },
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ModifierDefRaw {
     pub stats: Vec<StatRangeRaw>,
 }

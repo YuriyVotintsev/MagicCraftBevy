@@ -32,7 +32,7 @@ fn disable_physics_debug(mut store: ResMut<GizmoConfigStore>) {
 }
 
 fn toggle_physics_debug(key: Res<ButtonInput<KeyCode>>, mut store: ResMut<GizmoConfigStore>) {
-    if key.just_pressed(KeyCode::Backquote) {
+    if key.just_pressed(KeyCode::F3) {
         let config = &mut store.config_mut::<PhysicsGizmos>().0;
         config.enabled = !config.enabled;
     }

@@ -8,7 +8,7 @@ use crate::money::PlayerMoney;
 use crate::run::RunState;
 use crate::skill_tree::graph::SkillGraph;
 use crate::skill_tree::systems::AllocateNodeRequest;
-use crate::skill_tree::types::{PassiveNodePool, Rarity};
+use crate::skill_tree::types::Rarity;
 use crate::stats::StatDisplayRegistry;
 use crate::ui::stat_line_builder::{StatLineBuilder, StatRenderMode, GOLD_COLOR};
 use crate::wave::WavePhase;
@@ -91,8 +91,8 @@ impl Default for ZoomLevel {
 
 #[derive(Resource)]
 pub(crate) struct SkillTreeMeshes {
-    circle: Handle<Mesh>,
-    rect: Handle<Mesh>,
+    pub(crate) circle: Handle<Mesh>,
+    pub(crate) rect: Handle<Mesh>,
 }
 
 fn rarity_color(rarity: Rarity) -> Color {
@@ -156,7 +156,6 @@ pub fn setup_skill_tree_meshes(
 pub fn spawn_shop_screen(
     mut commands: Commands,
     graph: Option<Res<SkillGraph>>,
-    pool: Option<Res<PassiveNodePool>>,
     st_meshes: Option<Res<SkillTreeMeshes>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut pan_state: ResMut<PanState>,
@@ -186,7 +185,7 @@ pub fn spawn_shop_screen(
         RenderLayers::layer(SKILL_TREE_LAYER),
     ));
 
-    if let (Some(graph), Some(_pool), Some(st_meshes)) = (graph, pool, st_meshes) {
+    if let (Some(graph), Some(st_meshes)) = (graph, st_meshes) {
         spawn_skill_tree_world(&mut commands, &graph, &st_meshes, &mut materials);
     }
 
@@ -279,7 +278,7 @@ pub fn start_run_system(
     }
 }
 
-fn spawn_skill_tree_world(
+pub(crate) fn spawn_skill_tree_world(
     commands: &mut Commands,
     graph: &SkillGraph,
     st_meshes: &SkillTreeMeshes,
@@ -410,7 +409,13 @@ pub fn skill_tree_click(
     money: Res<PlayerMoney>,
     balance: Res<GameBalance>,
     mut allocate_events: MessageWriter<AllocateNodeRequest>,
+    #[cfg(feature = "dev")] editor_mode: Option<Res<crate::ui::skill_tree_editor::EditorMode>>,
 ) {
+    #[cfg(feature = "dev")]
+    if editor_mode.is_some_and(|m| m.0) {
+        return;
+    }
+
     if !mouse.just_pressed(MouseButton::Left) {
         return;
     }
@@ -462,6 +467,9 @@ pub fn update_node_visuals(
     }
 
     for (node, mat_handle) in &node_query {
+        if node.graph_index >= graph.nodes.len() {
+            continue;
+        }
         let color = node_color(&graph, node.graph_index);
         if let Some(mat) = materials.get_mut(mat_handle.id()) {
             mat.color = color;
@@ -469,6 +477,13 @@ pub fn update_node_visuals(
     }
 
     for (edge, mat_handle) in &edge_query {
+        if edge.edge_index >= graph.edges.len() {
+            continue;
+        }
+        let e = &graph.edges[edge.edge_index];
+        if e.a >= graph.nodes.len() || e.b >= graph.nodes.len() {
+            continue;
+        }
         let alpha = edge_alpha(&graph, edge.edge_index);
         if let Some(mat) = materials.get_mut(mat_handle.id()) {
             mat.color = Color::srgba(0.5, 0.5, 0.6, alpha);
@@ -481,7 +496,6 @@ pub fn skill_tree_hover(
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<SkillTreeCamera>>,
     graph: Option<Res<SkillGraph>>,
-    pool: Option<Res<PassiveNodePool>>,
     display: Option<Res<StatDisplayRegistry>>,
     existing_tooltip: Query<Entity, With<SkillTreeTooltip>>,
     mut last_hovered: Local<Option<usize>>,
@@ -491,10 +505,6 @@ pub fn skill_tree_hover(
     }
 
     let Some(graph) = graph else {
-        *last_hovered = None;
-        return;
-    };
-    let Some(pool) = pool else {
         *last_hovered = None;
         return;
     };
@@ -534,14 +544,13 @@ pub fn skill_tree_hover(
     *last_hovered = best_idx;
 
     if let Some(idx) = best_idx {
-        spawn_tooltip(&mut commands, &graph, &pool, &display, idx, cursor_pos);
+        spawn_tooltip(&mut commands, &graph, &display, idx, cursor_pos);
     }
 }
 
 fn spawn_tooltip(
     commands: &mut Commands,
     graph: &SkillGraph,
-    pool: &PassiveNodePool,
     display: &StatDisplayRegistry,
     idx: usize,
     cursor_pos: Vec2,
@@ -550,8 +559,6 @@ fn spawn_tooltip(
     if node.is_start() {
         return;
     }
-
-    let def = &pool.defs[node.def_index];
 
     let left = (cursor_pos.x + 16.0).max(0.0);
     let top = (cursor_pos.y - 16.0).max(0.0);
@@ -584,7 +591,7 @@ fn spawn_tooltip(
 
     let header = commands
         .spawn((
-            Text(format!("{}{}", def.name, status)),
+            Text(format!("{}{}", node.name, status)),
             TextFont {
                 font_size: 20.0,
                 ..default()
