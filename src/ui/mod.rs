@@ -58,7 +58,6 @@ impl Plugin for UiPlugin {
                     skill_tree_view::update_node_visuals,
                     skill_tree_view::skill_tree_pan_zoom,
                     skill_tree_view::skill_tree_hover,
-                    skill_tree_view::update_skill_points_text,
                     skill_tree_view::update_coins_text,
                 )
                     .run_if(in_state(WavePhase::Shop)),

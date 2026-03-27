@@ -41,6 +41,7 @@ pub struct ShopBalance {
 #[derive(Clone, Deserialize)]
 pub struct RunBalance {
     pub coins_per_kill: u32,
+    pub node_cost: u32,
     pub hp_scale_per_sec: f32,
     pub dmg_scale_per_sec: f32,
 }

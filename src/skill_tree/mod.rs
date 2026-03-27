@@ -15,7 +15,6 @@ impl Plugin for SkillTreePlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<systems::AllocateNodeRequest>()
             .add_systems(OnEnter(GameState::Playing), systems::generate_skill_tree)
-            .add_systems(OnEnter(WavePhase::Shop), systems::grant_skill_points)
             .add_systems(
                 Update,
                 systems::handle_allocate_node

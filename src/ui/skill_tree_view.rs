@@ -3,10 +3,11 @@ use bevy::camera::visibility::RenderLayers;
 use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 
+use crate::balance::GameBalance;
 use crate::money::PlayerMoney;
 use crate::run::RunState;
 use crate::skill_tree::graph::SkillGraph;
-use crate::skill_tree::systems::{AllocateNodeRequest, SkillPoints};
+use crate::skill_tree::systems::AllocateNodeRequest;
 use crate::skill_tree::types::{PassiveNodePool, Rarity};
 use crate::stats::StatDisplayRegistry;
 use crate::ui::stat_line_builder::{StatLineBuilder, StatRenderMode, GOLD_COLOR};
@@ -63,9 +64,6 @@ pub struct SkillTreeWorld;
 
 #[derive(Component)]
 pub struct SkillTreeOverlay;
-
-#[derive(Component)]
-pub struct SkillPointsText;
 
 #[derive(Component)]
 pub struct ShopCoinsText;
@@ -165,7 +163,7 @@ pub fn spawn_shop_screen(
     mut zoom_level: ResMut<ZoomLevel>,
     run_state: Res<RunState>,
     money: Res<PlayerMoney>,
-    skill_points: Option<Res<SkillPoints>>,
+    balance: Res<GameBalance>,
 ) {
     *pan_state = PanState::default();
     *zoom_level = ZoomLevel::default();
@@ -191,8 +189,6 @@ pub fn spawn_shop_screen(
     if let (Some(graph), Some(_pool), Some(st_meshes)) = (graph, pool, st_meshes) {
         spawn_skill_tree_world(&mut commands, &graph, &st_meshes, &mut materials);
     }
-
-    let sp_count = skill_points.map(|sp| sp.0).unwrap_or(0);
 
     commands.spawn((
         SkillTreeOverlay,
@@ -220,16 +216,7 @@ pub fn spawn_shop_screen(
             ),
             (
                 ShopCoinsText,
-                Text(format!("Coins: {}", money.get())),
-                TextFont {
-                    font_size: 22.0,
-                    ..default()
-                },
-                TextColor(GOLD_COLOR),
-            ),
-            (
-                SkillPointsText,
-                Text(format!("Skill Points: {}", sp_count)),
+                Text(format!("Coins: {} (node: {}g)", money.get(), balance.run.node_cost)),
                 TextFont {
                     font_size: 22.0,
                     ..default()
@@ -420,7 +407,8 @@ pub fn skill_tree_click(
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<SkillTreeCamera>>,
     graph: Option<Res<SkillGraph>>,
-    skill_points: Option<Res<SkillPoints>>,
+    money: Res<PlayerMoney>,
+    balance: Res<GameBalance>,
     mut allocate_events: MessageWriter<AllocateNodeRequest>,
 ) {
     if !mouse.just_pressed(MouseButton::Left) {
@@ -428,10 +416,7 @@ pub fn skill_tree_click(
     }
 
     let Some(graph) = graph else { return };
-    let Some(skill_points) = skill_points else {
-        return;
-    };
-    if skill_points.0 == 0 {
+    if !money.can_afford(balance.run.node_cost) {
         return;
     }
 
@@ -632,18 +617,7 @@ fn spawn_tooltip(
     }
 }
 
-pub fn update_skill_points_text(
-    skill_points: Option<Res<SkillPoints>>,
-    mut text_query: Query<&mut Text, With<SkillPointsText>>,
-) {
-    let Some(sp) = skill_points else { return };
-    if !sp.is_changed() {
-        return;
-    }
-    for mut text in &mut text_query {
-        text.0 = format!("Skill Points: {}", sp.0);
-    }
-}
+
 
 pub fn update_coins_text(
     money: Res<PlayerMoney>,
