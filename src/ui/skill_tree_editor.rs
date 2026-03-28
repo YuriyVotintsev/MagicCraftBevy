@@ -1,6 +1,5 @@
 use bevy::camera::visibility::RenderLayers;
 use bevy::input::keyboard::{Key, KeyboardInput};
-use bevy::input::mouse::MouseWheel;
 use bevy::prelude::*;
 
 use crate::skill_tree::graph::{GraphEdge, GraphNode, GridSettings, SkillGraph};
@@ -35,7 +34,6 @@ struct EditorState {
 
 #[derive(Clone, PartialEq)]
 enum EditField {
-    GridSize,
     NodeName(usize),
     MaxLevel(usize),
     StatValue(usize, usize),
@@ -64,21 +62,6 @@ struct SaveButton;
 
 #[derive(Component)]
 struct GridSizeInput;
-
-#[derive(Component)]
-struct NodeNameInput;
-
-#[derive(Component)]
-struct StatNameText(usize);
-
-#[derive(Component)]
-struct StatValueInput(usize);
-
-#[derive(Component)]
-struct AddStatButton;
-
-#[derive(Component)]
-struct RemoveStatButton(usize);
 
 #[derive(Component)]
 struct NodePropertyPanel;
@@ -487,7 +470,7 @@ fn editor_edge_mode(
     keyboard: Res<ButtonInput<KeyCode>>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<SkillTreeCamera>>,
-    mut graph: Option<ResMut<SkillGraph>>,
+    graph: Option<ResMut<SkillGraph>>,
     mut editor_state: ResMut<EditorState>,
 ) {
     if !(keyboard.pressed(KeyCode::ShiftLeft) || keyboard.pressed(KeyCode::ShiftRight)) {
@@ -545,7 +528,7 @@ fn editor_edge_mode(
 
 fn editor_delete(
     keyboard: Res<ButtonInput<KeyCode>>,
-    mut graph: Option<ResMut<SkillGraph>>,
+    graph: Option<ResMut<SkillGraph>>,
     mut editor_state: ResMut<EditorState>,
     mut commands: Commands,
     panel_query: Query<Entity, With<NodePropertyPanel>>,
@@ -843,8 +826,6 @@ fn editor_field_click(
     interaction_query: Query<(&Interaction, &EditableField), Changed<Interaction>>,
     mut active_edit: ResMut<ActiveEdit>,
     graph: Option<Res<SkillGraph>>,
-    grid_settings: Option<Res<GridSettings>>,
-    stat_registry: Res<StatRegistry>,
     mut text_query: Query<(&EditFieldText, &mut Text, &mut TextColor)>,
 ) {
     for (interaction, editable) in &interaction_query {
@@ -853,10 +834,6 @@ fn editor_field_click(
         }
         let field = editable.0.clone();
         let current_value = match &field {
-            EditField::GridSize => {
-                let size = grid_settings.as_ref().map(|g| g.size).unwrap_or(100.0);
-                format!("{}", size as i32)
-            }
             EditField::NodeName(idx) => {
                 graph.as_ref().and_then(|g| g.nodes.get(*idx)).map(|n| n.name.clone()).unwrap_or_default()
             }
@@ -889,7 +866,6 @@ fn editor_text_input(
     mut keyboard_events: MessageReader<KeyboardInput>,
     mut active_edit: ResMut<ActiveEdit>,
     mut graph: Option<ResMut<SkillGraph>>,
-    mut grid_settings: Option<ResMut<GridSettings>>,
     mut commands: Commands,
     editor_state: Res<EditorState>,
     prop_query: Query<Entity, With<NodePropertyPanel>>,
@@ -913,7 +889,7 @@ fn editor_text_input(
             Key::Enter => {
                 let field = active_edit.field.take().unwrap();
                 let buf = std::mem::take(&mut active_edit.buffer);
-                apply_edit(&field, &buf, &mut graph, &mut grid_settings);
+                apply_edit(&field, &buf, &mut graph);
                 if let (Some(idx), Some(ref graph)) = (editor_state.selected, &graph) {
                     spawn_property_panel(&mut commands, graph, idx, &prop_query, &stat_registry);
                 }
@@ -937,26 +913,8 @@ fn apply_edit(
     field: &EditField,
     value: &str,
     graph: &mut Option<ResMut<SkillGraph>>,
-    grid_settings: &mut Option<ResMut<GridSettings>>,
 ) {
     match field {
-        EditField::GridSize => {
-            if let Ok(size) = value.parse::<f32>() {
-                let size = size.clamp(25.0, 500.0);
-                if let Some(ref mut gs) = grid_settings {
-                    gs.size = size;
-                }
-                if let Some(ref mut graph) = graph {
-                    for node in &mut graph.nodes {
-                        node.position = Vec2::new(
-                            node.grid_cell.x as f32 * size,
-                            node.grid_cell.y as f32 * size,
-                        );
-                    }
-                    graph.set_changed();
-                }
-            }
-        }
         EditField::NodeName(idx) => {
             if let Some(ref mut graph) = graph {
                 if let Some(node) = graph.nodes.get_mut(*idx) {
@@ -1071,7 +1029,6 @@ const EDIT_FIELD_BG: Color = Color::srgba(0.1, 0.1, 0.18, 1.0);
 const DROPDOWN_BG: Color = Color::srgb(0.08, 0.08, 0.14);
 const DROPDOWN_ITEM_BG: Color = Color::srgb(0.1, 0.1, 0.18);
 const DROPDOWN_ITEM_HOVER: Color = Color::srgb(0.18, 0.18, 0.3);
-const EDIT_FIELD_HOVER: Color = Color::srgb(0.15, 0.15, 0.25);
 
 fn spawn_property_panel(
     commands: &mut Commands,
