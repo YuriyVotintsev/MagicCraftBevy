@@ -7,7 +7,6 @@ use super::StatId;
 pub struct Modifier {
     pub stat: StatId,
     pub value: f32,
-    pub source: Option<Entity>,
 }
 
 #[derive(Component, Default)]
@@ -20,21 +19,8 @@ impl Modifiers {
         Self::default()
     }
 
-    pub fn add(&mut self, stat: StatId, value: f32, source: Option<Entity>) {
-        self.list.push(Modifier { stat, value, source });
-    }
-
-    pub fn remove_by_source(&mut self, source: Entity) -> Vec<StatId> {
-        let mut affected = Vec::new();
-        self.list.retain(|m| {
-            if m.source == Some(source) {
-                affected.push(m.stat);
-                false
-            } else {
-                true
-            }
-        });
-        affected
+    pub fn add(&mut self, stat: StatId, value: f32) {
+        self.list.push(Modifier { stat, value });
     }
 
     pub fn sum(&self, stat: StatId) -> f32 {

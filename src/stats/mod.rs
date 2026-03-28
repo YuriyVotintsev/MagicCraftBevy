@@ -18,7 +18,7 @@ pub use crate::expr::StatProvider;
 pub use dirty_stats::DirtyStats;
 pub use display::{FormatSpan, SignMode, StatDisplayRegistry, ValueTemplate};
 pub use health::{Dead, death_system, DeathEvent};
-pub use modifier_def::{ModifierDef, ModifierDefRaw, StatRange};
+pub use modifier_def::{ModifierDefRaw, StatRange};
 pub use modifiers::Modifiers;
 pub use damage::DamageEvent;
 pub use pending_damage::PendingDamage;

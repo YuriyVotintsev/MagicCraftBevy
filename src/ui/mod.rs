@@ -1,6 +1,4 @@
 mod damage_numbers;
-mod game_over;
-mod hero_selection;
 mod hud;
 mod loading;
 mod main_menu;
@@ -8,7 +6,6 @@ mod pause_menu;
 #[cfg(feature = "dev")]
 pub mod skill_tree_editor;
 pub mod skill_tree_view;
-mod spell_selection;
 pub mod stat_line_builder;
 
 use bevy::prelude::*;

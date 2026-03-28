@@ -19,10 +19,7 @@ const COMMON_COLOR: Color = Color::srgb(0.63, 0.63, 0.63);
 const UNCOMMON_COLOR: Color = Color::srgb(0.25, 0.75, 0.25);
 const RARE_COLOR: Color = Color::srgb(0.25, 0.5, 1.0);
 const EPIC_COLOR: Color = Color::srgb(0.63, 0.25, 0.88);
-const START_NODE_COLOR: Color = Color::srgb(1.0, 0.84, 0.0);
-
 const RARITY_RADII: [f32; 4] = [16.0, 20.0, 26.0, 32.0];
-const START_NODE_RADIUS: f32 = 24.0;
 
 const LOCKED_BRIGHTNESS: f32 = 0.3;
 const AVAILABLE_BRIGHTNESS: f32 = 0.8;

@@ -6,7 +6,6 @@ use bevy::prelude::*;
 use crate::GameState;
 use assets::{
     BlueprintDefAsset, BlueprintDefLoader, GameBalanceAsset, GameBalanceLoader,
-    HeroClassAsset, HeroClassLoader, PassivePoolAsset, PassivePoolLoader,
     SkillTreeDefAsset, SkillTreeDefLoader, StatsConfigAsset, StatsConfigLoader,
 };
 use systems::LoadingState;
@@ -17,15 +16,11 @@ impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         app.init_asset::<StatsConfigAsset>()
             .init_asset::<BlueprintDefAsset>()
-            .init_asset::<HeroClassAsset>()
             .init_asset::<GameBalanceAsset>()
-            .init_asset::<PassivePoolAsset>()
             .init_asset::<SkillTreeDefAsset>()
             .register_asset_loader(StatsConfigLoader)
             .register_asset_loader(BlueprintDefLoader)
-            .register_asset_loader(HeroClassLoader)
             .register_asset_loader(GameBalanceLoader)
-            .register_asset_loader(PassivePoolLoader)
             .register_asset_loader(SkillTreeDefLoader)
             .init_resource::<LoadingState>()
             .add_systems(OnEnter(GameState::Loading), systems::start_loading)

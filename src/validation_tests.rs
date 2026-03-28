@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use crate::player::hero_class::HeroClassRaw;
 use crate::stats::modifier_def::{ModifierDefRaw, StatRangeRaw};
 
 fn load_stat_names() -> HashSet<String> {
@@ -52,28 +51,6 @@ fn find_ron_files_recursive(dir: &std::path::Path, suffix: &str, out: &mut Vec<s
         } else if path.file_name().unwrap().to_string_lossy().ends_with(suffix) {
             out.push(path);
         }
-    }
-}
-
-#[test]
-fn validate_hero_class_stats() {
-    let stat_names = load_stat_names();
-    let mut errors = Vec::new();
-
-    for path in find_ron_files(std::path::Path::new("assets/heroes"), ".class.ron") {
-        let content = std::fs::read_to_string(&path).unwrap();
-        let raw: HeroClassRaw = ron::from_str(&content)
-            .unwrap_or_else(|e| panic!("Failed to parse {}: {}", path.display(), e));
-        validate_modifier_stats(
-            &format!("Hero class '{}'", raw.id),
-            &raw.modifiers,
-            &stat_names,
-            &mut errors,
-        );
-    }
-
-    if !errors.is_empty() {
-        panic!("Hero class validation errors:\n{}", errors.join("\n"));
     }
 }
 

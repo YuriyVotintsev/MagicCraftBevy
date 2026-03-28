@@ -8,6 +8,7 @@ pub const NEGATIVE_COLOR: Color = Color::srgb(0.9, 0.3, 0.3);
 pub const GOLD_COLOR: Color = Color::srgb(1.0, 0.84, 0.0);
 const GRAY_COLOR: Color = Color::srgb(0.4, 0.4, 0.4);
 
+#[allow(dead_code)]
 pub enum StatRenderMode<'a> {
     Fixed {
         values: &'a [f32],

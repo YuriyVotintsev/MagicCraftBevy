@@ -6,6 +6,7 @@ use super::types::Rarity;
 
 #[derive(Resource)]
 pub struct GridSettings {
+    #[cfg_attr(not(feature = "dev"), allow(dead_code))]
     pub size: f32,
 }
 
@@ -18,6 +19,7 @@ impl Default for GridSettings {
 #[derive(Debug, Clone)]
 pub struct GraphNode {
     pub position: Vec2,
+    #[cfg_attr(not(feature = "dev"), allow(dead_code))]
     pub grid_cell: IVec2,
     pub rarity: Rarity,
     pub rolled_values: Vec<(StatId, f32)>,
@@ -58,15 +60,7 @@ impl SkillGraph {
         self.nodes[node_idx].level += 1;
     }
 
-    pub fn allocated_count(&self) -> usize {
-        self.nodes.iter().filter(|n| n.level > 0).count()
-    }
-
     pub fn allocatable_nodes(&self) -> impl Iterator<Item = usize> + '_ {
         (0..self.nodes.len()).filter(|&i| self.is_allocatable(i))
-    }
-
-    pub fn neighbors(&self, node_idx: usize) -> &[usize] {
-        &self.adjacency[node_idx]
     }
 }

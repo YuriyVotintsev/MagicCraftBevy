@@ -5,9 +5,8 @@ use bevy::reflect::TypePath;
 
 use crate::balance::GameBalance;
 use crate::blueprints::BlueprintDefRaw;
-use crate::player::hero_class::HeroClassRaw;
 use crate::expr::calc::CalcTemplateRaw;
-use crate::skill_tree::types::{PassivePoolRaw, SkillTreeDefRaw};
+use crate::skill_tree::types::SkillTreeDefRaw;
 use crate::stats::display::StatDisplayRuleRaw;
 use crate::stats::loader::StatDefRaw;
 
@@ -23,19 +22,10 @@ pub struct StatsConfigAsset {
 pub struct BlueprintDefAsset(pub BlueprintDefRaw);
 
 #[derive(Asset, TypePath)]
-pub struct HeroClassAsset(pub HeroClassRaw);
-
-#[derive(Asset, TypePath)]
-pub struct PassivePoolAsset(pub PassivePoolRaw);
-
-#[derive(Asset, TypePath)]
 pub struct SkillTreeDefAsset(pub SkillTreeDefRaw);
 
 #[derive(Asset, TypePath)]
 pub struct GameBalanceAsset(pub GameBalance);
-
-#[derive(Default, TypePath)]
-pub struct PassivePoolLoader;
 
 #[derive(Default, TypePath)]
 pub struct SkillTreeDefLoader;
@@ -48,9 +38,6 @@ pub struct StatsConfigLoader;
 
 #[derive(Default, TypePath)]
 pub struct BlueprintDefLoader;
-
-#[derive(Default, TypePath)]
-pub struct HeroClassLoader;
 
 impl AssetLoader for GameBalanceLoader {
     type Asset = GameBalanceAsset;
@@ -131,52 +118,6 @@ impl AssetLoader for BlueprintDefLoader {
 
     fn extensions(&self) -> &[&str] {
         &["ability.ron", "mob.ron", "hero.ron"]
-    }
-}
-
-impl AssetLoader for HeroClassLoader {
-    type Asset = HeroClassAsset;
-    type Settings = ();
-    type Error = anyhow::Error;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).await?;
-        let content = std::str::from_utf8(&bytes)?;
-        let def: HeroClassRaw = ron::from_str(content)?;
-        Ok(HeroClassAsset(def))
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["class.ron"]
-    }
-}
-
-impl AssetLoader for PassivePoolLoader {
-    type Asset = PassivePoolAsset;
-    type Settings = ();
-    type Error = anyhow::Error;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).await?;
-        let content = std::str::from_utf8(&bytes)?;
-        let pool: PassivePoolRaw = ron::from_str(content)?;
-        Ok(PassivePoolAsset(pool))
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["passives.ron"]
     }
 }
 

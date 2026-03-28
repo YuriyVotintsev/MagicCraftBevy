@@ -37,6 +37,7 @@ pub struct BlueprintRegistry {
     id_to_name: Vec<String>,
 }
 
+#[allow(dead_code)]
 fn format_id_as_name(id: &str) -> String {
     id.split('_')
         .map(|word| {
@@ -67,6 +68,7 @@ impl BlueprintRegistry {
         self.name_to_id.get(name).copied()
     }
 
+    #[allow(dead_code)]
     pub fn get_display_name(&self, id: BlueprintId) -> String {
         if let Some(bp) = self.blueprints.get(id.0 as usize) {
             if let Some(name) = &bp.name {

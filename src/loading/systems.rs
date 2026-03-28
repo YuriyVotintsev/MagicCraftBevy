@@ -2,7 +2,7 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::blueprints::BlueprintRegistry;
-use crate::player::hero_class::{AvailableHeroes, HeroClass};
+use crate::player::hero_class::AvailableHeroes;
 use crate::stats::display::StatDisplayRegistry;
 use crate::expr::calc::CalcRegistry;
 use crate::expr::parser::{TypedExpr, StatAtomParser, parse_expr_string_with};
@@ -11,8 +11,8 @@ use crate::stats::loader::StatEvalKindRaw;
 
 
 use super::assets::{
-    BlueprintDefAsset, GameBalanceAsset, HeroClassAsset,
-    PassivePoolAsset, SkillTreeDefAsset, StatsConfigAsset,
+    BlueprintDefAsset, GameBalanceAsset,
+    SkillTreeDefAsset, StatsConfigAsset,
 };
 
 #[derive(Resource, Default)]
@@ -23,7 +23,6 @@ pub struct LoadingState {
     pub heroes_folder: Option<Handle<LoadedFolder>>,
     pub abilities_folder: Option<Handle<LoadedFolder>>,
     pub mobs_folder: Option<Handle<LoadedFolder>>,
-    pub passives_handle: Option<Handle<PassivePoolAsset>>,
     pub skill_tree_handle: Option<Handle<SkillTreeDefAsset>>,
 }
 
@@ -137,7 +136,6 @@ pub fn check_stats_loaded(
     loading_state.heroes_folder = Some(asset_server.load_folder("heroes"));
     loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
     loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
-    loading_state.passives_handle = Some(asset_server.load("skill_tree/passives.ron"));
     loading_state.skill_tree_handle = Some(asset_server.load("skill_tree/tree.ron"));
 
     loading_state.phase = LoadingPhase::WaitingForContent;
@@ -149,7 +147,6 @@ pub fn check_content_loaded(
     mut loading_state: ResMut<LoadingState>,
     asset_server: Res<AssetServer>,
     blueprint_assets: Res<Assets<BlueprintDefAsset>>,
-    hero_class_assets: Res<Assets<HeroClassAsset>>,
     skill_tree_assets: Res<Assets<SkillTreeDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
@@ -205,7 +202,6 @@ pub fn check_content_loaded(
     let lookup = |name: &str| stat_registry.get(name);
 
     let mut base_blueprint = None;
-    let mut classes = Vec::new();
     if let Some(folder) = folders.get(heroes_folder_handle.id()) {
         for handle in &folder.handles {
             if let Ok(typed_bp) = handle.clone().try_typed::<BlueprintDefAsset>() {
@@ -216,26 +212,10 @@ pub fn check_content_loaded(
                     base_blueprint = Some(id);
                 }
             }
-
-            if let Ok(typed_class) = handle.clone().try_typed::<HeroClassAsset>() {
-                if let Some(class_asset) = hero_class_assets.get(typed_class.id()) {
-                    let raw = &class_asset.0;
-                    let modifiers = raw.modifiers.iter()
-                        .map(|m| m.resolve(&stat_registry))
-                        .collect();
-                    info!("Registered hero class: {}", raw.id);
-                    classes.push(HeroClass {
-                        display_name: raw.display_name.clone(),
-                        color: raw.color,
-                        sprite: raw.sprite.clone(),
-                        modifiers,
-                    });
-                }
-            }
         }
     }
     let base_blueprint = base_blueprint.expect("No base hero blueprint found in heroes folder");
-    commands.insert_resource(AvailableHeroes { base_blueprint, classes });
+    commands.insert_resource(AvailableHeroes { base_blueprint });
 
     let folder_handles = [abilities_folder_handle.id(), mobs_folder_handle.id()];
     for folder_id in folder_handles {

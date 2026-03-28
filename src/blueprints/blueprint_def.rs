@@ -17,6 +17,7 @@ pub struct BlueprintDefRaw {
 
 #[derive(Debug, Clone)]
 pub struct BlueprintDef {
+    #[allow(dead_code)]
     pub name: Option<String>,
     pub cooldown: ScalarExpr,
     pub entities: Vec<EntityDef>,

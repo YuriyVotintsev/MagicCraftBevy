@@ -177,10 +177,10 @@ impl EntitySpawner<'_, '_> {
         dirty.mark_all((0..self.stat_registry.len() as u32).map(StatId));
 
         for (stat_id, value) in &entity_def.base_stats {
-            modifiers.add(*stat_id, *value, None);
+            modifiers.add(*stat_id, *value);
         }
         for &(stat_id, value) in extra_modifiers {
-            modifiers.add(stat_id, value, None);
+            modifiers.add(stat_id, value);
         }
 
         self.calculators.recalculate(&modifiers, &mut computed, &mut dirty);

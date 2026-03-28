@@ -1,11 +1,7 @@
 (
     wave: (
-        base_enemies: 10,
-        enemies_per_wave: 3,
         base_concurrent: 5,
-        concurrent_per_wave: 1,
         spawn_threshold: 2,
-        reward: 10,
         shop_delay: 2.0,
         marker_duration: 2.0,
     ),

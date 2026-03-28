@@ -244,11 +244,11 @@ fn apply_enemy_scaling(
 
     for (mut modifiers, mut dirty) in &mut query {
         if let Some(stat) = hp_stat {
-            modifiers.add(stat, hp_bonus, None);
+            modifiers.add(stat, hp_bonus);
             dirty.mark(stat);
         }
         if let Some(stat) = dmg_stat {
-            modifiers.add(stat, dmg_bonus, None);
+            modifiers.add(stat, dmg_bonus);
             dirty.mark(stat);
         }
     }

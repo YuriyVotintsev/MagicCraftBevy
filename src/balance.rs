@@ -10,12 +10,8 @@ pub struct GameBalance {
 
 #[derive(Clone, Deserialize)]
 pub struct WaveBalance {
-    pub base_enemies: u32,
-    pub enemies_per_wave: u32,
     pub base_concurrent: u32,
-    pub concurrent_per_wave: u32,
     pub spawn_threshold: u32,
-    pub reward: u32,
     pub shop_delay: f32,
     pub marker_duration: f32,
 }

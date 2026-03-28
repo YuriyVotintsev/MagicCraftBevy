@@ -40,7 +40,7 @@ pub fn handle_allocate_node(
 
         for (mut modifiers, mut dirty) in &mut player_query {
             for &(stat, value) in &graph.nodes[idx].rolled_values {
-                modifiers.add(stat, value, None);
+                modifiers.add(stat, value);
                 dirty.mark(stat);
             }
         }
