@@ -5,7 +5,6 @@ use serde::Deserialize;
 pub struct GameBalance {
     pub wave: WaveBalance,
     pub arena: ArenaBalance,
-    pub shop: ShopBalance,
     pub run: RunBalance,
 }
 
@@ -28,14 +27,6 @@ pub struct ArenaBalance {
     pub half_w: f32,
     pub half_h: f32,
     pub corner_radius: f32,
-}
-
-#[derive(Clone, Deserialize)]
-pub struct ShopBalance {
-    pub artifact_slots: usize,
-    pub offerings_count: usize,
-    pub base_reroll_cost: u32,
-    pub sell_price_percent: u32,
 }
 
 #[derive(Clone, Deserialize)]

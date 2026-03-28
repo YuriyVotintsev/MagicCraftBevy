@@ -1,1 +1,0 @@
-(id: "fire_charm", name: "Fire Charm", price: 5, modifiers: [(stats: [Fixed(stat: "physical_damage_flat", value: 5)])])

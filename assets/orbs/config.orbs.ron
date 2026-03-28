@@ -1,8 +1,0 @@
-[
-    (id: "alteration", name: "Orb of Alteration", description: "Reroll 1 random affix",
-     price: 1, orb_type: Alteration),
-    (id: "chaos", name: "Orb of Chaos", description: "Reroll 3 random affixes",
-     price: 2, orb_type: Chaos),
-    (id: "augmentation", name: "Orb of Augmentation", description: "Upgrade 1 affix tier",
-     price: 3, orb_type: Augmentation),
-]

@@ -1,6 +1,3 @@
-mod affix_shop;
-mod artifact_panel;
-mod artifact_tooltip;
 mod damage_numbers;
 mod game_over;
 mod hero_selection;
@@ -8,7 +5,6 @@ mod hud;
 mod loading;
 mod main_menu;
 mod pause_menu;
-mod shop;
 #[cfg(feature = "dev")]
 pub mod skill_tree_editor;
 pub mod skill_tree_view;

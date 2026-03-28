@@ -1,11 +1,8 @@
 use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
-use crate::affixes::{AffixDef, AffixRegistry, OrbDef, OrbRegistry};
-use crate::artifacts::{ArtifactRegistry, AvailableArtifacts};
 use crate::blueprints::BlueprintRegistry;
 use crate::player::hero_class::{AvailableHeroes, HeroClass};
-use crate::player::SpellSlot;
 use crate::stats::display::StatDisplayRegistry;
 use crate::expr::calc::CalcRegistry;
 use crate::expr::parser::{TypedExpr, StatAtomParser, parse_expr_string_with};
@@ -14,8 +11,8 @@ use crate::stats::loader::StatEvalKindRaw;
 
 
 use super::assets::{
-    AffixPoolAsset, ArtifactDefAsset, BlueprintDefAsset, GameBalanceAsset, HeroClassAsset,
-    OrbConfigAsset, PassivePoolAsset, SkillTreeDefAsset, StatsConfigAsset,
+    BlueprintDefAsset, GameBalanceAsset, HeroClassAsset,
+    PassivePoolAsset, SkillTreeDefAsset, StatsConfigAsset,
 };
 
 #[derive(Resource, Default)]
@@ -26,9 +23,6 @@ pub struct LoadingState {
     pub heroes_folder: Option<Handle<LoadedFolder>>,
     pub abilities_folder: Option<Handle<LoadedFolder>>,
     pub mobs_folder: Option<Handle<LoadedFolder>>,
-    pub artifacts_folder: Option<Handle<LoadedFolder>>,
-    pub affixes_folder: Option<Handle<LoadedFolder>>,
-    pub orbs_handle: Option<Handle<OrbConfigAsset>>,
     pub passives_handle: Option<Handle<PassivePoolAsset>>,
     pub skill_tree_handle: Option<Handle<SkillTreeDefAsset>>,
 }
@@ -143,9 +137,6 @@ pub fn check_stats_loaded(
     loading_state.heroes_folder = Some(asset_server.load_folder("heroes"));
     loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
     loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
-    loading_state.artifacts_folder = Some(asset_server.load_folder("artifacts"));
-    loading_state.affixes_folder = Some(asset_server.load_folder("affixes"));
-    loading_state.orbs_handle = Some(asset_server.load("orbs/config.orbs.ron"));
     loading_state.passives_handle = Some(asset_server.load("skill_tree/passives.ron"));
     loading_state.skill_tree_handle = Some(asset_server.load("skill_tree/tree.ron"));
 
@@ -159,17 +150,11 @@ pub fn check_content_loaded(
     asset_server: Res<AssetServer>,
     blueprint_assets: Res<Assets<BlueprintDefAsset>>,
     hero_class_assets: Res<Assets<HeroClassAsset>>,
-    artifact_assets: Res<Assets<ArtifactDefAsset>>,
-    affix_pool_assets: Res<Assets<AffixPoolAsset>>,
-    orb_config_assets: Res<Assets<OrbConfigAsset>>,
     skill_tree_assets: Res<Assets<SkillTreeDefAsset>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
     calc_registry: Option<Res<CalcRegistry>>,
     mut blueprint_registry: ResMut<BlueprintRegistry>,
-    mut artifact_registry: ResMut<ArtifactRegistry>,
-    mut affix_registry: ResMut<AffixRegistry>,
-    mut orb_registry: ResMut<OrbRegistry>,
 ) {
     if loading_state.phase != LoadingPhase::WaitingForContent {
         return;
@@ -191,15 +176,6 @@ pub fn check_content_loaded(
     let Some(mobs_folder_handle) = &loading_state.mobs_folder else {
         return;
     };
-    let Some(artifacts_folder_handle) = &loading_state.artifacts_folder else {
-        return;
-    };
-    let Some(affixes_folder_handle) = &loading_state.affixes_folder else {
-        return;
-    };
-    let Some(orbs_handle) = &loading_state.orbs_handle else {
-        return;
-    };
     let Some(skill_tree_handle) = &loading_state.skill_tree_handle else {
         return;
     };
@@ -208,8 +184,6 @@ pub fn check_content_loaded(
         heroes_folder_handle,
         abilities_folder_handle,
         mobs_folder_handle,
-        artifacts_folder_handle,
-        affixes_folder_handle,
     ] {
         if !matches!(
             asset_server.get_load_state(handle.id()),
@@ -219,12 +193,6 @@ pub fn check_content_loaded(
         }
     }
 
-    if !matches!(
-        asset_server.get_load_state(orbs_handle.id()),
-        Some(LoadState::Loaded)
-    ) {
-        return;
-    }
     if !matches!(
         asset_server.get_load_state(skill_tree_handle.id()),
         Some(LoadState::Loaded)
@@ -280,64 +248,6 @@ pub fn check_content_loaded(
                     blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
                 }
             }
-        }
-    }
-
-    let mut artifact_ids = Vec::new();
-    if let Some(folder) = folders.get(artifacts_folder_handle.id()) {
-        for handle in &folder.handles {
-            let typed_handle: Handle<ArtifactDefAsset> = handle.clone().typed();
-            if let Some(artifact_asset) = artifact_assets.get(typed_handle.id()) {
-                let raw = &artifact_asset.0;
-                let def = raw.resolve(&stat_registry);
-                info!("Registered artifact: {}", raw.id);
-                let id = artifact_registry.register(&raw.id, def);
-                artifact_ids.push(id);
-            }
-        }
-    }
-    commands.insert_resource(AvailableArtifacts::new(artifact_ids));
-
-    if let Some(folder) = folders.get(affixes_folder_handle.id()) {
-        for handle in &folder.handles {
-            let typed_handle: Handle<AffixPoolAsset> = handle.clone().typed();
-            if let Some(pool_asset) = affix_pool_assets.get(typed_handle.id()) {
-                let path = asset_server
-                    .get_path(handle.id())
-                    .map(|p| p.path().to_string_lossy().to_string())
-                    .unwrap_or_default();
-                let slot = if path.contains("active") {
-                    SpellSlot::Active
-                } else if path.contains("passive") {
-                    SpellSlot::Passive
-                } else if path.contains("defensive") {
-                    SpellSlot::Defensive
-                } else {
-                    warn!("Unknown affix pool file: {}", path);
-                    continue;
-                };
-                for raw in &pool_asset.0 {
-                    let tiers = raw.tiers.iter()
-                        .map(|t| t.resolve(&stat_registry))
-                        .collect();
-                    let def = AffixDef { tiers };
-                    let id = affix_registry.register(def, slot);
-                    info!("Registered affix: {} ({:?}) for {:?}", raw.id, id, slot);
-                }
-            }
-        }
-    }
-
-    if let Some(orb_asset) = orb_config_assets.get(orbs_handle.id()) {
-        for raw in &orb_asset.0 {
-            let def = OrbDef {
-                name: raw.name.clone(),
-                description: raw.description.clone(),
-                price: raw.price,
-                behavior: raw.orb_type,
-            };
-            let id = orb_registry.register(&raw.id, def);
-            info!("Registered orb: {} ({:?})", raw.name, id);
         }
     }
 

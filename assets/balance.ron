@@ -16,12 +16,6 @@
         half_h: 750.0,
         corner_radius: 320.0,
     ),
-    shop: (
-        artifact_slots: 5,
-        offerings_count: 3,
-        base_reroll_cost: 1,
-        sell_price_percent: 50,
-    ),
     run: (
         coins_per_kill: 1,
         node_cost: 5,
