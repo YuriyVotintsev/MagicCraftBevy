@@ -21,7 +21,8 @@ pub struct GraphNode {
     pub grid_cell: IVec2,
     pub rarity: Rarity,
     pub rolled_values: Vec<(StatId, f32)>,
-    pub allocated: bool,
+    pub level: u32,
+    pub max_level: u32,
     pub name: String,
 }
 
@@ -42,7 +43,7 @@ pub struct SkillGraph {
 impl SkillGraph {
     pub fn is_allocatable(&self, node_idx: usize) -> bool {
         let node = &self.nodes[node_idx];
-        if node.allocated {
+        if node.level >= node.max_level {
             return false;
         }
         if node_idx == self.start_node {
@@ -50,15 +51,15 @@ impl SkillGraph {
         }
         self.adjacency[node_idx]
             .iter()
-            .any(|&neighbor| self.nodes[neighbor].allocated)
+            .any(|&neighbor| self.nodes[neighbor].level > 0)
     }
 
     pub fn allocate(&mut self, node_idx: usize) {
-        self.nodes[node_idx].allocated = true;
+        self.nodes[node_idx].level += 1;
     }
 
     pub fn allocated_count(&self) -> usize {
-        self.nodes.iter().filter(|n| n.allocated).count()
+        self.nodes.iter().filter(|n| n.level > 0).count()
     }
 
     pub fn allocatable_nodes(&self) -> impl Iterator<Item = usize> + '_ {

@@ -40,7 +40,7 @@ pub fn spawn_player(
     let mut modifier_tuples: Vec<_> = Vec::new();
     if let Some(graph) = &skill_graph {
         for node in &graph.nodes {
-            if node.allocated {
+            for _ in 0..node.level {
                 modifier_tuples.extend(node.rolled_values.iter().copied());
             }
         }

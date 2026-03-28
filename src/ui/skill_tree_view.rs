@@ -112,7 +112,7 @@ fn rarity_radius(rarity: Rarity) -> f32 {
 fn node_color(graph: &SkillGraph, idx: usize) -> Color {
     let node = &graph.nodes[idx];
     let base_color = rarity_color(node.rarity);
-    let brightness = if node.allocated {
+    let brightness = if node.level > 0 {
         ALLOCATED_BRIGHTNESS
     } else if graph.is_allocatable(idx) {
         AVAILABLE_BRIGHTNESS
@@ -126,8 +126,8 @@ fn node_color(graph: &SkillGraph, idx: usize) -> Color {
 
 fn edge_alpha(graph: &SkillGraph, edge_idx: usize) -> f32 {
     let edge = &graph.edges[edge_idx];
-    let a_allocated = graph.nodes[edge.a].allocated;
-    let b_allocated = graph.nodes[edge.b].allocated;
+    let a_allocated = graph.nodes[edge.a].level > 0;
+    let b_allocated = graph.nodes[edge.b].level > 0;
     let a_available = graph.is_allocatable(edge.a);
     let b_available = graph.is_allocatable(edge.b);
 
@@ -570,7 +570,7 @@ fn spawn_tooltip(
         ))
         .id();
 
-    let status = if node.allocated {
+    let status = if node.level >= node.max_level {
         " (Learned)"
     } else if graph.is_allocatable(idx) {
         " (Available)"
@@ -593,6 +593,24 @@ fn spawn_tooltip(
         ))
         .id();
     commands.entity(tooltip).add_child(header);
+
+    if node.max_level > 1 {
+        let level_text = commands
+            .spawn((
+                Text(format!("Level: {}/{}", node.level, node.max_level)),
+                TextFont {
+                    font_size: 16.0,
+                    ..default()
+                },
+                TextColor(TEXT_COLOR),
+                Node {
+                    margin: UiRect::bottom(Val::Px(4.0)),
+                    ..default()
+                },
+            ))
+            .id();
+        commands.entity(tooltip).add_child(level_text);
+    }
 
     for &(stat, value) in &node.rolled_values {
         let formats = display.get_format(&[stat]);

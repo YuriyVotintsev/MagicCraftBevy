@@ -13,8 +13,14 @@ pub struct SkillTreeNodeRaw {
     pub name: String,
     #[serde(default)]
     pub position: (i32, i32),
+    #[serde(default = "default_max_level")]
+    pub max_level: u32,
     #[serde(default)]
     pub modifiers: Vec<ModifierDefRaw>,
+}
+
+fn default_max_level() -> u32 {
+    1
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
@@ -54,7 +60,8 @@ impl SkillTreeDefRaw {
                 grid_cell,
                 rarity: Rarity(0),
                 rolled_values,
-                allocated: false,
+                level: 0,
+                max_level: raw.max_level,
                 name: raw.name.clone(),
             });
         }

@@ -37,6 +37,7 @@ struct EditorState {
 enum EditField {
     GridSize,
     NodeName(usize),
+    MaxLevel(usize),
     StatValue(usize, usize),
 }
 
@@ -666,6 +667,7 @@ fn graph_to_raw(graph: &SkillGraph, stat_registry: &StatRegistry, grid_size: f32
         SkillTreeNodeRaw {
             name: node.name.clone(),
             position: (node.grid_cell.x, node.grid_cell.y),
+            max_level: node.max_level,
             modifiers,
         }
     }).collect();
@@ -858,6 +860,9 @@ fn editor_field_click(
             EditField::NodeName(idx) => {
                 graph.as_ref().and_then(|g| g.nodes.get(*idx)).map(|n| n.name.clone()).unwrap_or_default()
             }
+            EditField::MaxLevel(idx) => {
+                graph.as_ref().and_then(|g| g.nodes.get(*idx)).map(|n| format!("{}", n.max_level)).unwrap_or_default()
+            }
             EditField::StatValue(node_idx, stat_idx) => {
                 graph.as_ref()
                     .and_then(|g| g.nodes.get(*node_idx))
@@ -956,6 +961,16 @@ fn apply_edit(
             if let Some(ref mut graph) = graph {
                 if let Some(node) = graph.nodes.get_mut(*idx) {
                     node.name = value.to_string();
+                }
+            }
+        }
+        EditField::MaxLevel(idx) => {
+            if let Ok(v) = value.parse::<u32>() {
+                let v = v.max(1);
+                if let Some(ref mut graph) = graph {
+                    if let Some(node) = graph.nodes.get_mut(*idx) {
+                        node.max_level = v;
+                    }
                 }
             }
         }
@@ -1083,6 +1098,10 @@ fn spawn_property_panel(
     // Name field (click to edit)
     children_list.push(spawn_editable_row(
         commands, "Name", &node.name, EditField::NodeName(idx),
+    ));
+
+    children_list.push(spawn_editable_row(
+        commands, "Max Level", &format!("{}", node.max_level), EditField::MaxLevel(idx),
     ));
 
     // Stats
@@ -1388,7 +1407,8 @@ fn editor_create_node_confirm(
             grid_cell: btn.grid_cell,
             rarity: Rarity(0),
             rolled_values: Vec::new(),
-            allocated: false,
+            level: 0,
+            max_level: 1,
             name: format!("Node {}", new_idx),
         });
         graph.adjacency.push(Vec::new());
