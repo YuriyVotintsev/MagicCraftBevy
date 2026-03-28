@@ -35,7 +35,7 @@ impl WaveState {
         Self {
             spawned_count: 0,
             killed_count: 0,
-            max_concurrent: balance.base_concurrent,
+            max_concurrent: balance.start_enemies,
         }
     }
 }

@@ -1,9 +1,10 @@
 (
     wave: (
-        base_concurrent: 5,
-        spawn_threshold: 2,
+        start_enemies: 5,
+        max_enemies: 40,
+        ramp_duration_secs: 300.0,
+        safe_spawn_radius: 200.0,
         shop_delay: 2.0,
-        marker_duration: 2.0,
     ),
     arena: (
         width: 3840.0,

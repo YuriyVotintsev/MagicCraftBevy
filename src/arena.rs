@@ -19,14 +19,6 @@ pub const WINDOW_WIDTH: f32 = 1920.0;
 #[cfg(not(feature = "headless"))]
 pub const WINDOW_HEIGHT: f32 = 1080.0;
 
-const MARKER_SIZE: f32 = 30.0;
-
-#[derive(Component)]
-struct SpawnMarker {
-    timer: Timer,
-    blueprint_name: String,
-}
-
 pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
@@ -36,11 +28,9 @@ impl Plugin for ArenaPlugin {
                 OnEnter(GameState::MainMenu),
                 spawn_arena.run_if(not(any_with_component::<Wall>)),
             )
-            .add_systems(OnEnter(GameState::Playing), cleanup_spawn_markers)
-            .add_systems(OnExit(WavePhase::Combat), cleanup_spawn_markers)
             .add_systems(
                 Update,
-                (spawn_markers, process_spawn_markers, tag_wave_enemies)
+                (update_target_count, spawn_enemies, tag_wave_enemies)
                     .chain()
                     .in_set(GameSet::Spawning)
                     .run_if(in_state(WavePhase::Combat)),
@@ -55,12 +45,6 @@ impl Plugin for ArenaPlugin {
                 PostUpdate,
                 camera_follow.run_if(in_state(GameState::Playing)),
             );
-    }
-}
-
-fn cleanup_spawn_markers(mut commands: Commands, markers: Query<Entity, With<SpawnMarker>>) {
-    for entity in markers.iter() {
-        commands.entity(entity).despawn();
     }
 }
 
@@ -143,45 +127,60 @@ fn camera_follow(
     camera_transform.translation.y = player_transform.translation.y.clamp(-max_y, max_y);
 }
 
-fn spawn_markers(
+fn update_target_count(
+    run_state: Res<RunState>,
+    mut wave_state: ResMut<WaveState>,
+    balance: Res<GameBalance>,
+) {
+    let wb = &balance.wave;
+    let t = (run_state.elapsed / wb.ramp_duration_secs).clamp(0.0, 1.0);
+    let target = wb.start_enemies as f32 + t * (wb.max_enemies - wb.start_enemies) as f32;
+    wave_state.max_concurrent = target.round() as u32;
+}
+
+fn spawn_enemies(
     mut commands: Commands,
-    wave_state: Res<WaveState>,
-    markers_query: Query<(), With<SpawnMarker>>,
+    mut wave_state: ResMut<WaveState>,
     enemies_query: Query<&Faction, With<Health>>,
+    player_query: Query<&Transform, With<crate::player::Player>>,
+    blueprint_registry: Res<BlueprintRegistry>,
     balance: Res<GameBalance>,
 ) {
     let alive_enemies = enemies_query.iter().filter(|f| **f == Faction::Enemy).count() as u32;
-    let active_markers = markers_query.iter().count() as u32;
-    let total_on_arena = alive_enemies + active_markers;
-
-    if total_on_arena > balance.wave.spawn_threshold {
+    let deficit = wave_state.max_concurrent.saturating_sub(alive_enemies);
+    if deficit == 0 {
         return;
     }
 
-    let can_spawn = wave_state
-        .max_concurrent
-        .saturating_sub(total_on_arena);
-
-    if can_spawn == 0 {
-        return;
-    }
-
-    let to_spawn = can_spawn;
+    let player_pos = player_query
+        .single()
+        .map(|t| t.translation.truncate())
+        .unwrap_or(Vec2::ZERO);
 
     let arena = &balance.arena;
-    let mut rng = rand::rng();
-    let margin = MARKER_SIZE;
+    let safe_radius_sq = balance.wave.safe_spawn_radius * balance.wave.safe_spawn_radius;
+    let margin = 30.0;
     let hw = arena.half_w - margin;
     let hh = arena.half_h - margin;
+    let mut rng = rand::rng();
 
-    for _ in 0..to_spawn {
-        let (x, y) = loop {
-            let x = rng.random_range(-hw..hw);
-            let y = rng.random_range(-hh..hh);
-            if is_inside_arena(Vec2::new(x, y), margin, arena) {
-                break (x, y);
+    for _ in 0..deficit {
+        let (x, y) = {
+            let mut attempts = 0;
+            loop {
+                let x = rng.random_range(-hw..hw);
+                let y = rng.random_range(-hh..hh);
+                let pos = Vec2::new(x, y);
+                attempts += 1;
+                if attempts > 100
+                    || (is_inside_arena(pos, margin, arena)
+                        && pos.distance_squared(player_pos) > safe_radius_sq)
+                {
+                    break (x, y);
+                }
             }
         };
+
         let roll = rng.random_range(0..3);
         let blueprint_name = match roll {
             0 => "skeleton",
@@ -189,38 +188,18 @@ fn spawn_markers(
             _ => "slime_giant",
         };
 
-        commands.spawn((
-            Name::new("SpawnMarker"),
-            SpawnMarker {
-                timer: Timer::from_seconds(balance.wave.marker_duration, TimerMode::Once),
-                blueprint_name: blueprint_name.to_string(),
-            },
-            Sprite {
-                color: Color::srgb(1.0, 0.9, 0.2),
-                custom_size: Some(Vec2::splat(MARKER_SIZE)),
-                ..default()
-            },
-            Transform::from_xyz(x, y, 0.5),
-        ));
-    }
-}
+        if let Some(blueprint_id) = blueprint_registry.get_id(blueprint_name) {
+            let entity = commands
+                .spawn((
+                    Name::new("Enemy"),
+                    Transform::from_xyz(x, y, 0.0),
+                    WaveEnemy,
+                    DespawnOnExit(WavePhase::Combat),
+                ))
+                .id();
 
-fn process_spawn_markers(
-    mut commands: Commands,
-    time: Res<Time>,
-    mut markers_query: Query<(Entity, &mut SpawnMarker, &Transform)>,
-    blueprint_registry: Res<BlueprintRegistry>,
-    mut wave_state: ResMut<WaveState>,
-) {
-    for (marker_entity, mut marker, _transform) in markers_query.iter_mut() {
-        if marker.timer.tick(time.delta()).just_finished() {
-            if let Some(blueprint_id) = blueprint_registry.get_id(&marker.blueprint_name) {
-                spawn_blueprint_entity(&mut commands, marker_entity, Faction::Enemy, blueprint_id, true);
-                wave_state.spawned_count += 1;
-            }
-
-            commands.entity(marker_entity).remove::<(Sprite, SpawnMarker)>();
-            commands.entity(marker_entity).insert((WaveEnemy, DespawnOnExit(WavePhase::Combat)));
+            spawn_blueprint_entity(&mut commands, entity, Faction::Enemy, blueprint_id, true);
+            wave_state.spawned_count += 1;
         }
     }
 }
