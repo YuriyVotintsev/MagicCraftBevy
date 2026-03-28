@@ -10,7 +10,6 @@
         height: 2160.0,
         half_w: 1708.0,
         half_h: 750.0,
-        corner_radius: 320.0,
     ),
     run: (
         coins_per_kill: 1,

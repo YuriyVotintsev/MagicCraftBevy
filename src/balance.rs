@@ -22,7 +22,6 @@ pub struct ArenaBalance {
     pub height: f32,
     pub half_w: f32,
     pub half_h: f32,
-    pub corner_radius: f32,
 }
 
 #[derive(Clone, Deserialize)]

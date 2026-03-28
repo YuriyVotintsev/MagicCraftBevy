@@ -93,29 +93,14 @@ fn spawn_arena(mut commands: Commands, asset_server: Res<AssetServer>, balance: 
 
     let half_w = arena.half_w;
     let half_h = arena.half_h;
-    let r = arena.corner_radius;
-    let segments = 8_u32;
 
-    let ix = half_w - r;
-    let iy = half_h - r;
-    let corners = [
-        (ix, iy, 0.0_f32, 90.0_f32),
-        (-ix, iy, 90.0, 180.0),
-        (-ix, -iy, 180.0, 270.0),
-        (ix, -iy, 270.0, 360.0),
+    let vertices = vec![
+        Vec2::new(half_w, half_h),
+        Vec2::new(-half_w, half_h),
+        Vec2::new(-half_w, -half_h),
+        Vec2::new(half_w, -half_h),
     ];
-
-    let mut vertices = Vec::new();
-    for (cx, cy, start, end) in corners {
-        for i in 0..=segments {
-            let t = i as f32 / segments as f32;
-            let angle = (start + t * (end - start)).to_radians();
-            vertices.push(Vec2::new(cx + r * angle.cos(), cy + r * angle.sin()));
-        }
-    }
-
-    let n = vertices.len() as u32;
-    let indices: Vec<[u32; 2]> = (0..n).map(|i| [i, (i + 1) % n]).collect();
+    let indices: Vec<[u32; 2]> = vec![[0, 1], [1, 2], [2, 3], [3, 0]];
 
     let wall_layers = CollisionLayers::new(GameLayer::Wall, LayerMask::ALL);
 
@@ -132,17 +117,30 @@ fn spawn_arena(mut commands: Commands, asset_server: Res<AssetServer>, balance: 
 
 fn camera_follow(
     player_query: Query<&Transform, With<crate::player::Player>>,
-    mut camera_query: Query<&mut Transform, (With<Camera2d>, Without<crate::player::Player>)>,
+    mut camera_query: Query<
+        (&mut Transform, &Projection),
+        (With<Camera2d>, Without<crate::player::Player>),
+    >,
+    balance: Res<GameBalance>,
 ) {
     let Ok(player_transform) = player_query.single() else {
         return;
     };
-    let Ok(mut camera_transform) = camera_query.single_mut() else {
+    let Ok((mut camera_transform, projection)) = camera_query.single_mut() else {
         return;
     };
 
-    camera_transform.translation.x = player_transform.translation.x;
-    camera_transform.translation.y = player_transform.translation.y;
+    let arena = &balance.arena;
+    let (vp_hw, vp_hh) = match projection {
+        Projection::Orthographic(ortho) => (ortho.area.max.x, ortho.area.max.y),
+        _ => return,
+    };
+
+    let max_x = (arena.half_w - vp_hw).max(0.0);
+    let max_y = (arena.half_h - vp_hh).max(0.0);
+
+    camera_transform.translation.x = player_transform.translation.x.clamp(-max_x, max_x);
+    camera_transform.translation.y = player_transform.translation.y.clamp(-max_y, max_y);
 }
 
 fn spawn_markers(
@@ -257,20 +255,7 @@ fn apply_enemy_scaling(
 fn is_inside_arena(pos: Vec2, margin: f32, arena: &ArenaBalance) -> bool {
     let hw = arena.half_w - margin;
     let hh = arena.half_h - margin;
-    let r = (arena.corner_radius - margin).max(0.0);
-    let px = pos.x.abs();
-    let py = pos.y.abs();
-    if px > hw || py > hh {
-        return false;
-    }
-    let ix = hw - r;
-    let iy = hh - r;
-    if px > ix && py > iy {
-        let dx = px - ix;
-        let dy = py - iy;
-        return dx * dx + dy * dy <= r * r;
-    }
-    true
+    pos.x.abs() <= hw && pos.y.abs() <= hh
 }
 
 fn tag_wave_enemies(
