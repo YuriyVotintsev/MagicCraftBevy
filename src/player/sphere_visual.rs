@@ -165,10 +165,27 @@ fn parent_sphere_camera(
 }
 
 fn rotate_sphere(
-    time: Res<Time>,
     mut query: Query<&mut Transform, With<PlayerSphere>>,
+    player_query: Query<&GlobalTransform, With<Player>>,
+    windows: Query<&Window>,
+    camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
 ) {
+    let Ok(player_gt) = player_query.single() else { return };
+    let Ok((camera, camera_gt)) = camera_query.single() else { return };
+    let Ok(window) = windows.single() else { return };
+    let Some(cursor_pos) = window.cursor_position() else { return };
+    let Ok(world_pos) = camera.viewport_to_world_2d(camera_gt, cursor_pos) else { return };
+
+    let player_pos = player_gt.translation().truncate();
+    let direction = (world_pos - player_pos).normalize_or_zero();
+    if direction == Vec2::ZERO { return }
+
+    let base = Quat::from_rotation_x(FRAC_PI_4)
+        * Quat::from_rotation_y(-FRAC_PI_2)
+        * Quat::from_rotation_x(-FRAC_PI_2);
+    let angle = f32::atan2(-direction.x, direction.y);
+
     for mut transform in &mut query {
-        transform.rotate_local_z(0.5 * time.delta_secs());
+        transform.rotation = base * Quat::from_rotation_z(angle);
     }
 }
