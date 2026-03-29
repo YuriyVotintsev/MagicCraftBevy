@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::balance::GameBalance;
+use crate::blueprints::components::common::shadow::Shadow;
 use crate::blueprints::components::common::sprite::CircleSprite;
 use crate::money::PlayerMoney;
 use crate::player::Player;
@@ -10,7 +11,6 @@ use crate::wave::{WaveEnemy, WavePhase};
 use crate::GameState;
 
 const COIN_SIZE: f32 = 30.0;
-const COIN_Z: f32 = 0.5;
 
 #[derive(Component)]
 pub struct Coin {
@@ -55,18 +55,26 @@ fn spawn_coins(
         };
         let position = transform.translation.truncate();
 
-        commands.spawn((
-            Name::new("Coin"),
-            Coin {
-                value: balance.run.coins_per_kill,
-            },
-            CircleSprite {
-                color: Color::srgba(0.4, 0.85, 0.4, 1.0),
-            },
-            Transform::from_translation(position.extend(COIN_Z))
-                .with_scale(Vec3::splat(COIN_SIZE)),
-            DespawnOnExit(WavePhase::Combat),
-        ));
+        commands
+            .spawn((
+                Name::new("Coin"),
+                Coin {
+                    value: balance.run.coins_per_kill,
+                },
+                Transform::from_translation(position.extend(0.0))
+                    .with_scale(Vec3::splat(COIN_SIZE)),
+                Visibility::default(),
+                DespawnOnExit(WavePhase::Combat),
+            ))
+            .with_children(|parent| {
+                parent.spawn(Shadow {
+                    y_offset: -0.42,
+                    opacity: 0.45,
+                });
+                parent.spawn(CircleSprite {
+                    color: Color::srgba(0.4, 0.85, 0.4, 1.0),
+                });
+            });
     }
 }
 

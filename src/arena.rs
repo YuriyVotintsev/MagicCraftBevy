@@ -4,15 +4,18 @@ use bevy::camera::ScalingMode;
 use rand::Rng;
 
 use crate::balance::{ArenaBalance, GameBalance};
-use crate::GameState;
-use crate::Faction;
-use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
+use crate::blueprints::components::ability::projectile::Projectile;
 use crate::blueprints::components::common::health::Health;
+use crate::blueprints::components::common::visual::Visual;
+use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
+use crate::coin::Coin;
 use crate::physics::{GameLayer, Wall};
 use crate::run::RunState;
 use crate::schedule::GameSet;
 use crate::stats::{DirtyStats, Modifiers, StatRegistry};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
+use crate::Faction;
+use crate::GameState;
 
 #[cfg(not(feature = "headless"))]
 pub const WINDOW_WIDTH: f32 = 1920.0;
@@ -43,7 +46,7 @@ impl Plugin for ArenaPlugin {
             )
             .add_systems(
                 PostUpdate,
-                camera_follow.run_if(in_state(GameState::Playing)),
+                (camera_follow, y_sort).run_if(in_state(GameState::Playing)),
             );
     }
 }
@@ -115,6 +118,17 @@ fn camera_follow(
 
     camera_transform.translation.x = player_transform.translation.x.clamp(-max_x, max_x);
     camera_transform.translation.y = player_transform.translation.y.clamp(-max_y, max_y);
+}
+
+fn y_sort(
+    mut query: Query<
+        &mut Transform,
+        Or<(With<Visual>, With<Coin>, With<Projectile>)>,
+    >,
+) {
+    for mut transform in &mut query {
+        transform.translation.z = -transform.translation.y * 0.001;
+    }
 }
 
 fn update_target_count(
