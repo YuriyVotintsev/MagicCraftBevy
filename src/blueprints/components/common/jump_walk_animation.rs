@@ -57,10 +57,19 @@ pub fn animate(
             }
         }
 
-        let y = state.phase.sin().abs() * anim.bounce_height * state.amplitude;
+        let h = state.phase.sin().abs();
+        let y = h * anim.bounce_height * state.amplitude;
         let tilt = state.phase.cos() * anim.max_tilt.to_radians() * state.amplitude;
+
+        let ng = 1.0 - h;
+        let squash = ng.powi(3) * 0.3;
+        let stretch = h * ng.powi(2) * 1.2;
+        let ss = (stretch - squash) * state.amplitude;
+        let scale_y = 1.0 + ss;
+        let scale_xz = 1.0 / scale_y.sqrt();
+
         transform.translation.y = y;
         transform.rotation = Quat::from_rotation_z(tilt);
-        transform.scale = Vec3::ONE;
+        transform.scale = Vec3::new(scale_xz, scale_y, scale_xz);
     }
 }

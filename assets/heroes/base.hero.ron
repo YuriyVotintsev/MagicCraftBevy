@@ -15,7 +15,7 @@
                     (components: [Shadow(())]),
                     (components: [
                         Sprite((color: "player", shape: Circle)),
-                        JumpWalkAnimation((bounce_height: Some("0.3"))),
+                        JumpWalkAnimation((bounce_height: Some("0.6"), bounce_speed: Some("7.0"))),
                     ]),
                 ])),
                 Collider((shape: Rectangle, sensor: Some(false))),
