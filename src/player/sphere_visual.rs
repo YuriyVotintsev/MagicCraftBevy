@@ -1,4 +1,4 @@
-use std::f32::consts::{FRAC_PI_2, FRAC_PI_4};
+use std::f32::consts::{FRAC_PI_2, FRAC_PI_4, PI};
 
 use bevy::asset::RenderAssetUsages;
 use bevy::camera::ScalingMode;
@@ -91,6 +91,7 @@ fn create_eye_texture(images: &mut Assets<Image>) -> Handle<Image> {
 
     let eye_radius_sq = 16.0f32 * 16.0;
     let eyes = [(108.0f32, 100.0f32), (148.0f32, 100.0f32)];
+    let size_f = size as f32;
 
     for y in 0..size {
         for x in 0..size {
@@ -98,8 +99,12 @@ fn create_eye_texture(images: &mut Assets<Image>) -> Handle<Image> {
             let fx = x as f32 + 0.5;
             let fy = y as f32 + 0.5;
 
+            let v = 1.0 - fy / size_f;
+            let latitude = FRAC_PI_2 - v * PI;
+            let stretch = 2.0 * latitude.cos();
+
             for &(ex, ey) in &eyes {
-                let dx = fx - ex;
+                let dx = (fx - ex) * stretch;
                 let dy = fy - ey;
                 let dist_sq = dx * dx + dy * dy;
 
