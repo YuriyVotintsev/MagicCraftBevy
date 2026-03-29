@@ -4,6 +4,7 @@ use crate::balance::GameBalance;
 use crate::blueprints::components::common::shadow::Shadow;
 use crate::blueprints::components::common::sprite::CircleSprite;
 use crate::money::PlayerMoney;
+use crate::palette;
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::stats::{death_system, ComputedStats, DeathEvent, StatRegistry};
@@ -72,7 +73,7 @@ fn spawn_coins(
                     opacity: 0.45,
                 });
                 parent.spawn(CircleSprite {
-                    color: Color::srgba(0.918, 0.800, 0.314, 1.0),
+                    color: palette::color("coin"),
                 });
             });
     }

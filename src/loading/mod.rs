@@ -14,6 +14,8 @@ pub struct LoadingPlugin;
 
 impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
+        crate::palette::init();
+
         app.init_asset::<StatsConfigAsset>()
             .init_asset::<BlueprintDefAsset>()
             .init_asset::<GameBalanceAsset>()

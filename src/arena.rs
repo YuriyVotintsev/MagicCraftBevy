@@ -52,7 +52,7 @@ impl Plugin for ArenaPlugin {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.insert_resource(ClearColor(Color::srgb(0.961, 0.941, 0.910)));
+    commands.insert_resource(ClearColor(crate::palette::color("background")));
     commands.spawn((
         Name::new("MainCamera"),
         Camera2d,

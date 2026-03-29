@@ -2,8 +2,10 @@ use bevy::prelude::{Sprite as BevySprite, *};
 use magic_craft_macros::blueprint_component;
 use serde::Deserialize;
 
+use crate::palette;
+
 #[derive(Debug, Clone, Copy, Deserialize)]
-#[serde(from = "(f32, f32, f32, f32)")]
+#[serde(from = "SpriteColorInput")]
 pub struct SpriteColor(pub f32, pub f32, pub f32, pub f32);
 
 impl Default for SpriteColor {
@@ -15,6 +17,32 @@ impl Default for SpriteColor {
 impl From<(f32, f32, f32, f32)> for SpriteColor {
     fn from(t: (f32, f32, f32, f32)) -> Self {
         Self(t.0, t.1, t.2, t.3)
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum SpriteColorInput {
+    Named(String),
+    NamedWithAlpha(String, f32),
+    Rgba(f32, f32, f32, f32),
+}
+
+impl From<SpriteColorInput> for SpriteColor {
+    fn from(input: SpriteColorInput) -> Self {
+        match input {
+            SpriteColorInput::Named(name) => {
+                let (r, g, b) = palette::lookup(&name)
+                    .unwrap_or_else(|| panic!("Unknown palette color: {name}"));
+                Self(r, g, b, 1.0)
+            }
+            SpriteColorInput::NamedWithAlpha(name, alpha) => {
+                let (r, g, b) = palette::lookup(&name)
+                    .unwrap_or_else(|| panic!("Unknown palette color: {name}"));
+                Self(r, g, b, alpha)
+            }
+            SpriteColorInput::Rgba(r, g, b, a) => Self(r, g, b, a),
+        }
     }
 }
 

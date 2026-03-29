@@ -10,7 +10,7 @@
             Boomerang((speed: "calc(projectile_speed, 700.0)", max_distance: "600.0")),
             Size((value: "120.0")),
             Collider((shape: Circle)),
-            Sprite((color: (0.282, 0.729, 0.729, 1.0), shape: Circle)),
+            Sprite((color: "player_ability", shape: Circle)),
             Pierce(()),
             OnCollision((entities: [
                 (components: [DamagePayload((amount: "calc(physical_damage, 15.0, 1)"))])

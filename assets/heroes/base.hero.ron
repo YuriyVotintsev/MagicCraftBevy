@@ -14,7 +14,7 @@
                 Visual((children: [
                     (components: [Shadow(())]),
                     (components: [
-                        Sprite((color: (0.157, 0.408, 0.533, 1.0), shape: Circle)),
+                        Sprite((color: "player", shape: Circle)),
                         JumpWalkAnimation((bounce_height: Some("0.3"))),
                     ]),
                 ])),

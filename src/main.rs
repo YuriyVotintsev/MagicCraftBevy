@@ -10,6 +10,7 @@ mod hit_flash;
 mod loading;
 mod money;
 mod movement;
+pub mod palette;
 mod physics;
 mod player;
 mod run;
