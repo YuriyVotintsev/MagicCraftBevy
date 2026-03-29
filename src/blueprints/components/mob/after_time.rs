@@ -19,6 +19,11 @@ pub fn register_systems(app: &mut App) {
             .chain()
             .in_set(crate::schedule::GameSet::MobAI),
     );
+    app.add_observer(|on: On<Remove, AfterTime>, mut commands: Commands| {
+        commands.entity(on.event_target()).queue_silenced(|mut entity: EntityWorldMut| {
+            entity.remove::<AfterTimeTimer>();
+        });
+    });
 }
 
 fn init_after_time_timer(

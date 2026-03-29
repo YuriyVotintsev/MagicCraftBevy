@@ -185,12 +185,7 @@ fn spawn_enemies(
             }
         };
 
-        let roll = rng.random_range(0..3);
-        let blueprint_name = match roll {
-            0 => "skeleton",
-            1 => "archer",
-            _ => "slime_giant",
-        };
+        let blueprint_name = "hopper";
 
         if let Some(blueprint_id) = blueprint_registry.get_id(blueprint_name) {
             let entity = commands

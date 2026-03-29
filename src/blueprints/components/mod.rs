@@ -31,6 +31,7 @@ collect_components!(
             visual,
             jump_walk_animation,
             squish_walk_animation,
+            jump_arc,
             shadow,
         ],
         mob: [
@@ -41,6 +42,7 @@ collect_components!(
             when_found_target,
             after_time,
             lunge_movement,
+            jump_toward,
         ],
         player: [
             keyboard_movement,

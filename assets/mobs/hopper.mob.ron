@@ -1,0 +1,38 @@
+(
+    id: "hopper",
+    entities: [
+        (
+            base_stats: {
+                "movement_speed_flat": 400.0,
+                "max_life_flat": 20.0,
+                "physical_damage_flat": 5.0,
+            },
+            components: [
+                Size((value: "100.0")),
+                Visual((children: [
+                    (components: [Shadow(())]),
+                    (components: [
+                        Sprite((position: Some("vec2(0, 0)"), color: "enemy", shape: Circle)),
+                        JumpArc(()),
+                    ]),
+                ])),
+                Collider((shape: Circle, sensor: Some(false))),
+                DynamicBody(()),
+                Health(()),
+            ],
+            states: Some((
+                initial: "idle",
+                states: {
+                    "idle": (
+                        components: [],
+                        transitions: [AfterTime((to: "jump", duration: "1.0"))],
+                    ),
+                    "jump": (
+                        components: [JumpToward(())],
+                        transitions: [AfterTime((to: "idle", duration: "1.0"))],
+                    ),
+                }
+            ))
+        )
+    ]
+)
