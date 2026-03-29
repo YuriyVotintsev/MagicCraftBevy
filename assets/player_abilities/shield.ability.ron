@@ -6,7 +6,7 @@
             FollowCaster(()),
             Lifetime((remaining: "calc(duration, 0.5)")),
             Size((value: "calc(area_of_effect, 400.0)")),
-            Sprite((color: (0.4, 0.65, 1.0, 0.3), shape: Circle)),
+            Sprite((color: (0.282, 0.729, 0.729, 0.3), shape: Circle)),
             DestroyEnemyProjectiles((size: "calc(area_of_effect, 200.0)")),
         ])
     ]

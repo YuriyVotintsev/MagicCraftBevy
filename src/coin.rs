@@ -72,7 +72,7 @@ fn spawn_coins(
                     opacity: 0.45,
                 });
                 parent.spawn(CircleSprite {
-                    color: Color::srgba(0.4, 0.85, 0.4, 1.0),
+                    color: Color::srgba(0.918, 0.800, 0.314, 1.0),
                 });
             });
     }

@@ -8,7 +8,7 @@
             Lifetime((remaining: "0.6")),
             Growing((start_size: "8.0", end_size: "25.0")),
             Collider((shape: Circle)),
-            Sprite((color: (0.4, 0.65, 1.0, 1.0), shape: Circle)),
+            Sprite((color: (0.282, 0.729, 0.729, 1.0), shape: Circle)),
             OnCollision((entities: [
                 (components: [DamagePayload((amount: "calc(physical_damage, 0.5, 0.03)"))])
             ]))

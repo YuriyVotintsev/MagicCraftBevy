@@ -13,7 +13,7 @@
                 Visual((children: [
                     (components: [Shadow(())]),
                     (components: [
-                        Sprite((position: Some("vec2(0, 0)"), color: (0.55, 0.28, 0.08, 1.0), shape: Circle)),
+                        Sprite((position: Some("vec2(0, 0)"), color: (0.918, 0.345, 0.314, 1.0), shape: Circle)),
                         JumpWalkAnimation(()),
                     ]),
                 ])),
