@@ -14,7 +14,7 @@
                 Visual((children: [
                     (components: [Shadow(())]),
                     (components: [
-                        Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Mage.png"))),
+                        Sprite((color: (0.12, 0.14, 0.4, 1.0), shape: Circle)),
                         JumpWalkAnimation(()),
                     ]),
                 ])),

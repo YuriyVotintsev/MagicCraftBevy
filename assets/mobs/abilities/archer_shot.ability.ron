@@ -7,7 +7,7 @@
             Straight((speed: "400.0")),
             Size((value: "32.0")),
             Collider((shape: Circle)),
-            Sprite((color: (1.0, 0.5, 0.0, 1.0), shape: Circle)),
+            Sprite((color: (0.816, 0.459, 0.188, 1.0), shape: Circle)),
             OnCollision((entities: [
                 (components: [DamagePayload((amount: "stat(physical_damage_flat)"))])
             ]))

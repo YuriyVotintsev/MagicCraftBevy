@@ -49,7 +49,7 @@ impl Plugin for ArenaPlugin {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.insert_resource(ClearColor(Color::BLACK));
+    commands.insert_resource(ClearColor(Color::srgb(0.878, 0.863, 0.855)));
     commands.spawn((
         Name::new("MainCamera"),
         Camera2d,
@@ -62,18 +62,8 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
-fn spawn_arena(mut commands: Commands, asset_server: Res<AssetServer>, balance: Res<GameBalance>) {
+fn spawn_arena(mut commands: Commands, balance: Res<GameBalance>) {
     let arena = &balance.arena;
-
-    commands.spawn((
-        Name::new("Background"),
-        Sprite {
-            image: asset_server.load("images/sprites/Background.png"),
-            custom_size: Some(Vec2::new(arena.width, arena.height)),
-            ..default()
-        },
-        Transform::from_xyz(0.0, 0.0, -10.0),
-    ));
 
     let half_w = arena.half_w;
     let half_h = arena.half_h;

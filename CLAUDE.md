@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Magic Craft is a Bevy 0.18 roguelite arena shooter with a Path-of-Exile-inspired ability modification system. Players face waves of enemies and customize abilities through a deep spell-crafting system.
+Magic Craft is a Bevy 0.18 incremental arena shooter. Players face waves of enemies, earn currency, and invest in a skill tree to grow progressively stronger.
 
 **Tech Stack:** Bevy 0.18, Avian2D 0.5 (physics), Ron (config format), Serde
 

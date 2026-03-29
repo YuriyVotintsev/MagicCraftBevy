@@ -13,7 +13,7 @@
                 Visual((children: [
                     (components: [Shadow(())]),
                     (components: [
-                        Sprite((position: Some("vec2(0, 0)"), image: Some("images/sprites/Goblin_Archer.png"))),
+                        Sprite((position: Some("vec2(0, 0)"), color: (0.55, 0.28, 0.08, 1.0), shape: Circle)),
                         JumpWalkAnimation(()),
                     ]),
                 ])),

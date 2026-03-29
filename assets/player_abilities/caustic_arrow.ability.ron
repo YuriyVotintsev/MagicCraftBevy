@@ -10,12 +10,12 @@
             Straight((speed: "calc(projectile_speed, 600.0)")),
             Size((value: "48.0")),
             Collider((shape: Circle)),
-            Sprite((color: (0.2, 0.8, 0.2, 1.0), shape: Circle)),
+            Sprite((color: (0.4, 0.65, 1.0, 1.0), shape: Circle)),
             OnCollision((entities: [
                 (components: [
                     Lifetime((remaining: "calc(duration, 4.0)")),
                     Size((value: "320.0")),
-                    Sprite((color: (0.1, 0.6, 0.1, 0.4), shape: Circle)),
+                    Sprite((color: (0.4, 0.65, 1.0, 0.4), shape: Circle)),
                     OnArea((size: "calc(area_of_effect, 160.0)", interval: Some("0.5"), entities: [
                         (components: [DamagePayload((amount: "calc(physical_damage, 2.0, 0.15)"))])
                     ]))

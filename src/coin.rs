@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 use crate::balance::GameBalance;
+use crate::blueprints::components::common::sprite::CircleSprite;
 use crate::money::PlayerMoney;
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
@@ -8,9 +9,7 @@ use crate::stats::{death_system, ComputedStats, DeathEvent, StatRegistry};
 use crate::wave::{WaveEnemy, WavePhase};
 use crate::GameState;
 
-const COIN_SPRITE_PATH: &str =
-    "images/Tiny Swords/Tiny Swords (Free Pack)/Terrain/Resources/Gold/Gold Stones/Gold Stone 1.png";
-const COIN_SIZE: f32 = 240.0;
+const COIN_SIZE: f32 = 30.0;
 const COIN_Z: f32 = 0.5;
 
 #[derive(Component)]
@@ -48,7 +47,6 @@ fn spawn_coins(
     mut commands: Commands,
     mut death_events: MessageReader<DeathEvent>,
     wave_enemy_query: Query<&Transform, With<WaveEnemy>>,
-    asset_server: Res<AssetServer>,
     balance: Res<GameBalance>,
 ) {
     for event in death_events.read() {
@@ -62,12 +60,11 @@ fn spawn_coins(
             Coin {
                 value: balance.run.coins_per_kill,
             },
-            Sprite {
-                image: asset_server.load(COIN_SPRITE_PATH),
-                custom_size: Some(Vec2::splat(COIN_SIZE)),
-                ..default()
+            CircleSprite {
+                color: Color::srgba(0.4, 0.85, 0.4, 1.0),
             },
-            Transform::from_translation(position.extend(COIN_Z)),
+            Transform::from_translation(position.extend(COIN_Z))
+                .with_scale(Vec3::splat(COIN_SIZE)),
             DespawnOnExit(WavePhase::Combat),
         ));
     }
