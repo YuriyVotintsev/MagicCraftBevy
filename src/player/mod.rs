@@ -1,6 +1,5 @@
 pub mod hero_class;
 pub mod selected_spells;
-mod sphere_visual;
 mod systems;
 
 use bevy::prelude::*;
@@ -18,6 +17,5 @@ impl Plugin for PlayerPlugin {
         app.init_resource::<SelectedSpells>()
             .add_systems(OnEnter(WavePhase::Combat), systems::spawn_player)
             .add_systems(OnExit(WavePhase::Combat), systems::reset_player_velocity);
-        sphere_visual::register_systems(app);
     }
 }

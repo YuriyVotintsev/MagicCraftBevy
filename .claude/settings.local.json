@@ -36,9 +36,7 @@
       "Bash(git log:*)",
       "WebFetch(domain:www.pathofexile.com)",
       "WebFetch(domain:store.steampowered.com)",
-      "WebFetch(domain:steamspy.com)",
-      "Bash(cargo doc:*)",
-      "WebFetch(domain:bevyengine.github.io)"
+      "WebFetch(domain:steamspy.com)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"
