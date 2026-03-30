@@ -24,6 +24,7 @@ enum LungePhase {
 pub struct LungeMovementState {
     phase: LungePhase,
     elapsed: f32,
+    direction: Vec2,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -46,6 +47,7 @@ fn init_lunge_movement(
         commands.entity(entity).insert(LungeMovementState {
             phase: LungePhase::Lunging,
             elapsed: 0.0,
+            direction: Vec2::ZERO,
         });
     }
 }
@@ -74,26 +76,30 @@ fn lunge_movement_system(
                     continue;
                 }
 
-                let Ok(target_transform) = transforms.get(lunge.target) else {
-                    velocity.0 = Vec2::ZERO;
-                    continue;
-                };
-
-                let direction = (target_transform.translation - transform.translation).truncate();
-
-                if direction.length_squared() > 1.0 {
-                    let t = state.elapsed / lunge.lunge_duration;
-                    let factor = (std::f32::consts::PI * t).sin();
-                    velocity.0 = direction.normalize() * lunge.speed * factor;
-                } else {
-                    velocity.0 = Vec2::ZERO;
+                if state.direction == Vec2::ZERO {
+                    let Ok(target_transform) = transforms.get(lunge.target) else {
+                        velocity.0 = Vec2::ZERO;
+                        continue;
+                    };
+                    let diff = (target_transform.translation - transform.translation).truncate();
+                    if diff.length_squared() > 1.0 {
+                        state.direction = diff.normalize();
+                    } else {
+                        velocity.0 = Vec2::ZERO;
+                        continue;
+                    }
                 }
+
+                let t = state.elapsed / lunge.lunge_duration;
+                let factor = (std::f32::consts::PI * t * t * t *t).sin();
+                velocity.0 = state.direction * lunge.speed * factor;
             }
             LungePhase::Pausing => {
                 velocity.0 = Vec2::ZERO;
                 if state.elapsed >= lunge.pause_duration {
                     state.phase = LungePhase::Lunging;
                     state.elapsed = 0.0;
+                    state.direction = Vec2::ZERO;
                 }
             }
         }
