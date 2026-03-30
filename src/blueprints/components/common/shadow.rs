@@ -3,7 +3,7 @@ use magic_craft_macros::blueprint_component;
 
 #[blueprint_component]
 pub struct Shadow {
-    #[raw(default = -0.42)]
+    #[raw(default = -0.5)]
     pub y_offset: ScalarExpr,
     #[raw(default = 0.45)]
     pub opacity: ScalarExpr,
