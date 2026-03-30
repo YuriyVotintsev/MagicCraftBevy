@@ -185,7 +185,7 @@ fn spawn_enemies(
             }
         };
 
-        let blueprint_name = "hopper";
+        let blueprint_name = "slime_small";
 
         if let Some(blueprint_id) = blueprint_registry.get_id(blueprint_name) {
             let entity = commands

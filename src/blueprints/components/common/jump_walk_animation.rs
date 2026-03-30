@@ -16,6 +16,7 @@ pub struct JumpWalkAnimation {
 pub struct JumpWalkAnimationState {
     pub phase: f32,
     pub amplitude: f32,
+    pub landed: bool,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -50,16 +51,28 @@ pub fn animate(
         if moving {
             state.phase += dt * anim.bounce_speed;
             state.amplitude = (state.amplitude + dt * 8.0).min(1.0);
-        } else {
-            state.amplitude = (state.amplitude - dt * 8.0).max(0.0);
-            if state.amplitude == 0.0 {
-                state.phase = 0.0;
+            state.landed = false;
+        } else if state.amplitude > 0.0 {
+            if state.landed {
+                state.amplitude = (state.amplitude - dt * 8.0).max(0.0);
+                if state.amplitude == 0.0 {
+                    state.phase = 0.0;
+                    state.landed = false;
+                }
+            } else {
+                let prev = (state.phase / std::f32::consts::PI).floor();
+                state.phase += dt * anim.bounce_speed;
+                let curr = (state.phase / std::f32::consts::PI).floor();
+                if curr > prev {
+                    state.phase = curr * std::f32::consts::PI;
+                    state.landed = true;
+                }
             }
         }
 
         let h = state.phase.sin().abs();
         let y = h * anim.bounce_height * state.amplitude;
-        let tilt = state.phase.cos() * anim.max_tilt.to_radians() * state.amplitude;
+        let tilt = 0.0;
 
         let ng = 1.0 - h;
         let squash = ng.powi(3) * 0.3;
@@ -68,7 +81,7 @@ pub fn animate(
         let scale_y = 1.0 + ss;
         let scale_xz = 1.0 / scale_y.sqrt();
 
-        transform.translation.y = y;
+        transform.translation.y = y - 0.5 * (1.0 - scale_y);
         transform.rotation = Quat::from_rotation_z(tilt);
         transform.scale = Vec3::new(scale_xz, scale_y, scale_xz);
     }
