@@ -31,7 +31,7 @@ fn on_found_trigger_system(
     transforms: Query<&Transform>,
 ) {
     for (entity, trigger, found, source) in &query {
-        let found_pos = found.1.truncate();
+        let found_pos = crate::coord::to_2d(found.1);
         spawner.spawn_triggered(
             entity,
             source,

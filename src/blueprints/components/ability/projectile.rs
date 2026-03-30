@@ -1,6 +1,6 @@
 use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 use crate::physics::Wall;

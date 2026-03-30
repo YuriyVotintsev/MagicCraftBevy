@@ -1,14 +1,11 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy::camera::ScalingMode;
 use rand::Rng;
 
 use crate::balance::{ArenaBalance, GameBalance};
-use crate::blueprints::components::ability::projectile::Projectile;
 use crate::blueprints::components::common::health::Health;
-use crate::blueprints::components::common::visual::Visual;
 use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
-use crate::coin::Coin;
 use crate::physics::{GameLayer, Wall};
 use crate::run::RunState;
 use crate::schedule::GameSet;
@@ -46,22 +43,27 @@ impl Plugin for ArenaPlugin {
             )
             .add_systems(
                 PostUpdate,
-                (camera_follow, y_sort).run_if(in_state(GameState::Playing)),
+                camera_follow.run_if(in_state(GameState::Playing)),
             );
     }
 }
+
+const CAM_HEIGHT: f32 = 700.0;
 
 fn setup_camera(mut commands: Commands) {
     commands.insert_resource(ClearColor(crate::palette::color("background")));
     commands.spawn((
         Name::new("MainCamera"),
-        Camera2d,
+        Camera3d::default(),
         Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical {
                 viewport_height: 1080.0,
             },
-            ..OrthographicProjection::default_2d()
+            far: 5000.0,
+            ..OrthographicProjection::default_3d()
         }),
+        Transform::from_translation(Vec3::new(0.0, CAM_HEIGHT, CAM_HEIGHT))
+            .looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
 
@@ -70,33 +72,35 @@ fn spawn_arena(mut commands: Commands, balance: Res<GameBalance>) {
 
     let half_w = arena.half_w;
     let half_h = arena.half_h;
-
-    let vertices = vec![
-        Vec2::new(half_w, half_h),
-        Vec2::new(-half_w, half_h),
-        Vec2::new(-half_w, -half_h),
-        Vec2::new(half_w, -half_h),
-    ];
-    let indices: Vec<[u32; 2]> = vec![[0, 1], [1, 2], [2, 3], [3, 0]];
-
+    let wall_height = 200.0;
+    let wall_thickness = 20.0;
     let wall_layers = CollisionLayers::new(GameLayer::Wall, LayerMask::ALL);
 
-    commands.spawn((
-        Name::new("ArenaWall"),
-        Wall,
-        Transform::default(),
-        Collider::polyline(vertices, Some(indices)),
-        CollisionMargin(5.0),
-        RigidBody::Static,
-        wall_layers,
-    ));
+    let walls = [
+        ("NorthWall", Vec3::new(0.0, wall_height / 2.0, -half_h), Vec3::new(half_w * 2.0 + wall_thickness, wall_height, wall_thickness)),
+        ("SouthWall", Vec3::new(0.0, wall_height / 2.0, half_h), Vec3::new(half_w * 2.0 + wall_thickness, wall_height, wall_thickness)),
+        ("WestWall", Vec3::new(-half_w, wall_height / 2.0, 0.0), Vec3::new(wall_thickness, wall_height, half_h * 2.0 + wall_thickness)),
+        ("EastWall", Vec3::new(half_w, wall_height / 2.0, 0.0), Vec3::new(wall_thickness, wall_height, half_h * 2.0 + wall_thickness)),
+    ];
+
+    for (name, pos, size) in walls {
+        commands.spawn((
+            Name::new(name),
+            Wall,
+            Transform::from_translation(pos),
+            Collider::cuboid(size.x, size.y, size.z),
+            CollisionMargin(5.0),
+            RigidBody::Static,
+            wall_layers,
+        ));
+    }
 }
 
 fn camera_follow(
     player_query: Query<&Transform, With<crate::player::Player>>,
     mut camera_query: Query<
         (&mut Transform, &Projection),
-        (With<Camera2d>, Without<crate::player::Player>),
+        (With<Camera3d>, Without<crate::player::Player>),
     >,
     balance: Res<GameBalance>,
 ) {
@@ -114,21 +118,14 @@ fn camera_follow(
     };
 
     let max_x = (arena.half_w - vp_hw).max(0.0);
-    let max_y = (arena.half_h - vp_hh).max(0.0);
+    let max_z = (arena.half_h - vp_hh).max(0.0);
 
-    camera_transform.translation.x = player_transform.translation.x.clamp(-max_x, max_x);
-    camera_transform.translation.y = player_transform.translation.y.clamp(-max_y, max_y);
-}
+    let player_2d = crate::coord::to_2d(player_transform.translation);
+    let cx = player_2d.x.clamp(-max_x, max_x);
+    let cz = -(player_2d.y.clamp(-max_z, max_z));
 
-fn y_sort(
-    mut query: Query<
-        &mut Transform,
-        Or<(With<Visual>, With<Coin>, With<Projectile>)>,
-    >,
-) {
-    for mut transform in &mut query {
-        transform.translation.z = -transform.translation.y * 0.001;
-    }
+    camera_transform.translation = Vec3::new(cx, CAM_HEIGHT, cz + CAM_HEIGHT);
+    *camera_transform = camera_transform.looking_at(Vec3::new(cx, 0.0, cz), Vec3::Y);
 }
 
 fn update_target_count(
@@ -158,7 +155,7 @@ fn spawn_enemies(
 
     let player_pos = player_query
         .single()
-        .map(|t| t.translation.truncate())
+        .map(|t| crate::coord::to_2d(t.translation))
         .unwrap_or(Vec2::ZERO);
 
     let arena = &balance.arena;
@@ -191,7 +188,7 @@ fn spawn_enemies(
             let entity = commands
                 .spawn((
                     Name::new("Enemy"),
-                    Transform::from_xyz(x, y, 0.0),
+                    Transform::from_translation(crate::coord::ground_pos(Vec2::new(x, y))),
                     WaveEnemy,
                     DespawnOnExit(WavePhase::Combat),
                 ))

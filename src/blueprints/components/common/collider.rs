@@ -1,4 +1,4 @@
-use avian2d::prelude::{Collider as AvianCollider, *};
+use avian3d::prelude::{Collider as AvianCollider, *};
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 use serde::Deserialize;
@@ -29,8 +29,8 @@ fn init_collider(
 ) {
     for (entity, collider, faction) in &query {
         let avian_collider = match collider.shape {
-            Shape::Circle => AvianCollider::circle(0.5),
-            Shape::Rectangle => AvianCollider::rectangle(1.0, 1.0),
+            Shape::Circle => AvianCollider::sphere(0.5),
+            Shape::Rectangle => AvianCollider::cuboid(1.0, 1.0, 1.0),
         };
 
         if collider.sensor {

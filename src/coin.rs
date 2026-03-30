@@ -54,7 +54,7 @@ fn spawn_coins(
         let Ok(transform) = wave_enemy_query.get(event.entity) else {
             continue;
         };
-        let position = transform.translation.truncate();
+        let position = crate::coord::to_2d(transform.translation);
 
         commands
             .spawn((
@@ -62,7 +62,7 @@ fn spawn_coins(
                 Coin {
                     value: balance.run.coins_per_kill,
                 },
-                Transform::from_translation(position.extend(0.0))
+                Transform::from_translation(crate::coord::ground_pos(position))
                     .with_scale(Vec3::splat(COIN_SIZE)),
                 Visibility::default(),
                 DespawnOnExit(WavePhase::Combat),
@@ -88,7 +88,7 @@ fn attract_coins(
     let Ok((player_transform, stats)) = player_query.single() else {
         return;
     };
-    let player_pos = player_transform.translation.truncate();
+    let player_pos = crate::coord::to_2d(player_transform.translation);
     let radius = stat_registry
         .get("pickup_radius")
         .map(|id| stats.get(id))
@@ -96,7 +96,7 @@ fn attract_coins(
     let radius_sq = radius * radius;
 
     for (entity, coin_transform) in &coins {
-        let coin_pos = coin_transform.translation.truncate();
+        let coin_pos = crate::coord::to_2d(coin_transform.translation);
         let dist_sq = player_pos.distance_squared(coin_pos);
         if dist_sq < radius_sq {
             commands.entity(entity).insert(CoinAttracted {
@@ -116,7 +116,7 @@ fn move_coins(
     let Ok(player_transform) = player_query.single() else {
         return;
     };
-    let player_pos = player_transform.translation.truncate();
+    let player_pos = crate::coord::to_2d(player_transform.translation);
     let dt = time.delta_secs();
     let duration = balance.run.coin_attraction_duration;
 
@@ -125,8 +125,9 @@ fn move_coins(
         let t = (attracted.elapsed / duration).min(1.0);
         let eased = t * t;
         let pos = attracted.origin.lerp(player_pos, eased);
-        transform.translation.x = pos.x;
-        transform.translation.y = pos.y;
+        let ground = crate::coord::ground_pos(pos);
+        transform.translation.x = ground.x;
+        transform.translation.z = ground.z;
     }
 }
 

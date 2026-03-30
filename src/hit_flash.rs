@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::blueprints::components::common::jump_walk_animation::animate as jump_animate;
 use crate::blueprints::components::common::squish_walk_animation::animate as squish_animate;
+use crate::blueprints::components::common::sprite::{CircleSprite, TriangleSprite, SquareSprite};
 
 #[derive(Component)]
 pub struct HitFlash {
@@ -31,11 +32,22 @@ impl Plugin for HitFlashPlugin {
     }
 }
 
+fn get_sprite_color(
+    entity: Entity,
+    color_query: &Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>)>,
+) -> Option<Color> {
+    color_query.get(entity).ok().and_then(|(c, t, s)| {
+        c.map(|c| c.color).or(t.map(|t| t.color)).or(s.map(|s| s.color))
+    })
+}
+
 fn tick_hit_flash(
     mut commands: Commands,
     time: Res<Time>,
     mut flash_query: Query<(Entity, &mut HitFlash, &Children)>,
-    mut sprite_query: Query<(&mut Sprite, &mut Transform)>,
+    mut material_query: Query<(&MeshMaterial3d<StandardMaterial>, &mut Transform)>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    color_query: Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>)>,
 ) {
     for (entity, mut flash, children) in &mut flash_query {
         flash.elapsed += time.delta_secs();
@@ -44,16 +56,22 @@ fn tick_hit_flash(
         let done = t >= 1.0;
 
         for child in children.iter() {
-            if let Ok((mut sprite, mut transform)) = sprite_query.get_mut(child) {
-                if done {
-                    sprite.color = Color::WHITE;
-                } else {
-                    let brightness = 6.0_f32.lerp(1.0, t);
-                    let scale_x = 0.7_f32.lerp(1.0, t);
-                    let scale_y = 1.3_f32.lerp(1.0, t);
-                    sprite.color = Color::srgb(brightness, brightness, brightness);
-                    transform.scale.x *= scale_x;
-                    transform.scale.y *= scale_y;
+            let Some(original_color) = get_sprite_color(child, &color_query) else {
+                continue;
+            };
+
+            if let Ok((mat_handle, mut transform)) = material_query.get_mut(child) {
+                if let Some(material) = materials.get_mut(&mat_handle.0) {
+                    if done {
+                        material.base_color = original_color;
+                    } else {
+                        let brightness = 6.0_f32.lerp(1.0, t);
+                        let scale_x = 0.7_f32.lerp(1.0, t);
+                        let scale_y = 1.3_f32.lerp(1.0, t);
+                        material.base_color = Color::srgb(brightness, brightness, brightness);
+                        transform.scale.x *= scale_x;
+                        transform.scale.y *= scale_y;
+                    }
                 }
             }
         }

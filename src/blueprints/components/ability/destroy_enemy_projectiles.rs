@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -28,7 +28,7 @@ fn destroy_enemy_projectiles_system(
     spatial_query: SpatialQuery,
 ) {
     for (destroyer, source, transform) in &query {
-        let position = transform.translation.truncate();
+        let position = crate::coord::to_2d(transform.translation);
 
         let projectile_layer = match source.caster_faction {
             Faction::Player => GameLayer::EnemyProjectile,
@@ -36,8 +36,8 @@ fn destroy_enemy_projectiles_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(projectile_layer);
-        let shape = Collider::circle(destroyer.size / 2.0);
-        let hits = spatial_query.shape_intersections(&shape, position, 0.0, &filter);
+        let shape = Collider::sphere(destroyer.size / 2.0);
+        let hits = spatial_query.shape_intersections(&shape, crate::coord::ground_pos(position), Quat::IDENTITY, &filter);
 
         for proj_entity in hits {
             if let Ok(mut entity_commands) = commands.get_entity(proj_entity) {

@@ -1,18 +1,4 @@
 {
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cargo build --features dev && \"C:/Program Files/AutoHotkey/v2/AutoHotkey64.exe\" \"C:/Users/yuriy/.claude/scripts/notify.ahk\" --title Claude --message Build_complete --icon ✅ --bg 1a2e1a --duration 5000",
-            "timeout": 120,
-            "statusMessage": "Building with dev features..."
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(cargo build:*)",
@@ -50,10 +36,26 @@
       "Bash(git log:*)",
       "WebFetch(domain:www.pathofexile.com)",
       "WebFetch(domain:store.steampowered.com)",
-      "WebFetch(domain:steamspy.com)"
+      "WebFetch(domain:steamspy.com)",
+      "Bash(cargo search:*)",
+      "Bash(cargo info:*)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cargo build --features dev && \"C:/Program Files/AutoHotkey/v2/AutoHotkey64.exe\" \"C:/Users/yuriy/.claude/scripts/notify.ahk\" --title Claude --message Build_complete --icon ✅ --bg 1a2e1a --duration 5000",
+            "timeout": 120,
+            "statusMessage": "Building with dev features..."
+          }
+        ]
+      }
     ]
   }
 }

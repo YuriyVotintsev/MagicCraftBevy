@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -13,7 +13,7 @@ fn init_dynamic_body(mut commands: Commands, query: Query<Entity, Added<DynamicB
     for entity in &query {
         commands.entity(entity).insert((
             RigidBody::Dynamic,
-            LockedAxes::ROTATION_LOCKED,
+            LockedAxes::ROTATION_LOCKED.lock_translation_y(),
             LinearVelocity::ZERO,
         ));
     }

@@ -64,7 +64,7 @@ fn use_abilities_system(
                 for (source, mut input) in &mut activation_input_query {
                     if source.blueprint_id == bid && source.caster.entity == Some(caster_entity) {
                         input.pressed = true;
-                        input.target = TargetInfo::from_direction(direction.truncate());
+                        input.target = TargetInfo::from_direction(crate::coord::to_2d(direction));
                     }
                 }
             }

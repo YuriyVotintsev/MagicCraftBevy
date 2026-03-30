@@ -48,7 +48,7 @@ pub fn blueprint_activation_system(
             .get(caster_entity)
             .unwrap_or(&DEFAULT_STATS);
 
-        let caster_pos = transform.translation.truncate();
+        let caster_pos = crate::coord::to_2d(transform.translation);
         let source_info = TargetInfo::from_entity_and_position(caster_entity, caster_pos);
 
         let spawn_source = SpawnSource {

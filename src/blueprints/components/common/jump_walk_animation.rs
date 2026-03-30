@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -81,7 +81,7 @@ pub fn animate(
         let scale_y = 1.0 + ss;
         let scale_xz = 1.0 / scale_y.sqrt();
 
-        transform.translation.y = y - 0.5 * (1.0 - scale_y);
+        transform.translation.y = 0.5 + y - 0.5 * (1.0 - scale_y);
         transform.rotation = Quat::from_rotation_z(tilt);
         transform.scale = Vec3::new(scale_xz, scale_y, scale_xz);
     }

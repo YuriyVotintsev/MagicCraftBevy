@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 use serde::Deserialize;
@@ -78,7 +78,7 @@ fn player_input_system(
     mouse: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     windows: Query<&Window>,
-    camera_query: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+    camera_query: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     player_query: Query<(Entity, &Transform, &LinearVelocity, &PlayerInput)>,
     selected_spells: Res<SelectedSpells>,
     mut activation_query: Query<(&SpawnSource, &mut BlueprintActivationInput)>,
@@ -104,16 +104,17 @@ fn player_input_system(
                     let Ok(window) = windows.single() else { continue };
                     let Ok((camera, camera_transform)) = camera_query.single() else { continue };
                     let Some(cursor_pos) = window.cursor_position() else { continue };
-                    let Ok(world_pos) = camera.viewport_to_world_2d(camera_transform, cursor_pos) else { continue };
-                    let player_pos = player_transform.translation.truncate();
-                    let direction = (world_pos - player_pos).normalize_or_zero();
+                    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_pos) else { continue };
+                    let Some(distance) = ray.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y)) else { continue };
+                    let world_pos = ray.get_point(distance);
+                    let direction = crate::coord::to_2d(world_pos - player_transform.translation).normalize_or_zero();
                     if direction == Vec2::ZERO {
                         continue;
                     }
                     TargetInfo::from_direction(direction)
                 }
                 TargetingMode::MovementDirection => {
-                    TargetInfo::from_direction(velocity.0.normalize_or_zero())
+                    TargetInfo::from_direction(crate::coord::to_2d(velocity.0).normalize_or_zero())
                 }
                 TargetingMode::Untargeted => TargetInfo::EMPTY,
             };

@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -46,9 +46,9 @@ fn keyboard_movement_system(
             .unwrap_or_default();
 
         velocity.0 = if direction != Vec2::ZERO {
-            direction.normalize() * speed
+            crate::coord::ground_vel(direction.normalize() * speed)
         } else {
-            Vec2::ZERO
+            Vec3::ZERO
         };
     }
 }

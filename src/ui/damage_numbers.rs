@@ -19,7 +19,6 @@ const HORIZONTAL_SPEED: f32 = 40.0;
 const MIN_VERTICAL_SPEED: f32 = 80.0;
 const MAX_VERTICAL_SPEED: f32 = 150.0;
 const GRAVITY: f32 = 300.0;
-const Z_LAYER: f32 = 100.0;
 const SHADOW_OFFSET: Vec2 = Vec2::new(1.5, -1.5);
 
 struct ParabolicLens {
@@ -43,7 +42,7 @@ pub fn spawn_damage_numbers(
 ) {
     for event in events.read() {
         *counter += 1;
-        let position = event.position + Vec3::new(0.0, 20.0, Z_LAYER);
+        let position = event.position + Vec3::new(0.0, 1.0, 0.0);
 
         let color = match (event.target_faction, event.is_crit) {
             (Faction::Enemy, true) => Color::srgb(1.0, 0.9, 0.1),
@@ -83,7 +82,8 @@ pub fn spawn_damage_numbers(
                 offset: SHADOW_OFFSET,
                 color: Color::BLACK,
             },
-            Transform::from_translation(position),
+            Transform::from_translation(position)
+                .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_4)),
             TweenAnim::new(parabola_tween),
         ));
     }

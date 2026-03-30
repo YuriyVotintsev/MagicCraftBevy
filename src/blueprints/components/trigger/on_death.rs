@@ -27,7 +27,7 @@ fn on_death_observer(
         return;
     };
 
-    let source_pos = transform.translation.truncate();
+    let source_pos = crate::coord::to_2d(transform.translation);
 
     spawner.spawn_triggered(
         entity,

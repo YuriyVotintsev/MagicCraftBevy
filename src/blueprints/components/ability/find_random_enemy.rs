@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -36,7 +36,7 @@ fn find_random_enemy_system(
     for (entity, finder, source) in &query {
         let caster_pos = transforms
             .get(finder.center)
-            .map(|t| t.translation.truncate())
+            .map(|t| crate::coord::to_2d(t.translation))
             .unwrap_or(Vec2::ZERO);
 
         let target_layer = match source.caster_faction {
@@ -45,15 +45,15 @@ fn find_random_enemy_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(target_layer);
-        let shape = Collider::circle(finder.size / 2.0);
-        let hits = spatial_query.shape_intersections(&shape, caster_pos, 0.0, &filter);
+        let shape = Collider::sphere(finder.size / 2.0);
+        let hits = spatial_query.shape_intersections(&shape, crate::coord::ground_pos(caster_pos), Quat::IDENTITY, &filter);
 
         if hits.is_empty() {
             if finder.random_fallback {
                 let angle = rand::random_range(0.0..std::f32::consts::TAU);
                 let dist = rand::random_range(0.0..finder.size / 2.0);
                 let pos = caster_pos + Vec2::new(angle.cos(), angle.sin()) * dist;
-                commands.entity(entity).insert(FoundTarget(entity, pos.extend(0.0)));
+                commands.entity(entity).insert(FoundTarget(entity, crate::coord::ground_pos(pos)));
             }
             continue;
         }

@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -17,7 +17,7 @@ pub fn register_systems(app: &mut App) {
         keep_distance_system.in_set(crate::schedule::GameSet::MobAI),
     );
     app.add_observer(|on: On<Remove, KeepDistance>, mut q: Query<&mut LinearVelocity>| {
-        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec2::ZERO; }
+        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec3::ZERO; }
     });
 }
 
@@ -33,15 +33,15 @@ fn keep_distance_system(
             continue;
         };
         let speed = speed_id.map(|id| stats.get(id)).unwrap_or_default();
-        let to_target = (target_transform.translation - transform.translation).truncate();
+        let to_target = crate::coord::to_2d(target_transform.translation - transform.translation);
         let distance = to_target.length();
 
         velocity.0 = if distance < keep_dist.min {
-            -to_target.normalize_or_zero() * speed
+            crate::coord::ground_vel(-to_target.normalize_or_zero() * speed)
         } else if distance > keep_dist.max {
-            to_target.normalize_or_zero() * speed
+            crate::coord::ground_vel(to_target.normalize_or_zero() * speed)
         } else {
-            Vec2::ZERO
+            Vec3::ZERO
         };
     }
 }

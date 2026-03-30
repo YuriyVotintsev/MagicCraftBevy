@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -56,10 +56,11 @@ pub fn animate(
             .and_then(|(vel, stats)| {
                 let max = speed_id.map(|id| stats.get(id)).unwrap_or_default();
                 if max > 0.0 {
-                    let speed = vel.length();
+                    let vel2d = crate::coord::to_2d(vel.0);
+                    let speed = vel2d.length();
                     let t = (speed / max).clamp(0.0, 1.0);
                     let dir = if speed > 0.01 {
-                        vel.0 / speed
+                        vel2d / speed
                     } else {
                         Vec2::ZERO
                     };
@@ -86,17 +87,25 @@ pub fn animate(
         transform.scale = Vec3::new(1.0 + s, 1.0 - s, 1.0);
 
         if dir != Vec2::ZERO {
-            transform.rotation = Quat::from_rotation_z(dir.y.atan2(dir.x));
+            transform.rotation = Quat::from_rotation_y((-dir.y).atan2(dir.x));
 
             let y_extent =
                 (((1.0 + s) * dir.y).powi(2) + ((1.0 - s) * dir.x).powi(2)).sqrt();
 
-            transform.translation.x = sprite.position.x + dir.x * s * r;
-            transform.translation.y = sprite.position.y + r * (y_extent - 1.0) + dir.y * s * r;
+            let offset_2d = Vec2::new(
+                sprite.position.x + dir.x * s * r,
+                sprite.position.y + r * (y_extent - 1.0) + dir.y * s * r,
+            );
+            let ground = crate::coord::ground_pos(offset_2d);
+            transform.translation.x = ground.x;
+            transform.translation.y = 0.5;
+            transform.translation.z = ground.z;
         } else {
             transform.rotation = Quat::IDENTITY;
-            transform.translation.x = sprite.position.x;
-            transform.translation.y = sprite.position.y;
+            let ground = crate::coord::ground_pos(sprite.position);
+            transform.translation.x = ground.x;
+            transform.translation.y = 0.5;
+            transform.translation.z = ground.z;
         }
     }
 }

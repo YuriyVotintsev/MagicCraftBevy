@@ -33,7 +33,7 @@ fn init_orbiting(
     for (entity, orbiting) in &query {
         let owner_pos = transforms.get(orbiting.center).map(|t| t.translation).unwrap_or_default();
         let offset = Vec2::new(orbiting.current_angle.cos(), orbiting.current_angle.sin()) * orbiting.radius;
-        let position = owner_pos + offset.extend(0.0);
+        let position = owner_pos + crate::coord::ground_pos(offset);
         commands.entity(entity).insert((
             AttachedTo { owner: orbiting.center },
             Transform::from_translation(position),
@@ -54,7 +54,7 @@ fn update_orbiting_positions(
                 orbiting.current_angle.cos() * orbiting.radius,
                 orbiting.current_angle.sin() * orbiting.radius,
             );
-            transform.translation = owner_transform.translation + offset.extend(0.0);
+            transform.translation = owner_transform.translation + crate::coord::ground_pos(offset);
         }
     }
 }

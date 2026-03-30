@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -37,7 +37,7 @@ fn melee_strike_system(
             continue;
         };
 
-        let position = caster_transform.translation.truncate();
+        let position = crate::coord::to_2d(caster_transform.translation);
         let caster_radius = sizes.get(caster_entity).map_or(0.0, |s| s.value / 2.0);
 
         let target_layer = match source.caster_faction {
@@ -46,8 +46,8 @@ fn melee_strike_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(target_layer);
-        let shape = Collider::circle(strike.range + caster_radius);
-        let hits = spatial_query.shape_intersections(&shape, position, 0.0, &filter);
+        let shape = Collider::sphere(strike.range + caster_radius);
+        let hits = spatial_query.shape_intersections(&shape, crate::coord::ground_pos(position), Quat::IDENTITY, &filter);
 
         for target_entity in hits {
             pending.write(PendingDamage { target: target_entity, amount: strike.damage, source: Some(caster_entity) });

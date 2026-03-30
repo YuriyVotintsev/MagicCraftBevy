@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -15,7 +15,7 @@ pub fn register_systems(app: &mut App) {
         move_toward_system.in_set(crate::schedule::GameSet::MobAI),
     );
     app.add_observer(|on: On<Remove, MoveToward>, mut q: Query<&mut LinearVelocity>| {
-        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec2::ZERO; }
+        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec3::ZERO; }
     });
 }
 
@@ -31,12 +31,12 @@ fn move_toward_system(
             continue;
         };
         let speed = speed_id.map(|id| stats.get(id)).unwrap_or_default();
-        let direction = (target_transform.translation - transform.translation).truncate();
+        let direction = crate::coord::to_2d(target_transform.translation - transform.translation);
 
         velocity.0 = if direction.length_squared() > 1.0 {
-            direction.normalize() * speed
+            crate::coord::ground_vel(direction.normalize() * speed)
         } else {
-            Vec2::ZERO
+            Vec3::ZERO
         };
     }
 }

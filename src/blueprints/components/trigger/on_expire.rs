@@ -28,7 +28,7 @@ fn on_expire_trigger_system(
             continue;
         }
 
-        let source_pos = transform.translation.truncate();
+        let source_pos = crate::coord::to_2d(transform.translation);
         spawner.spawn_triggered(
             entity,
             source,

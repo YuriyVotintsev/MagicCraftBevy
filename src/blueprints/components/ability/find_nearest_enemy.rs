@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -36,7 +36,7 @@ fn find_nearest_enemy_system(
     for (entity, finder, source) in &query {
         let caster_pos = transforms
             .get(finder.center)
-            .map(|t| t.translation.truncate())
+            .map(|t| crate::coord::to_2d(t.translation))
             .unwrap_or(Vec2::ZERO);
 
         let target_layer = match source.caster_faction {
@@ -45,17 +45,17 @@ fn find_nearest_enemy_system(
         };
 
         let filter = SpatialQueryFilter::from_mask(target_layer);
-        let shape = Collider::circle(finder.size / 2.0);
-        let hits = spatial_query.shape_intersections(&shape, caster_pos, 0.0, &filter);
+        let shape = Collider::sphere(finder.size / 2.0);
+        let hits = spatial_query.shape_intersections(&shape, crate::coord::ground_pos(caster_pos), Quat::IDENTITY, &filter);
 
         let target = hits
             .iter()
             .filter_map(|&e| {
-                let pos = transforms.get(e).ok()?.translation.truncate();
+                let pos = crate::coord::to_2d(transforms.get(e).ok()?.translation);
                 Some((caster_pos.distance_squared(pos), e, pos))
             })
             .min_by(|(dist_a, _, _), (dist_b, _, _)| dist_a.total_cmp(dist_b))
-            .map(|(_, e, pos)| (e, pos.extend(0.0)));
+            .map(|(_, e, pos)| (e, crate::coord::ground_pos(pos)));
 
         if let Some((target_entity, target_pos)) = target {
             commands.entity(entity).insert(FoundTarget(target_entity, target_pos));

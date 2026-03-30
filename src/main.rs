@@ -9,6 +9,7 @@ mod game_state;
 mod hit_flash;
 mod loading;
 mod money;
+mod coord;
 mod movement;
 pub mod palette;
 mod physics;
@@ -38,7 +39,7 @@ fn toggle_physics_debug(key: Res<ButtonInput<KeyCode>>, mut store: ResMut<GizmoC
     }
 }
 
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use blueprints::BlueprintPlugin;

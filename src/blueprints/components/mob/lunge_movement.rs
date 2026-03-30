@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
@@ -35,7 +35,7 @@ pub fn register_systems(app: &mut App) {
             .in_set(crate::schedule::GameSet::MobAI),
     );
     app.add_observer(|on: On<Remove, LungeMovement>, mut q: Query<&mut LinearVelocity>| {
-        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec2::ZERO; }
+        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec3::ZERO; }
     });
 }
 
@@ -72,30 +72,30 @@ fn lunge_movement_system(
                 if state.elapsed >= lunge.lunge_duration {
                     state.phase = LungePhase::Pausing;
                     state.elapsed = 0.0;
-                    velocity.0 = Vec2::ZERO;
+                    velocity.0 = Vec3::ZERO;
                     continue;
                 }
 
                 if state.direction == Vec2::ZERO {
                     let Ok(target_transform) = transforms.get(lunge.target) else {
-                        velocity.0 = Vec2::ZERO;
+                        velocity.0 = Vec3::ZERO;
                         continue;
                     };
-                    let diff = (target_transform.translation - transform.translation).truncate();
+                    let diff = crate::coord::to_2d(target_transform.translation - transform.translation);
                     if diff.length_squared() > 1.0 {
                         state.direction = diff.normalize();
                     } else {
-                        velocity.0 = Vec2::ZERO;
+                        velocity.0 = Vec3::ZERO;
                         continue;
                     }
                 }
 
                 let t = state.elapsed / lunge.lunge_duration;
                 let factor = (std::f32::consts::PI * t * t * t *t).sin();
-                velocity.0 = state.direction * lunge.speed * factor;
+                velocity.0 = crate::coord::ground_vel(state.direction * lunge.speed * factor);
             }
             LungePhase::Pausing => {
-                velocity.0 = Vec2::ZERO;
+                velocity.0 = Vec3::ZERO;
                 if state.elapsed >= lunge.pause_duration {
                     state.phase = LungePhase::Lunging;
                     state.elapsed = 0.0;

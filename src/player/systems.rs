@@ -1,4 +1,4 @@
-use avian2d::prelude::*;
+use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::Faction;
@@ -15,7 +15,7 @@ pub struct Player;
 
 pub fn reset_player_velocity(mut query: Query<&mut LinearVelocity, With<Player>>) {
     for mut velocity in &mut query {
-        velocity.0 = Vec2::ZERO;
+        velocity.0 = Vec3::ZERO;
     }
 }
 

@@ -57,10 +57,10 @@ fn update_falling_projectiles(
         let t = (progress.elapsed / falling.duration).clamp(0.0, 1.0);
         let eased_t = t * t;
 
-        let start_y = falling.target_position.y + falling.height;
-        let current_y = start_y - (falling.height * eased_t);
-        transform.translation.x = falling.target_position.x;
-        transform.translation.y = current_y;
+        let ground = crate::coord::ground_pos(falling.target_position);
+        transform.translation.x = ground.x;
+        transform.translation.z = ground.z;
+        transform.translation.y = falling.height * (1.0 - eased_t);
 
         if t >= 1.0 {
             spawner.spawn_triggered(
