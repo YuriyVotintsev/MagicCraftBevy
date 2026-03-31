@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::SpawnSource;
-use crate::stats::ComputedStats;
+use crate::stats::{ComputedStats, DEFAULT_STATS};
 
 #[blueprint_component]
 pub struct Visual {
@@ -15,9 +15,10 @@ pub fn register_systems(app: &mut App) {
 
 fn init_visual(
     mut commands: Commands,
-    query: Query<(Entity, &Visual, &SpawnSource, &ComputedStats), Added<Visual>>,
+    query: Query<(Entity, &Visual, &SpawnSource, Option<&ComputedStats>), Added<Visual>>,
 ) {
     for (parent, visual, source, stats) in &query {
+        let stats = stats.unwrap_or(&DEFAULT_STATS);
         commands.entity(parent).insert(Visibility::default());
         for child_def in &visual.children {
             let child = commands.spawn_empty().id();

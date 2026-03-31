@@ -7,10 +7,8 @@
         shop_delay: 2.0,
     ),
     arena: (
-        width: 3840.0,
-        height: 2160.0,
-        half_w: 1708.0,
-        half_h: 750.0,
+        width: 3416.0,
+        height: 2200.0,
     ),
     run: (
         coins_per_kill: 1,

@@ -72,6 +72,7 @@ fn init_boomerang(
         commands.entity(entity).insert((
             AttachedTo { owner: boomerang.return_to },
             RigidBody::Kinematic,
+            LockedAxes::ROTATION_LOCKED.lock_translation_y(),
             LinearVelocity(crate::coord::ground_vel(direction * boomerang.speed)),
             BoomerangState::default(),
             Transform::from_translation(crate::coord::ground_pos(position)),

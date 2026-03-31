@@ -67,11 +67,14 @@ fn setup_camera(mut commands: Commands) {
     ));
 }
 
+const WALL_MARGIN_TOP: f32 = 50.0;
+const WALL_MARGIN_BOTTOM: f32 = 15.0;
+
 fn spawn_arena(mut commands: Commands, balance: Res<GameBalance>) {
     let arena = &balance.arena;
 
-    let half_w = arena.half_w;
-    let half_h = arena.half_h;
+    let half_w = arena.half_w();
+    let half_h = arena.half_h();
     let wall_height = 200.0;
     let wall_thickness = 20.0;
     let wall_layers = CollisionLayers::new(GameLayer::Wall, LayerMask::ALL);
@@ -117,12 +120,18 @@ fn camera_follow(
         _ => return,
     };
 
-    let max_x = (arena.half_w - vp_hw).max(0.0);
-    let max_z = (arena.half_h - vp_hh).max(0.0);
+    let sin_angle = (-camera_transform.forward().y).max(0.01);
+    let ground_half_z = vp_hh / sin_angle;
+    let margin_top_z = WALL_MARGIN_TOP / sin_angle;
+    let margin_bottom_z = WALL_MARGIN_BOTTOM / sin_angle;
+
+    let max_x = (arena.half_w() - vp_hw).max(0.0);
+    let max_north = (arena.half_h() - ground_half_z + margin_top_z).max(0.0);
+    let max_south = (arena.half_h() - ground_half_z + margin_bottom_z).max(0.0);
 
     let player_2d = crate::coord::to_2d(player_transform.translation);
     let cx = player_2d.x.clamp(-max_x, max_x);
-    let cz = -(player_2d.y.clamp(-max_z, max_z));
+    let cz = -(player_2d.y.clamp(-max_south, max_north));
 
     camera_transform.translation = Vec3::new(cx, CAM_HEIGHT, cz + CAM_HEIGHT);
     *camera_transform = camera_transform.looking_at(Vec3::new(cx, 0.0, cz), Vec3::Y);
@@ -161,8 +170,8 @@ fn spawn_enemies(
     let arena = &balance.arena;
     let safe_radius_sq = balance.wave.safe_spawn_radius * balance.wave.safe_spawn_radius;
     let margin = 30.0;
-    let hw = arena.half_w - margin;
-    let hh = arena.half_h - margin;
+    let hw = arena.half_w() - margin;
+    let hh = arena.half_h() - margin;
     let mut rng = rand::rng();
 
     for _ in 0..deficit {
@@ -228,8 +237,8 @@ fn apply_enemy_scaling(
 }
 
 fn is_inside_arena(pos: Vec2, margin: f32, arena: &ArenaBalance) -> bool {
-    let hw = arena.half_w - margin;
-    let hh = arena.half_h - margin;
+    let hw = arena.half_w() - margin;
+    let hh = arena.half_h() - margin;
     pos.x.abs() <= hw && pos.y.abs() <= hh
 }
 

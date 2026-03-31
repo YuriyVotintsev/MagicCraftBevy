@@ -66,6 +66,8 @@ pub struct Sprite {
     pub scale: ScalarExpr,
     #[raw(default = None)]
     pub image: Option<String>,
+    #[raw(default = 0.5)]
+    pub elevation: ScalarExpr,
 }
 
 #[derive(Component)]
@@ -99,7 +101,7 @@ fn init_sprite(
         if !has_transform {
             let pos = crate::coord::ground_pos(sprite.position);
             commands.entity(entity).insert(
-                Transform::from_translation(Vec3::new(pos.x, 0.5, pos.z)),
+                Transform::from_translation(Vec3::new(pos.x, sprite.elevation, pos.z)),
             );
         }
 

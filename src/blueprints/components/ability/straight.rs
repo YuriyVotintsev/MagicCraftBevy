@@ -75,6 +75,7 @@ fn init_straight(
 
         commands.entity(entity).insert((
             RigidBody::Kinematic,
+            LockedAxes::ROTATION_LOCKED.lock_translation_y(),
             LinearVelocity(crate::coord::ground_vel(direction * straight.speed)),
         ));
     }
