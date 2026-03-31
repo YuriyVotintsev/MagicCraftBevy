@@ -1,4 +1,5 @@
 mod damage_numbers;
+mod dev_menu;
 mod hud;
 mod loading;
 mod main_menu;
@@ -77,6 +78,15 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 pause_menu::pause_button_system.run_if(in_state(CombatPhase::Paused)),
+            )
+            .add_systems(OnEnter(CombatPhase::DevMenu), dev_menu::spawn_dev_menu)
+            .add_systems(
+                Update,
+                dev_menu::toggle_dev_menu.run_if(in_state(WavePhase::Combat)),
+            )
+            .add_systems(
+                Update,
+                dev_menu::slider_interaction.run_if(in_state(CombatPhase::DevMenu)),
             );
 
         #[cfg(feature = "dev")]

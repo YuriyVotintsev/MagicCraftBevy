@@ -12,6 +12,7 @@ pub enum CombatPhase {
     #[default]
     Running,
     Paused,
+    DevMenu,
 }
 
 #[derive(SubStates, Default, Clone, PartialEq, Eq, Hash, Debug)]

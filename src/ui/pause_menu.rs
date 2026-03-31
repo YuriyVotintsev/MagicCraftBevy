@@ -111,6 +111,7 @@ pub(super) fn toggle_pause_system(
                 virtual_time.unpause();
                 next_phase.set(CombatPhase::Running);
             }
+            CombatPhase::DevMenu => {}
         }
     }
 }

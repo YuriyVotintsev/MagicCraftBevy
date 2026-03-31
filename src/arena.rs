@@ -23,7 +23,8 @@ pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_camera)
+        app.init_resource::<CameraAngle>()
+            .add_systems(Startup, setup_camera)
             .add_systems(
                 OnEnter(GameState::MainMenu),
                 spawn_arena.run_if(not(any_with_component::<Wall>)),
@@ -48,10 +49,27 @@ impl Plugin for ArenaPlugin {
     }
 }
 
-const CAM_HEIGHT: f32 = 700.0;
+const CAM_DISTANCE: f32 = 1000.0;
 
-fn setup_camera(mut commands: Commands) {
+#[derive(Resource)]
+pub struct CameraAngle {
+    pub degrees: f32,
+}
+
+impl Default for CameraAngle {
+    fn default() -> Self {
+        Self { degrees: 45.0 }
+    }
+}
+
+fn camera_offset(angle_degrees: f32) -> Vec3 {
+    let elevation = (90.0 - angle_degrees).to_radians();
+    Vec3::new(0.0, CAM_DISTANCE * elevation.sin(), CAM_DISTANCE * elevation.cos())
+}
+
+fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
     commands.insert_resource(ClearColor(crate::palette::color("background")));
+    let offset = camera_offset(camera_angle.degrees);
     commands.spawn((
         Name::new("MainCamera"),
         Camera3d::default(),
@@ -62,7 +80,7 @@ fn setup_camera(mut commands: Commands) {
             far: 5000.0,
             ..OrthographicProjection::default_3d()
         }),
-        Transform::from_translation(Vec3::new(0.0, CAM_HEIGHT, CAM_HEIGHT))
+        Transform::from_translation(offset)
             .looking_at(Vec3::ZERO, Vec3::Y),
     ));
 }
@@ -106,6 +124,7 @@ fn camera_follow(
         (With<Camera3d>, Without<crate::player::Player>),
     >,
     balance: Res<GameBalance>,
+    camera_angle: Res<CameraAngle>,
 ) {
     let Ok(player_transform) = player_query.single() else {
         return;
@@ -120,7 +139,8 @@ fn camera_follow(
         _ => return,
     };
 
-    let sin_angle = (-camera_transform.forward().y).max(0.01);
+    let elevation = (90.0 - camera_angle.degrees).to_radians();
+    let sin_angle = elevation.sin().max(0.01);
     let ground_half_z = vp_hh / sin_angle;
     let margin_top_z = WALL_MARGIN_TOP / sin_angle;
     let margin_bottom_z = WALL_MARGIN_BOTTOM / sin_angle;
@@ -133,8 +153,11 @@ fn camera_follow(
     let cx = player_2d.x.clamp(-max_x, max_x);
     let cz = -(player_2d.y.clamp(-max_south, max_north));
 
-    camera_transform.translation = Vec3::new(cx, CAM_HEIGHT, cz + CAM_HEIGHT);
-    *camera_transform = camera_transform.looking_at(Vec3::new(cx, 0.0, cz), Vec3::Y);
+    let look_at = Vec3::new(cx, 0.0, cz);
+    let offset = camera_offset(camera_angle.degrees);
+    camera_transform.translation = look_at + offset;
+    let up = if sin_angle > 0.99 { Vec3::NEG_Z } else { Vec3::Y };
+    *camera_transform = camera_transform.looking_at(look_at, up);
 }
 
 fn update_target_count(
