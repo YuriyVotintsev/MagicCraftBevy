@@ -17,9 +17,6 @@ pub struct SquishState {
     dir: Vec2,
 }
 
-const STRETCH_FRAC: f32 = 0.3;
-const CONTRACT_FRAC: f32 = 0.3;
-
 pub fn register_systems(app: &mut App) {
     app.add_systems(PostUpdate, (init, animate).chain());
 }
@@ -65,19 +62,9 @@ pub fn animate(
         let (s, offset) = if let Some(ls) = lunge_state {
             if ls.phase == LungePhase::Lunging && ls.duration > 0.0 {
                 let tau = (ls.elapsed / ls.duration).clamp(0.0, 1.0);
-                let sf = STRETCH_FRAC;
-                let cf = CONTRACT_FRAC;
-
-                if tau < sf {
-                    let s = anim.amount * (tau / sf);
-                    (s, s * r)
-                } else if tau > 1.0 - cf {
-                    let s = anim.amount * ((1.0 - tau) / cf);
-                    (s, -s * r)
-                } else {
-                    let cruise_t = (tau - sf) / (1.0 - sf - cf);
-                    (anim.amount, anim.amount * r * (1.0 - 2.0 * cruise_t))
-                }
+                let pi_tau = std::f32::consts::PI * tau;
+                let s = anim.amount * pi_tau.sin();
+                (s, s * r * pi_tau.cos())
             } else {
                 (0.0, 0.0)
             }

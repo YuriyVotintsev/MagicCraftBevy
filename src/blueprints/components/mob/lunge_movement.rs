@@ -9,7 +9,7 @@ pub struct LungeMovement {
     #[default_expr("target.entity")]
     pub target: EntityExpr,
     pub speed: Option<ScalarExpr>,
-    pub lunge_duration: Option<ScalarExpr>,
+    pub duration: Option<ScalarExpr>,
     #[raw(default = 0.4)]
     pub pause_duration: ScalarExpr,
     pub distance: Option<ScalarExpr>,
@@ -60,7 +60,7 @@ fn init_lunge_movement(
             })
             .unwrap_or(400.0);
 
-        let (speed, duration) = match (lunge.speed, lunge.lunge_duration, lunge.distance) {
+        let (speed, duration) = match (lunge.speed, lunge.duration, lunge.distance) {
             (Some(s), _, Some(d)) => (s, d / (s * LUNGE_INTEGRAL)),
             (None, Some(dur), Some(d)) => (d / (dur * LUNGE_INTEGRAL), dur),
             (None, None, Some(d)) => (stat_speed, d / (stat_speed * LUNGE_INTEGRAL)),
@@ -117,7 +117,7 @@ fn lunge_movement_system(
                 }
 
                 let t = state.elapsed / state.duration;
-                let factor = (std::f32::consts::PI * t * t).sin();
+                let factor = t;//(std::f32::consts::PI * t).sin();
                 velocity.0 = crate::coord::ground_vel(state.direction * state.speed * factor);
             }
             LungePhase::Pausing => {

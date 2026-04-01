@@ -685,6 +685,7 @@ fn generate_blueprint_component_named(
 
     let output = quote! {
         #[derive(Debug, Clone, serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
         pub struct DefRaw {
             #(#raw_fields,)*
         }

@@ -6,8 +6,8 @@ use magic_craft_macros::blueprint_component;
 pub struct JumpWalkAnimation {
     #[raw(default = 0.15)]
     pub bounce_height: ScalarExpr,
-    #[raw(default = 10.0)]
-    pub bounce_speed: ScalarExpr,
+    #[raw(default = 0.3)]
+    pub bounce_duration: ScalarExpr,
     #[raw(default = 12.0)]
     pub max_tilt: ScalarExpr,
 }
@@ -49,7 +49,7 @@ pub fn animate(
             .unwrap_or(false);
 
         if moving {
-            state.phase += dt * anim.bounce_speed;
+            state.phase += dt * (std::f32::consts::PI / anim.bounce_duration);
             state.amplitude = (state.amplitude + dt * 8.0).min(1.0);
             state.landed = false;
         } else if state.amplitude > 0.0 {
@@ -61,7 +61,7 @@ pub fn animate(
                 }
             } else {
                 let prev = (state.phase / std::f32::consts::PI).floor();
-                state.phase += dt * anim.bounce_speed;
+                state.phase += dt * (std::f32::consts::PI / anim.bounce_duration);
                 let curr = (state.phase / std::f32::consts::PI).floor();
                 if curr > prev {
                     state.phase = curr * std::f32::consts::PI;

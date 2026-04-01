@@ -3,7 +3,7 @@
     entities: [
         (
             base_stats: {
-                "movement_speed_flat": 400.0,
+                "movement_speed_flat": 700.0,
                 "max_life_flat": 15.0,
                 "physical_damage_flat": 5.0,
             },
@@ -11,10 +11,10 @@
             components: [
                 Size((value: "80.0")),
                 Visual((children: [
-                    (components: [Shadow(())]),
+                	(components: [Shadow(())]),
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), color: "enemy", shape: Circle)),
-                        SquishWalkAnimation((amount: Some("1"))),
+                        JumpWalkAnimation((bounce_height: Some("0.7"), bounce_duration: Some("0.5"))),
                     ]),
                 ])),
                 Collider((shape: Circle, sensor: Some(false))),
@@ -29,7 +29,7 @@
                         transitions: [WhenFoundTarget((to: "lunge"))],
                     ),
                     "lunge": (
-                        components: [LungeMovement((distance: Some("100")))],
+                        components: [LungeMovement((duration: Some("0.5")))],
                         transitions: [WhenNear((to: "attack", distance: "100.0"))],
                     ),
                     "attack": (
