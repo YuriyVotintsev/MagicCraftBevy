@@ -2,16 +2,17 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::stats::{ComputedStats, StatRegistry};
+
 #[blueprint_component]
 pub struct LungeMovement {
     #[default_expr("target.entity")]
     pub target: EntityExpr,
-    #[default_expr("stat(movement_speed)")]
-    pub speed: ScalarExpr,
-    #[raw(default = 0.6)]
-    pub lunge_duration: ScalarExpr,
+    pub speed: Option<ScalarExpr>,
+    pub lunge_duration: Option<ScalarExpr>,
     #[raw(default = 0.4)]
     pub pause_duration: ScalarExpr,
+    pub distance: Option<ScalarExpr>,
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -25,7 +26,12 @@ pub struct LungeMovementState {
     phase: LungePhase,
     elapsed: f32,
     direction: Vec2,
+    pub speed: f32,
+    duration: f32,
 }
+
+const DEFAULT_DURATION: f32 = 0.6;
+const LUNGE_INTEGRAL: f32 = 0.33;
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -41,13 +47,33 @@ pub fn register_systems(app: &mut App) {
 
 fn init_lunge_movement(
     mut commands: Commands,
-    query: Query<Entity, Added<LungeMovement>>,
+    query: Query<(Entity, &LungeMovement, Option<&ComputedStats>), Added<LungeMovement>>,
+    stat_registry: Option<Res<StatRegistry>>,
 ) {
-    for entity in &query {
+    for (entity, lunge, stats) in &query {
+        let stat_speed = stats
+            .and_then(|s| {
+                stat_registry
+                    .as_ref()
+                    .and_then(|sr| sr.get("movement_speed"))
+                    .map(|id| s.get(id))
+            })
+            .unwrap_or(400.0);
+
+        let (speed, duration) = match (lunge.speed, lunge.lunge_duration, lunge.distance) {
+            (Some(s), _, Some(d)) => (s, d / (s * LUNGE_INTEGRAL)),
+            (None, Some(dur), Some(d)) => (d / (dur * LUNGE_INTEGRAL), dur),
+            (None, None, Some(d)) => (stat_speed, d / (stat_speed * LUNGE_INTEGRAL)),
+            (Some(s), dur, None) => (s, dur.unwrap_or(DEFAULT_DURATION)),
+            (None, dur, None) => (stat_speed, dur.unwrap_or(DEFAULT_DURATION)),
+        };
+
         commands.entity(entity).insert(LungeMovementState {
             phase: LungePhase::Lunging,
             elapsed: 0.0,
             direction: Vec2::ZERO,
+            speed,
+            duration,
         });
     }
 }
@@ -69,7 +95,7 @@ fn lunge_movement_system(
 
         match state.phase {
             LungePhase::Lunging => {
-                if state.elapsed >= lunge.lunge_duration {
+                if state.elapsed >= state.duration {
                     state.phase = LungePhase::Pausing;
                     state.elapsed = 0.0;
                     velocity.0 = Vec3::ZERO;
@@ -90,9 +116,9 @@ fn lunge_movement_system(
                     }
                 }
 
-                let t = state.elapsed / lunge.lunge_duration;
-                let factor = (std::f32::consts::PI * t * t * t *t).sin();
-                velocity.0 = crate::coord::ground_vel(state.direction * lunge.speed * factor);
+                let t = state.elapsed / state.duration;
+                let factor = (std::f32::consts::PI * t * t).sin();
+                velocity.0 = crate::coord::ground_vel(state.direction * state.speed * factor);
             }
             LungePhase::Pausing => {
                 velocity.0 = Vec3::ZERO;
