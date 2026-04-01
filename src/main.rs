@@ -12,6 +12,7 @@ mod money;
 mod coord;
 mod movement;
 pub mod palette;
+mod particles;
 mod physics;
 mod player;
 mod run;
@@ -208,6 +209,7 @@ fn main() {
             TweeningPlugin,
             UiPlugin,
             WavePlugin,
+            particles::ParticlesPlugin,
         ))
         .run();
 }

@@ -20,6 +20,7 @@ collect_components!(
             destroy_enemy_projectiles,
             boomerang,
             melee_strike,
+            hit_particles,
         ],
         common: [
             size,
