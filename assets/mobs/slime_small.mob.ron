@@ -3,7 +3,7 @@
     entities: [
         (
             base_stats: {
-                "movement_speed_flat": 100.0,
+                "movement_speed_flat": 400.0,
                 "max_life_flat": 15.0,
                 "physical_damage_flat": 5.0,
             },
@@ -14,7 +14,7 @@
                     (components: [Shadow(())]),
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), color: "enemy", shape: Circle)),
-                        SquishWalkAnimation((amount: Some("0.5"))),
+                        SquishWalkAnimation((amount: Some("1"))),
                     ]),
                 ])),
                 Collider((shape: Circle, sensor: Some(false))),

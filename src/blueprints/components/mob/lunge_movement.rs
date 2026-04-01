@@ -16,18 +16,18 @@ pub struct LungeMovement {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-enum LungePhase {
+pub enum LungePhase {
     Lunging,
     Pausing,
 }
 
 #[derive(Component)]
 pub struct LungeMovementState {
-    phase: LungePhase,
-    elapsed: f32,
+    pub phase: LungePhase,
+    pub elapsed: f32,
     direction: Vec2,
     pub speed: f32,
-    duration: f32,
+    pub duration: f32,
 }
 
 const DEFAULT_DURATION: f32 = 0.6;
