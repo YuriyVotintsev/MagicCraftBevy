@@ -20,6 +20,13 @@ pub const WINDOW_WIDTH: f32 = 1920.0;
 #[cfg(not(feature = "headless"))]
 pub const WINDOW_HEIGHT: f32 = 1080.0;
 
+#[derive(Component)]
+struct FloorParams {
+    width: f32,
+    height: f32,
+    radius: f32,
+}
+
 pub struct ArenaPlugin;
 
 impl Plugin for ArenaPlugin {
@@ -47,7 +54,8 @@ impl Plugin for ArenaPlugin {
             .add_systems(
                 PostUpdate,
                 camera_follow.run_if(in_state(GameState::Playing)),
-            );
+            )
+            .add_systems(Update, update_floor_mesh);
     }
 }
 
@@ -70,7 +78,7 @@ fn camera_offset(angle_degrees: f32) -> Vec3 {
 }
 
 fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
-    commands.insert_resource(ClearColor(crate::palette::color("border")));
+    commands.insert_resource(ClearColor(crate::palette::color("void")));
     let offset = camera_offset(camera_angle.degrees);
     commands.spawn((
         Name::new("MainCamera"),
@@ -91,6 +99,7 @@ fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
 fn spawn_arena(
     mut commands: Commands,
     balance: Res<GameBalance>,
+    camera_angle: Res<CameraAngle>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -121,9 +130,14 @@ fn spawn_arena(
         ));
     }
 
+    let floor_radius = 40.0;
+    let elevation = (90.0 - camera_angle.degrees).to_radians();
+    let z_stretch = 1.0 / elevation.sin();
+
     commands.spawn((
         Name::new("ArenaFloor"),
-        Mesh3d(meshes.add(Cuboid::new(arena.width, 0.01, arena.height))),
+        FloorParams { width: arena.width, height: arena.height, radius: floor_radius },
+        Mesh3d(meshes.add(rounded_floor_mesh(arena.width, arena.height, floor_radius, z_stretch))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: crate::palette::color("background"),
             unlit: true,
@@ -276,4 +290,73 @@ fn tag_wave_enemies(
             commands.entity(entity).insert(DespawnOnExit(WavePhase::Combat));
         }
     }
+}
+
+fn update_floor_mesh(
+    camera_angle: Res<CameraAngle>,
+    query: Query<(&FloorParams, &Mesh3d)>,
+    mut meshes: ResMut<Assets<Mesh>>,
+) {
+    if !camera_angle.is_changed() {
+        return;
+    }
+    let elevation = (90.0 - camera_angle.degrees).to_radians();
+    let z_stretch = 1.0 / elevation.sin();
+    for (params, mesh_handle) in &query {
+        if let Some(mesh) = meshes.get_mut(&mesh_handle.0) {
+            *mesh = rounded_floor_mesh(params.width, params.height, params.radius, z_stretch);
+        }
+    }
+}
+
+fn rounded_floor_mesh(width: f32, height: f32, radius: f32, z_stretch: f32) -> Mesh {
+    use bevy::mesh::{Indices, PrimitiveTopology};
+
+    let hw = width / 2.0;
+    let hh = height / 2.0;
+    let r = radius.min(hw).min(hh);
+    let rz = r * z_stretch;
+    let segments = 8u32;
+
+    let corner_centers = [
+        [hw - r, -(hh - rz)],
+        [hw - r, hh - rz],
+        [-(hw - r), hh - rz],
+        [-(hw - r), -(hh - rz)],
+    ];
+
+    let mut outline = Vec::new();
+    for (i, center) in corner_centers.iter().enumerate() {
+        let start = -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::FRAC_PI_2;
+        for j in 0..segments {
+            let angle = start + std::f32::consts::FRAC_PI_2 * j as f32 / segments as f32;
+            outline.push([center[0] + r * angle.cos(), center[1] + rz * angle.sin()]);
+        }
+    }
+
+    let n = outline.len() as u32;
+    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(1 + outline.len());
+    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(1 + outline.len());
+    let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(1 + outline.len());
+    let mut indices: Vec<u32> = Vec::new();
+
+    positions.push([0.0, 0.0, 0.0]);
+    normals.push([0.0, 1.0, 0.0]);
+    uvs.push([0.5, 0.5]);
+
+    for p in &outline {
+        positions.push([p[0], 0.0, p[1]]);
+        normals.push([0.0, 1.0, 0.0]);
+        uvs.push([0.5 + p[0] / width, 0.5 + p[1] / height]);
+    }
+
+    for i in 0..n {
+        indices.extend_from_slice(&[0, 1 + (i + 1) % n, 1 + i]);
+    }
+
+    Mesh::new(PrimitiveTopology::TriangleList, default())
+        .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, positions)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, normals)
+        .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, uvs)
+        .with_inserted_indices(Indices::U32(indices))
 }
