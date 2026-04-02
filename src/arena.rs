@@ -35,7 +35,8 @@ impl Plugin for ArenaPlugin {
                 (update_target_count, spawn_enemies, tag_wave_enemies)
                     .chain()
                     .in_set(GameSet::Spawning)
-                    .run_if(in_state(WavePhase::Combat)),
+                    .run_if(in_state(WavePhase::Combat))
+                    .run_if(not(resource_exists::<crate::run::PlayerDying>)),
             )
             .add_systems(
                 Update,

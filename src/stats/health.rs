@@ -5,6 +5,9 @@ use crate::blueprints::components::common::health::Health;
 #[derive(Component)]
 pub struct Dead;
 
+#[derive(Component)]
+pub struct SkipCleanup;
+
 #[derive(Message)]
 pub struct DeathEvent {
     pub entity: Entity,
@@ -25,7 +28,7 @@ pub fn death_system(
     }
 }
 
-pub fn cleanup_dead(mut commands: Commands, query: Query<Entity, With<Dead>>) {
+pub fn cleanup_dead(mut commands: Commands, query: Query<Entity, (With<Dead>, Without<SkipCleanup>)>) {
     for entity in &query {
         if let Ok(mut entity_commands) = commands.get_entity(entity) {
             entity_commands.despawn();
