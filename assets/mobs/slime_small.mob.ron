@@ -3,7 +3,7 @@
     entities: [
         (
             base_stats: {
-                "movement_speed_flat": 700.0,
+                "movement_speed_flat": 300.0,
                 "max_life_flat": 15.0,
                 "physical_damage_flat": 5.0,
             },

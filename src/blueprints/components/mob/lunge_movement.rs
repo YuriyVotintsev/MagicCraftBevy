@@ -31,7 +31,6 @@ pub struct LungeMovementState {
 }
 
 const DEFAULT_DURATION: f32 = 0.6;
-const LUNGE_INTEGRAL: f32 = 0.33;
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -61,9 +60,9 @@ fn init_lunge_movement(
             .unwrap_or(400.0);
 
         let (speed, duration) = match (lunge.speed, lunge.duration, lunge.distance) {
-            (Some(s), _, Some(d)) => (s, d / (s * LUNGE_INTEGRAL)),
-            (None, Some(dur), Some(d)) => (d / (dur * LUNGE_INTEGRAL), dur),
-            (None, None, Some(d)) => (stat_speed, d / (stat_speed * LUNGE_INTEGRAL)),
+            (Some(s), _, Some(d)) => (s, d / s),
+            (None, Some(dur), Some(d)) => (d / dur, dur),
+            (None, None, Some(d)) => (stat_speed, d / stat_speed),
             (Some(s), dur, None) => (s, dur.unwrap_or(DEFAULT_DURATION)),
             (None, dur, None) => (stat_speed, dur.unwrap_or(DEFAULT_DURATION)),
         };
@@ -116,9 +115,7 @@ fn lunge_movement_system(
                     }
                 }
 
-                let t = state.elapsed / state.duration;
-                let factor = t;//(std::f32::consts::PI * t).sin();
-                velocity.0 = crate::coord::ground_vel(state.direction * state.speed * factor);
+                velocity.0 = crate::coord::ground_vel(state.direction * state.speed);
             }
             LungePhase::Pausing => {
                 velocity.0 = Vec3::ZERO;
