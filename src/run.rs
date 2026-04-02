@@ -5,6 +5,7 @@ use rand::Rng;
 use crate::balance::GameBalance;
 use crate::blueprints::components::common::health::Health;
 use crate::blueprints::components::common::jump_walk_animation::JumpWalkAnimationState;
+use crate::blueprints::SpawnSource;
 use crate::particles::{Particle, PlayerDeathParticleConfig};
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
@@ -65,7 +66,11 @@ impl Plugin for RunPlugin {
             )
             .add_systems(
                 Update,
-                (animate_shrink_to_zero, player_death_sequence)
+                (
+                    mark_new_shrink_targets,
+                    animate_shrink_to_zero,
+                    player_death_sequence,
+                )
                     .in_set(GameSet::Cleanup)
                     .run_if(resource_exists::<PlayerDying>),
             )
@@ -98,7 +103,10 @@ fn check_run_end(
     player_query: Query<Entity, With<Player>>,
     combat_entities: Query<
         (Entity, &Transform),
-        (With<DespawnOnExit<WavePhase>>, Without<Player>),
+        (
+            Or<(With<DespawnOnExit<WavePhase>>, With<SpawnSource>)>,
+            Without<Player>,
+        ),
     >,
     dying: Option<Res<PlayerDying>>,
 ) {
@@ -125,6 +133,26 @@ fn check_run_end(
                 });
             }
         }
+    }
+}
+
+fn mark_new_shrink_targets(
+    mut commands: Commands,
+    query: Query<
+        (Entity, &Transform),
+        (
+            Or<(With<DespawnOnExit<WavePhase>>, With<SpawnSource>)>,
+            Without<Player>,
+            Without<ShrinkToZero>,
+        ),
+    >,
+) {
+    for (entity, transform) in &query {
+        commands.entity(entity).insert(ShrinkToZero {
+            elapsed: 0.0,
+            duration: 0.5,
+            initial_scale: transform.scale,
+        });
     }
 }
 
