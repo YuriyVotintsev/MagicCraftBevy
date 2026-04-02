@@ -15,7 +15,7 @@
                 (components: [Sprite((color: "player_ability", shape: Circle, elevation: Some("2"), position: Some("vec2(0, 0)")))]),
             ])),
             OnCollision((entities: [
-                (components: [DamagePayload((amount: "calc(physical_damage, 15.0, 1)"))]),
+                (components: [DamagePayload((amount: "calc(physical_damage, 1.0, 1)"))]),
                 (components: [HitParticles(())]),
             ]))
         ])

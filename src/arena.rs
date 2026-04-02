@@ -1,6 +1,7 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use bevy::camera::ScalingMode;
+use bevy::core_pipeline::tonemapping::Tonemapping;
 use rand::Rng;
 
 use crate::balance::{ArenaBalance, GameBalance};
@@ -73,6 +74,7 @@ fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
     commands.spawn((
         Name::new("MainCamera"),
         Camera3d::default(),
+        Tonemapping::None,
         Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical {
                 viewport_height: 1080.0,

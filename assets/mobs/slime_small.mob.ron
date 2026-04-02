@@ -4,7 +4,7 @@
         (
             base_stats: {
                 "movement_speed_flat": 300.0,
-                "max_life_flat": 15.0,
+                "max_life_flat": 3.0,
                 "physical_damage_flat": 5.0,
             },
             abilities: ["melee_attack"],

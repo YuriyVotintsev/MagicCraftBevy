@@ -32,12 +32,14 @@ impl Plugin for HitFlashPlugin {
     }
 }
 
-fn get_sprite_color(
+fn get_sprite_colors(
     entity: Entity,
     color_query: &Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>)>,
-) -> Option<Color> {
+) -> Option<(Color, Option<Color>)> {
     color_query.get(entity).ok().and_then(|(c, t, s)| {
-        c.map(|c| c.color).or(t.map(|t| t.color)).or(s.map(|s| s.color))
+        c.map(|c| (c.color, c.flash_color))
+            .or(t.map(|t| (t.color, t.flash_color)))
+            .or(s.map(|s| (s.color, s.flash_color)))
     })
 }
 
@@ -56,7 +58,7 @@ fn tick_hit_flash(
         let done = t >= 1.0;
 
         for child in children.iter() {
-            let Some(original_color) = get_sprite_color(child, &color_query) else {
+            let Some((original_color, flash_color)) = get_sprite_colors(child, &color_query) else {
                 continue;
             };
 
@@ -65,10 +67,18 @@ fn tick_hit_flash(
                     if done {
                         material.base_color = original_color;
                     } else {
-                        let brightness = 6.0_f32.lerp(1.0, t);
+                        let flash_amount = 1.0 - t;
                         let scale_x = 0.7_f32.lerp(1.0, t);
                         let scale_y = 1.3_f32.lerp(1.0, t);
-                        material.base_color = Color::srgb(brightness, brightness, brightness);
+                        if let Some(target) = flash_color {
+                            let orig = original_color.to_srgba();
+                            let tgt = target.to_srgba();
+                            material.base_color = Color::srgb(
+                                orig.red.lerp(tgt.red, flash_amount),
+                                orig.green.lerp(tgt.green, flash_amount),
+                                orig.blue.lerp(tgt.blue, flash_amount),
+                            );
+                        }
                         transform.scale.x *= scale_x;
                         transform.scale.y *= scale_y;
                     }

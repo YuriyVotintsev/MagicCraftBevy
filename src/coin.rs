@@ -75,6 +75,7 @@ fn spawn_coins(
                 parent.spawn((
                     CircleSprite {
                         color: palette::color("coin"),
+                        flash_color: None,
                     },
                     Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)),
                 ));

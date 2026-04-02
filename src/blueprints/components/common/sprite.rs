@@ -6,17 +6,23 @@ use crate::palette;
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(from = "SpriteColorInput")]
-pub struct SpriteColor(pub f32, pub f32, pub f32, pub f32);
+pub struct SpriteColor {
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
+    pub flash: Option<(f32, f32, f32)>,
+}
 
 impl Default for SpriteColor {
     fn default() -> Self {
-        Self(1.0, 1.0, 1.0, 1.0)
+        Self { r: 1.0, g: 1.0, b: 1.0, a: 1.0, flash: None }
     }
 }
 
 impl From<(f32, f32, f32, f32)> for SpriteColor {
     fn from(t: (f32, f32, f32, f32)) -> Self {
-        Self(t.0, t.1, t.2, t.3)
+        Self { r: t.0, g: t.1, b: t.2, a: t.3, flash: None }
     }
 }
 
@@ -34,14 +40,16 @@ impl From<SpriteColorInput> for SpriteColor {
             SpriteColorInput::Named(name) => {
                 let (r, g, b) = palette::lookup(&name)
                     .unwrap_or_else(|| panic!("Unknown palette color: {name}"));
-                Self(r, g, b, 1.0)
+                let flash = palette::flash_lookup(&name);
+                Self { r, g, b, a: 1.0, flash }
             }
             SpriteColorInput::NamedWithAlpha(name, alpha) => {
                 let (r, g, b) = palette::lookup(&name)
                     .unwrap_or_else(|| panic!("Unknown palette color: {name}"));
-                Self(r, g, b, alpha)
+                let flash = palette::flash_lookup(&name);
+                Self { r, g, b, a: alpha, flash }
             }
-            SpriteColorInput::Rgba(r, g, b, a) => Self(r, g, b, a),
+            SpriteColorInput::Rgba(r, g, b, a) => Self { r, g, b, a, flash: None },
         }
     }
 }
@@ -73,16 +81,19 @@ pub struct Sprite {
 #[derive(Component)]
 pub struct CircleSprite {
     pub color: Color,
+    pub flash_color: Option<Color>,
 }
 
 #[derive(Component)]
 pub struct TriangleSprite {
     pub color: Color,
+    pub flash_color: Option<Color>,
 }
 
 #[derive(Component)]
 pub struct SquareSprite {
     pub color: Color,
+    pub flash_color: Option<Color>,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -96,7 +107,8 @@ fn init_sprite(
     query: Query<(Entity, &Sprite, Has<Transform>), Added<Sprite>>,
 ) {
     for (entity, sprite, has_transform) in &query {
-        let color = Color::srgba(sprite.color.0, sprite.color.1, sprite.color.2, sprite.color.3);
+        let color = Color::srgba(sprite.color.r, sprite.color.g, sprite.color.b, sprite.color.a);
+        let flash_color = sprite.color.flash.map(|(r, g, b)| Color::srgb(r, g, b));
 
         if !has_transform {
             let pos = crate::coord::ground_pos(sprite.position);
@@ -115,13 +127,13 @@ fn init_sprite(
         } else {
             match sprite.shape {
                 SpriteShape::Square => {
-                    commands.entity(entity).insert(SquareSprite { color });
+                    commands.entity(entity).insert(SquareSprite { color, flash_color });
                 }
                 SpriteShape::Circle => {
-                    commands.entity(entity).insert(CircleSprite { color });
+                    commands.entity(entity).insert(CircleSprite { color, flash_color });
                 }
                 SpriteShape::Triangle => {
-                    commands.entity(entity).insert(TriangleSprite { color });
+                    commands.entity(entity).insert(TriangleSprite { color, flash_color });
                 }
             }
         }

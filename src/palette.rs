@@ -36,6 +36,14 @@ pub fn color(name: &str) -> Color {
     Color::srgb(r, g, b)
 }
 
+pub fn flash_lookup(name: &str) -> Option<(f32, f32, f32)> {
+    PALETTE.get().and_then(|p| {
+        let base_name = p.aliases.get(name).map(|s| s.as_str()).unwrap_or(name);
+        let flash_name = format!("{base_name}_flash");
+        p.colors.get(&flash_name).copied()
+    })
+}
+
 pub fn color_alpha(name: &str, alpha: f32) -> Color {
     let (r, g, b) = lookup(name).unwrap_or_else(|| panic!("Unknown palette color: {name}"));
     Color::srgba(r, g, b, alpha)
