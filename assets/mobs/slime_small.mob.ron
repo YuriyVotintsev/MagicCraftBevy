@@ -20,6 +20,9 @@
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody(()),
                 Health(()),
+                OnDeath((entities: [
+                    (components: [DeathParticles(())]),
+                ])),
             ],
             states: Some((
                 initial: "find_target",

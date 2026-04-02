@@ -21,9 +21,10 @@
                 DynamicBody(()),
                 Health(()),
                 OnDeath((entities: [
+                    (components: [DeathParticles(())]),
                     (count: Some("2"), components: [
                         SpawnAbility((blueprint: "slime_large")),
-                    ])
+                    ]),
                 ])),
             ],
             states: Some((

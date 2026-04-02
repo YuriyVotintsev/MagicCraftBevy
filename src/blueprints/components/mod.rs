@@ -21,6 +21,7 @@ collect_components!(
             boomerang,
             melee_strike,
             hit_particles,
+            death_particles,
         ],
         common: [
             size,
