@@ -69,12 +69,15 @@ fn spawn_coins(
             ))
             .with_children(|parent| {
                 parent.spawn(Shadow {
-                    y_offset: -0.42,
+                    y_offset: -0.5,
                     opacity: 0.45,
                 });
-                parent.spawn(CircleSprite {
-                    color: palette::color("coin"),
-                });
+                parent.spawn((
+                    CircleSprite {
+                        color: palette::color("coin"),
+                    },
+                    Transform::from_translation(Vec3::new(0.0, 0.5, 0.0)),
+                ));
             });
     }
 }

@@ -58,7 +58,7 @@ pub struct CameraAngle {
 
 impl Default for CameraAngle {
     fn default() -> Self {
-        Self { degrees: 45.0 }
+        Self { degrees: 55.0 }
     }
 }
 

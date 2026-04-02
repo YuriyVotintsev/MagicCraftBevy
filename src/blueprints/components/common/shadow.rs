@@ -18,7 +18,7 @@ pub fn register_systems(app: &mut App) {
 }
 
 fn setup_shadow_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    let mesh = meshes.add(Circle::new(0.4));
+    let mesh = meshes.add(Circle::new(0.5));
     commands.insert_resource(ShadowMeshHandle(mesh));
 }
 
