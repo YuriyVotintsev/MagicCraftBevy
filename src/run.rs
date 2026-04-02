@@ -2,7 +2,6 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::balance::GameBalance;
 use crate::blueprints::components::common::health::Health;
 use crate::blueprints::components::common::jump_walk_animation::JumpWalkAnimationState;
 use crate::blueprints::SpawnSource;
@@ -184,8 +183,6 @@ fn player_death_sequence(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut next_phase: ResMut<NextState<WavePhase>>,
-    mut shop_timer: ResMut<crate::wave::ShopDelayTimer>,
-    balance: Res<GameBalance>,
 ) {
     let dt = time.delta_secs();
 
@@ -201,8 +198,7 @@ fn player_death_sequence(
             transform.scale = initial_scale * (1.0 - t);
         }
         if *elapsed >= particle_lifetime && shrink_query.is_empty() {
-            shop_timer.0 = Timer::from_seconds(balance.wave.shop_delay, TimerMode::Once);
-            next_phase.set(WavePhase::ShopDelay);
+            next_phase.set(WavePhase::Shop);
         }
         return;
     }
@@ -213,8 +209,7 @@ fn player_death_sequence(
     *elapsed += dt;
 
     let Ok((_player_entity, transform, player_children)) = player_query.single_mut() else {
-        shop_timer.0 = Timer::from_seconds(balance.wave.shop_delay, TimerMode::Once);
-        next_phase.set(WavePhase::ShopDelay);
+        next_phase.set(WavePhase::Shop);
         return;
     };
 
