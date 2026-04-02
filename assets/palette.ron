@@ -26,6 +26,7 @@
 
         // Background
         "cream":        (0.969, 0.949, 0.890),   // #F7F2E3
+        "cream_dark":   (0.75, 0.73, 0.68),
     },
     aliases: {
         "player":         "dark_teal",
@@ -34,5 +35,6 @@
         "enemy_ability":  "orange",
         "coin":           "gold",
         "background":     "cream",
+        "border":         "cream_dark",
     },
 )

@@ -70,7 +70,7 @@ fn camera_offset(angle_degrees: f32) -> Vec3 {
 }
 
 fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
-    commands.insert_resource(ClearColor(crate::palette::color("background")));
+    commands.insert_resource(ClearColor(crate::palette::color("border")));
     let offset = camera_offset(camera_angle.degrees);
     commands.spawn((
         Name::new("MainCamera"),
@@ -88,10 +88,12 @@ fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
     ));
 }
 
-const WALL_MARGIN_TOP: f32 = 50.0;
-const WALL_MARGIN_BOTTOM: f32 = 15.0;
-
-fn spawn_arena(mut commands: Commands, balance: Res<GameBalance>) {
+fn spawn_arena(
+    mut commands: Commands,
+    balance: Res<GameBalance>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
     let arena = &balance.arena;
 
     let half_w = arena.half_w();
@@ -118,48 +120,43 @@ fn spawn_arena(mut commands: Commands, balance: Res<GameBalance>) {
             wall_layers,
         ));
     }
+
+    commands.spawn((
+        Name::new("ArenaFloor"),
+        Mesh3d(meshes.add(Cuboid::new(arena.width, 0.01, arena.height))),
+        MeshMaterial3d(materials.add(StandardMaterial {
+            base_color: crate::palette::color("background"),
+            unlit: true,
+            ..default()
+        })),
+        Transform::from_translation(Vec3::new(0.0, -0.01, 0.0)),
+    ));
 }
 
 fn camera_follow(
     player_query: Query<&Transform, With<crate::player::Player>>,
     mut camera_query: Query<
-        (&mut Transform, &Projection),
+        &mut Transform,
         (With<Camera3d>, Without<crate::player::Player>),
     >,
-    balance: Res<GameBalance>,
     camera_angle: Res<CameraAngle>,
 ) {
     let Ok(player_transform) = player_query.single() else {
         return;
     };
-    let Ok((mut camera_transform, projection)) = camera_query.single_mut() else {
+    let Ok(mut camera_transform) = camera_query.single_mut() else {
         return;
     };
 
-    let arena = &balance.arena;
-    let (vp_hw, vp_hh) = match projection {
-        Projection::Orthographic(ortho) => (ortho.area.max.x, ortho.area.max.y),
-        _ => return,
-    };
-
-    let elevation = (90.0 - camera_angle.degrees).to_radians();
-    let sin_angle = elevation.sin().max(0.01);
-    let ground_half_z = vp_hh / sin_angle;
-    let margin_top_z = WALL_MARGIN_TOP / sin_angle;
-    let margin_bottom_z = WALL_MARGIN_BOTTOM / sin_angle;
-
-    let max_x = (arena.half_w() - vp_hw).max(0.0);
-    let max_north = (arena.half_h() - ground_half_z + margin_top_z).max(0.0);
-    let max_south = (arena.half_h() - ground_half_z + margin_bottom_z).max(0.0);
-
     let player_2d = crate::coord::to_2d(player_transform.translation);
-    let cx = player_2d.x.clamp(-max_x, max_x);
-    let cz = -(player_2d.y.clamp(-max_south, max_north));
+    let cx = player_2d.x;
+    let cz = -player_2d.y;
 
     let look_at = Vec3::new(cx, 0.0, cz);
     let offset = camera_offset(camera_angle.degrees);
     camera_transform.translation = look_at + offset;
-    let up = if sin_angle > 0.99 { Vec3::NEG_Z } else { Vec3::Y };
+    let elevation = (90.0 - camera_angle.degrees).to_radians();
+    let up = if elevation.sin() > 0.99 { Vec3::NEG_Z } else { Vec3::Y };
     *camera_transform = camera_transform.looking_at(look_at, up);
 }
 
