@@ -7,6 +7,7 @@ mod common;
 mod faction;
 mod game_state;
 mod hit_flash;
+mod hp_arc;
 mod loading;
 mod money;
 mod coord;
@@ -47,6 +48,7 @@ use blueprints::BlueprintPlugin;
 use arena::ArenaPlugin;
 use common::CommonPlugin;
 use hit_flash::HitFlashPlugin;
+use hp_arc::HpArcPlugin;
 use loading::LoadingPlugin;
 use player::PlayerPlugin;
 use schedule::{GameSet, PostGameSet, ShopSet};
@@ -206,6 +208,7 @@ fn main() {
             RunPlugin,
             CoinPlugin,
             HitFlashPlugin,
+            HpArcPlugin,
             TweeningPlugin,
             UiPlugin,
             WavePlugin,
