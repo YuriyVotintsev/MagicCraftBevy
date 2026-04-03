@@ -55,11 +55,9 @@ pub fn animate(
             state.timer = squish.duration;
         }
 
-        if state.timer <= 0.0 {
-            continue;
+        if state.timer > 0.0 {
+            state.timer = (state.timer - dt).max(0.0);
         }
-
-        state.timer = (state.timer - dt).max(0.0);
 
         let (scale_y, scale_xz) = if state.timer > 0.0 {
             let t = 1.0 - state.timer / squish.duration;
