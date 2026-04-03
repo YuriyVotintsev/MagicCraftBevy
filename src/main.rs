@@ -23,6 +23,9 @@ mod stats;
 mod ui;
 mod wave;
 
+#[cfg(feature = "dev")]
+mod scenario;
+
 #[cfg(test)]
 mod validation_tests;
 
@@ -219,6 +222,12 @@ fn main() {
             UiPlugin,
             WavePlugin,
         ))
-        .add_plugins(particles::ParticlesPlugin)
-        .run();
+        .add_plugins(particles::ParticlesPlugin);
+
+    #[cfg(feature = "dev")]
+    if std::env::var("SCENARIO").is_ok() {
+        app.add_plugins(scenario::ScenarioPlugin);
+    }
+
+    app.run();
 }

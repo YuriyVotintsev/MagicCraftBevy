@@ -38,3 +38,6 @@ tmpclaude-*
 # Code review
 code_review/
 review_artifacts.md
+
+# Test scenarios (one-off, not tracked)
+tests/scenarios/
