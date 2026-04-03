@@ -11,6 +11,8 @@ pub struct UseAbilities {
     pub abilities: Vec<String>,
     #[raw(default = 1.0)]
     pub cooldown: ScalarExpr,
+    #[raw(default = false)]
+    pub immediate: bool,
 }
 
 #[derive(Component)]
@@ -29,10 +31,11 @@ pub fn register_systems(app: &mut App) {
 
 fn init_use_abilities_timer(
     mut commands: Commands,
-    query: Query<Entity, Added<UseAbilities>>,
+    query: Query<(Entity, &UseAbilities), Added<UseAbilities>>,
 ) {
-    for entity in &query {
-        commands.entity(entity).insert(UseAbilitiesTimer { elapsed: 0.0 });
+    for (entity, use_abilities) in &query {
+        let elapsed = if use_abilities.immediate { use_abilities.cooldown } else { 0.0 };
+        commands.entity(entity).insert(UseAbilitiesTimer { elapsed });
     }
 }
 

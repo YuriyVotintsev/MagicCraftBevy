@@ -43,6 +43,7 @@ collect_components!(
             when_found_target,
             after_time,
             lunge_movement,
+            random_jump,
         ],
         player: [
             keyboard_movement,

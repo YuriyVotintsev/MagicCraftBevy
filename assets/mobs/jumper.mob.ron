@@ -1,0 +1,50 @@
+(
+    id: "jumper",
+    entities: [
+        (
+            base_stats: {
+                "movement_speed_flat": 400.0,
+                "max_life_flat": 10.0,
+                "physical_damage_flat": 8.0,
+            },
+            abilities: ["jumper_shot"],
+            components: [
+                Size((value: "200.0")),
+                Visual((children: [
+                    (components: [Shadow(())]),
+                    (components: [
+                        Sprite((position: Some("vec2(0, 0)"), color: "enemy", shape: Circle)),
+                        JumpWalkAnimation((bounce_height: Some("0.7"), bounce_duration: Some("0.5"))),
+                    ]),
+                ])),
+                Collider((shape: Circle, sensor: Some(false))),
+                DynamicBody(()),
+                Health(()),
+                OnDeath((entities: [
+                    (components: [DeathParticles(())]),
+                ])),
+            ],
+            states: Some((
+                initial: "find_target",
+                states: {
+                    "find_target": (
+                        components: [FindNearestEnemy((size: "4000.0"))],
+                        transitions: [WhenFoundTarget((to: "idle"))],
+                    ),
+                    "idle": (
+                        components: [],
+                        transitions: [AfterTime((to: "jump", duration: "3.0"))],
+                    ),
+                    "jump": (
+                        components: [RandomJump((distance: Some("350"), duration: Some("0.5")))],
+                        transitions: [AfterTime((to: "land", duration: "0.5"))],
+                    ),
+                    "land": (
+                        components: [UseAbilities((abilities: ["jumper_shot"], cooldown: Some("10"), immediate: Some(true)))],
+                        transitions: [AfterTime((to: "idle", duration: "0.5"))],
+                    ),
+                }
+            ))
+        )
+    ]
+)
