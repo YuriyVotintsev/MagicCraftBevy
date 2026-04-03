@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::movement::SelfMoving;
 use crate::stats::ComputedStats;
 use super::entity_def::StatesBlock;
 use super::recalc::StoredComponentDefs;
@@ -48,6 +49,7 @@ pub fn state_transition_system(
             for trans in &old_state.transitions {
                 trans.remove_component(&mut ec);
             }
+            ec.remove::<SelfMoving>();
         }
 
         let mut new_state_recalc = Vec::new();

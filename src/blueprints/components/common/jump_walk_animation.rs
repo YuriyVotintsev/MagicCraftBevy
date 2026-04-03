@@ -1,6 +1,7 @@
-use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
+
+use crate::movement::SelfMoving;
 
 #[blueprint_component]
 pub struct JumpWalkAnimation {
@@ -43,14 +44,11 @@ pub fn animate(
         &mut Transform,
         &ChildOf,
     )>,
-    velocity_query: Query<&LinearVelocity>,
+    moving_query: Query<(), With<SelfMoving>>,
 ) {
     let dt = time.delta_secs();
     for (anim, mut state, mut transform, child_of) in &mut query {
-        let moving = velocity_query
-            .get(child_of.parent())
-            .map(|v| v.length_squared() > 1.0)
-            .unwrap_or(false);
+        let moving = moving_query.get(child_of.parent()).is_ok();
 
         if moving {
             state.phase += dt * (std::f32::consts::PI / anim.bounce_duration);

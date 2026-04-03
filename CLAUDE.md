@@ -11,13 +11,14 @@ Magic Craft is a Bevy 0.18 incremental arena shooter. Players face waves of enem
 ## Build Commands
 
 ```bash
-cargo run                                      # Normal mode
-cargo run --features headless -- --timeout 10  # Headless mode (quick test, 10 seconds is enough)
+cargo run                                                         # Normal mode
+HEADLESS=1 SKIP_MENU=1 cargo run --features dev -- --timeout 10  # Headless test (skip menu, 10s timeout)
 ```
 
 **Testing:**
 - Use headless mode with `--timeout 10` for quick validation (10 seconds is sufficient)
 - Longer tests are unnecessary for basic functionality verification
+- `HEADLESS=1` and `SKIP_MENU=1` are runtime env vars, only work with `--features dev`
 
 ## Architecture
 

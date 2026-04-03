@@ -8,7 +8,6 @@ members = ["magic_craft_macros"]
 
 [features]
 default = []
-headless = []
 dev = []
 
 [dependencies]

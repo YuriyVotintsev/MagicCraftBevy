@@ -2,6 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::movement::SelfMoving;
 use crate::stats::{ComputedStats, StatRegistry};
 #[blueprint_component]
 pub struct KeepDistance {
@@ -22,13 +23,14 @@ pub fn register_systems(app: &mut App) {
 }
 
 fn keep_distance_system(
+    mut commands: Commands,
     stat_registry: Res<StatRegistry>,
-    mut query: Query<(&Transform, &mut LinearVelocity, &ComputedStats, &KeepDistance)>,
+    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &KeepDistance)>,
     transforms: Query<&Transform, Without<KeepDistance>>,
 ) {
     let speed_id = stat_registry.get("movement_speed");
 
-    for (transform, mut velocity, stats, keep_dist) in &mut query {
+    for (entity, transform, mut velocity, stats, keep_dist) in &mut query {
         let Ok(target_transform) = transforms.get(keep_dist.target) else {
             continue;
         };
@@ -36,12 +38,15 @@ fn keep_distance_system(
         let to_target = crate::coord::to_2d(target_transform.translation - transform.translation);
         let distance = to_target.length();
 
-        velocity.0 = if distance < keep_dist.min {
-            crate::coord::ground_vel(-to_target.normalize_or_zero() * speed)
+        if distance < keep_dist.min {
+            commands.entity(entity).insert(SelfMoving);
+            velocity.0 = crate::coord::ground_vel(-to_target.normalize_or_zero() * speed);
         } else if distance > keep_dist.max {
-            crate::coord::ground_vel(to_target.normalize_or_zero() * speed)
+            commands.entity(entity).insert(SelfMoving);
+            velocity.0 = crate::coord::ground_vel(to_target.normalize_or_zero() * speed);
         } else {
-            Vec3::ZERO
+            commands.entity(entity).remove::<SelfMoving>();
+            velocity.0 = Vec3::ZERO;
         };
     }
 }

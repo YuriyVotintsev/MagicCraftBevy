@@ -2,6 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::movement::SelfMoving;
 use crate::stats::{ComputedStats, StatRegistry};
 #[blueprint_component]
 pub struct MoveToward {
@@ -20,13 +21,14 @@ pub fn register_systems(app: &mut App) {
 }
 
 fn move_toward_system(
+    mut commands: Commands,
     stat_registry: Res<StatRegistry>,
-    mut query: Query<(&Transform, &mut LinearVelocity, &ComputedStats, &MoveToward)>,
+    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &MoveToward)>,
     transforms: Query<&Transform, Without<MoveToward>>,
 ) {
     let speed_id = stat_registry.get("movement_speed");
 
-    for (transform, mut velocity, stats, move_toward) in &mut query {
+    for (entity, transform, mut velocity, stats, move_toward) in &mut query {
         let Ok(target_transform) = transforms.get(move_toward.target) else {
             continue;
         };
@@ -34,8 +36,10 @@ fn move_toward_system(
         let direction = crate::coord::to_2d(target_transform.translation - transform.translation);
 
         velocity.0 = if direction.length_squared() > 1.0 {
+            commands.entity(entity).insert(SelfMoving);
             crate::coord::ground_vel(direction.normalize() * speed)
         } else {
+            commands.entity(entity).remove::<SelfMoving>();
             Vec3::ZERO
         };
     }

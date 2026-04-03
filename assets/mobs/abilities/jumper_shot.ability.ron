@@ -11,7 +11,7 @@
             Collider((shape: Circle)),
             Visual((children: [
                 (components: [Shadow(())]),
-                (components: [Sprite((color: "enemy_ability", shape: Circle, elevation: Some("1.5"), position: Some("vec2(0, 0)")))]),
+                (components: [Sprite((color: "enemy_ability", shape: Circle, elevation: Some("0.7"), position: Some("vec2(0, 0)")))]),
             ])),
             OnCollision((entities: [
                 (components: [DamagePayload((amount: "stat(physical_damage_flat)"))])

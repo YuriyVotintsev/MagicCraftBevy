@@ -38,24 +38,14 @@
       "WebFetch(domain:store.steampowered.com)",
       "WebFetch(domain:steamspy.com)",
       "Bash(cargo search:*)",
-      "Bash(cargo info:*)"
+      "Bash(cargo info:*)",
+      "Read(//c/Users/yuriy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render-0.18.0/**)",
+      "Read(//c/Users/yuriy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/**)",
+      "Bash(cargo doc:*)",
+      "Bash(HEADLESS=1 SKIP_MENU=1 cargo run --features dev -- --timeout 10)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"
-    ]
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cargo build --features dev && \"C:/Program Files/AutoHotkey/v2/AutoHotkey64.exe\" \"C:/Users/yuriy/.claude/scripts/notify.ahk\" --title Claude --message Build_complete --icon ✅ --bg 1a2e1a --duration 5000",
-            "timeout": 120,
-            "statusMessage": "Building with dev features..."
-          }
-        ]
-      }
     ]
   }
 }

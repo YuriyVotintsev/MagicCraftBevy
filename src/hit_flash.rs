@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::blueprints::components::common::jump_walk_animation::animate as jump_animate;
 use crate::blueprints::components::common::squish_walk_animation::animate as squish_animate;
 use crate::blueprints::components::common::sprite::{CircleSprite, TriangleSprite, SquareSprite};
+use crate::health_material::HealthMaterial;
 
 #[derive(Component)]
 pub struct HitFlash {
@@ -47,8 +48,16 @@ fn tick_hit_flash(
     mut commands: Commands,
     time: Res<Time>,
     mut flash_query: Query<(Entity, &mut HitFlash, &Children)>,
-    mut material_query: Query<(&MeshMaterial3d<StandardMaterial>, &mut Transform)>,
+    mut material_query: Query<
+        (&MeshMaterial3d<StandardMaterial>, &mut Transform),
+        Without<MeshMaterial3d<HealthMaterial>>,
+    >,
+    mut health_mat_query: Query<
+        (&MeshMaterial3d<HealthMaterial>, &mut Transform),
+        Without<MeshMaterial3d<StandardMaterial>>,
+    >,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut health_materials: ResMut<Assets<HealthMaterial>>,
     color_query: Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>)>,
 ) {
     for (entity, mut flash, children) in &mut flash_query {
@@ -78,6 +87,28 @@ fn tick_hit_flash(
                                 orig.green.lerp(tgt.green, flash_amount),
                                 orig.blue.lerp(tgt.blue, flash_amount),
                             );
+                        }
+                        transform.scale.x *= scale_x;
+                        transform.scale.y *= scale_y;
+                    }
+                }
+            } else if let Ok((mat_handle, mut transform)) = health_mat_query.get_mut(child) {
+                if let Some(material) = health_materials.get_mut(&mat_handle.0) {
+                    if done {
+                        material.data.base_color = original_color.to_linear();
+                    } else {
+                        let flash_amount = 1.0 - t;
+                        let scale_x = 0.7_f32.lerp(1.0, t);
+                        let scale_y = 1.3_f32.lerp(1.0, t);
+                        if let Some(target) = flash_color {
+                            let orig = original_color.to_srgba();
+                            let tgt = target.to_srgba();
+                            material.data.base_color = Color::srgb(
+                                orig.red.lerp(tgt.red, flash_amount),
+                                orig.green.lerp(tgt.green, flash_amount),
+                                orig.blue.lerp(tgt.blue, flash_amount),
+                            )
+                            .to_linear();
                         }
                         transform.scale.x *= scale_x;
                         transform.scale.y *= scale_y;

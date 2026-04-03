@@ -18,7 +18,7 @@
                     ]),
                 ])),
                 Collider((shape: Circle, sensor: Some(false))),
-                DynamicBody(()),
+                DynamicBody((mass: Some("1"))),
                 Health(()),
                 OnDeath((entities: [
                     (components: [DeathParticles(())]),

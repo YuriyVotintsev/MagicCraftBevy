@@ -19,7 +19,7 @@
                     ]),
                 ])),
                 Collider((shape: Rectangle, sensor: Some(false))),
-                DynamicBody(()),
+                DynamicBody((mass: Some("3"))),
                 Health((current: Some("stat(max_stamina)"))),
                 KeyboardMovement(()),
                 PlayerInput((bindings: [

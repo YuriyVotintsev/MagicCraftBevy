@@ -2,6 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::movement::SelfMoving;
 use crate::stats::{ComputedStats, StatRegistry};
 
 #[blueprint_component]
@@ -78,8 +79,10 @@ fn init_lunge_movement(
 }
 
 fn lunge_movement_system(
+    mut commands: Commands,
     time: Res<Time>,
     mut query: Query<(
+        Entity,
         &Transform,
         &mut LinearVelocity,
         &LungeMovement,
@@ -89,7 +92,7 @@ fn lunge_movement_system(
 ) {
     let dt = time.delta_secs();
 
-    for (transform, mut velocity, lunge, mut state) in &mut query {
+    for (entity, transform, mut velocity, lunge, mut state) in &mut query {
         state.elapsed += dt;
 
         match state.phase {
@@ -98,6 +101,7 @@ fn lunge_movement_system(
                     state.phase = LungePhase::Pausing;
                     state.elapsed = 0.0;
                     velocity.0 = Vec3::ZERO;
+                    commands.entity(entity).remove::<SelfMoving>();
                     continue;
                 }
 
@@ -115,10 +119,12 @@ fn lunge_movement_system(
                     }
                 }
 
+                commands.entity(entity).insert(SelfMoving);
                 velocity.0 = crate::coord::ground_vel(state.direction * state.speed);
             }
             LungePhase::Pausing => {
                 velocity.0 = Vec3::ZERO;
+                commands.entity(entity).remove::<SelfMoving>();
                 if state.elapsed >= lunge.pause_duration {
                     state.phase = LungePhase::Lunging;
                     state.elapsed = 0.0;

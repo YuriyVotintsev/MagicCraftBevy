@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 use crate::MovementLocked;
+use crate::movement::SelfMoving;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, StatRegistry};
 use crate::wave::WavePhase;
@@ -20,11 +21,12 @@ pub fn register_systems(app: &mut App) {
 }
 
 fn keyboard_movement_system(
+    mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
     stat_registry: Res<StatRegistry>,
-    mut query: Query<(&mut LinearVelocity, &ComputedStats), (With<KeyboardMovement>, Without<MovementLocked>)>,
+    mut query: Query<(Entity, &mut LinearVelocity, &ComputedStats), (With<KeyboardMovement>, Without<MovementLocked>)>,
 ) {
-    for (mut velocity, stats) in &mut query {
+    for (entity, mut velocity, stats) in &mut query {
         let mut direction = Vec2::ZERO;
 
         if keyboard.pressed(KeyCode::KeyW) {
@@ -46,8 +48,10 @@ fn keyboard_movement_system(
             .unwrap_or_default();
 
         velocity.0 = if direction != Vec2::ZERO {
+            commands.entity(entity).insert(SelfMoving);
             crate::coord::ground_vel(direction.normalize() * speed)
         } else {
+            commands.entity(entity).remove::<SelfMoving>();
             Vec3::ZERO
         };
     }

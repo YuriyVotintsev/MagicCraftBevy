@@ -15,9 +15,7 @@ use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
 use crate::GameState;
 
-#[cfg(not(feature = "headless"))]
 pub const WINDOW_WIDTH: f32 = 1920.0;
-#[cfg(not(feature = "headless"))]
 pub const WINDOW_HEIGHT: f32 = 1080.0;
 
 #[derive(Component)]

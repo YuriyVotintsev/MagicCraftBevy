@@ -4,6 +4,7 @@ use magic_craft_macros::blueprint_component;
 use rand::Rng;
 
 use crate::balance::GameBalance;
+use crate::movement::SelfMoving;
 
 #[blueprint_component]
 pub struct RandomJump {
@@ -27,9 +28,7 @@ pub fn register_systems(app: &mut App) {
             .in_set(crate::schedule::GameSet::MobAI),
     );
     app.add_observer(|on: On<Remove, RandomJump>, mut q: Query<&mut LinearVelocity>| {
-        if let Ok(mut v) = q.get_mut(on.event_target()) {
-            v.0 = Vec3::ZERO;
-        }
+        if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec3::ZERO; }
     });
 }
 
@@ -77,19 +76,22 @@ fn init_random_jump(
                 duration: jump.duration,
             },
             LinearVelocity(crate::coord::ground_vel(direction * speed)),
+            SelfMoving,
         ));
     }
 }
 
 fn random_jump_system(
+    mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(&mut LinearVelocity, &mut RandomJumpState)>,
+    mut query: Query<(Entity, &mut LinearVelocity, &mut RandomJumpState)>,
 ) {
     let dt = time.delta_secs();
-    for (mut velocity, mut state) in &mut query {
+    for (entity, mut velocity, mut state) in &mut query {
         state.elapsed += dt;
         if state.elapsed >= state.duration {
             velocity.0 = Vec3::ZERO;
+            commands.entity(entity).remove::<SelfMoving>();
         }
     }
 }

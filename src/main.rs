@@ -6,8 +6,8 @@ pub mod expr;
 mod common;
 mod faction;
 mod game_state;
+mod health_material;
 mod hit_flash;
-mod hp_arc;
 mod loading;
 mod money;
 mod coord;
@@ -47,8 +47,8 @@ use bevy::prelude::*;
 use blueprints::BlueprintPlugin;
 use arena::ArenaPlugin;
 use common::CommonPlugin;
+use health_material::HealthMaterialPlugin;
 use hit_flash::HitFlashPlugin;
-use hp_arc::HpArcPlugin;
 use loading::LoadingPlugin;
 use player::PlayerPlugin;
 use schedule::{GameSet, PostGameSet, ShopSet};
@@ -60,25 +60,23 @@ use run::RunPlugin;
 use skill_tree::SkillTreePlugin;
 use wave::{CombatPhase, WavePhase, WavePlugin};
 
-#[cfg(not(feature = "headless"))]
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
-#[cfg(not(feature = "headless"))]
 use bevy::window::WindowResolution;
-#[cfg(feature = "headless")]
-use bevy::window::ExitCondition;
 
-#[cfg(feature = "headless")]
+#[cfg(feature = "dev")]
+use bevy::window::ExitCondition;
+#[cfg(feature = "dev")]
 use bevy::app::ScheduleRunnerPlugin;
-#[cfg(feature = "headless")]
+#[cfg(feature = "dev")]
 use std::time::Duration;
 
-#[cfg(feature = "headless")]
+#[cfg(feature = "dev")]
 #[derive(Resource)]
 struct HeadlessTimeout {
     timer: Timer,
 }
 
-#[cfg(feature = "headless")]
+#[cfg(feature = "dev")]
 fn parse_timeout_arg() -> f32 {
     let args: Vec<String> = std::env::args().collect();
 
@@ -97,11 +95,11 @@ fn parse_timeout_arg() -> f32 {
     }
 
     eprintln!("Error: Headless mode requires --timeout <seconds> argument");
-    eprintln!("Usage: cargo run --features headless -- --timeout 10");
+    eprintln!("Usage: HEADLESS=1 cargo run --features dev -- --timeout 10");
     std::process::exit(1);
 }
 
-#[cfg(feature = "headless")]
+#[cfg(feature = "dev")]
 fn headless_timeout_system(
     time: Res<Time>,
     mut timeout: ResMut<HeadlessTimeout>,
@@ -116,8 +114,8 @@ fn headless_timeout_system(
 fn main() {
     let mut app = App::new();
 
-    #[cfg(feature = "headless")]
-    {
+    #[cfg(feature = "dev")]
+    if std::env::var("HEADLESS").is_ok() {
         let timeout_secs = parse_timeout_arg();
         info!("Running in headless mode with {}s timeout", timeout_secs);
 
@@ -138,10 +136,7 @@ fn main() {
             timer: Timer::from_seconds(timeout_secs, TimerMode::Once),
         })
         .add_systems(Update, headless_timeout_system);
-    }
-
-    #[cfg(not(feature = "headless"))]
-    {
+    } else {
         app.add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 resolution: WindowResolution::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
@@ -152,6 +147,17 @@ fn main() {
             ..default()
         }));
     }
+
+    #[cfg(not(feature = "dev"))]
+    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            resolution: WindowResolution::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
+                .with_scale_factor_override(1.0),
+            title: "Magic Craft".to_string(),
+            ..default()
+        }),
+        ..default()
+    }));
 
     app.init_state::<GameState>()
         .add_sub_state::<WavePhase>()
@@ -207,12 +213,12 @@ fn main() {
             SkillTreePlugin,
             RunPlugin,
             CoinPlugin,
+            HealthMaterialPlugin,
             HitFlashPlugin,
-            HpArcPlugin,
             TweeningPlugin,
             UiPlugin,
             WavePlugin,
-            particles::ParticlesPlugin,
         ))
+        .add_plugins(particles::ParticlesPlugin)
         .run();
 }

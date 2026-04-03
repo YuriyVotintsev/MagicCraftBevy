@@ -249,7 +249,15 @@ pub fn finalize_loading(
         return;
     }
 
-    info!("Loading complete, transitioning to MainMenu");
     loading_state.phase = LoadingPhase::Done;
+
+    #[cfg(feature = "dev")]
+    if std::env::var("SKIP_MENU").is_ok() {
+        info!("SKIP_MENU set, skipping main menu");
+        next_state.set(crate::GameState::Playing);
+        return;
+    }
+
+    info!("Loading complete, transitioning to MainMenu");
     next_state.set(crate::GameState::MainMenu);
 }
