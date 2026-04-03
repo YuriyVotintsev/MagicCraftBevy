@@ -10,6 +10,10 @@ pub struct JumpWalkAnimation {
     pub bounce_duration: ScalarExpr,
     #[raw(default = 12.0)]
     pub max_tilt: ScalarExpr,
+    #[raw(default = 0.3)]
+    pub land_squish: ScalarExpr,
+    #[raw(default = 0.125)]
+    pub land_duration: ScalarExpr,
 }
 
 #[derive(Component, Default)]
@@ -54,7 +58,8 @@ pub fn animate(
             state.landed = false;
         } else if state.amplitude > 0.0 {
             if state.landed {
-                state.amplitude = (state.amplitude - dt * 8.0).max(0.0);
+                let decay = if anim.land_duration > 0.0 { 1.0 / anim.land_duration } else { 8.0 };
+                state.amplitude = (state.amplitude - dt * decay).max(0.0);
                 if state.amplitude == 0.0 {
                     state.phase = 0.0;
                     state.landed = false;
@@ -75,8 +80,8 @@ pub fn animate(
         let tilt = 0.0;
 
         let ng = 1.0 - h;
-        let squash = ng.powi(3) * 0.3;
-        let stretch = h * ng.powi(2) * 1.2;
+        let squash = ng.powi(3) * anim.land_squish;
+        let stretch = h * ng.powi(2) * anim.land_squish * 4.0;
         let ss = (stretch - squash) * state.amplitude;
         let scale_y = 1.0 + ss;
         let scale_xz = 1.0 / scale_y.sqrt();

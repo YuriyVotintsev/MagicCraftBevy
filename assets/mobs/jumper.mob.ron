@@ -14,7 +14,7 @@
                     (components: [Shadow(())]),
                     (components: [
                         Sprite((position: Some("vec2(0, 0)"), color: "enemy", shape: Circle)),
-                        JumpWalkAnimation((bounce_height: Some("0.7"), bounce_duration: Some("0.5"))),
+                        JumpWalkAnimation((bounce_height: Some("0.7"), bounce_duration: Some("0.5"), land_duration: Some("0.4"), land_squish: Some("0.7"))),
                     ]),
                 ])),
                 Collider((shape: Circle, sensor: Some(false))),
