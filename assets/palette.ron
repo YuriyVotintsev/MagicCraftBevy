@@ -38,5 +38,6 @@
         "background":     "cream",
         "border":         "cream_dark",
         "void":           "cream_darker",
+        "enemy_injured":  "purple",
     },
 )

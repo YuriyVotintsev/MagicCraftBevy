@@ -226,7 +226,11 @@ fn spawn_enemies(
             }
         };
 
-        let blueprint_name = if rng.random_bool(0.5) { "jumper" } else { "slime_small" };
+        let blueprint_name = match rng.random_range(0..3u32) {
+            0 => "tower",
+            1 => "jumper",
+            _ => "slime_small",
+        };
 
         if let Some(blueprint_id) = blueprint_registry.get_id(blueprint_name) {
             let entity = commands

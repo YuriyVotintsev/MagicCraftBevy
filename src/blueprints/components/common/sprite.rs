@@ -60,6 +60,7 @@ pub enum SpriteShape {
     Square,
     Circle,
     Triangle,
+    Capsule,
 }
 
 #[blueprint_component]
@@ -76,6 +77,8 @@ pub struct Sprite {
     pub image: Option<String>,
     #[raw(default = 0.5)]
     pub elevation: ScalarExpr,
+    #[raw(default = 0.5)]
+    pub half_length: ScalarExpr,
 }
 
 #[derive(Component)]
@@ -96,9 +99,16 @@ pub struct SquareSprite {
     pub flash_color: Option<Color>,
 }
 
+#[derive(Component)]
+pub struct CapsuleSprite {
+    pub color: Color,
+    pub flash_color: Option<Color>,
+    pub half_length: f32,
+}
+
 pub fn register_systems(app: &mut App) {
     app.add_systems(Startup, (setup_sphere_mesh, setup_cube_mesh));
-    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals, spawn_triangle_visuals, spawn_square_visuals).chain());
+    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals, spawn_triangle_visuals, spawn_square_visuals, spawn_capsule_visuals).chain());
 }
 
 fn init_sprite(
@@ -134,6 +144,13 @@ fn init_sprite(
                 }
                 SpriteShape::Triangle => {
                     commands.entity(entity).insert(TriangleSprite { color, flash_color });
+                }
+                SpriteShape::Capsule => {
+                    commands.entity(entity).insert(CapsuleSprite {
+                        color,
+                        flash_color,
+                        half_length: sprite.half_length,
+                    });
                 }
             }
         }
@@ -217,6 +234,27 @@ fn spawn_square_visuals(
         });
         commands.entity(entity).insert((
             Mesh3d(cube_mesh.0.clone()),
+            MeshMaterial3d(material),
+        ));
+    }
+}
+
+fn spawn_capsule_visuals(
+    mut commands: Commands,
+    query: Query<(Entity, &CapsuleSprite), Without<Mesh3d>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for (entity, capsule) in &query {
+        let mesh = meshes.add(Capsule3d::new(0.5, capsule.half_length));
+        let material = materials.add(StandardMaterial {
+            base_color: capsule.color,
+            unlit: true,
+            alpha_mode: if capsule.color.alpha() < 1.0 { AlphaMode::Blend } else { AlphaMode::Opaque },
+            ..default()
+        });
+        commands.entity(entity).insert((
+            Mesh3d(mesh),
             MeshMaterial3d(material),
         ));
     }

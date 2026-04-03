@@ -10,7 +10,7 @@
                 "pickup_radius_flat": 200.0,
             },
             components: [
-                Size((value: "200.0")),
+                Size((value: "120.0")),
                 Visual((children: [
                     (components: [Shadow(())]),
                     (components: [

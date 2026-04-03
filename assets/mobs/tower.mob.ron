@@ -1,0 +1,53 @@
+(
+    id: "tower",
+    entities: [
+        (
+            base_stats: {
+                "max_life_flat": 25.0,
+                "physical_damage_flat": 6.0,
+            },
+            abilities: ["tower_shot"],
+            components: [
+                Size((value: "190.0")),
+                Visual((children: [
+                    (components: [Shadow(())]),
+                    (components: [
+                        Sprite((
+                            position: Some("vec2(0, 0)"),
+                            color: "enemy",
+                            shape: Capsule,
+                            elevation: Some("0.55"),
+                            half_length: Some("1.05"),
+                        )),
+                    ]),
+                ])),
+                Collider((shape: Circle, sensor: Some(false))),
+                StaticBody(()),
+                Health(()),
+                ShootSquish(()),
+                OnDeath((entities: [
+                    (components: [DeathParticles(())]),
+                ])),
+            ],
+            states: Some((
+                initial: "find_target",
+                states: {
+                    "find_target": (
+                        components: [FindNearestEnemy((size: "4000.0"))],
+                        transitions: [WhenFoundTarget((to: "idle"))],
+                    ),
+                    "idle": (
+                        components: [],
+                        transitions: [AfterTime((to: "shoot", duration: "2.0"))],
+                    ),
+                    "shoot": (
+                        components: [
+                            UseAbilities((abilities: ["tower_shot"], cooldown: Some("10"), immediate: Some(true))),
+                        ],
+                        transitions: [AfterTime((to: "idle", duration: "0.5"))],
+                    ),
+                }
+            ))
+        )
+    ]
+)

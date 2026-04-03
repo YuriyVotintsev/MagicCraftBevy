@@ -41,3 +41,4 @@ review_artifacts.md
 
 # Test scenarios (one-off, not tracked)
 tests/scenarios/
+assets/scenarios/

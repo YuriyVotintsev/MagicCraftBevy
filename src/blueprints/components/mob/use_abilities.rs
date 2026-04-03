@@ -4,6 +4,9 @@ use magic_craft_macros::blueprint_component;
 use crate::blueprints::{BlueprintActivationInput, BlueprintRegistry, SpawnSource};
 use crate::blueprints::context::TargetInfo;
 
+#[derive(Component)]
+pub struct ShotFired;
+
 #[blueprint_component]
 pub struct UseAbilities {
     #[default_expr("target.entity")]
@@ -23,10 +26,19 @@ pub struct UseAbilitiesTimer {
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
-        (init_use_abilities_timer, use_abilities_system)
+        (cleanup_shot_fired, init_use_abilities_timer, use_abilities_system)
             .chain()
             .in_set(crate::schedule::GameSet::MobAI),
     );
+}
+
+fn cleanup_shot_fired(
+    mut commands: Commands,
+    query: Query<Entity, With<ShotFired>>,
+) {
+    for entity in &query {
+        commands.entity(entity).remove::<ShotFired>();
+    }
 }
 
 fn init_use_abilities_timer(
@@ -40,6 +52,7 @@ fn init_use_abilities_timer(
 }
 
 fn use_abilities_system(
+    mut commands: Commands,
     time: Res<Time>,
     blueprint_registry: Res<BlueprintRegistry>,
     transforms: Query<&Transform, Without<UseAbilities>>,
@@ -72,5 +85,7 @@ fn use_abilities_system(
                 }
             }
         }
+
+        commands.entity(caster_entity).insert(ShotFired);
     }
 }

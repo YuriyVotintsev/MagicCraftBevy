@@ -86,7 +86,8 @@ impl Plugin for UiPlugin {
             )
             .add_systems(
                 Update,
-                dev_menu::slider_interaction.run_if(in_state(CombatPhase::DevMenu)),
+                (dev_menu::slider_interaction, dev_menu::cheat_money)
+                    .run_if(in_state(CombatPhase::DevMenu)),
             );
 
         #[cfg(feature = "dev")]

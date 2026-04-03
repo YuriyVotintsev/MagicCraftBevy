@@ -3,14 +3,18 @@ use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
 use crate::blueprints::components::common::health::Health;
-use crate::blueprints::components::common::sprite::CircleSprite;
+use crate::blueprints::components::common::sprite::{CapsuleSprite, CircleSprite, Sprite};
+use crate::palette;
 use crate::stats::{ComputedStats, StatRegistry};
 use crate::Faction;
 
 #[derive(ShaderType, Clone)]
 pub struct HealthMaterialData {
     pub base_color: LinearRgba,
+    pub damage_color: LinearRgba,
     pub hp_fraction: f32,
+    pub uv_top: f32,
+    pub uv_bottom: f32,
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
@@ -48,6 +52,7 @@ fn apply_health_material(
         Without<HealthMaterialLink>,
     >,
     circle_query: Query<(Entity, &CircleSprite), With<MeshMaterial3d<StandardMaterial>>>,
+    capsule_query: Query<(Entity, &CapsuleSprite, &Sprite), With<MeshMaterial3d<StandardMaterial>>>,
 ) {
     let max_life_id = stat_registry.get("max_life");
 
@@ -57,7 +62,20 @@ fn apply_health_material(
         }
 
         for child in children.iter() {
-            let Ok((sprite_entity, circle)) = circle_query.get(child) else {
+            let sprite_info: Option<(Entity, Color, f32, f32)> = circle_query
+                .get(child)
+                .ok()
+                .map(|(e, c)| (e, c.color, 0.0, 1.0))
+                .or_else(|| {
+                    capsule_query.get(child).ok().map(|(e, c, sprite)| {
+                        let mesh_half = c.half_length + 0.5;
+                        let total = 2.0 * mesh_half;
+                        let ground_uv = ((mesh_half - sprite.elevation) / total).clamp(0.0, 1.0);
+                        (e, c.color, 1.0, ground_uv)
+                    })
+                });
+
+            let Some((sprite_entity, color, uv_top, uv_bottom)) = sprite_info else {
                 continue;
             };
 
@@ -66,8 +84,11 @@ fn apply_health_material(
 
             let handle = health_materials.add(HealthMaterial {
                 data: HealthMaterialData {
-                    base_color: circle.color.to_linear(),
+                    base_color: color.to_linear(),
+                    damage_color: palette::color("enemy_injured").to_linear(),
                     hp_fraction: hp_frac,
+                    uv_top,
+                    uv_bottom,
                 },
             });
 

@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 
 use crate::blueprints::components::common::jump_walk_animation::animate as jump_animate;
+use crate::blueprints::components::common::shoot_squish::animate as shoot_squish_animate;
 use crate::blueprints::components::common::squish_walk_animation::animate as squish_animate;
-use crate::blueprints::components::common::sprite::{CircleSprite, TriangleSprite, SquareSprite};
+use crate::blueprints::components::common::sprite::{CapsuleSprite, CircleSprite, TriangleSprite, SquareSprite};
 use crate::health_material::HealthMaterial;
 
 #[derive(Component)]
@@ -28,19 +29,21 @@ impl Plugin for HitFlashPlugin {
             PostUpdate,
             tick_hit_flash
                 .after(jump_animate)
-                .after(squish_animate),
+                .after(squish_animate)
+                .after(shoot_squish_animate),
         );
     }
 }
 
 fn get_sprite_colors(
     entity: Entity,
-    color_query: &Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>)>,
+    color_query: &Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>, Option<&CapsuleSprite>)>,
 ) -> Option<(Color, Option<Color>)> {
-    color_query.get(entity).ok().and_then(|(c, t, s)| {
+    color_query.get(entity).ok().and_then(|(c, t, s, cap)| {
         c.map(|c| (c.color, c.flash_color))
             .or(t.map(|t| (t.color, t.flash_color)))
             .or(s.map(|s| (s.color, s.flash_color)))
+            .or(cap.map(|cap| (cap.color, cap.flash_color)))
     })
 }
 
@@ -58,7 +61,7 @@ fn tick_hit_flash(
     >,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
-    color_query: Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>)>,
+    color_query: Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>, Option<&CapsuleSprite>)>,
 ) {
     for (entity, mut flash, children) in &mut flash_query {
         flash.elapsed += time.delta_secs();

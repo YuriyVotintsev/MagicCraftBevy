@@ -29,10 +29,12 @@ collect_components!(
             sprite,
             health,
             dynamic_body,
+            static_body,
             spawn_ability,
             visual,
             jump_walk_animation,
             squish_walk_animation,
+            shoot_squish,
             shadow,
         ],
         mob: [

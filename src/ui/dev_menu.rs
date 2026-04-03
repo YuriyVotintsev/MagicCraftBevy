@@ -2,6 +2,7 @@ use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 
 use crate::arena::CameraAngle;
+use crate::money::PlayerMoney;
 use crate::wave::CombatPhase;
 
 const SLIDER_MIN: f32 = 1.0;
@@ -15,6 +16,9 @@ pub(super) struct SliderFill;
 
 #[derive(Component)]
 pub(super) struct SliderValueText;
+
+#[derive(Component)]
+pub(super) struct CheatMoneyButton;
 
 pub(super) fn toggle_dev_menu(
     key: Res<ButtonInput<KeyCode>>,
@@ -118,11 +122,40 @@ pub(super) fn spawn_dev_menu(mut commands: Commands, camera_angle: Res<CameraAng
                                 BackgroundColor(Color::srgb(0.3, 0.6, 0.9)),
                             )
                         ]
+                    ),
+                    (
+                        CheatMoneyButton,
+                        Button,
+                        Node {
+                            margin: UiRect::top(Val::Px(20.0)),
+                            padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
+                            justify_content: JustifyContent::Center,
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
+                        children![
+                            (
+                                Text::new("Money +1000"),
+                                TextFont { font_size: 22.0, ..default() },
+                                TextColor(Color::srgb(0.9, 0.85, 0.3))
+                            )
+                        ]
                     )
                 ]
             )
         ],
     ));
+}
+
+pub(super) fn cheat_money(
+    query: Query<&Interaction, (Changed<Interaction>, With<CheatMoneyButton>)>,
+    mut money: ResMut<PlayerMoney>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            money.earn(1000);
+        }
+    }
 }
 
 pub(super) fn slider_interaction(
