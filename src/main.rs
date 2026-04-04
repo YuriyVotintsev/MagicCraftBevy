@@ -173,6 +173,7 @@ fn main() {
                 GameSet::Spawning,
                 GameSet::BlueprintActivation,
                 GameSet::BlueprintExecution,
+                GameSet::BlueprintLifecycle,
                 GameSet::Damage,
                 GameSet::DamageApply,
                 GameSet::WaveManagement,
@@ -198,7 +199,7 @@ fn main() {
             Update,
             ApplyDeferred
                 .after(GameSet::BlueprintExecution)
-                .before(GameSet::Damage),
+                .before(GameSet::BlueprintLifecycle),
         )
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
