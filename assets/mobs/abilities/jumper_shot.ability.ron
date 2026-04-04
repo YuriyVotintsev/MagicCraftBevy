@@ -3,7 +3,7 @@
     cooldown: Some("0"),
     entities: [
         (components: [
-            DeathParticles((count: Some("24"), start_size: Some("180"), speed: Some("400"), color: "enemy_ability")),
+            Particles((config: "enemy_ability_death")),
         ]),
         (count: Some("4"), components: [
             Projectile(()),

@@ -1,11 +1,10 @@
 use bevy::prelude::*;
-use rand::Rng;
 
 use crate::blueprints::BlueprintId;
 use crate::blueprints::components::common::health::Health;
 use crate::blueprints::spawn_blueprint_entity;
 use crate::blueprints::state::{PendingInitialState, StateTransition};
-use crate::particles::Particle;
+use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
 use crate::schedule::GameSet;
 use crate::wave::{WavePhase, WaveState};
@@ -30,6 +29,7 @@ pub struct SummoningAnimation {
     pub circle_entity: Entity,
     pub circle_size: f32,
     pub blueprint_id: BlueprintId,
+    emitter: Option<Entity>,
 }
 
 impl SummoningAnimation {
@@ -40,6 +40,7 @@ impl SummoningAnimation {
             circle_entity,
             circle_size,
             blueprint_id,
+            emitter: None,
         }
     }
 }
@@ -55,12 +56,6 @@ pub struct SummoningCircleMesh(pub Handle<Mesh>);
 
 #[derive(Resource)]
 pub struct SummoningCircleMaterial(pub Handle<StandardMaterial>);
-
-#[derive(Resource)]
-struct SummonParticleMesh(Handle<Mesh>);
-
-#[derive(Resource)]
-struct SummonParticleMaterial(Handle<StandardMaterial>);
 
 pub struct SummoningPlugin;
 
@@ -105,14 +100,6 @@ fn setup_resources(
             ..default()
         }),
     ));
-    commands.insert_resource(SummonParticleMesh(meshes.add(Sphere::new(0.5))));
-    commands.insert_resource(SummonParticleMaterial(
-        materials.add(StandardMaterial {
-            base_color: crate::palette::color("enemy"),
-            unlit: true,
-            ..default()
-        }),
-    ));
 }
 
 fn animate_summoning(
@@ -121,15 +108,13 @@ fn animate_summoning(
     mut query: Query<(Entity, &mut SummoningAnimation, &Transform)>,
     mut circle_query: Query<&mut Transform, Without<SummoningAnimation>>,
     mut wave_state: ResMut<WaveState>,
-    particle_mesh: Res<SummonParticleMesh>,
-    particle_material: Res<SummonParticleMaterial>,
+    mut emitter_query: Query<&mut ParticleEmitter>,
 ) {
     let dt = time.delta_secs();
-    let mut rng = rand::rng();
 
     for (entity, mut anim, shell_transform) in &mut query {
         anim.elapsed += dt;
-        let pos = shell_transform.translation;
+        let pos = crate::coord::to_2d(shell_transform.translation);
 
         match anim.phase {
             SummonPhase::CircleGrow => {
@@ -140,28 +125,23 @@ fn animate_summoning(
                     circle_tf.scale = Vec3::splat(anim.circle_size * eased);
                 }
 
-                let particle_count = rng.random_range(1..=2u32);
-                for _ in 0..particle_count {
-                    let angle = rng.random_range(0.0..std::f32::consts::TAU);
-                    let radius = anim.circle_size * 0.42 * eased;
-                    let offset = Vec3::new(angle.cos() * radius, 0.0, angle.sin() * radius);
-                    let start_scale = 8.0;
-                    commands.spawn((
-                        Particle {
-                            velocity: Vec3::new(0.0, 100.0, 0.0),
-                            remaining: 0.4,
-                            lifetime: 0.4,
-                            start_scale,
-                            end_scale: 0.0,
-                        },
-                        Mesh3d(particle_mesh.0.clone()),
-                        MeshMaterial3d(particle_material.0.clone()),
-                        Transform::from_translation(pos + offset)
-                            .with_scale(Vec3::splat(start_scale)),
-                    ));
+                if anim.emitter.is_none() {
+                    let emitter = particles::start_particles(&mut commands, "summon_grow", pos);
+                    anim.emitter = Some(emitter);
+                }
+
+                if let Some(emitter_entity) = anim.emitter {
+                    if let Ok(mut emitter) = emitter_query.get_mut(emitter_entity) {
+                        let radius = anim.circle_size * 0.42 * eased;
+                        emitter.shape_override = Some(SpawnShape::Circle(radius));
+                    }
                 }
 
                 if t >= 1.0 {
+                    if let Some(emitter_entity) = anim.emitter.take() {
+                        particles::stop_particles(&mut commands, emitter_entity);
+                    }
+
                     spawn_blueprint_entity(
                         &mut commands,
                         entity,
@@ -177,25 +157,7 @@ fn animate_summoning(
             }
             SummonPhase::EnemyRise => {
                 if anim.elapsed >= RISE_DURATION {
-                    for _ in 0..rng.random_range(6..=8u32) {
-                        let angle = rng.random_range(0.0..std::f32::consts::TAU);
-                        let dir = Vec2::new(angle.cos(), angle.sin());
-                        let speed = rng.random_range(80.0..160.0);
-                        let start_scale = 10.0;
-                        commands.spawn((
-                            Particle {
-                                velocity: Vec3::new(dir.x * speed, 120.0, dir.y * speed),
-                                remaining: 0.5,
-                                lifetime: 0.5,
-                                start_scale,
-                                end_scale: 0.0,
-                            },
-                            Mesh3d(particle_mesh.0.clone()),
-                            MeshMaterial3d(particle_material.0.clone()),
-                            Transform::from_translation(pos)
-                                .with_scale(Vec3::splat(start_scale)),
-                        ));
-                    }
+                    particles::start_particles(&mut commands, "summon_burst", pos);
 
                     anim.phase = SummonPhase::CircleShrink;
                     anim.elapsed = 0.0;
@@ -277,6 +239,9 @@ fn cleanup_summoning_on_death(
     mut wave_state: ResMut<WaveState>,
 ) {
     for (entity, anim) in &query {
+        if let Some(emitter_entity) = anim.emitter {
+            particles::stop_particles(&mut commands, emitter_entity);
+        }
         if let Ok(mut ec) = commands.get_entity(anim.circle_entity) {
             ec.despawn();
         }

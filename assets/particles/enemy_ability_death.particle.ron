@@ -1,0 +1,4 @@
+(
+    parent: Some("enemy_death_large"),
+    color: Some("enemy_ability"),
+)

@@ -16,7 +16,7 @@
             ])),
             OnCollision((entities: [
                 (components: [DamagePayload((amount: "calc(physical_damage, 1.0, 1)"))]),
-                (components: [HitParticles(())]),
+                (components: [Particles((config: "hit_burst", position: Some("source.position")))]),
             ]))
         ])
     ]

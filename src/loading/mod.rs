@@ -8,6 +8,7 @@ use assets::{
     BlueprintDefAsset, BlueprintDefLoader, GameBalanceAsset, GameBalanceLoader,
     SkillTreeDefAsset, SkillTreeDefLoader, StatsConfigAsset, StatsConfigLoader,
 };
+use crate::particles::{ParticleConfigRaw, ParticleConfigLoader};
 use systems::LoadingState;
 
 pub struct LoadingPlugin;
@@ -20,10 +21,12 @@ impl Plugin for LoadingPlugin {
             .init_asset::<BlueprintDefAsset>()
             .init_asset::<GameBalanceAsset>()
             .init_asset::<SkillTreeDefAsset>()
+            .init_asset::<ParticleConfigRaw>()
             .register_asset_loader(StatsConfigLoader)
             .register_asset_loader(BlueprintDefLoader)
             .register_asset_loader(GameBalanceLoader)
             .register_asset_loader(SkillTreeDefLoader)
+            .register_asset_loader(ParticleConfigLoader)
             .init_resource::<LoadingState>()
             .add_systems(OnEnter(GameState::Loading), systems::start_loading)
             .add_systems(

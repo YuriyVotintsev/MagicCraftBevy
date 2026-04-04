@@ -1,11 +1,9 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use rand::Rng;
 
 use crate::blueprints::components::common::health::Health;
 use crate::blueprints::components::common::jump_walk_animation::JumpWalkAnimationState;
 use crate::blueprints::SpawnSource;
-use crate::particles::{Particle, PlayerDeathParticleConfig};
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::stats::{DeathEvent, SkipCleanup, death_system};
@@ -173,6 +171,8 @@ fn animate_shrink_to_zero(
     }
 }
 
+const PLAYER_DEATH_PARTICLE_LIFETIME: f32 = 0.5;
+
 fn player_death_sequence(
     mut commands: Commands,
     time: Res<Time>,
@@ -181,9 +181,6 @@ fn player_death_sequence(
     anim_state_query: Query<&JumpWalkAnimationState>,
     children_query: Query<&Children>,
     shrink_query: Query<(), With<ShrinkToZero>>,
-    config: Res<PlayerDeathParticleConfig>,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
     mut next_phase: ResMut<NextState<WavePhase>>,
 ) {
     let dt = time.delta_secs();
@@ -237,35 +234,7 @@ fn player_death_sequence(
     let pos = crate::coord::to_2d(transform.translation);
     let initial_scale = transform.scale;
 
-    let color = crate::palette::color(&config.color);
-    let material = materials.add(StandardMaterial {
-        base_color: color,
-        unlit: true,
-        ..default()
-    });
-    let mesh = meshes.add(Sphere::new(0.5));
-    let mut rng = rand::rng();
-    for _ in 0..config.count {
-        let angle = rng.random_range(0.0..std::f32::consts::TAU);
-        let speed = config.speed * rng.random_range(0.5..1.0);
-        let dir = Vec2::new(angle.cos(), angle.sin());
-        let start_scale = config.start_size / 2.0;
-        let end_scale = config.end_size / 2.0;
-        let spawn_pos = crate::coord::ground_pos(pos);
-        commands.spawn((
-            Particle {
-                velocity: crate::coord::ground_vel(dir * speed),
-                remaining: config.lifetime,
-                lifetime: config.lifetime,
-                start_scale,
-                end_scale,
-            },
-            Mesh3d(mesh.clone()),
-            MeshMaterial3d(material.clone()),
-            Transform::from_translation(Vec3::new(spawn_pos.x, config.elevation, spawn_pos.z))
-                .with_scale(Vec3::splat(start_scale)),
-        ));
-    }
+    crate::particles::start_particles(&mut commands, "player_death", pos);
 
     let _ = player_children;
     let _ = transform;
@@ -273,7 +242,7 @@ fn player_death_sequence(
     dying.phase = DeathPhase::Shrinking {
         elapsed: 0.0,
         initial_scale,
-        particle_lifetime: config.lifetime,
+        particle_lifetime: PLAYER_DEATH_PARTICLE_LIFETIME,
     };
 }
 

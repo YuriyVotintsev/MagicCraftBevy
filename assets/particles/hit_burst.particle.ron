@@ -1,0 +1,9 @@
+(
+    count: Some(4),
+    speed: Some(300.0),
+    lifetime: Some(0.2),
+    start_size: Some(80.0),
+    end_size: Some(0.0),
+    elevation: Some(50.0),
+    color: Some("player_ability"),
+)

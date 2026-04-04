@@ -1,0 +1,12 @@
+(
+    count: Some(1),
+    spawn_rate: Some(100.0),
+    speed: Some(0.0),
+    vertical_speed: Some(100.0),
+    lifetime: Some(0.4),
+    start_size: Some(8.0),
+    end_size: Some(0.0),
+    elevation: Some(0.0),
+    color: Some("enemy"),
+    shape: Some(Circle(63.0)),
+)

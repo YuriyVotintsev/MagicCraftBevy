@@ -10,6 +10,8 @@ use crate::stats::{StatEvalKind, StatCalculators, StatRegistry};
 use crate::stats::loader::StatEvalKindRaw;
 
 
+use crate::particles::{ParticleConfigRaw, ParticleRegistry};
+
 use super::assets::{
     BlueprintDefAsset, GameBalanceAsset,
     SkillTreeDefAsset, StatsConfigAsset,
@@ -24,6 +26,7 @@ pub struct LoadingState {
     pub abilities_folder: Option<Handle<LoadedFolder>>,
     pub mobs_folder: Option<Handle<LoadedFolder>>,
     pub skill_tree_handle: Option<Handle<SkillTreeDefAsset>>,
+    pub particles_folder: Option<Handle<LoadedFolder>>,
 }
 
 #[derive(Default, PartialEq, Clone, Copy)]
@@ -137,6 +140,7 @@ pub fn check_stats_loaded(
     loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
     loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
     loading_state.skill_tree_handle = Some(asset_server.load("skill_tree/tree.ron"));
+    loading_state.particles_folder = Some(asset_server.load_folder("particles"));
 
     loading_state.phase = LoadingPhase::WaitingForContent;
     info!("Loading content assets...");
@@ -148,6 +152,7 @@ pub fn check_content_loaded(
     asset_server: Res<AssetServer>,
     blueprint_assets: Res<Assets<BlueprintDefAsset>>,
     skill_tree_assets: Res<Assets<SkillTreeDefAsset>>,
+    particle_assets: Res<Assets<ParticleConfigRaw>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
     calc_registry: Option<Res<CalcRegistry>>,
@@ -176,11 +181,15 @@ pub fn check_content_loaded(
     let Some(skill_tree_handle) = &loading_state.skill_tree_handle else {
         return;
     };
+    let Some(particles_folder_handle) = &loading_state.particles_folder else {
+        return;
+    };
 
     for handle in [
         heroes_folder_handle,
         abilities_folder_handle,
         mobs_folder_handle,
+        particles_folder_handle,
     ] {
         if !matches!(
             asset_server.get_load_state(handle.id()),
@@ -236,6 +245,36 @@ pub fn check_content_loaded(
         info!("Loaded skill tree: {} nodes, {} edges (grid_size: {})", graph.nodes.len(), graph.edges.len(), grid_size);
         commands.insert_resource(graph);
         commands.insert_resource(crate::skill_tree::graph::GridSettings { size: grid_size });
+    }
+
+    if let Some(folder) = folders.get(particles_folder_handle.id()) {
+        let mut raw_configs = std::collections::HashMap::new();
+        for handle in &folder.handles {
+            let typed_handle: Handle<ParticleConfigRaw> = handle.clone().typed();
+            if let Some(config) = particle_assets.get(typed_handle.id()) {
+                if let Some(path) = asset_server.get_path(typed_handle.id()) {
+                    let name = path
+                        .path()
+                        .file_stem()
+                        .and_then(|s| s.to_str())
+                        .unwrap_or("")
+                        .strip_suffix(".particle")
+                        .unwrap_or(
+                            path.path()
+                                .file_stem()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or(""),
+                        )
+                        .to_string();
+                    if !name.is_empty() {
+                        info!("Loaded particle config: {}", name);
+                        raw_configs.insert(name, config.clone());
+                    }
+                }
+            }
+        }
+        let particle_registry = ParticleRegistry::resolve_all(&raw_configs);
+        commands.insert_resource(particle_registry);
     }
 
     loading_state.phase = LoadingPhase::Finalizing;

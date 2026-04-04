@@ -1,0 +1,9 @@
+(
+    count: Some(8),
+    speed: Some(200.0),
+    lifetime: Some(0.4),
+    start_size: Some(60.0),
+    end_size: Some(0.0),
+    elevation: Some(0.5),
+    color: Some("enemy"),
+)

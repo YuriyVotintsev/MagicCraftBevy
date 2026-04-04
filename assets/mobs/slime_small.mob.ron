@@ -21,7 +21,7 @@
                 DynamicBody((mass: Some("1"))),
                 Health(()),
                 OnDeath((entities: [
-                    (components: [DeathParticles(())]),
+                    (components: [Particles((config: "enemy_death"))]),
                 ])),
             ],
             states: Some((

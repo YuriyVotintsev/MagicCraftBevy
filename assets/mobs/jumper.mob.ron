@@ -21,7 +21,7 @@
                 DynamicBody((mass: Some("10"))),
                 Health(()),
                 OnDeath((entities: [
-                    (components: [DeathParticles((count: Some("24"), start_size: Some("180"), speed: Some("400")))]),
+                    (components: [Particles((config: "enemy_death_large"))]),
                 ])),
             ],
             states: Some((
