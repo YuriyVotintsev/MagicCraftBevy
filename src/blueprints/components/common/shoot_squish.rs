@@ -8,10 +8,10 @@ use crate::blueprints::components::mob::use_abilities::ShotFired;
 
 #[blueprint_component]
 pub struct ShootSquish {
-    #[raw(default = 0.15)]
-    pub amplitude: f32,
-    #[raw(default = 0.2)]
-    pub duration: f32,
+    #[raw(default = 0.4)]
+    pub amplitude: ScalarExpr,
+    #[raw(default = 0.4)]
+    pub duration: ScalarExpr,
 }
 
 #[derive(Component)]
@@ -62,7 +62,7 @@ pub fn animate(
         let (scale_y, scale_xz) = if state.timer > 0.0 {
             let t = 1.0 - state.timer / squish.duration;
             let factor = 1.0 - squish.amplitude * (1.0 - t).powi(2);
-            (factor, 1.0 / factor.sqrt())
+            (factor, 1.0 / factor)
         } else {
             (1.0, 1.0)
         };

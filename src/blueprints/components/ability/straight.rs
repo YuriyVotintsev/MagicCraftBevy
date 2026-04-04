@@ -48,6 +48,7 @@ fn init_straight(
         ),
         Added<Straight>,
     >,
+    size_query: Query<&super::super::common::size::Size>,
 ) {
     for (entity, straight, source, mut transform, parallel, fan, radial) in &mut query {
         let base_direction = straight.direction.normalize_or_zero();
@@ -71,6 +72,13 @@ fn init_straight(
             let spread_rad = straight.spread.to_radians();
             let angle_offset = rand::rng().random_range(-spread_rad..spread_rad);
             direction = rotate_vec2(direction, angle_offset);
+        }
+
+        if let Some(caster) = source.caster.entity {
+            if let Ok(caster_size) = size_query.get(caster) {
+                let offset = caster_size.value / 2.0;
+                transform.translation += crate::coord::ground_dir(direction * offset);
+            }
         }
 
         commands.entity(entity).insert((
