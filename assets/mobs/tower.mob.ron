@@ -8,7 +8,7 @@
             },
             abilities: ["tower_shot"],
             components: [
-                Size((value: "190.0")),
+                Size((value: "150.0")),
                 Visual((children: [
                     (components: [Shadow(())]),
                     (components: [
@@ -17,7 +17,7 @@
                             color: "enemy",
                             shape: Capsule,
                             elevation: Some("0.55"),
-                            half_length: Some("1.05"),
+                            half_length: Some("1.35"),
                         )),
                     ]),
                 ])),

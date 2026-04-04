@@ -19,6 +19,7 @@ fn init_dynamic_body(mut commands: Commands, query: Query<(Entity, &DynamicBody)
             LockedAxes::ROTATION_LOCKED.lock_translation_y(),
             LinearVelocity::ZERO,
             Mass(body.mass),
+            SleepingDisabled,
         ));
     }
 }

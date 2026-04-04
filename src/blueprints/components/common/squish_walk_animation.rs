@@ -28,7 +28,6 @@ fn init(mut commands: Commands, query: Query<Entity, Added<SquishWalkAnimation>>
 }
 
 pub fn animate(
-    time: Res<Time>,
     stat_registry: Option<Res<StatRegistry>>,
     mut query: Query<(
         &SquishWalkAnimation,

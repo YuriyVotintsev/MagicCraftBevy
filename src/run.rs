@@ -166,7 +166,9 @@ fn animate_shrink_to_zero(
         let t = (shrink.elapsed / shrink.duration).clamp(0.0, 1.0);
         transform.scale = shrink.initial_scale * (1.0 - t);
         if t >= 1.0 {
-            commands.entity(entity).despawn();
+            if let Ok(mut ec) = commands.get_entity(entity) {
+                ec.despawn();
+            }
         }
     }
 }

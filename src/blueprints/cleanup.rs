@@ -9,11 +9,15 @@ pub fn cleanup_orphaned_blueprint_entities(
 ) {
     for (entity, source) in &blueprint_query {
         let Some(caster_entity) = source.caster.entity else {
-            commands.entity(entity).despawn();
+            if let Ok(mut ec) = commands.get_entity(entity) {
+                ec.despawn();
+            }
             continue;
         };
         if !owner_query.contains(caster_entity) {
-            commands.entity(entity).despawn();
+            if let Ok(mut ec) = commands.get_entity(entity) {
+                ec.despawn();
+            }
         }
     }
 }

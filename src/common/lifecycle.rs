@@ -14,7 +14,9 @@ fn on_owner_death(
     let owner = on.event_target();
     for (entity, attached) in &attached_query {
         if attached.owner == owner {
-            commands.entity(entity).despawn();
+            if let Ok(mut ec) = commands.get_entity(entity) {
+                ec.despawn();
+            }
         }
     }
 }
