@@ -3,11 +3,24 @@ use magic_craft_macros::blueprint_component;
 use rand::Rng;
 
 use crate::blueprints::SpawnSource;
-use crate::particles::{DeathParticleConfig, Particle};
+use crate::particles::Particle;
 use crate::GameState;
 
 #[blueprint_component]
-pub struct DeathParticles;
+pub struct DeathParticles {
+    #[raw(default = 8)]
+    pub count: ScalarExpr,
+    #[raw(default = 200.0)]
+    pub speed: ScalarExpr,
+    #[raw(default = 0.4)]
+    pub lifetime: ScalarExpr,
+    #[raw(default = 60.0)]
+    pub start_size: ScalarExpr,
+    #[raw(default = 0.0)]
+    pub end_size: ScalarExpr,
+    #[raw(default = 0.5)]
+    pub elevation: ScalarExpr,
+}
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -18,17 +31,16 @@ pub fn register_systems(app: &mut App) {
 
 fn spawn_death_particles(
     mut commands: Commands,
-    query: Query<(Entity, &SpawnSource), Added<DeathParticles>>,
-    config: Res<DeathParticleConfig>,
+    query: Query<(Entity, &SpawnSource, &DeathParticles), Added<DeathParticles>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    for (entity, source) in &query {
+    for (entity, source, config) in &query {
         let pos = source.target.position
             .or(source.source.position)
             .unwrap_or(Vec2::ZERO);
 
-        let color = crate::palette::color(&config.color);
+        let color = crate::palette::color("enemy");
         let material = materials.add(StandardMaterial {
             base_color: color,
             unlit: true,
@@ -36,8 +48,9 @@ fn spawn_death_particles(
         });
         let mesh = meshes.add(Sphere::new(0.5));
 
+        let count = config.count as u32;
         let mut rng = rand::rng();
-        for _ in 0..config.count {
+        for _ in 0..count {
             let angle = rng.random_range(0.0..std::f32::consts::TAU);
             let speed = config.speed * rng.random_range(0.5..1.0);
             let dir = Vec2::new(angle.cos(), angle.sin());

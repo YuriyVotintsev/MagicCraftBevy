@@ -6,7 +6,6 @@ pub struct ParticlesPlugin;
 impl Plugin for ParticlesPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, load_config)
-            .add_systems(Startup, load_death_config)
             .add_systems(Startup, load_player_death_config)
             .add_systems(Update, update_particles);
     }
@@ -50,39 +49,6 @@ fn load_config(mut commands: Commands) {
     let config = std::fs::read_to_string("assets/particles/hit_burst.ron")
         .ok()
         .and_then(|s| ron::from_str::<HitParticleConfig>(&s).ok())
-        .unwrap_or_default();
-    commands.insert_resource(config);
-}
-
-#[derive(Resource, Deserialize, Clone)]
-pub struct DeathParticleConfig {
-    pub count: u32,
-    pub speed: f32,
-    pub lifetime: f32,
-    pub start_size: f32,
-    pub end_size: f32,
-    pub elevation: f32,
-    pub color: String,
-}
-
-impl Default for DeathParticleConfig {
-    fn default() -> Self {
-        Self {
-            count: 8,
-            speed: 200.0,
-            lifetime: 0.4,
-            start_size: 60.0,
-            end_size: 0.0,
-            elevation: 0.5,
-            color: "enemy".into(),
-        }
-    }
-}
-
-fn load_death_config(mut commands: Commands) {
-    let config = std::fs::read_to_string("assets/particles/death_burst.ron")
-        .ok()
-        .and_then(|s| ron::from_str::<DeathParticleConfig>(&s).ok())
         .unwrap_or_default();
     commands.insert_resource(config);
 }

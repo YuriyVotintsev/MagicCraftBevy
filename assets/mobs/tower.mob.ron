@@ -26,7 +26,7 @@
                 Health(()),
                 ShootSquish(()),
                 OnDeath((entities: [
-                    (components: [DeathParticles(())]),
+                    (components: [DeathParticles((count: Some("24"), start_size: Some("180"), speed: Some("400")))]),
                 ])),
             ],
             states: Some((
