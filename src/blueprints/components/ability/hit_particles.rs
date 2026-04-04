@@ -24,8 +24,8 @@ fn spawn_hit_particles(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, source) in &query {
-        let pos = source.target.position
-            .or(source.source.position)
+        let pos = source.source.position
+            .or(source.target.position)
             .unwrap_or(Vec2::ZERO);
 
         let color = crate::palette::color(&config.color);
