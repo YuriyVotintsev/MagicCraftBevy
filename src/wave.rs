@@ -28,6 +28,7 @@ pub enum WavePhase {
 pub struct WaveState {
     pub spawned_count: u32,
     pub killed_count: u32,
+    pub summoning_count: u32,
     pub max_concurrent: u32,
 }
 
@@ -36,6 +37,7 @@ impl WaveState {
         Self {
             spawned_count: 0,
             killed_count: 0,
+            summoning_count: 0,
             max_concurrent: balance.start_enemies,
         }
     }

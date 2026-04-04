@@ -6,11 +6,12 @@ use rand::Rng;
 
 use crate::balance::{ArenaBalance, GameBalance};
 use crate::blueprints::components::common::health::Health;
-use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
+use crate::blueprints::BlueprintRegistry;
 use crate::physics::{GameLayer, Wall};
 use crate::run::RunState;
 use crate::schedule::GameSet;
 use crate::stats::{DirtyStats, Modifiers, StatRegistry};
+use crate::summoning::{SummoningAnimation, SummoningCircleMaterial, SummoningCircleMesh, DEFAULT_CIRCLE_SIZE};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
 use crate::GameState;
@@ -190,9 +191,11 @@ fn spawn_enemies(
     player_query: Query<&Transform, With<crate::player::Player>>,
     blueprint_registry: Res<BlueprintRegistry>,
     balance: Res<GameBalance>,
+    circle_mesh: Res<SummoningCircleMesh>,
+    circle_material: Res<SummoningCircleMaterial>,
 ) {
     let alive_enemies = enemies_query.iter().filter(|f| **f == Faction::Enemy).count() as u32;
-    let deficit = wave_state.max_concurrent.saturating_sub(alive_enemies);
+    let deficit = wave_state.max_concurrent.saturating_sub(alive_enemies + wave_state.summoning_count);
     if deficit == 0 {
         return;
     }
@@ -233,17 +236,29 @@ fn spawn_enemies(
         };
 
         if let Some(blueprint_id) = blueprint_registry.get_id(blueprint_name) {
-            let entity = commands
+            let ground = crate::coord::ground_pos(Vec2::new(x, y));
+
+            let circle_entity = commands
                 .spawn((
-                    Name::new("Enemy"),
-                    Transform::from_translation(crate::coord::ground_pos(Vec2::new(x, y))),
-                    WaveEnemy,
+                    Name::new("SummoningCircle"),
+                    Mesh3d(circle_mesh.0.clone()),
+                    MeshMaterial3d(circle_material.0.clone()),
+                    Transform::from_translation(ground + Vec3::Y * 0.02)
+                        .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+                        .with_scale(Vec3::ZERO),
                     DespawnOnExit(WavePhase::Combat),
                 ))
                 .id();
 
-            spawn_blueprint_entity(&mut commands, entity, Faction::Enemy, blueprint_id, true);
+            commands.spawn((
+                Name::new("Enemy"),
+                Transform::from_translation(ground),
+                WaveEnemy,
+                DespawnOnExit(WavePhase::Combat),
+                SummoningAnimation::new(circle_entity, DEFAULT_CIRCLE_SIZE, blueprint_id),
+            ));
             wave_state.spawned_count += 1;
+            wave_state.summoning_count += 1;
         }
     }
 }
