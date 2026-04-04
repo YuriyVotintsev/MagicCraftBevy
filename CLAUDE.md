@@ -50,6 +50,7 @@ All game content loads from `.ron` files in `assets/`:
 - `mobs/*.mob.ron` - Mob AI states and behaviors
 - `player.player.ron` - Player configuration
 - `stats/config.stats.ron` - Stat definitions and formulas
+- `particles/*.particle.ron` - Particle effect configs (with inheritance via `parent` field)
 
 Custom asset loaders implement Bevy's `AssetLoader` trait.
 
@@ -185,6 +186,34 @@ Edit `assets/stats/config.stats.ron` to add stat_id and optional calculator form
 **Add FSM behavior:**
 1. Create behavior system in `mob_ai/behaviours/`
 2. Register in `MobAiPlugin` (mob_ai/mod.rs)
+
+## Particle System
+
+Event-driven particle system. All configs in `assets/particles/*.particle.ron`.
+
+**API:**
+```rust
+// Spawn particle emitter entity. Burst auto-despawns, continuous needs stop.
+let emitter = start_particles(&mut commands, "enemy_death", position);
+stop_particles(&mut commands, emitter);  // for continuous only
+```
+
+**RON config with inheritance:**
+```ron
+// assets/particles/enemy_death_large.particle.ron
+(
+    parent: Some("enemy_death"),   // inherits all fields, overrides listed
+    count: Some(24),
+    start_size: Some(90.0),
+    speed: Some(400.0),
+)
+```
+
+**Key fields:** `count` (per burst), `spawn_rate` (continuous, particles/sec, 0=burst), `speed`, `vertical_speed`, `lifetime`, `start_size`, `end_size`, `elevation` (Y spawn), `color` (palette name), `shape` (Point or Circle(radius))
+
+**Blueprint usage:** `Particles((config: "enemy_death"))` — spawns particles at `source.position` (default). Use in OnDeath, OnCollision, etc.
+
+**Emitter entity** has `ParticleEmitter` component with `shape_override: Option<SpawnShape>` for runtime dynamic shape (e.g. summoning circle growing radius).
 
 ## Physics Configuration
 
