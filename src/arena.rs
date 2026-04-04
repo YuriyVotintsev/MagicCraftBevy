@@ -11,6 +11,7 @@ use crate::physics::{GameLayer, Wall};
 use crate::run::RunState;
 use crate::schedule::GameSet;
 use crate::stats::{DirtyStats, Modifiers, StatRegistry};
+use crate::blueprints::components::ComponentDef;
 use crate::summoning::{SummoningAnimation, SummoningCircleMaterial, SummoningCircleMesh, DEFAULT_CIRCLE_SIZE};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
@@ -235,6 +236,20 @@ fn spawn_enemies(
         };
 
         if let Some(blueprint_id) = blueprint_registry.get_id(blueprint_name) {
+            let circle_size = blueprint_registry
+                .get(blueprint_id)
+                .and_then(|bp| bp.entities.first())
+                .and_then(|entity_def| {
+                    entity_def.components.iter().find_map(|c| match c {
+                        ComponentDef::Size(def) => match def.value {
+                            crate::expr::ScalarExpr::Literal(v) => Some(v),
+                            _ => None,
+                        },
+                        _ => None,
+                    })
+                })
+                .unwrap_or(DEFAULT_CIRCLE_SIZE);
+
             let ground = crate::coord::ground_pos(Vec2::new(x, y));
 
             let circle_entity = commands
@@ -254,7 +269,7 @@ fn spawn_enemies(
                 Transform::from_translation(ground),
                 WaveEnemy,
                 DespawnOnExit(WavePhase::Combat),
-                SummoningAnimation::new(circle_entity, DEFAULT_CIRCLE_SIZE, blueprint_id),
+                SummoningAnimation::new(circle_entity, circle_size, blueprint_id),
             ));
             wave_state.spawned_count += 1;
             wave_state.summoning_count += 1;
