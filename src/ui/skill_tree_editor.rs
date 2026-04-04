@@ -1001,7 +1001,7 @@ fn editor_stat_buttons(
     for (interaction, add) in &add_query {
         if *interaction != Interaction::Pressed { continue; }
         if let Some(node) = graph.nodes.get_mut(add.0) {
-            if let Some(default_stat) = stat_registry.get("max_stamina_flat") {
+            if let Some(default_stat) = stat_registry.get("max_life_flat") {
                 node.rolled_values.push((default_stat, 1.0));
                 rebuild = true;
             }

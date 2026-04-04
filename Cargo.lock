@@ -3247,6 +3247,7 @@ dependencies = [
  "rand",
  "ron",
  "serde",
+ "smallvec",
 ]
 
 [[package]]

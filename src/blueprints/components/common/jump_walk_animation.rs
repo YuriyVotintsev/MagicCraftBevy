@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::movement::SelfMoving;
 
 #[blueprint_component]
@@ -24,8 +25,16 @@ pub struct JumpWalkAnimationState {
     pub landed: bool,
 }
 
+#[derive(Resource)]
+pub struct JumpScaleLayer(pub ScaleLayerId);
+
 pub fn register_systems(app: &mut App) {
+    app.add_systems(Startup, register_layer);
     app.add_systems(PostUpdate, (init, animate));
+}
+
+fn register_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Commands) {
+    commands.insert_resource(JumpScaleLayer(registry.register()));
 }
 
 fn init(mut commands: Commands, query: Query<Entity, Added<JumpWalkAnimation>>) {
@@ -37,17 +46,19 @@ fn init(mut commands: Commands, query: Query<Entity, Added<JumpWalkAnimation>>) 
 }
 
 pub fn animate(
+    layer: Res<JumpScaleLayer>,
     time: Res<Time>,
     mut query: Query<(
         &JumpWalkAnimation,
         &mut JumpWalkAnimationState,
         &mut Transform,
         &ChildOf,
+        &mut ScaleModifiers,
     )>,
     moving_query: Query<(), With<SelfMoving>>,
 ) {
     let dt = time.delta_secs();
-    for (anim, mut state, mut transform, child_of) in &mut query {
+    for (anim, mut state, mut transform, child_of, mut modifiers) in &mut query {
         let moving = moving_query.get(child_of.parent()).is_ok();
 
         if moving {
@@ -86,6 +97,6 @@ pub fn animate(
 
         transform.translation.y = 0.5 + y - 0.5 * (1.0 - scale_y);
         transform.rotation = Quat::from_rotation_z(tilt);
-        transform.scale = Vec3::new(scale_xz, scale_y, scale_xz);
+        modifiers.set(layer.0, Vec3::new(scale_xz, scale_y, scale_xz));
     }
 }

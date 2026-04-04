@@ -2,8 +2,7 @@ use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 use super::sprite::{CapsuleSprite, CircleSprite, Sprite, SquareSprite, TriangleSprite};
-use crate::blueprints::components::common::jump_walk_animation::animate as jump_animate;
-use crate::blueprints::components::common::squish_walk_animation::animate as squish_animate;
+use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::blueprints::components::mob::use_abilities::ShotFired;
 
 #[blueprint_component]
@@ -19,14 +18,16 @@ pub struct ShootSquishState {
     pub timer: f32,
 }
 
+#[derive(Resource)]
+pub struct ShootScaleLayer(pub ScaleLayerId);
+
 pub fn register_systems(app: &mut App) {
-    app.add_systems(
-        PostUpdate,
-        (init_shoot_squish, animate)
-            .chain()
-            .after(jump_animate)
-            .after(squish_animate),
-    );
+    app.add_systems(Startup, register_layer);
+    app.add_systems(PostUpdate, (init_shoot_squish, animate).chain());
+}
+
+fn register_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Commands) {
+    commands.insert_resource(ShootScaleLayer(registry.register()));
 }
 
 fn init_shoot_squish(
@@ -39,11 +40,12 @@ fn init_shoot_squish(
 }
 
 pub fn animate(
+    layer: Res<ShootScaleLayer>,
     time: Res<Time>,
     mut query: Query<(Entity, &ShootSquish, &mut ShootSquishState, &Children)>,
     shot_fired_query: Query<(), With<ShotFired>>,
     mut sprite_query: Query<
-        (&mut Transform, &Sprite),
+        (&mut Transform, &Sprite, &mut ScaleModifiers),
         Or<(With<CapsuleSprite>, With<CircleSprite>, With<TriangleSprite>, With<SquareSprite>)>,
     >,
     capsule_query: Query<&CapsuleSprite>,
@@ -68,7 +70,7 @@ pub fn animate(
         };
 
         for child in children.iter() {
-            let Ok((mut transform, sprite)) = sprite_query.get_mut(child) else {
+            let Ok((mut transform, sprite, mut modifiers)) = sprite_query.get_mut(child) else {
                 continue;
             };
 
@@ -77,7 +79,7 @@ pub fn animate(
                 .map(|c| c.half_length + 0.5)
                 .unwrap_or(0.5);
 
-            transform.scale = Vec3::new(scale_xz, scale_y, scale_xz);
+            modifiers.set(layer.0, Vec3::new(scale_xz, scale_y, scale_xz));
             transform.translation.y = sprite.elevation - mesh_half * (1.0 - scale_y);
         }
     }

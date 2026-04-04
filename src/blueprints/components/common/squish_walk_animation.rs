@@ -4,6 +4,7 @@ use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::components::common::sprite::Sprite as SpriteComp;
 use crate::blueprints::components::mob::lunge_movement::{LungeMovementState, LungePhase};
+use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::stats::{ComputedStats, StatRegistry};
 
 #[blueprint_component]
@@ -17,8 +18,16 @@ pub struct SquishState {
     dir: Vec2,
 }
 
+#[derive(Resource)]
+pub struct SquishScaleLayer(pub ScaleLayerId);
+
 pub fn register_systems(app: &mut App) {
+    app.add_systems(Startup, register_layer);
     app.add_systems(PostUpdate, (init, animate).chain());
+}
+
+fn register_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Commands) {
+    commands.insert_resource(SquishScaleLayer(registry.register()));
 }
 
 fn init(mut commands: Commands, query: Query<Entity, Added<SquishWalkAnimation>>) {
@@ -28,6 +37,7 @@ fn init(mut commands: Commands, query: Query<Entity, Added<SquishWalkAnimation>>
 }
 
 pub fn animate(
+    layer: Res<SquishScaleLayer>,
     stat_registry: Option<Res<StatRegistry>>,
     mut query: Query<(
         &SquishWalkAnimation,
@@ -35,6 +45,7 @@ pub fn animate(
         &mut Transform,
         &ChildOf,
         &mut SquishState,
+        &mut ScaleModifiers,
     )>,
     parent_query: Query<(&LinearVelocity, &ComputedStats, Option<&LungeMovementState>)>,
 ) {
@@ -43,7 +54,7 @@ pub fn animate(
     };
     let speed_id = stat_registry.get("movement_speed");
 
-    for (anim, sprite, mut transform, child_of, mut state) in &mut query {
+    for (anim, sprite, mut transform, child_of, mut state, mut modifiers) in &mut query {
         let (vel2d, lunge_state) = parent_query
             .get(child_of.parent())
             .ok()
@@ -78,7 +89,7 @@ pub fn animate(
         };
 
         let perp = 1.0 / (1.0 + s).sqrt();
-        transform.scale = Vec3::new(1.0 + s, perp, perp);
+        modifiers.set(layer.0, Vec3::new(1.0 + s, perp, perp));
 
         if dir != Vec2::ZERO {
             transform.rotation = Quat::from_rotation_y(dir.y.atan2(dir.x));

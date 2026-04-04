@@ -14,7 +14,7 @@
             position: (0, 2),
             max_level: 1,
             modifiers: [
-                (stats: [Fixed(stat: "max_stamina_flat", value: 10.0)]),
+                (stats: [Fixed(stat: "max_life_flat", value: 10.0)]),
             ],
         ),
         (
@@ -46,7 +46,7 @@
             position: (0, 4),
             max_level: 1,
             modifiers: [
-                (stats: [Fixed(stat: "max_stamina_flat", value: 15.0)]),
+                (stats: [Fixed(stat: "max_life_flat", value: 15.0)]),
             ],
         ),
         (
@@ -54,7 +54,7 @@
             position: (2, 3),
             max_level: 1,
             modifiers: [
-                (stats: [Fixed(stat: "max_stamina_flat", value: 5.0), Fixed(stat: "physical_damage_flat", value: 3.0)]),
+                (stats: [Fixed(stat: "max_life_flat", value: 5.0), Fixed(stat: "physical_damage_flat", value: 3.0)]),
             ],
         ),
         (
@@ -102,7 +102,7 @@
             position: (-2, 3),
             max_level: 1,
             modifiers: [
-                (stats: [Fixed(stat: "max_stamina_flat", value: 5.0), Fixed(stat: "crit_chance_flat", value: 0.01)]),
+                (stats: [Fixed(stat: "max_life_flat", value: 5.0), Fixed(stat: "crit_chance_flat", value: 0.01)]),
             ],
         ),
         (
@@ -110,7 +110,7 @@
             position: (0, 6),
             max_level: 1,
             modifiers: [
-                (stats: [Fixed(stat: "max_stamina_increased", value: 0.15)]),
+                (stats: [Fixed(stat: "max_life_increased", value: 0.15)]),
             ],
         ),
         (

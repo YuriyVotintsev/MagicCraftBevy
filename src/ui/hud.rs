@@ -13,14 +13,14 @@ pub struct HudRoot;
 pub struct MoneyText;
 
 #[derive(Component)]
-pub struct StaminaText;
+pub struct LifeText;
 
 #[derive(Component)]
-pub struct StaminaBar;
+pub struct LifeBar;
 
 const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
 const BAR_BG_COLOR: Color = Color::srgb(0.2, 0.2, 0.2);
-const STAMINA_BAR_COLOR: Color = Color::srgb(0.3, 0.8, 0.3);
+const LIFE_BAR_COLOR: Color = Color::srgb(0.3, 0.8, 0.3);
 
 pub fn spawn_hud(mut commands: Commands) {
     commands.spawn((
@@ -51,8 +51,8 @@ pub fn spawn_hud(mut commands: Commands) {
                 }
             ),
             (
-                StaminaText,
-                Text::new("Stamina: 0/0"),
+                LifeText,
+                Text::new("Life: 0/0"),
                 TextFont {
                     font_size: 18.0,
                     ..default()
@@ -71,13 +71,13 @@ pub fn spawn_hud(mut commands: Commands) {
                 },
                 BackgroundColor(BAR_BG_COLOR),
                 children![(
-                    StaminaBar,
+                    LifeBar,
                     Node {
                         width: Val::Percent(100.0),
                         height: Val::Percent(100.0),
                         ..default()
                     },
-                    BackgroundColor(STAMINA_BAR_COLOR)
+                    BackgroundColor(LIFE_BAR_COLOR)
                 )]
             ),
         ],
@@ -88,27 +88,27 @@ pub fn update_hud(
     money: Res<PlayerMoney>,
     stat_registry: Res<StatRegistry>,
     player_query: Query<(&Health, &ComputedStats), With<Player>>,
-    mut money_text: Query<&mut Text, (With<MoneyText>, Without<StaminaText>)>,
-    mut stamina_text: Query<&mut Text, (With<StaminaText>, Without<MoneyText>)>,
-    mut stamina_bar: Query<&mut Node, With<StaminaBar>>,
+    mut money_text: Query<&mut Text, (With<MoneyText>, Without<LifeText>)>,
+    mut life_text: Query<&mut Text, (With<LifeText>, Without<MoneyText>)>,
+    mut life_bar: Query<&mut Node, With<LifeBar>>,
 ) {
     if let Ok(mut text) = money_text.single_mut() {
         **text = format!("Coins: {}", money.get());
     }
 
     if let Ok((health, stats)) = player_query.single() {
-        let max_stamina = stat_registry
-            .get("max_stamina")
+        let max_life = stat_registry
+            .get("max_life")
             .map(|id| stats.get(id))
             .unwrap_or_default();
 
-        if let Ok(mut text) = stamina_text.single_mut() {
-            **text = format!("Stamina: {}/{}", health.current as i32, max_stamina as i32);
+        if let Ok(mut text) = life_text.single_mut() {
+            **text = format!("Life: {}/{}", health.current as i32, max_life as i32);
         }
 
-        if let Ok(mut node) = stamina_bar.single_mut() {
-            let progress = if max_stamina > 0.0 {
-                (health.current / max_stamina * 100.0).clamp(0.0, 100.0)
+        if let Ok(mut node) = life_bar.single_mut() {
+            let progress = if max_life > 0.0 {
+                (health.current / max_life * 100.0).clamp(0.0, 100.0)
             } else {
                 0.0
             };

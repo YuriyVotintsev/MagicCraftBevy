@@ -2,6 +2,7 @@ use bevy::prelude::{Sprite as BevySprite, *};
 use magic_craft_macros::blueprint_component;
 use serde::Deserialize;
 
+use crate::composite_scale::ScaleModifiers;
 use crate::palette;
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -126,6 +127,8 @@ fn init_sprite(
                 Transform::from_translation(Vec3::new(pos.x, sprite.elevation, pos.z)),
             );
         }
+
+        commands.entity(entity).insert(ScaleModifiers::default());
 
         if let Some(ref image_path) = sprite.image {
             commands.entity(entity).insert(BevySprite {

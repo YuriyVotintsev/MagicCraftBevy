@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::blueprints::components::common::size::SizeScaleLayer;
+use crate::composite_scale::ScaleModifiers;
 use crate::schedule::GameSet;
 use crate::GameState;
 
@@ -34,21 +36,27 @@ fn init_growing_progress(
     query: Query<Entity, (With<Growing>, Without<GrowingProgress>)>,
 ) {
     for entity in &query {
-        commands.entity(entity).insert(GrowingProgress::default());
+        commands
+            .entity(entity)
+            .insert((GrowingProgress::default(), ScaleModifiers::default()));
     }
 }
 
-fn tick_growing(time: Res<Time>, mut query: Query<(&Growing, &mut GrowingProgress, &mut Transform)>) {
+fn tick_growing(
+    layer: Res<SizeScaleLayer>,
+    time: Res<Time>,
+    mut query: Query<(&Growing, &mut GrowingProgress, &mut ScaleModifiers)>,
+) {
     let dt = time.delta_secs();
-    for (growing, mut progress, mut transform) in &mut query {
+    for (growing, mut progress, mut modifiers) in &mut query {
         if progress.duration <= 0.0 {
-            transform.scale = Vec3::splat(growing.start_size / 2.0);
+            modifiers.set(layer.0, Vec3::splat(growing.start_size / 2.0));
             continue;
         }
         progress.elapsed += dt;
         let t = (progress.elapsed / progress.duration).clamp(0.0, 1.0);
         let size = growing.start_size + (growing.end_size - growing.start_size) * t;
-        transform.scale = Vec3::splat(size / 2.0);
+        modifiers.set(layer.0, Vec3::splat(size / 2.0));
     }
 }
 

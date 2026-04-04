@@ -1,9 +1,7 @@
 use bevy::prelude::*;
 
-use crate::blueprints::components::common::jump_walk_animation::animate as jump_animate;
-use crate::blueprints::components::common::shoot_squish::animate as shoot_squish_animate;
-use crate::blueprints::components::common::squish_walk_animation::animate as squish_animate;
 use crate::blueprints::components::common::sprite::{CapsuleSprite, CircleSprite, TriangleSprite, SquareSprite};
+use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::health_material::HealthMaterial;
 
 #[derive(Component)]
@@ -21,18 +19,20 @@ impl HitFlash {
     }
 }
 
+#[derive(Resource)]
+struct HitFlashScaleLayer(ScaleLayerId);
+
 pub struct HitFlashPlugin;
 
 impl Plugin for HitFlashPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PostUpdate,
-            tick_hit_flash
-                .after(jump_animate)
-                .after(squish_animate)
-                .after(shoot_squish_animate),
-        );
+        app.add_systems(Startup, register_layer)
+            .add_systems(PostUpdate, tick_hit_flash);
     }
+}
+
+fn register_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Commands) {
+    commands.insert_resource(HitFlashScaleLayer(registry.register()));
 }
 
 fn get_sprite_colors(
@@ -48,17 +48,19 @@ fn get_sprite_colors(
 }
 
 fn tick_hit_flash(
+    layer: Res<HitFlashScaleLayer>,
     mut commands: Commands,
     time: Res<Time>,
     mut flash_query: Query<(Entity, &mut HitFlash, &Children)>,
-    mut material_query: Query<
-        (&MeshMaterial3d<StandardMaterial>, &mut Transform),
+    material_query: Query<
+        &MeshMaterial3d<StandardMaterial>,
         Without<MeshMaterial3d<HealthMaterial>>,
     >,
-    mut health_mat_query: Query<
-        (&MeshMaterial3d<HealthMaterial>, &mut Transform),
+    health_mat_query: Query<
+        &MeshMaterial3d<HealthMaterial>,
         Without<MeshMaterial3d<StandardMaterial>>,
     >,
+    mut modifiers_query: Query<&mut ScaleModifiers>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
     color_query: Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>, Option<&CapsuleSprite>)>,
@@ -69,19 +71,27 @@ fn tick_hit_flash(
 
         let done = t >= 1.0;
 
+        let (scale_x, scale_y) = if done {
+            (1.0, 1.0)
+        } else {
+            (0.7_f32.lerp(1.0, t), 1.3_f32.lerp(1.0, t))
+        };
+
         for child in children.iter() {
+            if let Ok(mut modifiers) = modifiers_query.get_mut(child) {
+                modifiers.set(layer.0, Vec3::new(scale_x, scale_y, scale_x));
+            }
+
             let Some((original_color, flash_color)) = get_sprite_colors(child, &color_query) else {
                 continue;
             };
 
-            if let Ok((mat_handle, mut transform)) = material_query.get_mut(child) {
+            if let Ok(mat_handle) = material_query.get(child) {
                 if let Some(material) = materials.get_mut(&mat_handle.0) {
                     if done {
                         material.base_color = original_color;
                     } else {
                         let flash_amount = 1.0 - t;
-                        let scale_x = 0.7_f32.lerp(1.0, t);
-                        let scale_y = 1.3_f32.lerp(1.0, t);
                         if let Some(target) = flash_color {
                             let orig = original_color.to_srgba();
                             let tgt = target.to_srgba();
@@ -91,18 +101,14 @@ fn tick_hit_flash(
                                 orig.blue.lerp(tgt.blue, flash_amount),
                             );
                         }
-                        transform.scale.x *= scale_x;
-                        transform.scale.y *= scale_y;
                     }
                 }
-            } else if let Ok((mat_handle, mut transform)) = health_mat_query.get_mut(child) {
+            } else if let Ok(mat_handle) = health_mat_query.get(child) {
                 if let Some(material) = health_materials.get_mut(&mat_handle.0) {
                     if done {
                         material.data.base_color = original_color.to_linear();
                     } else {
                         let flash_amount = 1.0 - t;
-                        let scale_x = 0.7_f32.lerp(1.0, t);
-                        let scale_y = 1.3_f32.lerp(1.0, t);
                         if let Some(target) = flash_color {
                             let orig = original_color.to_srgba();
                             let tgt = target.to_srgba();
@@ -113,8 +119,6 @@ fn tick_hit_flash(
                             )
                             .to_linear();
                         }
-                        transform.scale.x *= scale_x;
-                        transform.scale.y *= scale_y;
                     }
                 }
             }

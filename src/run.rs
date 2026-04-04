@@ -4,6 +4,7 @@ use bevy::prelude::*;
 use crate::blueprints::components::common::health::Health;
 use crate::blueprints::components::common::jump_walk_animation::JumpWalkAnimationState;
 use crate::blueprints::SpawnSource;
+use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::stats::{DeathEvent, SkipCleanup, death_system};
@@ -24,7 +25,6 @@ enum DeathPhase {
     Landing { elapsed: f32 },
     Shrinking {
         elapsed: f32,
-        initial_scale: Vec3,
         particle_lifetime: f32,
     },
 }
@@ -34,11 +34,13 @@ pub struct PlayerDying {
     phase: DeathPhase,
 }
 
+#[derive(Resource)]
+struct DeathScaleLayer(ScaleLayerId);
+
 #[derive(Component)]
 struct ShrinkToZero {
     elapsed: f32,
     duration: f32,
-    initial_scale: Vec3,
 }
 
 pub struct RunPlugin;
@@ -46,12 +48,13 @@ pub struct RunPlugin;
 impl Plugin for RunPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<RunState>()
+            .add_systems(Startup, register_death_layer)
             .add_systems(OnEnter(WavePhase::Combat), init_run)
             .add_systems(
                 Update,
                 (
                     tick_run,
-                    drain_stamina.run_if(not(resource_exists::<PlayerDying>)),
+                    drain_life.run_if(not(resource_exists::<PlayerDying>)),
                 )
                     .run_if(in_state(WavePhase::Combat)),
             )
@@ -75,6 +78,10 @@ impl Plugin for RunPlugin {
     }
 }
 
+fn register_death_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Commands) {
+    commands.insert_resource(DeathScaleLayer(registry.register()));
+}
+
 fn init_run(mut run_state: ResMut<RunState>) {
     run_state.elapsed = 0.0;
     run_state.attempt += 1;
@@ -85,7 +92,7 @@ fn tick_run(time: Res<Time>, mut run_state: ResMut<RunState>) {
     run_state.elapsed += time.delta_secs();
 }
 
-fn drain_stamina(
+fn drain_life(
     time: Res<Time>,
     mut player_query: Query<&mut Health, With<Player>>,
 ) {
@@ -99,7 +106,7 @@ fn check_run_end(
     mut death_events: MessageReader<DeathEvent>,
     player_query: Query<Entity, With<Player>>,
     combat_entities: Query<
-        (Entity, &Transform),
+        (Entity, Has<ScaleModifiers>),
         (
             Or<(With<DespawnOnExit<WavePhase>>, With<SpawnSource>)>,
             Without<Player>,
@@ -122,12 +129,15 @@ fn check_run_end(
             commands.insert_resource(PlayerDying {
                 phase: DeathPhase::Landing { elapsed: 0.0 },
             });
-            for (entity, transform) in &combat_entities {
-                commands.entity(entity).insert(ShrinkToZero {
+            for (entity, has_modifiers) in &combat_entities {
+                let mut ec = commands.entity(entity);
+                ec.insert(ShrinkToZero {
                     elapsed: 0.0,
                     duration: 0.5,
-                    initial_scale: transform.scale,
                 });
+                if !has_modifiers {
+                    ec.insert(ScaleModifiers::default());
+                }
             }
         }
     }
@@ -136,7 +146,7 @@ fn check_run_end(
 fn mark_new_shrink_targets(
     mut commands: Commands,
     query: Query<
-        (Entity, &Transform),
+        (Entity, Has<ScaleModifiers>),
         (
             Or<(With<DespawnOnExit<WavePhase>>, With<SpawnSource>)>,
             Without<Player>,
@@ -144,25 +154,29 @@ fn mark_new_shrink_targets(
         ),
     >,
 ) {
-    for (entity, transform) in &query {
-        commands.entity(entity).insert(ShrinkToZero {
+    for (entity, has_modifiers) in &query {
+        let mut ec = commands.entity(entity);
+        ec.insert(ShrinkToZero {
             elapsed: 0.0,
             duration: 0.5,
-            initial_scale: transform.scale,
         });
+        if !has_modifiers {
+            ec.insert(ScaleModifiers::default());
+        }
     }
 }
 
 fn animate_shrink_to_zero(
+    layer: Res<DeathScaleLayer>,
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &mut ShrinkToZero, &mut Transform)>,
+    mut query: Query<(Entity, &mut ShrinkToZero, &mut ScaleModifiers)>,
 ) {
     let dt = time.delta_secs();
-    for (entity, mut shrink, mut transform) in &mut query {
+    for (entity, mut shrink, mut modifiers) in &mut query {
         shrink.elapsed += dt;
         let t = (shrink.elapsed / shrink.duration).clamp(0.0, 1.0);
-        transform.scale = shrink.initial_scale * (1.0 - t);
+        modifiers.set(layer.0, Vec3::splat(1.0 - t));
         if t >= 1.0 {
             if let Ok(mut ec) = commands.get_entity(entity) {
                 ec.despawn();
@@ -174,10 +188,11 @@ fn animate_shrink_to_zero(
 const PLAYER_DEATH_PARTICLE_LIFETIME: f32 = 0.5;
 
 fn player_death_sequence(
+    layer: Res<DeathScaleLayer>,
     mut commands: Commands,
     time: Res<Time>,
     mut dying: ResMut<PlayerDying>,
-    mut player_query: Query<(Entity, &mut Transform, &Children), With<Player>>,
+    mut player_query: Query<(Entity, &Transform, &Children, &mut ScaleModifiers), With<Player>>,
     anim_state_query: Query<&JumpWalkAnimationState>,
     children_query: Query<&Children>,
     shrink_query: Query<(), With<ShrinkToZero>>,
@@ -187,14 +202,14 @@ fn player_death_sequence(
 
     if let DeathPhase::Shrinking {
         ref mut elapsed,
-        initial_scale,
         particle_lifetime,
+        ..
     } = dying.phase
     {
         *elapsed += dt;
-        if let Ok((_, mut transform, _)) = player_query.single_mut() {
+        if let Ok((_, _, _, mut modifiers)) = player_query.single_mut() {
             let t = (*elapsed / PLAYER_SHRINK_DURATION).clamp(0.0, 1.0);
-            transform.scale = initial_scale * (1.0 - t);
+            modifiers.set(layer.0, Vec3::splat(1.0 - t));
         }
         if *elapsed >= particle_lifetime && shrink_query.is_empty() {
             next_phase.set(WavePhase::Shop);
@@ -207,7 +222,7 @@ fn player_death_sequence(
     };
     *elapsed += dt;
 
-    let Ok((_player_entity, transform, player_children)) = player_query.single_mut() else {
+    let Ok((_player_entity, transform, player_children, _)) = player_query.single_mut() else {
         next_phase.set(WavePhase::Shop);
         return;
     };
@@ -232,7 +247,6 @@ fn player_death_sequence(
     }
 
     let pos = crate::coord::to_2d(transform.translation);
-    let initial_scale = transform.scale;
 
     crate::particles::start_particles(&mut commands, "player_death", pos);
 
@@ -241,7 +255,6 @@ fn player_death_sequence(
 
     dying.phase = DeathPhase::Shrinking {
         elapsed: 0.0,
-        initial_scale,
         particle_lifetime: PLAYER_DEATH_PARTICLE_LIFETIME,
     };
 }

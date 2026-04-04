@@ -1,6 +1,7 @@
 mod balance;
 mod blueprints;
 mod coin;
+mod composite_scale;
 mod arena;
 pub mod expr;
 mod common;
@@ -226,7 +227,8 @@ fn main() {
             WavePlugin,
             SummoningPlugin,
         ))
-        .add_plugins(particles::ParticlesPlugin);
+        .add_plugins(particles::ParticlesPlugin)
+        .add_plugins(composite_scale::CompositeScalePlugin);
 
     #[cfg(feature = "dev")]
     if std::env::var("SCENARIO").is_ok() {
