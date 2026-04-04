@@ -20,7 +20,6 @@ pub use display::{FormatSpan, SignMode, StatDisplayRegistry, ValueTemplate};
 pub use health::{Dead, SkipCleanup, death_system, DeathEvent};
 pub use modifier_def::{ModifierDefRaw, StatRange};
 pub use modifiers::Modifiers;
-pub use damage::DamageEvent;
 pub use pending_damage::PendingDamage;
 pub use stat_id::{StatEvalKind, StatId, StatRegistry};
 
@@ -35,7 +34,6 @@ impl Plugin for StatsPlugin {
     fn build(&self, app: &mut App) {
         app.add_message::<PendingDamage>()
             .add_message::<DeathEvent>()
-            .add_message::<DamageEvent>()
             .add_systems(
                 PreUpdate,
                 (systems::mark_dirty_on_modifier_change, systems::recalculate_stats)

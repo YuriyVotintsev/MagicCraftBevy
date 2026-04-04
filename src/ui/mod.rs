@@ -1,4 +1,3 @@
-mod damage_numbers;
 mod dev_menu;
 mod hud;
 mod loading;
@@ -61,14 +60,6 @@ impl Plugin for UiPlugin {
             .add_systems(
                 OnExit(WavePhase::Shop),
                 skill_tree_view::cleanup_skill_tree_view,
-            )
-            .add_systems(
-                Update,
-                (
-                    damage_numbers::spawn_damage_numbers,
-                    damage_numbers::update_damage_numbers,
-                )
-                    .run_if(in_state(GameState::Playing)),
             )
             .add_systems(OnEnter(CombatPhase::Paused), pause_menu::spawn_pause_menu)
             .add_systems(

@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::palette;
+
 #[blueprint_component]
 pub struct Shadow {
     #[raw(default = -0.5)]
@@ -32,7 +34,7 @@ fn init_shadow(
 
     for (entity, shadow) in &query {
         let material = materials.add(StandardMaterial {
-            base_color: Color::srgba(0.0, 0.0, 0.0, shadow.opacity),
+            base_color: palette::color_alpha("shadow", shadow.opacity),
             unlit: true,
             alpha_mode: AlphaMode::Blend,
             ..default()

@@ -28,6 +28,7 @@
         "cream":        (0.969, 0.949, 0.890),   // #F7F2E3
         "cream_dark":   (0.75, 0.73, 0.68),
         "cream_darker": (0.55, 0.53, 0.48),
+        "black":        (0.0, 0.0, 0.0),
     },
     aliases: {
         "player":         "dark_teal",
@@ -39,5 +40,6 @@
         "border":         "cream_dark",
         "void":           "cream_darker",
         "enemy_injured":  "purple",
+        "shadow":         "black",
     },
 )
