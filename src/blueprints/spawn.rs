@@ -9,7 +9,7 @@ use super::context::TargetInfo;
 use super::entity_def::{EntityDef, StatesBlock};
 use super::expr::EvalCtx;
 use super::recalc::StoredComponentDefs;
-use super::state::{CurrentState, StoredStatesBlock};
+use super::state::{CurrentState, PendingInitialState, StoredStatesBlock};
 use super::{SpawnSource, BlueprintId, BlueprintRegistry, spawn_blueprint_entity};
 
 #[derive(SystemParam)]
@@ -233,28 +233,18 @@ fn init_fsm(
     commands: &mut Commands,
     entity_id: Entity,
     states_block: Option<&StatesBlock>,
-    source: &SpawnSource,
-    stats: &ComputedStats,
+    _source: &SpawnSource,
+    _stats: &ComputedStats,
 ) -> Vec<ComponentDef> {
     let Some(states_block) = states_block else { return Vec::new() };
 
-    let mut recalc = Vec::new();
-    if let Some(state_def) = states_block.states.get(states_block.initial) {
-        let mut ec = commands.entity(entity_id);
-        for comp in state_def.components.iter().chain(state_def.transitions.iter()) {
-            comp.insert_component(&mut ec, source, stats);
-            if comp.has_recalc() {
-                recalc.push(comp.clone());
-            }
-        }
-    }
-
     commands.entity(entity_id).insert((
-        CurrentState(states_block.initial),
+        CurrentState(usize::MAX),
         StoredStatesBlock(states_block.clone()),
+        PendingInitialState(states_block.initial),
     ));
 
-    recalc
+    Vec::new()
 }
 
 fn store_recalc(

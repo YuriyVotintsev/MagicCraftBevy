@@ -16,6 +16,9 @@ pub struct StateTransition {
 pub struct CurrentState(pub usize);
 
 #[derive(Component)]
+pub struct PendingInitialState(pub usize);
+
+#[derive(Component)]
 pub struct StoredStatesBlock(pub StatesBlock);
 
 pub fn state_transition_system(
