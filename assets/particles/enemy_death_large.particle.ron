@@ -1,6 +1,6 @@
 (
     parent: Some("enemy_death"),
     count: Some(24),
-    start_size: Some(180.0),
+    start_size: Some(90.0),
     speed: Some(400.0),
 )

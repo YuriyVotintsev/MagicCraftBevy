@@ -7,7 +7,7 @@ use crate::GameState;
 #[blueprint_component]
 pub struct Particles {
     pub config: String,
-    #[default_expr("target.position")]
+    #[default_expr("source.position")]
     pub position: VecExpr,
 }
 

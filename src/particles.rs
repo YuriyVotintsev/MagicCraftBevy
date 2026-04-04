@@ -320,15 +320,14 @@ fn spawn_burst(
         let speed = config.speed * rng.random_range(0.5..1.0);
         let dir = Vec2::new(angle.cos(), angle.sin());
 
-        let start_scale = config.start_size / 2.0;
-        let end_scale = config.end_size / 2.0;
+        let start_scale = config.start_size;
+        let end_scale = config.end_size;
 
         let shape_offset = match shape {
             SpawnShape::Point => Vec3::ZERO,
             SpawnShape::Circle(radius) => {
                 let a = rng.random_range(0.0..std::f32::consts::TAU);
-                let r = *radius * rng.random_range(0.0f32..1.0).sqrt();
-                Vec3::new(a.cos() * r, 0.0, a.sin() * r)
+                Vec3::new(a.cos() * radius, 0.0, a.sin() * radius)
             }
         };
 

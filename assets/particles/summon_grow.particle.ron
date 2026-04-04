@@ -1,6 +1,6 @@
 (
     count: Some(1),
-    spawn_rate: Some(100.0),
+    spawn_rate: Some(300.0),
     speed: Some(0.0),
     vertical_speed: Some(100.0),
     lifetime: Some(0.4),

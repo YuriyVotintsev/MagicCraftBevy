@@ -2,7 +2,7 @@
     count: Some(10),
     speed: Some(250.0),
     lifetime: Some(0.5),
-    start_size: Some(200.0),
+    start_size: Some(100.0),
     end_size: Some(0.0),
     elevation: Some(0.5),
     color: Some("player"),
