@@ -2,6 +2,9 @@
     id: "jumper_shot",
     cooldown: Some("0"),
     entities: [
+        (components: [
+            DeathParticles((count: Some("24"), start_size: Some("180"), speed: Some("400"), color: "enemy_ability")),
+        ]),
         (count: Some("4"), components: [
             Projectile(()),
             Radial(()),

@@ -20,6 +20,8 @@ pub struct DeathParticles {
     pub end_size: ScalarExpr,
     #[raw(default = 0.5)]
     pub elevation: ScalarExpr,
+    #[raw(default = "enemy")]
+    pub color: String,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -40,7 +42,8 @@ fn spawn_death_particles(
             .or(source.source.position)
             .unwrap_or(Vec2::ZERO);
 
-        let color = crate::palette::color("enemy");
+        let color_name = if config.color.is_empty() { "enemy" } else { &config.color };
+        let color = crate::palette::color(color_name);
         let material = materials.add(StandardMaterial {
             base_color: color,
             unlit: true,

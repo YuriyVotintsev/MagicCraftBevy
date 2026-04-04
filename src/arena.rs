@@ -187,15 +187,14 @@ fn update_target_count(
 fn spawn_enemies(
     mut commands: Commands,
     mut wave_state: ResMut<WaveState>,
-    enemies_query: Query<&Faction, With<Health>>,
     player_query: Query<&Transform, With<crate::player::Player>>,
     blueprint_registry: Res<BlueprintRegistry>,
     balance: Res<GameBalance>,
     circle_mesh: Res<SummoningCircleMesh>,
     circle_material: Res<SummoningCircleMaterial>,
 ) {
-    let alive_enemies = enemies_query.iter().filter(|f| **f == Faction::Enemy).count() as u32;
-    let deficit = wave_state.max_concurrent.saturating_sub(alive_enemies + wave_state.summoning_count);
+    let active_enemies = wave_state.spawned_count - wave_state.killed_count;
+    let deficit = wave_state.max_concurrent.saturating_sub(active_enemies);
     if deficit == 0 {
         return;
     }
