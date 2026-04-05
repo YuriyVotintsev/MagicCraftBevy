@@ -25,9 +25,6 @@ mod summoning;
 mod ui;
 mod wave;
 
-#[cfg(feature = "dev")]
-mod scenario;
-
 #[cfg(test)]
 mod validation_tests;
 
@@ -229,11 +226,6 @@ fn main() {
         ))
         .add_plugins(particles::ParticlesPlugin)
         .add_plugins(composite_scale::CompositeScalePlugin);
-
-    #[cfg(feature = "dev")]
-    if std::env::var("SCENARIO").is_ok() {
-        app.add_plugins(scenario::ScenarioPlugin);
-    }
 
     app.run();
 }
