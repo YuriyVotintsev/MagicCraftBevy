@@ -7,7 +7,7 @@
                 duration: "0.8",
                 arc_height: "8.0",
                 start_elevation: Some("1.6"),
-                spread: Some("350"),
+                spread: Some("450"),
                 start_position: Some("caster.position"),
                 entities: [
                     (components: [Particles((config: "tower_explosion"))]),
@@ -22,7 +22,15 @@
                         Lifetime((remaining: "0.5")),
                         FadeOut(()),
                     ]),
-                ]
+                ],
+                indicators: [
+                    (components: [
+                        Size((value: "400.0")),
+                        Sprite((color: ("enemy_ability", 0.2), shape: Disc, elevation: Some("0.02"))),
+                        Growing((start_size: "0", end_size: "400.0")),
+                        Lifetime((remaining: "0.8")),
+                    ]),
+                ],
             )),
             Size((value: "60.0")),
             Visual((children: [

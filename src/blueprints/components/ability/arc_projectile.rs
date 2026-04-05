@@ -22,12 +22,14 @@ pub struct ArcProjectile {
     #[default_expr("target.position")]
     pub target_position: VecExpr,
     pub entities: Vec<EntityDef>,
+    pub indicators: Vec<EntityDef>,
 }
 
 #[derive(Component)]
 pub struct ArcProjectileProgress {
     pub elapsed: f32,
     pub sprite_entity: Option<Entity>,
+    pub spawned_indicators: bool,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -53,6 +55,7 @@ fn init_arc_progress(
         commands.entity(entity).insert(ArcProjectileProgress {
             elapsed: 0.0,
             sprite_entity: None,
+            spawned_indicators: false,
         });
     }
 }
@@ -81,6 +84,21 @@ fn update_arc_projectiles(
         let arc_h = arc.arc_height * 4.0 * t * (1.0 - t);
         let elev = arc.start_elevation * (1.0 - t);
         let height = arc_h + elev;
+
+        if !progress.spawned_indicators && !arc.indicators.is_empty() {
+            progress.spawned_indicators = true;
+            let indicators = arc.indicators.clone();
+            let readonly = other_transforms.reborrow().into_readonly();
+            spawner.spawn_triggered(
+                entity,
+                source,
+                TargetInfo::from_position(arc.target_position),
+                TargetInfo::EMPTY,
+                &indicators,
+                &stats_query,
+                &readonly,
+            );
+        }
 
         if progress.sprite_entity.is_none() {
             if let Ok(children) = children_query.get(entity) {

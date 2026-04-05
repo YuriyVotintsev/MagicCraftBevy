@@ -98,7 +98,6 @@ pub struct CapsuleSprite {
 #[derive(Component)]
 pub struct DiscSprite {
     pub color: Color,
-    pub flash_color: Option<Color>,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -144,7 +143,7 @@ fn init_sprite(
                     });
                 }
                 SpriteShape::Disc => {
-                    commands.entity(entity).insert(DiscSprite { color, flash_color });
+                    commands.entity(entity).insert(DiscSprite { color });
                 }
             }
         }
