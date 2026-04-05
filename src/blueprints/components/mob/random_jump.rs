@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 use rand::Rng;
 
-use crate::balance::GameBalance;
+use crate::balance::CurrentArenaSize;
 use crate::movement::SelfMoving;
 
 #[blueprint_component]
@@ -35,12 +35,11 @@ pub fn register_systems(app: &mut App) {
 fn init_random_jump(
     mut commands: Commands,
     query: Query<(Entity, &RandomJump, &Transform), Added<RandomJump>>,
-    balance: Res<GameBalance>,
+    arena_size: Res<CurrentArenaSize>,
 ) {
-    let arena = &balance.arena;
     let margin = 120.0;
-    let hw = arena.half_w() - margin;
-    let hh = arena.half_h() - margin;
+    let hw = arena_size.half_w() - margin;
+    let hh = arena_size.half_h() - margin;
     let mut rng = rand::rng();
 
     for (entity, jump, transform) in &query {

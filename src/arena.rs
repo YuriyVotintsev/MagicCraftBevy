@@ -4,7 +4,7 @@ use bevy::camera::ScalingMode;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use rand::Rng;
 
-use crate::balance::{ArenaBalance, GameBalance};
+use crate::balance::{CurrentArenaSize, GameBalance};
 use crate::blueprints::components::common::health::Health;
 use crate::blueprints::BlueprintRegistry;
 use crate::physics::{GameLayer, Wall};
@@ -46,10 +46,11 @@ impl EnemySpawnPool {
 
 #[derive(Component)]
 struct FloorParams {
-    width: f32,
-    height: f32,
     radius: f32,
 }
+
+#[derive(Component)]
+enum WallSide { North, South, West, East }
 
 pub struct ArenaPlugin;
 
@@ -57,14 +58,19 @@ impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CameraAngle>()
             .init_resource::<EnemySpawnPool>()
+            .init_resource::<CurrentArenaSize>()
             .add_systems(Startup, setup_camera)
             .add_systems(
                 OnEnter(GameState::MainMenu),
                 spawn_arena.run_if(not(any_with_component::<Wall>)),
             )
             .add_systems(
+                OnEnter(WavePhase::Combat),
+                reset_arena_size,
+            )
+            .add_systems(
                 Update,
-                (update_target_count, spawn_enemies, tag_wave_enemies)
+                (update_arena_size, update_target_count, spawn_enemies, tag_wave_enemies)
                     .chain()
                     .in_set(GameSet::Spawning)
                     .run_if(in_state(WavePhase::Combat))
@@ -74,7 +80,7 @@ impl Plugin for ArenaPlugin {
                 PostUpdate,
                 camera_follow.run_if(in_state(GameState::Playing)),
             )
-            .add_systems(Update, update_floor_mesh);
+            .add_systems(Update, (update_walls, update_floor_mesh));
     }
 }
 
@@ -121,26 +127,30 @@ fn spawn_arena(
     camera_angle: Res<CameraAngle>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut arena_size: ResMut<CurrentArenaSize>,
 ) {
     let arena = &balance.arena;
+    arena_size.width = arena.start_width;
+    arena_size.height = arena.start_height;
+    let start_hw = arena.start_width / 2.0;
+    let start_hh = arena.start_height / 2.0;
 
-    let half_w = arena.half_w();
-    let half_h = arena.half_h();
     let wall_height = 200.0;
     let wall_thickness = 20.0;
     let wall_layers = CollisionLayers::new(GameLayer::Wall, LayerMask::ALL);
 
     let walls = [
-        ("NorthWall", Vec3::new(0.0, wall_height / 2.0, -half_h), Vec3::new(half_w * 2.0 + wall_thickness, wall_height, wall_thickness)),
-        ("SouthWall", Vec3::new(0.0, wall_height / 2.0, half_h), Vec3::new(half_w * 2.0 + wall_thickness, wall_height, wall_thickness)),
-        ("WestWall", Vec3::new(-half_w, wall_height / 2.0, 0.0), Vec3::new(wall_thickness, wall_height, half_h * 2.0 + wall_thickness)),
-        ("EastWall", Vec3::new(half_w, wall_height / 2.0, 0.0), Vec3::new(wall_thickness, wall_height, half_h * 2.0 + wall_thickness)),
+        ("NorthWall", WallSide::North, Vec3::new(0.0, wall_height / 2.0, -start_hh), Vec3::new(start_hw * 2.0 + wall_thickness, wall_height, wall_thickness)),
+        ("SouthWall", WallSide::South, Vec3::new(0.0, wall_height / 2.0, start_hh), Vec3::new(start_hw * 2.0 + wall_thickness, wall_height, wall_thickness)),
+        ("WestWall", WallSide::West, Vec3::new(-start_hw, wall_height / 2.0, 0.0), Vec3::new(wall_thickness, wall_height, start_hh * 2.0 + wall_thickness)),
+        ("EastWall", WallSide::East, Vec3::new(start_hw, wall_height / 2.0, 0.0), Vec3::new(wall_thickness, wall_height, start_hh * 2.0 + wall_thickness)),
     ];
 
-    for (name, pos, size) in walls {
+    for (name, side, pos, size) in walls {
         commands.spawn((
             Name::new(name),
             Wall,
+            side,
             Transform::from_translation(pos),
             Collider::cuboid(size.x, size.y, size.z),
             CollisionMargin(5.0),
@@ -155,8 +165,8 @@ fn spawn_arena(
 
     commands.spawn((
         Name::new("ArenaFloor"),
-        FloorParams { width: arena.width, height: arena.height, radius: floor_radius },
-        Mesh3d(meshes.add(rounded_floor_mesh(arena.width, arena.height, floor_radius, z_stretch))),
+        FloorParams { radius: floor_radius },
+        Mesh3d(meshes.add(rounded_floor_mesh(arena.start_width, arena.start_height, floor_radius, z_stretch))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: crate::palette::color("background"),
             unlit: true,
@@ -193,6 +203,64 @@ fn camera_follow(
     *camera_transform = camera_transform.looking_at(look_at, up);
 }
 
+fn reset_arena_size(
+    mut arena_size: ResMut<CurrentArenaSize>,
+    balance: Res<GameBalance>,
+) {
+    arena_size.width = balance.arena.start_width;
+    arena_size.height = balance.arena.start_height;
+}
+
+fn update_arena_size(
+    run_state: Res<RunState>,
+    balance: Res<GameBalance>,
+    mut arena_size: ResMut<CurrentArenaSize>,
+) {
+    let arena = &balance.arena;
+    let t = (run_state.elapsed / balance.wave.ramp_duration_secs).clamp(0.0, 1.0);
+    let w = arena.start_width + t * (arena.width - arena.start_width);
+    let h = arena.start_height + t * (arena.height - arena.start_height);
+    if (arena_size.width - w).abs() > 0.1 || (arena_size.height - h).abs() > 0.1 {
+        arena_size.width = w;
+        arena_size.height = h;
+    }
+}
+
+fn update_walls(
+    arena_size: Option<Res<CurrentArenaSize>>,
+    mut query: Query<(&WallSide, &mut Transform, &mut Collider)>,
+) {
+    let Some(arena_size) = arena_size else { return };
+    if !arena_size.is_changed() {
+        return;
+    }
+    let half_w = arena_size.half_w();
+    let half_h = arena_size.half_h();
+    let wall_thickness = 20.0;
+    let wall_height = 200.0;
+
+    for (side, mut transform, mut collider) in &mut query {
+        match side {
+            WallSide::North => {
+                transform.translation.z = -half_h;
+                *collider = Collider::cuboid(half_w * 2.0 + wall_thickness, wall_height, wall_thickness);
+            }
+            WallSide::South => {
+                transform.translation.z = half_h;
+                *collider = Collider::cuboid(half_w * 2.0 + wall_thickness, wall_height, wall_thickness);
+            }
+            WallSide::West => {
+                transform.translation.x = -half_w;
+                *collider = Collider::cuboid(wall_thickness, wall_height, half_h * 2.0 + wall_thickness);
+            }
+            WallSide::East => {
+                transform.translation.x = half_w;
+                *collider = Collider::cuboid(wall_thickness, wall_height, half_h * 2.0 + wall_thickness);
+            }
+        }
+    }
+}
+
 fn update_target_count(
     run_state: Res<RunState>,
     mut wave_state: ResMut<WaveState>,
@@ -216,6 +284,7 @@ fn spawn_enemies(
     circle_material: Res<SummoningCircleMaterial>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     spawn_pool: Res<EnemySpawnPool>,
+    arena_size: Res<CurrentArenaSize>,
 ) {
     let active_enemies = wave_state.spawned_count - wave_state.killed_count;
     let deficit = wave_state.max_concurrent.saturating_sub(active_enemies);
@@ -228,11 +297,10 @@ fn spawn_enemies(
         .map(|t| crate::coord::to_2d(t.translation))
         .unwrap_or(Vec2::ZERO);
 
-    let arena = &balance.arena;
     let safe_radius_sq = balance.wave.safe_spawn_radius * balance.wave.safe_spawn_radius;
     let margin = 30.0;
-    let hw = arena.half_w() - margin;
-    let hh = arena.half_h() - margin;
+    let hw = arena_size.half_w() - margin;
+    let hh = arena_size.half_h() - margin;
     let mut rng = rand::rng();
 
     let mut extra_modifiers = Vec::new();
@@ -257,7 +325,7 @@ fn spawn_enemies(
                 let pos = Vec2::new(x, y);
                 attempts += 1;
                 if attempts > 100
-                    || (is_inside_arena(pos, margin, arena)
+                    || (is_inside_arena(pos, margin, &arena_size)
                         && pos.distance_squared(player_pos) > safe_radius_sq)
                 {
                     break (x, y);
@@ -350,7 +418,7 @@ fn spawn_enemies(
     }
 }
 
-fn is_inside_arena(pos: Vec2, margin: f32, arena: &ArenaBalance) -> bool {
+fn is_inside_arena(pos: Vec2, margin: f32, arena: &CurrentArenaSize) -> bool {
     let hw = arena.half_w() - margin;
     let hh = arena.half_h() - margin;
     pos.x.abs() <= hw && pos.y.abs() <= hh
@@ -371,17 +439,19 @@ fn tag_wave_enemies(
 
 fn update_floor_mesh(
     camera_angle: Res<CameraAngle>,
+    arena_size: Option<Res<CurrentArenaSize>>,
     query: Query<(&FloorParams, &Mesh3d)>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
-    if !camera_angle.is_changed() {
+    let Some(arena_size) = arena_size else { return };
+    if !camera_angle.is_changed() && !arena_size.is_changed() {
         return;
     }
     let elevation = (90.0 - camera_angle.degrees).to_radians();
     let z_stretch = 1.0 / elevation.sin();
     for (params, mesh_handle) in &query {
         if let Some(mesh) = meshes.get_mut(&mesh_handle.0) {
-            *mesh = rounded_floor_mesh(params.width, params.height, params.radius, z_stretch);
+            *mesh = rounded_floor_mesh(arena_size.width, arena_size.height, params.radius, z_stretch);
         }
     }
 }
