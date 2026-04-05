@@ -13,6 +13,7 @@
                     (components: [Shadow(())]),
                     (components: [
                         Sprite((
+                        	elevation: Some("1.2"),
                             position: Some("vec2(0, 0)"),
                             color: "enemy",
                             shape: Circle,
