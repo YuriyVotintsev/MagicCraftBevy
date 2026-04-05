@@ -15,6 +15,7 @@ pub struct HealthMaterialData {
     pub hp_fraction: f32,
     pub uv_top: f32,
     pub uv_bottom: f32,
+    pub alpha: f32,
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Clone)]
@@ -89,6 +90,7 @@ fn apply_health_material(
                     hp_fraction: hp_frac,
                     uv_top,
                     uv_bottom,
+                    alpha: 1.0,
                 },
             });
 

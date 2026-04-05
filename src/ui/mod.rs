@@ -77,7 +77,15 @@ impl Plugin for UiPlugin {
             )
             .add_systems(
                 Update,
-                (dev_menu::slider_interaction, dev_menu::cheat_money)
+                (
+                    dev_menu::slider_interaction,
+                    dev_menu::cheat_money,
+                    dev_menu::cheat_health,
+                    dev_menu::cheat_damage,
+                    dev_menu::toggle_enemy_type,
+                    dev_menu::enable_all_enemies,
+                    dev_menu::disable_all_enemies,
+                )
                     .run_if(in_state(CombatPhase::DevMenu)),
             );
 

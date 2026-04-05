@@ -1,8 +1,11 @@
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 
-use crate::arena::CameraAngle;
+use crate::arena::{CameraAngle, EnemySpawnPool};
+use crate::blueprints::components::common::health::Health;
 use crate::money::PlayerMoney;
+use crate::player::Player;
+use crate::stats::{DirtyStats, Modifiers, StatRegistry};
 use crate::wave::CombatPhase;
 
 const SLIDER_MIN: f32 = 1.0;
@@ -19,6 +22,24 @@ pub(super) struct SliderValueText;
 
 #[derive(Component)]
 pub(super) struct CheatMoneyButton;
+
+#[derive(Component)]
+pub(super) struct CheatHealthButton;
+
+#[derive(Component)]
+pub(super) struct CheatDamageButton;
+
+#[derive(Component)]
+pub(super) struct EnemyToggleButton(pub usize);
+
+#[derive(Component)]
+pub(super) struct EnableAllEnemiesButton;
+
+#[derive(Component)]
+pub(super) struct DisableAllEnemiesButton;
+
+#[derive(Component)]
+pub(super) struct EnemyToggleText(pub usize);
 
 pub(super) fn toggle_dev_menu(
     key: Res<ButtonInput<KeyCode>>,
@@ -47,8 +68,178 @@ pub(super) fn toggle_dev_menu(
     }
 }
 
-pub(super) fn spawn_dev_menu(mut commands: Commands, camera_angle: Res<CameraAngle>) {
+fn cheat_button(label: &str, color: Color, marker: impl Component) -> impl Bundle {
+    (
+        marker,
+        Button,
+        Node {
+            margin: UiRect::top(Val::Px(10.0)),
+            padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
+            justify_content: JustifyContent::Center,
+            ..default()
+        },
+        BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
+        children![
+            (
+                Text::new(label),
+                TextFont { font_size: 22.0, ..default() },
+                TextColor(color)
+            )
+        ],
+    )
+}
+
+fn enemy_toggle_row(index: usize, name: &str, enabled: bool) -> impl Bundle {
+    let text_color = if enabled {
+        Color::srgb(0.3, 0.9, 0.3)
+    } else {
+        Color::srgb(0.5, 0.5, 0.5)
+    };
+    let label = if enabled {
+        format!("[x] {}", name)
+    } else {
+        format!("[  ] {}", name)
+    };
+
+    (
+        EnemyToggleButton(index),
+        Button,
+        Node {
+            padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
+            margin: UiRect::top(Val::Px(4.0)),
+            justify_content: JustifyContent::FlexStart,
+            ..default()
+        },
+        BackgroundColor(Color::srgb(0.15, 0.15, 0.2)),
+        children![
+            (
+                EnemyToggleText(index),
+                Text::new(label),
+                TextFont { font_size: 20.0, ..default() },
+                TextColor(text_color)
+            )
+        ],
+    )
+}
+
+pub(super) fn spawn_dev_menu(
+    mut commands: Commands,
+    camera_angle: Res<CameraAngle>,
+    spawn_pool: Res<EnemySpawnPool>,
+) {
     let t = (camera_angle.degrees - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN);
+
+    let mut enemy_rows: Vec<Entity> = Vec::new();
+    for (i, (name, enabled)) in spawn_pool.enabled.iter().enumerate() {
+        let row = commands.spawn(enemy_toggle_row(i, name, *enabled)).id();
+        enemy_rows.push(row);
+    }
+
+    let enable_all = commands.spawn(cheat_button(
+        "Enable All",
+        Color::srgb(0.3, 0.9, 0.3),
+        EnableAllEnemiesButton,
+    )).id();
+    let disable_all = commands.spawn(cheat_button(
+        "Disable All",
+        Color::srgb(0.9, 0.3, 0.3),
+        DisableAllEnemiesButton,
+    )).id();
+
+    let bulk_row = commands.spawn((
+        Node {
+            flex_direction: FlexDirection::Row,
+            column_gap: Val::Px(10.0),
+            margin: UiRect::top(Val::Px(8.0)),
+            ..default()
+        },
+    )).add_children(&[enable_all, disable_all]).id();
+
+    let mut enemy_section_children: Vec<Entity> = Vec::new();
+    let section_label = commands.spawn((
+        Text::new("Enemy Spawn Pool"),
+        TextFont { font_size: 22.0, ..default() },
+        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+        Node { margin: UiRect::bottom(Val::Px(6.0)), ..default() },
+    )).id();
+    enemy_section_children.push(section_label);
+    enemy_section_children.extend(enemy_rows);
+    enemy_section_children.push(bulk_row);
+
+    let enemy_container = commands.spawn((
+        Node {
+            flex_direction: FlexDirection::Column,
+            margin: UiRect::top(Val::Px(20.0)),
+            ..default()
+        },
+    )).add_children(&enemy_section_children).id();
+
+    let title = commands.spawn((
+        Text::new("Dev Menu"),
+        TextFont { font_size: 48.0, ..default() },
+        TextColor(Color::srgb(0.8, 0.8, 0.9)),
+        Node { margin: UiRect::bottom(Val::Px(30.0)), ..default() },
+    )).id();
+
+    let angle_label = commands.spawn((
+        Text::new("Camera Angle"),
+        TextFont { font_size: 20.0, ..default() },
+        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+    )).id();
+    let angle_value = commands.spawn((
+        SliderValueText,
+        Text::new(format!("{:.0}\u{00b0}", camera_angle.degrees)),
+        TextFont { font_size: 20.0, ..default() },
+        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+    )).id();
+    let angle_row = commands.spawn((
+        Node {
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::SpaceBetween,
+            margin: UiRect::bottom(Val::Px(8.0)),
+            ..default()
+        },
+    )).add_children(&[angle_label, angle_value]).id();
+
+    let slider_fill = commands.spawn((
+        SliderFill,
+        Node {
+            width: Val::Percent(t * 100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        },
+        BackgroundColor(Color::srgb(0.3, 0.6, 0.9)),
+    )).id();
+    let slider = commands.spawn((
+        CameraAngleSlider,
+        Button,
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Px(24.0),
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
+    )).add_child(slider_fill).id();
+
+    let money_btn = commands.spawn(cheat_button("Money +1000", Color::srgb(0.9, 0.85, 0.3), CheatMoneyButton)).id();
+    let health_btn = commands.spawn(cheat_button("Health +100", Color::srgb(0.3, 0.9, 0.4), CheatHealthButton)).id();
+    let damage_btn = commands.spawn(cheat_button("Phys Damage +100", Color::srgb(0.9, 0.4, 0.3), CheatDamageButton)).id();
+
+    let panel = commands.spawn((
+        Node {
+            flex_direction: FlexDirection::Column,
+            align_items: AlignItems::Stretch,
+            padding: UiRect::all(Val::Px(40.0)),
+            width: Val::Px(500.0),
+            max_height: Val::Percent(90.0),
+            overflow: Overflow::scroll_y(),
+            ..default()
+        },
+        BackgroundColor(Color::srgba(0.1, 0.1, 0.15, 0.95)),
+    )).add_children(&[
+        title, angle_row, slider, money_btn, health_btn, damage_btn, enemy_container,
+    ]).id();
 
     commands.spawn((
         Name::new("DevMenuRoot"),
@@ -63,88 +254,7 @@ pub(super) fn spawn_dev_menu(mut commands: Commands, camera_angle: Res<CameraAng
             ..default()
         },
         BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
-        children![
-            (
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    align_items: AlignItems::Stretch,
-                    padding: UiRect::all(Val::Px(40.0)),
-                    width: Val::Px(500.0),
-                    ..default()
-                },
-                BackgroundColor(Color::srgba(0.1, 0.1, 0.15, 0.95)),
-                children![
-                    (
-                        Text::new("Dev Menu"),
-                        TextFont { font_size: 48.0, ..default() },
-                        TextColor(Color::srgb(0.8, 0.8, 0.9)),
-                        Node { margin: UiRect::bottom(Val::Px(30.0)), ..default() }
-                    ),
-                    (
-                        Node {
-                            flex_direction: FlexDirection::Row,
-                            justify_content: JustifyContent::SpaceBetween,
-                            margin: UiRect::bottom(Val::Px(8.0)),
-                            ..default()
-                        },
-                        children![
-                            (
-                                Text::new("Camera Angle"),
-                                TextFont { font_size: 20.0, ..default() },
-                                TextColor(Color::srgb(0.7, 0.7, 0.7))
-                            ),
-                            (
-                                SliderValueText,
-                                Text::new(format!("{:.0}\u{00b0}", camera_angle.degrees)),
-                                TextFont { font_size: 20.0, ..default() },
-                                TextColor(Color::srgb(0.9, 0.9, 0.9))
-                            )
-                        ]
-                    ),
-                    (
-                        CameraAngleSlider,
-                        Button,
-                        Node {
-                            width: Val::Percent(100.0),
-                            height: Val::Px(24.0),
-                            overflow: Overflow::clip(),
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
-                        children![
-                            (
-                                SliderFill,
-                                Node {
-                                    width: Val::Percent(t * 100.0),
-                                    height: Val::Percent(100.0),
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgb(0.3, 0.6, 0.9)),
-                            )
-                        ]
-                    ),
-                    (
-                        CheatMoneyButton,
-                        Button,
-                        Node {
-                            margin: UiRect::top(Val::Px(20.0)),
-                            padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
-                            justify_content: JustifyContent::Center,
-                            ..default()
-                        },
-                        BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
-                        children![
-                            (
-                                Text::new("Money +1000"),
-                                TextFont { font_size: 22.0, ..default() },
-                                TextColor(Color::srgb(0.9, 0.85, 0.3))
-                            )
-                        ]
-                    )
-                ]
-            )
-        ],
-    ));
+    )).add_child(panel);
 }
 
 pub(super) fn cheat_money(
@@ -154,6 +264,113 @@ pub(super) fn cheat_money(
     for interaction in &query {
         if *interaction == Interaction::Pressed {
             money.earn(1000);
+        }
+    }
+}
+
+pub(super) fn cheat_health(
+    query: Query<&Interaction, (Changed<Interaction>, With<CheatHealthButton>)>,
+    mut player_query: Query<(&mut Modifiers, &mut DirtyStats, &mut Health), With<Player>>,
+    stat_registry: Res<StatRegistry>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            if let Some(stat) = stat_registry.get("max_life_flat") {
+                for (mut modifiers, mut dirty, mut health) in &mut player_query {
+                    modifiers.add(stat, 100.0);
+                    dirty.mark(stat);
+                    health.current += 100.0;
+                }
+            }
+        }
+    }
+}
+
+pub(super) fn cheat_damage(
+    query: Query<&Interaction, (Changed<Interaction>, With<CheatDamageButton>)>,
+    mut player_query: Query<(&mut Modifiers, &mut DirtyStats), With<Player>>,
+    stat_registry: Res<StatRegistry>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            if let Some(stat) = stat_registry.get("physical_damage_flat") {
+                for (mut modifiers, mut dirty) in &mut player_query {
+                    modifiers.add(stat, 100.0);
+                    dirty.mark(stat);
+                }
+            }
+        }
+    }
+}
+
+pub(super) fn toggle_enemy_type(
+    query: Query<(&Interaction, &EnemyToggleButton), Changed<Interaction>>,
+    mut spawn_pool: ResMut<EnemySpawnPool>,
+    mut text_query: Query<(&EnemyToggleText, &mut Text, &mut TextColor)>,
+) {
+    for (interaction, toggle) in &query {
+        if *interaction == Interaction::Pressed {
+            if let Some((name, enabled)) = spawn_pool.enabled.get_mut(toggle.0) {
+                *enabled = !*enabled;
+                let new_enabled = *enabled;
+                let name_clone = name.clone();
+                update_toggle_text(&mut text_query, toggle.0, &name_clone, new_enabled);
+            }
+        }
+    }
+}
+
+pub(super) fn enable_all_enemies(
+    query: Query<&Interaction, (Changed<Interaction>, With<EnableAllEnemiesButton>)>,
+    mut spawn_pool: ResMut<EnemySpawnPool>,
+    mut text_query: Query<(&EnemyToggleText, &mut Text, &mut TextColor)>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            for i in 0..spawn_pool.enabled.len() {
+                spawn_pool.enabled[i].1 = true;
+                let name = spawn_pool.enabled[i].0.clone();
+                update_toggle_text(&mut text_query, i, &name, true);
+            }
+        }
+    }
+}
+
+pub(super) fn disable_all_enemies(
+    query: Query<&Interaction, (Changed<Interaction>, With<DisableAllEnemiesButton>)>,
+    mut spawn_pool: ResMut<EnemySpawnPool>,
+    mut text_query: Query<(&EnemyToggleText, &mut Text, &mut TextColor)>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            for i in 0..spawn_pool.enabled.len() {
+                spawn_pool.enabled[i].1 = false;
+                let name = spawn_pool.enabled[i].0.clone();
+                update_toggle_text(&mut text_query, i, &name, false);
+            }
+        }
+    }
+}
+
+fn update_toggle_text(
+    text_query: &mut Query<(&EnemyToggleText, &mut Text, &mut TextColor)>,
+    index: usize,
+    name: &str,
+    enabled: bool,
+) {
+    for (toggle_text, mut text, mut color) in text_query.iter_mut() {
+        if toggle_text.0 == index {
+            let label = if enabled {
+                format!("[x] {}", name)
+            } else {
+                format!("[  ] {}", name)
+            };
+            *text = Text::new(label);
+            *color = if enabled {
+                TextColor(Color::srgb(0.3, 0.9, 0.3))
+            } else {
+                TextColor(Color::srgb(0.5, 0.5, 0.5))
+            };
         }
     }
 }

@@ -20,6 +20,30 @@ use crate::GameState;
 pub const WINDOW_WIDTH: f32 = 1920.0;
 pub const WINDOW_HEIGHT: f32 = 1080.0;
 
+const ALL_ENEMY_TYPES: &[&str] = &["slime_small", "jumper", "tower", "ghost"];
+
+#[derive(Resource)]
+pub struct EnemySpawnPool {
+    pub enabled: Vec<(String, bool)>,
+}
+
+impl Default for EnemySpawnPool {
+    fn default() -> Self {
+        Self {
+            enabled: ALL_ENEMY_TYPES.iter().map(|&name| (name.to_string(), true)).collect(),
+        }
+    }
+}
+
+impl EnemySpawnPool {
+    pub fn active_names(&self) -> Vec<&str> {
+        self.enabled.iter()
+            .filter(|(_, on)| *on)
+            .map(|(name, _)| name.as_str())
+            .collect()
+    }
+}
+
 #[derive(Component)]
 struct FloorParams {
     width: f32,
@@ -32,6 +56,7 @@ pub struct ArenaPlugin;
 impl Plugin for ArenaPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<CameraAngle>()
+            .init_resource::<EnemySpawnPool>()
             .add_systems(Startup, setup_camera)
             .add_systems(
                 OnEnter(GameState::MainMenu),
@@ -189,6 +214,8 @@ fn spawn_enemies(
     stat_registry: Res<StatRegistry>,
     circle_mesh: Res<SummoningCircleMesh>,
     circle_material: Res<SummoningCircleMaterial>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    spawn_pool: Res<EnemySpawnPool>,
 ) {
     let active_enemies = wave_state.spawned_count - wave_state.killed_count;
     let deficit = wave_state.max_concurrent.saturating_sub(active_enemies);
@@ -238,11 +265,11 @@ fn spawn_enemies(
             }
         };
 
-        let blueprint_name = match rng.random_range(0..3u32) {
-            0 => "tower",
-            1 => "jumper",
-            _ => "slime_small",
-        };
+        let active = spawn_pool.active_names();
+        if active.is_empty() {
+            break;
+        }
+        let blueprint_name = active[rng.random_range(0..active.len())];
 
         if let Some(blueprint_id) = blueprint_registry.get_id(blueprint_name) {
             let circle_size = blueprint_registry
@@ -261,16 +288,39 @@ fn spawn_enemies(
 
             let ground = crate::coord::ground_pos(Vec2::new(x, y));
 
-            commands.spawn((
+            let is_ghost = blueprint_name == "ghost";
+            let mat_handle = if is_ghost {
+                let cloned = materials.get(&circle_material.0).cloned();
+                if let Some(base_mat) = cloned {
+                    MeshMaterial3d(materials.add(base_mat))
+                } else {
+                    MeshMaterial3d(circle_material.0.clone())
+                }
+            } else {
+                MeshMaterial3d(circle_material.0.clone())
+            };
+
+            let mut entity_commands = commands.spawn((
                 Name::new("SummoningCircle"),
                 Mesh3d(circle_mesh.0.clone()),
-                MeshMaterial3d(circle_material.0.clone()),
+                mat_handle,
                 Transform::from_translation(ground + Vec3::Y * 0.02)
                     .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
                     .with_scale(Vec3::ZERO),
                 SummoningCircle::new(blueprint_id, circle_size, extra_modifiers.clone()),
                 DespawnOnExit(WavePhase::Combat),
             ));
+
+            if is_ghost {
+                use crate::blueprints::components::mob::ghost_transparency::{GhostTransparency, GhostAlpha};
+                entity_commands.insert((
+                    GhostTransparency {
+                        visible_distance: 200.0,
+                        invisible_distance: 800.0,
+                    },
+                    GhostAlpha { value: 0.0 },
+                ));
+            }
             wave_state.spawned_count += 1;
             wave_state.summoning_count += 1;
         }

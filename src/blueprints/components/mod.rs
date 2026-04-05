@@ -35,6 +35,7 @@ collect_components!(
             squish_walk_animation,
             shoot_squish,
             shadow,
+            bobbing_animation,
         ],
         mob: [
             move_toward,
@@ -45,6 +46,7 @@ collect_components!(
             after_time,
             lunge_movement,
             random_jump,
+            ghost_transparency,
         ],
         player: [
             keyboard_movement,
