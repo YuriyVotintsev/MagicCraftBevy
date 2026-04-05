@@ -10,9 +10,9 @@ use crate::blueprints::BlueprintRegistry;
 use crate::physics::{GameLayer, Wall};
 use crate::run::RunState;
 use crate::schedule::GameSet;
-use crate::stats::{DirtyStats, Modifiers, StatRegistry};
+use crate::stats::StatRegistry;
 use crate::blueprints::components::ComponentDef;
-use crate::summoning::{SummoningAnimation, SummoningCircleMaterial, SummoningCircleMesh, DEFAULT_CIRCLE_SIZE};
+use crate::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh, DEFAULT_CIRCLE_SIZE};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
 use crate::GameState;
@@ -44,12 +44,6 @@ impl Plugin for ArenaPlugin {
                     .in_set(GameSet::Spawning)
                     .run_if(in_state(WavePhase::Combat))
                     .run_if(not(resource_exists::<crate::run::PlayerDying>)),
-            )
-            .add_systems(
-                Update,
-                apply_enemy_scaling
-                    .in_set(GameSet::BlueprintActivation)
-                    .run_if(in_state(WavePhase::Combat)),
             )
             .add_systems(
                 PostUpdate,
@@ -191,6 +185,8 @@ fn spawn_enemies(
     player_query: Query<&Transform, With<crate::player::Player>>,
     blueprint_registry: Res<BlueprintRegistry>,
     balance: Res<GameBalance>,
+    run_state: Res<RunState>,
+    stat_registry: Res<StatRegistry>,
     circle_mesh: Res<SummoningCircleMesh>,
     circle_material: Res<SummoningCircleMaterial>,
 ) {
@@ -211,6 +207,19 @@ fn spawn_enemies(
     let hw = arena.half_w() - margin;
     let hh = arena.half_h() - margin;
     let mut rng = rand::rng();
+
+    let mut extra_modifiers = Vec::new();
+    let elapsed = run_state.elapsed;
+    if elapsed > 0.0 {
+        let hp_bonus = elapsed * balance.run.hp_scale_per_sec;
+        let dmg_bonus = elapsed * balance.run.dmg_scale_per_sec;
+        if let Some(stat) = stat_registry.get("max_life_increased") {
+            extra_modifiers.push((stat, hp_bonus));
+        }
+        if let Some(stat) = stat_registry.get("physical_damage_increased") {
+            extra_modifiers.push((stat, dmg_bonus));
+        }
+    }
 
     for _ in 0..deficit {
         let (x, y) = {
@@ -252,54 +261,18 @@ fn spawn_enemies(
 
             let ground = crate::coord::ground_pos(Vec2::new(x, y));
 
-            let circle_entity = commands
-                .spawn((
-                    Name::new("SummoningCircle"),
-                    Mesh3d(circle_mesh.0.clone()),
-                    MeshMaterial3d(circle_material.0.clone()),
-                    Transform::from_translation(ground + Vec3::Y * 0.02)
-                        .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
-                        .with_scale(Vec3::ZERO),
-                    DespawnOnExit(WavePhase::Combat),
-                ))
-                .id();
-
             commands.spawn((
-                Name::new("Enemy"),
-                Transform::from_translation(ground),
-                WaveEnemy,
+                Name::new("SummoningCircle"),
+                Mesh3d(circle_mesh.0.clone()),
+                MeshMaterial3d(circle_material.0.clone()),
+                Transform::from_translation(ground + Vec3::Y * 0.02)
+                    .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+                    .with_scale(Vec3::ZERO),
+                SummoningCircle::new(blueprint_id, circle_size, extra_modifiers.clone()),
                 DespawnOnExit(WavePhase::Combat),
-                SummoningAnimation::new(circle_entity, circle_size, blueprint_id),
             ));
             wave_state.spawned_count += 1;
             wave_state.summoning_count += 1;
-        }
-    }
-}
-
-fn apply_enemy_scaling(
-    mut query: Query<(&mut Modifiers, &mut DirtyStats), Added<WaveEnemy>>,
-    run_state: Res<RunState>,
-    stat_registry: Res<StatRegistry>,
-    balance: Res<GameBalance>,
-) {
-    let elapsed = run_state.elapsed;
-    if elapsed <= 0.0 {
-        return;
-    }
-    let hp_bonus = elapsed * balance.run.hp_scale_per_sec;
-    let dmg_bonus = elapsed * balance.run.dmg_scale_per_sec;
-    let hp_stat = stat_registry.get("max_life_increased");
-    let dmg_stat = stat_registry.get("physical_damage_increased");
-
-    for (mut modifiers, mut dirty) in &mut query {
-        if let Some(stat) = hp_stat {
-            modifiers.add(stat, hp_bonus);
-            dirty.mark(stat);
-        }
-        if let Some(stat) = dmg_stat {
-            modifiers.add(stat, dmg_bonus);
-            dirty.mark(stat);
         }
     }
 }

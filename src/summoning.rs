@@ -2,12 +2,14 @@ use bevy::prelude::*;
 
 use crate::blueprints::BlueprintId;
 use crate::blueprints::components::common::health::Health;
-use crate::blueprints::spawn_blueprint_entity;
+use crate::blueprints::BlueprintRegistry;
+use crate::blueprints::spawn::EntitySpawner;
 use crate::blueprints::state::{PendingInitialState, StateTransition};
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
 use crate::schedule::GameSet;
-use crate::wave::{WavePhase, WaveState};
+use crate::stats::StatId;
+use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
 
 const CIRCLE_GROW_DURATION: f32 = 0.7;
@@ -23,23 +25,23 @@ enum SummonPhase {
 }
 
 #[derive(Component)]
-pub struct SummoningAnimation {
+pub struct SummoningCircle {
     phase: SummonPhase,
     elapsed: f32,
-    pub circle_entity: Entity,
     pub circle_size: f32,
     pub blueprint_id: BlueprintId,
+    extra_modifiers: Vec<(StatId, f32)>,
     emitter: Option<Entity>,
 }
 
-impl SummoningAnimation {
-    pub fn new(circle_entity: Entity, circle_size: f32, blueprint_id: BlueprintId) -> Self {
+impl SummoningCircle {
+    pub fn new(blueprint_id: BlueprintId, circle_size: f32, extra_modifiers: Vec<(StatId, f32)>) -> Self {
         Self {
             phase: SummonPhase::CircleGrow,
             elapsed: 0.0,
-            circle_entity,
             circle_size,
             blueprint_id,
+            extra_modifiers,
             emitter: None,
         }
     }
@@ -105,76 +107,80 @@ fn setup_resources(
 fn animate_summoning(
     mut commands: Commands,
     time: Res<Time<Virtual>>,
-    mut query: Query<(Entity, &mut SummoningAnimation, &Transform)>,
-    mut circle_query: Query<&mut Transform, Without<SummoningAnimation>>,
+    mut query: Query<(Entity, &mut SummoningCircle, &mut Transform)>,
     mut wave_state: ResMut<WaveState>,
     mut emitter_query: Query<&mut ParticleEmitter>,
+    mut spawner: EntitySpawner,
+    blueprint_registry: Res<BlueprintRegistry>,
 ) {
     let dt = time.delta_secs();
 
-    for (entity, mut anim, shell_transform) in &mut query {
-        anim.elapsed += dt;
-        let pos = crate::coord::to_2d(shell_transform.translation);
+    for (entity, mut circle, mut transform) in &mut query {
+        circle.elapsed += dt;
+        let pos = crate::coord::to_2d(transform.translation);
 
-        match anim.phase {
+        match circle.phase {
             SummonPhase::CircleGrow => {
-                let t = (anim.elapsed / CIRCLE_GROW_DURATION).clamp(0.0, 1.0);
+                let t = (circle.elapsed / CIRCLE_GROW_DURATION).clamp(0.0, 1.0);
                 let eased = t * (2.0 - t);
 
-                if let Ok(mut circle_tf) = circle_query.get_mut(anim.circle_entity) {
-                    circle_tf.scale = Vec3::splat(anim.circle_size * eased);
-                }
+                transform.scale = Vec3::splat(circle.circle_size * eased);
 
-                if anim.emitter.is_none() {
+                if circle.emitter.is_none() {
                     let emitter = particles::start_particles(&mut commands, "summon_grow", pos);
-                    anim.emitter = Some(emitter);
+                    circle.emitter = Some(emitter);
                 }
 
-                if let Some(emitter_entity) = anim.emitter {
+                if let Some(emitter_entity) = circle.emitter {
                     if let Ok(mut emitter) = emitter_query.get_mut(emitter_entity) {
-                        let radius = anim.circle_size * 0.42 * eased;
+                        let radius = circle.circle_size * 0.42 * eased;
                         emitter.shape_override = Some(SpawnShape::Circle(radius));
                     }
                 }
 
                 if t >= 1.0 {
-                    if let Some(emitter_entity) = anim.emitter.take() {
+                    if let Some(emitter_entity) = circle.emitter.take() {
                         particles::stop_particles(&mut commands, emitter_entity);
                     }
 
-                    spawn_blueprint_entity(
-                        &mut commands,
-                        entity,
-                        Faction::Enemy,
-                        anim.blueprint_id,
-                        true,
-                    );
+                    let Some(blueprint_def) = blueprint_registry.get(circle.blueprint_id) else {
+                        commands.entity(entity).despawn();
+                        continue;
+                    };
+                    let Some(entity_def) = blueprint_def.entities.first() else {
+                        commands.entity(entity).despawn();
+                        continue;
+                    };
+
+                    let mob = spawner.spawn_root(entity_def, Faction::Enemy, &circle.extra_modifiers);
+                    let ground = crate::coord::ground_pos(pos);
+                    spawner.commands.entity(mob).insert((
+                        Transform::from_translation(ground),
+                        WaveEnemy,
+                        DespawnOnExit(WavePhase::Combat),
+                    ));
+
                     wave_state.summoning_count = wave_state.summoning_count.saturating_sub(1);
 
-                    anim.phase = SummonPhase::EnemyRise;
-                    anim.elapsed = 0.0;
+                    circle.phase = SummonPhase::EnemyRise;
+                    circle.elapsed = 0.0;
                 }
             }
             SummonPhase::EnemyRise => {
-                if anim.elapsed >= RISE_DURATION {
+                if circle.elapsed >= RISE_DURATION {
                     particles::start_particles(&mut commands, "summon_burst", pos);
 
-                    anim.phase = SummonPhase::CircleShrink;
-                    anim.elapsed = 0.0;
+                    circle.phase = SummonPhase::CircleShrink;
+                    circle.elapsed = 0.0;
                 }
             }
             SummonPhase::CircleShrink => {
-                let t = (anim.elapsed / CIRCLE_SHRINK_DURATION).clamp(0.0, 1.0);
+                let t = (circle.elapsed / CIRCLE_SHRINK_DURATION).clamp(0.0, 1.0);
 
-                if let Ok(mut circle_tf) = circle_query.get_mut(anim.circle_entity) {
-                    circle_tf.scale = Vec3::splat(anim.circle_size * (1.0 - t));
-                }
+                transform.scale = Vec3::splat(circle.circle_size * (1.0 - t));
 
                 if t >= 1.0 {
-                    if let Ok(mut ec) = commands.get_entity(anim.circle_entity) {
-                        ec.despawn();
-                    }
-                    commands.entity(entity).remove::<SummoningAnimation>();
+                    commands.entity(entity).despawn();
                 }
             }
         }
@@ -235,18 +241,15 @@ fn activate_pending_initial_state(
 
 fn cleanup_summoning_on_death(
     mut commands: Commands,
-    query: Query<(Entity, &SummoningAnimation)>,
+    query: Query<(Entity, &SummoningCircle)>,
     mut wave_state: ResMut<WaveState>,
 ) {
-    for (entity, anim) in &query {
-        if let Some(emitter_entity) = anim.emitter {
+    for (entity, circle) in &query {
+        if let Some(emitter_entity) = circle.emitter {
             particles::stop_particles(&mut commands, emitter_entity);
         }
-        if let Ok(mut ec) = commands.get_entity(anim.circle_entity) {
-            ec.despawn();
-        }
-        commands.entity(entity).remove::<SummoningAnimation>();
-        if matches!(anim.phase, SummonPhase::CircleGrow) {
+        commands.entity(entity).despawn();
+        if matches!(circle.phase, SummonPhase::CircleGrow) {
             wave_state.summoning_count = wave_state.summoning_count.saturating_sub(1);
         }
     }

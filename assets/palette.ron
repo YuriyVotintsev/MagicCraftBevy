@@ -35,7 +35,7 @@
         "enemy":          "coral",
         "player_ability": "cyan",
         "enemy_ability":  "orange",
-        "coin":           "gold",
+        "coin":           "lime",
         "background":     "cream",
         "border":         "cream_dark",
         "void":           "cream_darker",
