@@ -21,7 +21,6 @@ pub struct SpinnerVisual {
 
 #[derive(Component)]
 pub struct SpinnerVisualState {
-    pub body_entity: Entity,
     pub spike_entities: [Entity; SPIKE_COUNT],
     pub spin_angle: f32,
     pub spin_speed: f32,
@@ -64,25 +63,6 @@ fn init_spinner_visual(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     for (entity, visual) in &query {
-        let body_color = palette::color("enemy");
-        let body_material = materials.add(StandardMaterial {
-            base_color: body_color,
-            unlit: true,
-            ..default()
-        });
-        let body_mesh = meshes.add(Sphere::new(0.5));
-        let flash_color = palette::flash_lookup("enemy").map(|(r, g, b)| Color::srgb(r, g, b));
-        let body = commands
-            .spawn((
-                Mesh3d(body_mesh),
-                MeshMaterial3d(body_material),
-                Transform::from_translation(Vec3::new(0.0, BODY_ELEVATION, 0.0)),
-                ScaleModifiers::default(),
-                CircleSprite { color: body_color, flash_color },
-            ))
-            .id();
-        commands.entity(entity).add_child(body);
-
         let spike_color = palette::color("enemy_ability");
         let spike_material = materials.add(StandardMaterial {
             base_color: spike_color,
@@ -113,27 +93,8 @@ fn init_spinner_visual(
             spike_entities[i] = spike;
         }
 
-        let shadow_color = palette::color_alpha("shadow", 0.45);
-        let shadow_material = materials.add(StandardMaterial {
-            base_color: shadow_color,
-            unlit: true,
-            alpha_mode: AlphaMode::Blend,
-            ..default()
-        });
-        let shadow_mesh = meshes.add(Circle::new(0.5));
-        let shadow = commands
-            .spawn((
-                Mesh3d(shadow_mesh),
-                MeshMaterial3d(shadow_material),
-                Transform::from_translation(Vec3::new(0.0, 0.01, 0.0))
-                    .with_rotation(Quat::from_rotation_x(-FRAC_PI_2)),
-            ))
-            .id();
-        commands.entity(entity).add_child(shadow);
-
-        commands.entity(entity).insert((
+        commands.entity(entity).insert(
             SpinnerVisualState {
-                body_entity: body,
                 spike_entities,
                 spin_angle: 0.0,
                 spin_speed: 0.0,
@@ -141,8 +102,7 @@ fn init_spinner_visual(
                 squish: 1.0,
                 trail_emitters: [None; SPIKE_COUNT],
             },
-            Visibility::default(),
-        ));
+        );
     }
 }
 
@@ -154,17 +114,19 @@ fn animate_spinner(
         &mut SpinnerVisualState,
         &Transform,
         &SpinnerVisual,
+        &Children,
         Option<&crate::blueprints::components::common::size::Size>,
     )>,
     mut transform_query: Query<&mut Transform, Without<SpinnerVisualState>>,
     mut scale_query: Query<&mut ScaleModifiers>,
+    circle_query: Query<(), With<CircleSprite>>,
     has_windup: Query<(), With<super::super::mob::spinner_windup::SpinnerWindup>>,
     has_charge: Query<(), With<super::super::mob::spinner_charge::SpinnerCharge>>,
     mut commands: Commands,
 ) {
     let dt = time.delta_secs();
 
-    for (entity, mut state, spinner_transform, visual, size) in &mut state_query {
+    for (entity, mut state, spinner_transform, visual, children, size) in &mut state_query {
         let spinner_pos = crate::coord::to_2d(spinner_transform.translation);
         let entity_scale = size.map_or(1.0, |s| s.value / 2.0);
 
@@ -212,10 +174,16 @@ fn animate_spinner(
             }
         }
 
-        if let Ok(mut body_modifiers) = scale_query.get_mut(state.body_entity) {
-            let sq = state.squish;
-            let expand = 1.0 / sq.sqrt();
-            body_modifiers.set(squish_layer.0, Vec3::new(expand, sq, expand));
+        let sq = state.squish;
+        let expand = 1.0 / sq.sqrt();
+        let squish_scale = Vec3::new(expand, sq, expand);
+
+        for child in children.iter() {
+            if circle_query.contains(child) {
+                if let Ok(mut body_modifiers) = scale_query.get_mut(child) {
+                    body_modifiers.set(squish_layer.0, squish_scale);
+                }
+            }
         }
     }
 }

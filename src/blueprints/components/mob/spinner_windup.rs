@@ -84,8 +84,8 @@ fn windup_system(
             let pos = crate::coord::to_2d(transform.translation);
             for i in 0..visual_state.trail_emitters.len() {
                 if visual_state.trail_emitters[i].is_none() {
-                    let emitter = particles::start_particles(&mut commands, "spinner_trail", pos);
-                    visual_state.trail_emitters[i] = Some(emitter);
+                    let emitter_entity = particles::start_particles(&mut commands, "spinner_trail", pos);
+                    visual_state.trail_emitters[i] = Some(emitter_entity);
                 }
             }
         }

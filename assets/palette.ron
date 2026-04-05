@@ -32,9 +32,9 @@
     },
     aliases: {
         "player":         "dark_teal",
-        "enemy":          "coral",
+        "enemy":          "orange",
         "player_ability": "cyan",
-        "enemy_ability":  "orange",
+        "enemy_ability":  "coral",
         "coin":           "lime",
         "background":     "cream",
         "border":         "cream_dark",

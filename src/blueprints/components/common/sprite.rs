@@ -58,9 +58,7 @@ impl From<SpriteColorInput> for SpriteColor {
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
 pub enum SpriteShape {
     #[default]
-    Square,
     Circle,
-    Triangle,
     Capsule,
 }
 
@@ -88,17 +86,6 @@ pub struct CircleSprite {
     pub flash_color: Option<Color>,
 }
 
-#[derive(Component)]
-pub struct TriangleSprite {
-    pub color: Color,
-    pub flash_color: Option<Color>,
-}
-
-#[derive(Component)]
-pub struct SquareSprite {
-    pub color: Color,
-    pub flash_color: Option<Color>,
-}
 
 #[derive(Component)]
 pub struct CapsuleSprite {
@@ -108,8 +95,8 @@ pub struct CapsuleSprite {
 }
 
 pub fn register_systems(app: &mut App) {
-    app.add_systems(Startup, (setup_sphere_mesh, setup_cube_mesh));
-    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals, spawn_triangle_visuals, spawn_square_visuals, spawn_capsule_visuals).chain());
+    app.add_systems(Startup, setup_sphere_mesh);
+    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals, spawn_capsule_visuals).chain());
 }
 
 fn init_sprite(
@@ -139,14 +126,8 @@ fn init_sprite(
             });
         } else {
             match sprite.shape {
-                SpriteShape::Square => {
-                    commands.entity(entity).insert(SquareSprite { color, flash_color });
-                }
                 SpriteShape::Circle => {
                     commands.entity(entity).insert(CircleSprite { color, flash_color });
-                }
-                SpriteShape::Triangle => {
-                    commands.entity(entity).insert(TriangleSprite { color, flash_color });
                 }
                 SpriteShape::Capsule => {
                     commands.entity(entity).insert(CapsuleSprite {
@@ -168,14 +149,6 @@ fn setup_sphere_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     commands.insert_resource(SphereMeshHandle(mesh));
 }
 
-#[derive(Resource)]
-struct CubeMeshHandle(Handle<Mesh>);
-
-fn setup_cube_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
-    let mesh = meshes.add(Cuboid::new(1.0, 1.0, 1.0));
-    commands.insert_resource(CubeMeshHandle(mesh));
-}
-
 fn spawn_circle_visuals(
     mut commands: Commands,
     query: Query<(Entity, &CircleSprite), Without<Mesh3d>>,
@@ -193,50 +166,6 @@ fn spawn_circle_visuals(
         });
         commands.entity(entity).insert((
             Mesh3d(sphere_mesh.0.clone()),
-            MeshMaterial3d(material),
-        ));
-    }
-}
-
-fn spawn_triangle_visuals(
-    mut commands: Commands,
-    query: Query<(Entity, &TriangleSprite), Without<Mesh3d>>,
-    sphere_mesh: Option<Res<SphereMeshHandle>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let Some(sphere_mesh) = sphere_mesh else { return };
-
-    for (entity, triangle) in &query {
-        let material = materials.add(StandardMaterial {
-            base_color: triangle.color,
-            unlit: true,
-            alpha_mode: if triangle.color.alpha() < 1.0 { AlphaMode::Blend } else { AlphaMode::Opaque },
-            ..default()
-        });
-        commands.entity(entity).insert((
-            Mesh3d(sphere_mesh.0.clone()),
-            MeshMaterial3d(material),
-        ));
-    }
-}
-
-fn spawn_square_visuals(
-    mut commands: Commands,
-    query: Query<(Entity, &SquareSprite), Without<Mesh3d>>,
-    cube_mesh: Option<Res<CubeMeshHandle>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
-) {
-    let Some(cube_mesh) = cube_mesh else { return };
-
-    for (entity, square) in &query {
-        let material = materials.add(StandardMaterial {
-            base_color: square.color,
-            unlit: true,
-            alpha_mode: if square.color.alpha() < 1.0 { AlphaMode::Blend } else { AlphaMode::Opaque },
-            ..default()
-        });
-        commands.entity(entity).insert((
-            Mesh3d(cube_mesh.0.clone()),
             MeshMaterial3d(material),
         ));
     }

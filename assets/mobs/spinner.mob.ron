@@ -9,6 +9,12 @@
             abilities: [],
             components: [
                 Size((value: "100.0")),
+                Visual((children: [
+                    (components: [Shadow(())]),
+                    (components: [
+                        Sprite((color: "enemy", shape: Circle)),
+                    ]),
+                ])),
                 SpinnerVisual((spike_length: Some("1"))),
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody((mass: Some("20"))),

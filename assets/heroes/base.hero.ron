@@ -4,7 +4,7 @@
         (
             base_stats: {
                 "max_life_flat": 20.0,
-                "movement_speed_flat": 350.0,
+                "movement_speed_flat": 550.0,
                 "crit_chance_flat": 0.05,
                 "crit_multiplier": 1.5,
                 "pickup_radius_flat": 200.0,

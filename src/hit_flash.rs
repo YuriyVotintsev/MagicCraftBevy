@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::blueprints::components::common::sprite::{CapsuleSprite, CircleSprite, TriangleSprite, SquareSprite};
+use crate::blueprints::components::common::sprite::{CapsuleSprite, CircleSprite};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::health_material::HealthMaterial;
 
@@ -37,12 +37,10 @@ fn register_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Comman
 
 fn get_sprite_colors(
     entity: Entity,
-    color_query: &Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>, Option<&CapsuleSprite>)>,
+    color_query: &Query<(Option<&CircleSprite>, Option<&CapsuleSprite>)>,
 ) -> Option<(Color, Option<Color>)> {
-    color_query.get(entity).ok().and_then(|(c, t, s, cap)| {
+    color_query.get(entity).ok().and_then(|(c, cap)| {
         c.map(|c| (c.color, c.flash_color))
-            .or(t.map(|t| (t.color, t.flash_color)))
-            .or(s.map(|s| (s.color, s.flash_color)))
             .or(cap.map(|cap| (cap.color, cap.flash_color)))
     })
 }
@@ -63,7 +61,7 @@ fn tick_hit_flash(
     mut modifiers_query: Query<&mut ScaleModifiers>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
-    color_query: Query<(Option<&CircleSprite>, Option<&TriangleSprite>, Option<&SquareSprite>, Option<&CapsuleSprite>)>,
+    color_query: Query<(Option<&CircleSprite>, Option<&CapsuleSprite>)>,
 ) {
     for (entity, mut flash, children) in &mut flash_query {
         flash.elapsed += time.delta_secs();

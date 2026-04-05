@@ -9,7 +9,7 @@
             },
             abilities: ["melee_attack"],
             components: [
-                Size((value: "80.0")),
+                Size((value: "90.0")),
                 Visual((children: [
                 	(components: [Shadow(())]),
                     (components: [

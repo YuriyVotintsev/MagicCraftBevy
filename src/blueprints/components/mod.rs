@@ -37,6 +37,7 @@ collect_components!(
             shadow,
             bobbing_animation,
             spinner_visual,
+            tower_visual,
         ],
         mob: [
             move_toward,

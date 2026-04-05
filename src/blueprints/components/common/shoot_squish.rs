@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
-use super::sprite::{CapsuleSprite, CircleSprite, Sprite, SquareSprite, TriangleSprite};
+use super::sprite::{CapsuleSprite, CircleSprite, Sprite};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::blueprints::components::mob::use_abilities::ShotFired;
 
@@ -46,7 +46,7 @@ pub fn animate(
     shot_fired_query: Query<(), With<ShotFired>>,
     mut sprite_query: Query<
         (&mut Transform, &Sprite, &mut ScaleModifiers),
-        Or<(With<CapsuleSprite>, With<CircleSprite>, With<TriangleSprite>, With<SquareSprite>)>,
+        Or<(With<CapsuleSprite>, With<CircleSprite>)>,
     >,
     capsule_query: Query<&CapsuleSprite>,
 ) {

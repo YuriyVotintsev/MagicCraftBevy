@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::components::common::shadow::Shadow;
-use crate::blueprints::components::common::sprite::{CircleSprite, SquareSprite, TriangleSprite, CapsuleSprite};
+use crate::blueprints::components::common::sprite::{CircleSprite, CapsuleSprite};
 use crate::health_material::{HealthMaterial, HealthMaterialLink};
 use crate::player::Player;
 use crate::schedule::GameSet;
@@ -75,11 +75,11 @@ fn apply_ghost_alpha_to_children(
     shadow_query: Query<(&Shadow, &MeshMaterial3d<StandardMaterial>)>,
     sprite_query: Query<
         &MeshMaterial3d<StandardMaterial>,
-        Or<(With<CircleSprite>, With<SquareSprite>, With<TriangleSprite>, With<CapsuleSprite>)>,
+        Or<(With<CircleSprite>, With<CapsuleSprite>)>,
     >,
     sprite_health_query: Query<
         &MeshMaterial3d<HealthMaterial>,
-        Or<(With<CircleSprite>, With<SquareSprite>, With<TriangleSprite>, With<CapsuleSprite>)>,
+        Or<(With<CircleSprite>, With<CapsuleSprite>)>,
     >,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
