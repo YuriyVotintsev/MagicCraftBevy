@@ -20,7 +20,7 @@ use crate::GameState;
 pub const WINDOW_WIDTH: f32 = 1920.0;
 pub const WINDOW_HEIGHT: f32 = 1080.0;
 
-const ALL_ENEMY_TYPES: &[&str] = &["slime_small", "jumper", "tower", "ghost"];
+const ALL_ENEMY_TYPES: &[&str] = &["slime_small", "jumper", "tower", "ghost", "spinner"];
 
 #[derive(Resource)]
 pub struct EnemySpawnPool {

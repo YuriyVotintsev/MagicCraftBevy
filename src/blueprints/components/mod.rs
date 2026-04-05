@@ -36,6 +36,7 @@ collect_components!(
             shoot_squish,
             shadow,
             bobbing_animation,
+            spinner_visual,
         ],
         mob: [
             move_toward,
@@ -47,6 +48,8 @@ collect_components!(
             lunge_movement,
             random_jump,
             ghost_transparency,
+            spinner_windup,
+            spinner_charge,
         ],
         player: [
             keyboard_movement,

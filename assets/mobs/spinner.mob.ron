@@ -1,0 +1,47 @@
+(
+    id: "spinner",
+    entities: [
+        (
+            base_stats: {
+                "max_life_flat": 15.0,
+                "physical_damage_flat": 10.0,
+            },
+            abilities: [],
+            components: [
+                Size((value: "200.0")),
+                SpinnerVisual(()),
+                Collider((shape: Circle, sensor: Some(false))),
+                DynamicBody((mass: Some("20"))),
+                Health(()),
+                OnDeath((entities: [
+                    (components: [Particles((config: "enemy_death_large"))]),
+                ])),
+            ],
+            states: Some((
+                initial: "find_target",
+                states: {
+                    "find_target": (
+                        components: [FindNearestEnemy((size: "4000.0"))],
+                        transitions: [WhenFoundTarget((to: "idle"))],
+                    ),
+                    "idle": (
+                        components: [],
+                        transitions: [AfterTime((to: "windup", duration: "0.5"))],
+                    ),
+                    "windup": (
+                        components: [SpinnerWindup(())],
+                        transitions: [AfterTime((to: "charge", duration: "1.5"))],
+                    ),
+                    "charge": (
+                        components: [SpinnerCharge((speed: "1200.0"))],
+                        transitions: [AfterTime((to: "cooldown", duration: "2.0"))],
+                    ),
+                    "cooldown": (
+                        components: [],
+                        transitions: [AfterTime((to: "idle", duration: "0.5"))],
+                    ),
+                }
+            ))
+        )
+    ]
+)
