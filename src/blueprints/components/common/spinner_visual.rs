@@ -15,7 +15,7 @@ const DECAY_RATE: f32 = 3.0;
 #[blueprint_component]
 pub struct SpinnerVisual {
     #[raw(default = 0.4)]
-    pub spike_half_length: ScalarExpr,
+    pub spike_length: ScalarExpr,
 }
 
 #[derive(Component)]
@@ -75,7 +75,7 @@ fn init_spinner_visual(
         let mut spike_entities = [Entity::PLACEHOLDER; SPIKE_COUNT];
         for i in 0..SPIKE_COUNT {
             let angle = i as f32 * TAU / SPIKE_COUNT as f32;
-            let spike_mesh = meshes.add(Cone::new(0.15, visual.spike_half_length));
+            let spike_mesh = meshes.add(Cone::new(0.15, visual.spike_length));
             let position = Vec3::new(
                 angle.cos() * SPIKE_OFFSET,
                 BODY_ELEVATION,
@@ -131,7 +131,13 @@ fn init_spinner_visual(
 fn animate_spinner(
     time: Res<Time>,
     squish_layer: Res<SpinnerSquishScaleLayer>,
-    mut state_query: Query<(Entity, &mut SpinnerVisualState, &Transform)>,
+    mut state_query: Query<(
+        Entity,
+        &mut SpinnerVisualState,
+        &Transform,
+        &SpinnerVisual,
+        Option<&crate::blueprints::components::common::size::Size>,
+    )>,
     mut transform_query: Query<&mut Transform, Without<SpinnerVisualState>>,
     mut scale_query: Query<&mut ScaleModifiers>,
     has_windup: Query<(), With<super::super::mob::spinner_windup::SpinnerWindup>>,
@@ -140,8 +146,9 @@ fn animate_spinner(
 ) {
     let dt = time.delta_secs();
 
-    for (entity, mut state, spinner_transform) in &mut state_query {
+    for (entity, mut state, spinner_transform, visual, size) in &mut state_query {
         let spinner_pos = crate::coord::to_2d(spinner_transform.translation);
+        let entity_scale = size.map_or(1.0, |s| s.value / 2.0);
 
         let active = has_windup.contains(entity) || has_charge.contains(entity);
         if !active {
@@ -177,9 +184,12 @@ fn animate_spinner(
             }
 
             if let Some(emitter_entity) = state.trail_emitters[i] {
-                let world_pos = spinner_pos + local_offset;
+                let dir = Vec2::new(angle.cos(), angle.sin());
+                let tip_local = dir * (SPIKE_OFFSET + visual.spike_length * state.spike_growth);
+                let world_pos = spinner_pos + tip_local * entity_scale;
                 if let Ok(mut emitter_transform) = transform_query.get_mut(emitter_entity) {
                     emitter_transform.translation = crate::coord::ground_pos(world_pos);
+                    emitter_transform.translation.y = BODY_ELEVATION * entity_scale;
                 }
             }
         }

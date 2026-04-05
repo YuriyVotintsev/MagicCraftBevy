@@ -12,13 +12,13 @@ use crate::Faction;
 
 #[blueprint_component]
 pub struct SpinnerWindup {
-    #[raw(default = 1.5)]
+    #[raw(default = 3)]
     pub duration: ScalarExpr,
-    #[raw(default = 30.0)]
+    #[raw(default = 10.0)]
     pub max_spin_speed: ScalarExpr,
-    #[raw(default = 2.0)]
+    #[raw(default = 3.0)]
     pub spike_growth_max: ScalarExpr,
-    #[raw(default = 0.6)]
+    #[raw(default = 0.5)]
     pub squish_min: ScalarExpr,
     #[raw(default = 150.0)]
     pub contact_radius: ScalarExpr,

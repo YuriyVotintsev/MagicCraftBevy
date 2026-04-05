@@ -64,7 +64,10 @@ fn init_charge(
             .copied()
             .unwrap_or_default();
 
-        let charge_layers = CollisionLayers::new(GameLayer::Enemy, [GameLayer::Wall]);
+        let charge_layers = CollisionLayers::new(
+            GameLayer::Enemy,
+            [GameLayer::Wall, GameLayer::PlayerProjectile],
+        );
 
         commands.entity(entity).insert((
             SpinnerChargeState {
@@ -148,13 +151,7 @@ fn on_remove_charge(
     mut velocity_query: Query<&mut LinearVelocity>,
 ) {
     let entity = on.event_target();
-
-    if let Ok(pre) = layers_query.get(entity) {
-        let restored = pre.0;
-        if let Ok(mut ec) = commands.get_entity(entity) {
-            ec.insert(restored);
-        }
-    }
+    let restored = layers_query.get(entity).ok().map(|pre| pre.0);
 
     if let Ok(mut vel) = velocity_query.get_mut(entity) {
         vel.0 = Vec3::ZERO;
@@ -162,7 +159,10 @@ fn on_remove_charge(
 
     commands
         .entity(entity)
-        .queue_silenced(|mut e: EntityWorldMut| {
+        .queue_silenced(move |mut e: EntityWorldMut| {
+            if let Some(layers) = restored {
+                e.insert(layers);
+            }
             e.remove::<(SpinnerChargeState, PreChargeLayers, SelfMoving)>();
         });
 }

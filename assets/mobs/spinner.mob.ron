@@ -8,8 +8,8 @@
             },
             abilities: [],
             components: [
-                Size((value: "150.0")),
-                SpinnerVisual(()),
+                Size((value: "100.0")),
+                SpinnerVisual((spike_length: Some("1"))),
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody((mass: Some("20"))),
                 Health(()),
@@ -30,7 +30,7 @@
                     ),
                     "windup": (
                         components: [SpinnerWindup(())],
-                        transitions: [AfterTime((to: "charge", duration: "1.5"))],
+                        transitions: [AfterTime((to: "charge", duration: "3"))],
                     ),
                     "charge": (
                         components: [SpinnerCharge((speed: "1200.0"))],
