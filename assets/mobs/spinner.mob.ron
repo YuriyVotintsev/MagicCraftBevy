@@ -8,7 +8,7 @@
             },
             abilities: [],
             components: [
-                Size((value: "200.0")),
+                Size((value: "150.0")),
                 SpinnerVisual(()),
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody((mass: Some("20"))),

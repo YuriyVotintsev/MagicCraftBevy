@@ -131,8 +131,8 @@ fn init_spinner_visual(
 fn animate_spinner(
     time: Res<Time>,
     squish_layer: Res<SpinnerSquishScaleLayer>,
-    mut state_query: Query<(Entity, &mut SpinnerVisualState)>,
-    mut transform_query: Query<&mut Transform>,
+    mut state_query: Query<(Entity, &mut SpinnerVisualState, &Transform)>,
+    mut transform_query: Query<&mut Transform, Without<SpinnerVisualState>>,
     mut scale_query: Query<&mut ScaleModifiers>,
     has_windup: Query<(), With<super::super::mob::spinner_windup::SpinnerWindup>>,
     has_charge: Query<(), With<super::super::mob::spinner_charge::SpinnerCharge>>,
@@ -140,7 +140,9 @@ fn animate_spinner(
 ) {
     let dt = time.delta_secs();
 
-    for (entity, mut state) in &mut state_query {
+    for (entity, mut state, spinner_transform) in &mut state_query {
+        let spinner_pos = crate::coord::to_2d(spinner_transform.translation);
+
         let active = has_windup.contains(entity) || has_charge.contains(entity);
         if !active {
             state.spin_speed = lerp_toward(state.spin_speed, 0.0, DECAY_RATE * dt);
@@ -160,16 +162,25 @@ fn animate_spinner(
             let base_angle = i as f32 * TAU / SPIKE_COUNT as f32;
             let angle = base_angle + state.spin_angle;
 
+            let local_offset = Vec2::new(angle.cos(), angle.sin()) * SPIKE_OFFSET;
+
             if let Ok(mut spike_transform) = transform_query.get_mut(spike_entity) {
                 spike_transform.translation = Vec3::new(
-                    angle.cos() * SPIKE_OFFSET,
+                    local_offset.x,
                     BODY_ELEVATION,
-                    -(angle.sin() * SPIKE_OFFSET),
+                    -local_offset.y,
                 );
                 spike_transform.rotation =
-                    Quat::from_rotation_y(angle) * Quat::from_rotation_z(FRAC_PI_2);
+                    Quat::from_rotation_y(angle) * Quat::from_rotation_z(-FRAC_PI_2);
 
                 spike_transform.scale = Vec3::new(1.0, state.spike_growth, 1.0);
+            }
+
+            if let Some(emitter_entity) = state.trail_emitters[i] {
+                let world_pos = spinner_pos + local_offset;
+                if let Ok(mut emitter_transform) = transform_query.get_mut(emitter_entity) {
+                    emitter_transform.translation = crate::coord::ground_pos(world_pos);
+                }
             }
         }
 

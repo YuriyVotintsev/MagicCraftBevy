@@ -81,11 +81,10 @@ fn windup_system(
         visual_state.squish = 1.0 + (windup.squish_min - 1.0) * t;
 
         if t > TRAIL_THRESHOLD {
+            let pos = crate::coord::to_2d(transform.translation);
             for i in 0..visual_state.trail_emitters.len() {
                 if visual_state.trail_emitters[i].is_none() {
-                    let pos = crate::coord::to_2d(transform.translation);
                     let emitter = particles::start_particles(&mut commands, "spinner_trail", pos);
-                    commands.entity(entity).add_child(emitter);
                     visual_state.trail_emitters[i] = Some(emitter);
                 }
             }
