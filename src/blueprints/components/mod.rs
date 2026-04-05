@@ -21,6 +21,7 @@ collect_components!(
             boomerang,
             melee_strike,
             particles,
+            arc_projectile,
         ],
         common: [
             size,
@@ -38,6 +39,7 @@ collect_components!(
             bobbing_animation,
             spinner_visual,
             tower_visual,
+            fade_out,
         ],
         mob: [
             move_toward,

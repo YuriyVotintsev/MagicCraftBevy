@@ -3,18 +3,32 @@
     cooldown: Some("0"),
     entities: [
         (components: [
-            Projectile(()),
-            Straight((speed: "400.0", spread: Some("45"))),
+            ArcProjectile((
+                duration: "0.8",
+                arc_height: "8.0",
+                start_elevation: Some("1.6"),
+                spread: Some("350"),
+                start_position: Some("caster.position"),
+                entities: [
+                    (components: [Particles((config: "tower_explosion"))]),
+                    (components: [
+                        OnArea((size: "400.0", entities: [
+                            (components: [DamagePayload((amount: "stat(physical_damage_flat)"))])
+                        ]))
+                    ]),
+                    (components: [
+                        Size((value: "400.0")),
+                        Sprite((color: ("enemy_ability", 0.4), shape: Disc, elevation: Some("0.02"))),
+                        Lifetime((remaining: "0.5")),
+                        FadeOut(()),
+                    ]),
+                ]
+            )),
             Size((value: "60.0")),
-            Lifetime((remaining: "3.0")),
-            Collider((shape: Circle)),
             Visual((children: [
                 (components: [Shadow(())]),
-                (components: [Sprite((color: "enemy_ability", shape: Circle, elevation: Some("0.7"), position: Some("vec2(0, 0)")))]),
+                (components: [Sprite((color: "enemy_ability", shape: Circle, position: Some("vec2(0, 0)")))]),
             ])),
-            OnCollision((entities: [
-                (components: [DamagePayload((amount: "stat(physical_damage_flat)"))])
-            ]))
         ])
     ]
 )

@@ -60,6 +60,7 @@ pub enum SpriteShape {
     #[default]
     Circle,
     Capsule,
+    Disc,
 }
 
 #[blueprint_component]
@@ -94,9 +95,15 @@ pub struct CapsuleSprite {
     pub half_length: f32,
 }
 
+#[derive(Component)]
+pub struct DiscSprite {
+    pub color: Color,
+    pub flash_color: Option<Color>,
+}
+
 pub fn register_systems(app: &mut App) {
-    app.add_systems(Startup, setup_sphere_mesh);
-    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals, spawn_capsule_visuals).chain());
+    app.add_systems(Startup, (setup_sphere_mesh, setup_disc_mesh));
+    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals, spawn_capsule_visuals, spawn_disc_visuals).chain());
 }
 
 fn init_sprite(
@@ -136,6 +143,9 @@ fn init_sprite(
                         half_length: sprite.half_length,
                     });
                 }
+                SpriteShape::Disc => {
+                    commands.entity(entity).insert(DiscSprite { color, flash_color });
+                }
             }
         }
     }
@@ -166,6 +176,37 @@ fn spawn_circle_visuals(
         });
         commands.entity(entity).insert((
             Mesh3d(sphere_mesh.0.clone()),
+            MeshMaterial3d(material),
+        ));
+    }
+}
+
+#[derive(Resource)]
+struct DiscMeshHandle(Handle<Mesh>);
+
+fn setup_disc_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
+    let mesh = meshes.add(Circle::new(0.5));
+    commands.insert_resource(DiscMeshHandle(mesh));
+}
+
+fn spawn_disc_visuals(
+    mut commands: Commands,
+    mut query: Query<(Entity, &DiscSprite, &mut Transform), Without<Mesh3d>>,
+    disc_mesh: Option<Res<DiscMeshHandle>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    let Some(disc_mesh) = disc_mesh else { return };
+
+    for (entity, disc, mut transform) in &mut query {
+        let material = materials.add(StandardMaterial {
+            base_color: disc.color,
+            unlit: true,
+            alpha_mode: if disc.color.alpha() < 1.0 { AlphaMode::Blend } else { AlphaMode::Opaque },
+            ..default()
+        });
+        transform.rotation = Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2);
+        commands.entity(entity).insert((
+            Mesh3d(disc_mesh.0.clone()),
             MeshMaterial3d(material),
         ));
     }

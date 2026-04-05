@@ -73,6 +73,7 @@ fn use_abilities_system(
         timer.elapsed = 0.0;
 
         let direction = (target_transform.translation - transform.translation).normalize_or_zero();
+        let target_pos = crate::coord::to_2d(target_transform.translation);
         let Some(caster_entity) = owner_source.caster.entity else { continue };
 
         for blueprint_name in &use_abilities.abilities {
@@ -80,7 +81,11 @@ fn use_abilities_system(
                 for (source, mut input) in &mut activation_input_query {
                     if source.blueprint_id == bid && source.caster.entity == Some(caster_entity) {
                         input.pressed = true;
-                        input.target = TargetInfo::from_direction(crate::coord::to_2d(direction));
+                        input.target = TargetInfo {
+                            entity: Some(use_abilities.target),
+                            position: Some(target_pos),
+                            direction: Some(crate::coord::to_2d(direction)),
+                        };
                     }
                 }
             }
