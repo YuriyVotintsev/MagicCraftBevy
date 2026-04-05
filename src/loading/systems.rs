@@ -210,72 +210,14 @@ pub fn check_content_loaded(
 
     let lookup = |name: &str| stat_registry.get(name);
 
-    let mut base_blueprint = None;
-    if let Some(folder) = folders.get(heroes_folder_handle.id()) {
-        for handle in &folder.handles {
-            if let Ok(typed_bp) = handle.clone().try_typed::<BlueprintDefAsset>() {
-                if let Some(blueprint_asset) = blueprint_assets.get(typed_bp.id()) {
-                    let blueprint_def = blueprint_asset.0.resolve(&lookup, &calc_registry);
-                    info!("Registered base hero: {}", blueprint_asset.0.id);
-                    let id = blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
-                    base_blueprint = Some(id);
-                }
-            }
-        }
-    }
-    let base_blueprint = base_blueprint.expect("No base hero blueprint found in heroes folder");
+    let base_blueprint = resolve_heroes(&lookup, &calc_registry, &folders, heroes_folder_handle, &blueprint_assets, &mut blueprint_registry);
     commands.insert_resource(AvailableHeroes { base_blueprint });
 
-    let folder_handles = [abilities_folder_handle.id(), mobs_folder_handle.id()];
-    for folder_id in folder_handles {
-        if let Some(folder) = folders.get(folder_id) {
-            for handle in &folder.handles {
-                let typed_handle: Handle<BlueprintDefAsset> = handle.clone().typed();
-                if let Some(blueprint_asset) = blueprint_assets.get(typed_handle.id()) {
-                    let blueprint_def = blueprint_asset.0.resolve(&lookup, &calc_registry);
-                    info!("Registered blueprint: {}", blueprint_asset.0.id);
-                    blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
-                }
-            }
-        }
-    }
+    resolve_blueprints(&lookup, &calc_registry, &folders, &[abilities_folder_handle, mobs_folder_handle], &blueprint_assets, &mut blueprint_registry);
 
-    if let Some(tree_asset) = skill_tree_assets.get(skill_tree_handle.id()) {
-        let (graph, grid_size) = tree_asset.0.resolve(&stat_registry);
-        info!("Loaded skill tree: {} nodes, {} edges (grid_size: {})", graph.nodes.len(), graph.edges.len(), grid_size);
-        commands.insert_resource(graph);
-        commands.insert_resource(crate::skill_tree::graph::GridSettings { size: grid_size });
-    }
+    resolve_skill_tree(&mut commands, &skill_tree_assets, skill_tree_handle, &stat_registry);
 
-    if let Some(folder) = folders.get(particles_folder_handle.id()) {
-        let mut raw_configs = std::collections::HashMap::new();
-        for handle in &folder.handles {
-            let typed_handle: Handle<ParticleConfigRaw> = handle.clone().typed();
-            if let Some(config) = particle_assets.get(typed_handle.id()) {
-                if let Some(path) = asset_server.get_path(typed_handle.id()) {
-                    let name = path
-                        .path()
-                        .file_stem()
-                        .and_then(|s| s.to_str())
-                        .unwrap_or("")
-                        .strip_suffix(".particle")
-                        .unwrap_or(
-                            path.path()
-                                .file_stem()
-                                .and_then(|s| s.to_str())
-                                .unwrap_or(""),
-                        )
-                        .to_string();
-                    if !name.is_empty() {
-                        info!("Loaded particle config: {}", name);
-                        raw_configs.insert(name, config.clone());
-                    }
-                }
-            }
-        }
-        let particle_registry = ParticleRegistry::resolve_all(&raw_configs);
-        commands.insert_resource(particle_registry);
-    }
+    resolve_particles(&mut commands, &asset_server, &particle_assets, &folders, particles_folder_handle);
 
     loading_state.phase = LoadingPhase::Finalizing;
 }
@@ -299,4 +241,103 @@ pub fn finalize_loading(
 
     info!("Loading complete, transitioning to MainMenu");
     next_state.set(crate::GameState::MainMenu);
+}
+
+fn resolve_heroes(
+    lookup: &dyn Fn(&str) -> Option<crate::stats::StatId>,
+    calc_registry: &CalcRegistry,
+    folders: &Assets<LoadedFolder>,
+    folder_handle: &Handle<LoadedFolder>,
+    blueprint_assets: &Assets<BlueprintDefAsset>,
+    blueprint_registry: &mut BlueprintRegistry,
+) -> crate::blueprints::BlueprintId {
+    let mut base_blueprint = None;
+    if let Some(folder) = folders.get(folder_handle.id()) {
+        for handle in &folder.handles {
+            if let Ok(typed_bp) = handle.clone().try_typed::<BlueprintDefAsset>() {
+                if let Some(blueprint_asset) = blueprint_assets.get(typed_bp.id()) {
+                    let blueprint_def = blueprint_asset.0.resolve(lookup, calc_registry);
+                    info!("Registered base hero: {}", blueprint_asset.0.id);
+                    let id = blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
+                    base_blueprint = Some(id);
+                }
+            }
+        }
+    }
+    base_blueprint.expect("No base hero blueprint found in heroes folder")
+}
+
+fn resolve_blueprints(
+    lookup: &dyn Fn(&str) -> Option<crate::stats::StatId>,
+    calc_registry: &CalcRegistry,
+    folders: &Assets<LoadedFolder>,
+    folder_handles: &[&Handle<LoadedFolder>],
+    blueprint_assets: &Assets<BlueprintDefAsset>,
+    blueprint_registry: &mut BlueprintRegistry,
+) {
+    for folder_handle in folder_handles {
+        if let Some(folder) = folders.get(folder_handle.id()) {
+            for handle in &folder.handles {
+                let typed_handle: Handle<BlueprintDefAsset> = handle.clone().typed();
+                if let Some(blueprint_asset) = blueprint_assets.get(typed_handle.id()) {
+                    let blueprint_def = blueprint_asset.0.resolve(lookup, calc_registry);
+                    info!("Registered blueprint: {}", blueprint_asset.0.id);
+                    blueprint_registry.register(&blueprint_asset.0.id, blueprint_def);
+                }
+            }
+        }
+    }
+}
+
+fn resolve_skill_tree(
+    commands: &mut Commands,
+    skill_tree_assets: &Assets<SkillTreeDefAsset>,
+    handle: &Handle<SkillTreeDefAsset>,
+    stat_registry: &StatRegistry,
+) {
+    if let Some(tree_asset) = skill_tree_assets.get(handle.id()) {
+        let (graph, grid_size) = tree_asset.0.resolve(stat_registry);
+        info!("Loaded skill tree: {} nodes, {} edges (grid_size: {})", graph.nodes.len(), graph.edges.len(), grid_size);
+        commands.insert_resource(graph);
+        commands.insert_resource(crate::skill_tree::graph::GridSettings { size: grid_size });
+    }
+}
+
+fn resolve_particles(
+    commands: &mut Commands,
+    asset_server: &AssetServer,
+    particle_assets: &Assets<ParticleConfigRaw>,
+    folders: &Assets<LoadedFolder>,
+    folder_handle: &Handle<LoadedFolder>,
+) {
+    let Some(folder) = folders.get(folder_handle.id()) else {
+        return;
+    };
+    let mut raw_configs = std::collections::HashMap::new();
+    for handle in &folder.handles {
+        let typed_handle: Handle<ParticleConfigRaw> = handle.clone().typed();
+        if let Some(config) = particle_assets.get(typed_handle.id()) {
+            if let Some(path) = asset_server.get_path(typed_handle.id()) {
+                let name = path
+                    .path()
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .strip_suffix(".particle")
+                    .unwrap_or(
+                        path.path()
+                            .file_stem()
+                            .and_then(|s| s.to_str())
+                            .unwrap_or(""),
+                    )
+                    .to_string();
+                if !name.is_empty() {
+                    info!("Loaded particle config: {}", name);
+                    raw_configs.insert(name, config.clone());
+                }
+            }
+        }
+    }
+    let particle_registry = ParticleRegistry::resolve_all(&raw_configs);
+    commands.insert_resource(particle_registry);
 }
