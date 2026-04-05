@@ -31,7 +31,7 @@ pub struct SummoningCircle {
     pub circle_size: f32,
     pub blueprint_id: BlueprintId,
     extra_modifiers: Vec<(StatId, f32)>,
-    emitter: Option<Entity>,
+    pub emitter: Option<Entity>,
 }
 
 impl SummoningCircle {
@@ -168,8 +168,6 @@ fn animate_summoning(
             }
             SummonPhase::EnemyRise => {
                 if circle.elapsed >= RISE_DURATION {
-                    particles::start_particles(&mut commands, "summon_burst", pos);
-
                     circle.phase = SummonPhase::CircleShrink;
                     circle.elapsed = 0.0;
                 }

@@ -28,6 +28,14 @@ impl Material for HealthMaterial {
     fn fragment_shader() -> ShaderRef {
         "shaders/health_material.wgsl".into()
     }
+
+    fn alpha_mode(&self) -> AlphaMode {
+        if self.data.alpha < 1.0 {
+            AlphaMode::Blend
+        } else {
+            AlphaMode::Opaque
+        }
+    }
 }
 
 #[derive(Component)]

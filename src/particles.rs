@@ -192,6 +192,7 @@ pub struct ParticleEmitter {
     pub stopped: bool,
     pub drain_timer: f32,
     pub shape_override: Option<SpawnShape>,
+    pub material_override: Option<Handle<StandardMaterial>>,
 }
 
 #[derive(Component)]
@@ -208,6 +209,7 @@ pub fn start_particles(commands: &mut Commands, config: &str, position: Vec2) ->
                 stopped: false,
                 drain_timer: 0.0,
                 shape_override: None,
+                material_override: None,
             },
             Transform::from_translation(spawn_pos),
             Visibility::Hidden,
@@ -309,7 +311,8 @@ fn spawn_burst(
     count: u32,
 ) {
     let mesh = cache.get_mesh(meshes);
-    let material = cache.get_material(&config.color, materials);
+    let material = emitter.material_override.clone()
+        .unwrap_or_else(|| cache.get_material(&config.color, materials));
     let pos = transform.translation;
 
     let shape = emitter.shape_override.as_ref().unwrap_or(&config.shape);

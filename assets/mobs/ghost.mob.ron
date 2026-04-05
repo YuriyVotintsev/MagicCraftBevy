@@ -17,7 +17,7 @@
                         BobbingAnimation(()),
                     ]),
                 ])),
-                GhostTransparency(()),
+                GhostTransparency((visible_distance: Some("100"), invisible_distance: Some("300"))),
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody((mass: Some("1"))),
                 Health(()),

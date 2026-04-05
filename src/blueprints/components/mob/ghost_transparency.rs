@@ -32,12 +32,15 @@ pub fn register_systems(app: &mut App) {
         (
             init,
             update_ghost_alpha,
-            apply_ghost_alpha_to_children,
-            apply_ghost_alpha_to_circle,
             toggle_ghost_collider,
         )
             .chain()
             .in_set(GameSet::MobAI)
+            .run_if(in_state(GameState::Playing)),
+    );
+    app.add_systems(
+        PostUpdate,
+        (apply_ghost_alpha_to_children, apply_ghost_alpha_to_circle)
             .run_if(in_state(GameState::Playing)),
     );
 }
@@ -60,17 +63,14 @@ fn update_ghost_alpha(
         let dist = pos.distance(player_pos);
         let t = ((dist - ghost.visible_distance) / (ghost.invisible_distance - ghost.visible_distance))
             .clamp(0.0, 1.0);
-        let new_alpha = 1.0 - t;
-        if (alpha.value - new_alpha).abs() > 0.001 {
-            alpha.value = new_alpha;
-        }
+        alpha.value = 1.0 - t;
     }
 }
 
 fn apply_ghost_alpha_to_children(
     ghost_query: Query<
         (&GhostAlpha, &Children, Option<&HealthMaterialLink>),
-        (Changed<GhostAlpha>, Without<SummoningCircle>),
+        Without<SummoningCircle>,
     >,
     shadow_query: Query<(&Shadow, &MeshMaterial3d<StandardMaterial>)>,
     sprite_query: Query<
@@ -122,16 +122,34 @@ fn apply_ghost_alpha_to_children(
 
 fn apply_ghost_alpha_to_circle(
     query: Query<
-        (&GhostAlpha, &MeshMaterial3d<StandardMaterial>),
-        (Changed<GhostAlpha>, With<SummoningCircle>),
+        (&GhostAlpha, &MeshMaterial3d<StandardMaterial>, &SummoningCircle),
     >,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut emitter_query: Query<&mut crate::particles::ParticleEmitter>,
 ) {
-    for (alpha, mat_handle) in &query {
+    for (alpha, mat_handle, circle) in &query {
         if let Some(material) = materials.get_mut(&mat_handle.0) {
             let mut color = material.base_color.to_srgba();
             color.alpha = 0.7 * alpha.value;
             material.base_color = color.into();
+        }
+
+        if let Some(emitter_entity) = circle.emitter {
+            if let Ok(mut emitter) = emitter_query.get_mut(emitter_entity) {
+                let handle = emitter.material_override.get_or_insert_with(|| {
+                    materials.add(StandardMaterial {
+                        base_color: crate::palette::color("enemy"),
+                        unlit: true,
+                        alpha_mode: AlphaMode::Blend,
+                        ..default()
+                    })
+                });
+                if let Some(material) = materials.get_mut(handle) {
+                    let mut color = material.base_color.to_srgba();
+                    color.alpha = alpha.value;
+                    material.base_color = color.into();
+                }
+            }
         }
     }
 }

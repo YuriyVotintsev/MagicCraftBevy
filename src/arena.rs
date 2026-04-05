@@ -313,10 +313,33 @@ fn spawn_enemies(
 
             if is_ghost {
                 use crate::blueprints::components::mob::ghost_transparency::{GhostTransparency, GhostAlpha};
+                use crate::expr::ScalarExpr;
+
+                let (vis_dist, invis_dist) = blueprint_registry
+                    .get(blueprint_id)
+                    .and_then(|bp| bp.entities.first())
+                    .and_then(|entity_def| {
+                        entity_def.components.iter().find_map(|c| match c {
+                            ComponentDef::GhostTransparency(def) => {
+                                let vis = match def.visible_distance {
+                                    ScalarExpr::Literal(v) => v,
+                                    _ => 200.0,
+                                };
+                                let invis = match def.invisible_distance {
+                                    ScalarExpr::Literal(v) => v,
+                                    _ => 800.0,
+                                };
+                                Some((vis, invis))
+                            }
+                            _ => None,
+                        })
+                    })
+                    .unwrap_or((200.0, 800.0));
+
                 entity_commands.insert((
                     GhostTransparency {
-                        visible_distance: 200.0,
-                        invisible_distance: 800.0,
+                        visible_distance: vis_dist,
+                        invisible_distance: invis_dist,
                     },
                     GhostAlpha { value: 0.0 },
                 ));
