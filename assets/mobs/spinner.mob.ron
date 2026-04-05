@@ -34,7 +34,7 @@
                     ),
                     "charge": (
                         components: [SpinnerCharge((speed: "1200.0"))],
-                        transitions: [AfterTime((to: "cooldown", duration: "2.0"))],
+                        transitions: [AfterTime((to: "cooldown", duration: "1.0"))],
                     ),
                     "cooldown": (
                         components: [],

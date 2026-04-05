@@ -3,6 +3,7 @@ use std::f32::consts::{FRAC_PI_2, TAU};
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::blueprints::components::common::sprite::CircleSprite;
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::palette;
 use crate::particles;
@@ -35,6 +36,21 @@ pub struct SpinnerSquishScaleLayer(pub ScaleLayerId);
 pub fn register_systems(app: &mut App) {
     app.add_systems(Startup, register_layer);
     app.add_systems(PostUpdate, (init_spinner_visual, animate_spinner).chain());
+    app.add_observer(on_remove_visual_state);
+}
+
+fn on_remove_visual_state(
+    on: On<Remove, SpinnerVisualState>,
+    query: Query<&SpinnerVisualState>,
+    mut commands: Commands,
+) {
+    let entity = on.event_target();
+    let Ok(state) = query.get(entity) else { return };
+    for emitter in &state.trail_emitters {
+        if let Some(e) = *emitter {
+            particles::stop_particles(&mut commands, e);
+        }
+    }
 }
 
 fn register_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Commands) {
@@ -55,12 +71,14 @@ fn init_spinner_visual(
             ..default()
         });
         let body_mesh = meshes.add(Sphere::new(0.5));
+        let flash_color = palette::flash_lookup("enemy").map(|(r, g, b)| Color::srgb(r, g, b));
         let body = commands
             .spawn((
                 Mesh3d(body_mesh),
                 MeshMaterial3d(body_material),
                 Transform::from_translation(Vec3::new(0.0, BODY_ELEVATION, 0.0)),
                 ScaleModifiers::default(),
+                CircleSprite { color: body_color, flash_color },
             ))
             .id();
         commands.entity(entity).add_child(body);
@@ -185,7 +203,7 @@ fn animate_spinner(
 
             if let Some(emitter_entity) = state.trail_emitters[i] {
                 let dir = Vec2::new(angle.cos(), angle.sin());
-                let tip_local = dir * (SPIKE_OFFSET + visual.spike_length * state.spike_growth);
+                let tip_local = dir * (SPIKE_OFFSET + visual.spike_length / 2.0 * state.spike_growth);
                 let world_pos = spinner_pos + tip_local * entity_scale;
                 if let Ok(mut emitter_transform) = transform_query.get_mut(emitter_entity) {
                     emitter_transform.translation = crate::coord::ground_pos(world_pos);
