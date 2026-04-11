@@ -19,7 +19,6 @@ mod physics;
 mod player;
 mod run;
 mod schedule;
-mod skill_tree;
 mod stats;
 mod summoning;
 mod ui;
@@ -59,7 +58,6 @@ use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
 use coin::CoinPlugin;
 use run::RunPlugin;
-use skill_tree::SkillTreePlugin;
 use summoning::SummoningPlugin;
 use wave::{CombatPhase, WavePhase, WavePlugin};
 
@@ -214,7 +212,6 @@ fn main() {
             PlayerPlugin,
             StatsPlugin,
             BlueprintPlugin,
-            SkillTreePlugin,
             RunPlugin,
             CoinPlugin,
             HealthMaterialPlugin,

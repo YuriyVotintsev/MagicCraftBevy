@@ -14,7 +14,7 @@ use crate::particles::{ParticleConfigRaw, ParticleRegistry};
 
 use super::assets::{
     BlueprintDefAsset, GameBalanceAsset,
-    SkillTreeDefAsset, StatsConfigAsset,
+    StatsConfigAsset,
 };
 
 #[derive(Resource, Default)]
@@ -25,7 +25,6 @@ pub struct LoadingState {
     pub heroes_folder: Option<Handle<LoadedFolder>>,
     pub abilities_folder: Option<Handle<LoadedFolder>>,
     pub mobs_folder: Option<Handle<LoadedFolder>>,
-    pub skill_tree_handle: Option<Handle<SkillTreeDefAsset>>,
     pub particles_folder: Option<Handle<LoadedFolder>>,
 }
 
@@ -139,7 +138,6 @@ pub fn check_stats_loaded(
     loading_state.heroes_folder = Some(asset_server.load_folder("heroes"));
     loading_state.abilities_folder = Some(asset_server.load_folder("player_abilities"));
     loading_state.mobs_folder = Some(asset_server.load_folder("mobs"));
-    loading_state.skill_tree_handle = Some(asset_server.load("skill_tree/tree.ron"));
     loading_state.particles_folder = Some(asset_server.load_folder("particles"));
 
     loading_state.phase = LoadingPhase::WaitingForContent;
@@ -151,7 +149,6 @@ pub fn check_content_loaded(
     mut loading_state: ResMut<LoadingState>,
     asset_server: Res<AssetServer>,
     blueprint_assets: Res<Assets<BlueprintDefAsset>>,
-    skill_tree_assets: Res<Assets<SkillTreeDefAsset>>,
     particle_assets: Res<Assets<ParticleConfigRaw>>,
     folders: Res<Assets<LoadedFolder>>,
     stat_registry: Option<Res<StatRegistry>>,
@@ -178,9 +175,6 @@ pub fn check_content_loaded(
     let Some(mobs_folder_handle) = &loading_state.mobs_folder else {
         return;
     };
-    let Some(skill_tree_handle) = &loading_state.skill_tree_handle else {
-        return;
-    };
     let Some(particles_folder_handle) = &loading_state.particles_folder else {
         return;
     };
@@ -199,13 +193,6 @@ pub fn check_content_loaded(
         }
     }
 
-    if !matches!(
-        asset_server.get_load_state(skill_tree_handle.id()),
-        Some(LoadState::Loaded)
-    ) {
-        return;
-    }
-
     info!("All content loaded, finalizing...");
 
     let lookup = |name: &str| stat_registry.get(name);
@@ -214,8 +201,6 @@ pub fn check_content_loaded(
     commands.insert_resource(AvailableHeroes { base_blueprint });
 
     resolve_blueprints(&lookup, &calc_registry, &folders, &[abilities_folder_handle, mobs_folder_handle], &blueprint_assets, &mut blueprint_registry);
-
-    resolve_skill_tree(&mut commands, &skill_tree_assets, skill_tree_handle, &stat_registry);
 
     resolve_particles(&mut commands, &asset_server, &particle_assets, &folders, particles_folder_handle);
 
@@ -286,20 +271,6 @@ fn resolve_blueprints(
                 }
             }
         }
-    }
-}
-
-fn resolve_skill_tree(
-    commands: &mut Commands,
-    skill_tree_assets: &Assets<SkillTreeDefAsset>,
-    handle: &Handle<SkillTreeDefAsset>,
-    stat_registry: &StatRegistry,
-) {
-    if let Some(tree_asset) = skill_tree_assets.get(handle.id()) {
-        let (graph, grid_size) = tree_asset.0.resolve(stat_registry);
-        info!("Loaded skill tree: {} nodes, {} edges (grid_size: {})", graph.nodes.len(), graph.edges.len(), grid_size);
-        commands.insert_resource(graph);
-        commands.insert_resource(crate::skill_tree::graph::GridSettings { size: grid_size });
     }
 }
 

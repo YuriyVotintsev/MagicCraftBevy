@@ -6,7 +6,6 @@ use bevy::reflect::TypePath;
 use crate::balance::GameBalance;
 use crate::blueprints::BlueprintDefRaw;
 use crate::expr::calc::CalcTemplateRaw;
-use crate::skill_tree::types::SkillTreeDefRaw;
 use crate::stats::display::StatDisplayRuleRaw;
 use crate::stats::loader::StatDefRaw;
 
@@ -22,13 +21,7 @@ pub struct StatsConfigAsset {
 pub struct BlueprintDefAsset(pub BlueprintDefRaw);
 
 #[derive(Asset, TypePath)]
-pub struct SkillTreeDefAsset(pub SkillTreeDefRaw);
-
-#[derive(Asset, TypePath)]
 pub struct GameBalanceAsset(pub GameBalance);
-
-#[derive(Default, TypePath)]
-pub struct SkillTreeDefLoader;
 
 #[derive(Default, TypePath)]
 pub struct GameBalanceLoader;
@@ -121,25 +114,3 @@ impl AssetLoader for BlueprintDefLoader {
     }
 }
 
-impl AssetLoader for SkillTreeDefLoader {
-    type Asset = SkillTreeDefAsset;
-    type Settings = ();
-    type Error = anyhow::Error;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).await?;
-        let content = std::str::from_utf8(&bytes)?;
-        let def: SkillTreeDefRaw = ron::from_str(content)?;
-        Ok(SkillTreeDefAsset(def))
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["tree.ron"]
-    }
-}

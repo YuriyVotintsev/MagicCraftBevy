@@ -5,7 +5,6 @@ use crate::Faction;
 use crate::blueprints::{BlueprintRegistry, spawn_blueprint_entity};
 use crate::blueprints::spawn::EntitySpawner;
 use crate::player::selected_spells::SpellSlot;
-use crate::skill_tree::graph::SkillGraph;
 use crate::wave::WavePhase;
 
 use super::{AvailableHeroes, SelectedSpells};
@@ -23,7 +22,6 @@ pub fn spawn_player(
     mut spawner: EntitySpawner,
     available_heroes: Res<AvailableHeroes>,
     blueprint_registry: Res<BlueprintRegistry>,
-    skill_graph: Option<Res<SkillGraph>>,
     mut selected_spells: ResMut<SelectedSpells>,
 ) {
     let Some(blueprint_def) = blueprint_registry.get(available_heroes.base_blueprint) else {
@@ -37,16 +35,7 @@ pub fn spawn_player(
 
     let entity_def = base_entity_def.clone();
 
-    let mut modifier_tuples: Vec<_> = Vec::new();
-    if let Some(graph) = &skill_graph {
-        for node in &graph.nodes {
-            for _ in 0..node.level {
-                modifier_tuples.extend(node.rolled_values.iter().copied());
-            }
-        }
-    }
-
-    let entity = spawner.spawn_root(&entity_def, Faction::Player, &modifier_tuples);
+    let entity = spawner.spawn_root(&entity_def, Faction::Player, &[]);
     spawner.commands.entity(entity).insert((
         Name::new("Player"),
         Player,

@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use crate::GameState;
 use assets::{
     BlueprintDefAsset, BlueprintDefLoader, GameBalanceAsset, GameBalanceLoader,
-    SkillTreeDefAsset, SkillTreeDefLoader, StatsConfigAsset, StatsConfigLoader,
+    StatsConfigAsset, StatsConfigLoader,
 };
 use crate::particles::{ParticleConfigRaw, ParticleConfigLoader};
 use systems::LoadingState;
@@ -20,12 +20,10 @@ impl Plugin for LoadingPlugin {
         app.init_asset::<StatsConfigAsset>()
             .init_asset::<BlueprintDefAsset>()
             .init_asset::<GameBalanceAsset>()
-            .init_asset::<SkillTreeDefAsset>()
             .init_asset::<ParticleConfigRaw>()
             .register_asset_loader(StatsConfigLoader)
             .register_asset_loader(BlueprintDefLoader)
             .register_asset_loader(GameBalanceLoader)
-            .register_asset_loader(SkillTreeDefLoader)
             .register_asset_loader(ParticleConfigLoader)
             .init_resource::<LoadingState>()
             .add_systems(OnEnter(GameState::Loading), systems::start_loading)
