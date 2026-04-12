@@ -20,27 +20,13 @@
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody((mass: Some("1"))),
                 Health(()),
+                FindNearestEnemy((size: "4000.0")),
+                LungeMovement((duration: Some("0.5"))),
+                UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5"), max_range: Some("100"))),
                 OnDeath((entities: [
                     (components: [Particles((config: "enemy_death"))]),
                 ])),
             ],
-            states: Some((
-                initial: "find_target",
-                states: {
-                    "find_target": (
-                        components: [FindNearestEnemy((size: "4000.0"))],
-                        transitions: [WhenFoundTarget((to: "lunge"))],
-                    ),
-                    "lunge": (
-                        components: [LungeMovement((duration: Some("0.5")))],
-                        transitions: [WhenNear((to: "attack", distance: "100.0"))],
-                    ),
-                    "attack": (
-                        components: [LungeMovement((distance: Some("100"))), UseAbilities((abilities: ["melee_attack"], cooldown: Some("0.5")))],
-                        transitions: [AfterTime((to: "lunge", duration: "0.8"))],
-                    ),
-                }
-            ))
         )
     ]
 )

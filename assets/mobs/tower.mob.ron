@@ -25,29 +25,12 @@
                 StaticBody(()),
                 Health(()),
                 ShootSquish(()),
+                FindNearestEnemy((size: "4000.0")),
+                UseAbilities((abilities: ["tower_shot"], cooldown: Some("2.5"))),
                 OnDeath((entities: [
                     (components: [Particles((config: "enemy_death_large"))]),
                 ])),
             ],
-            states: Some((
-                initial: "find_target",
-                states: {
-                    "find_target": (
-                        components: [FindNearestEnemy((size: "4000.0"))],
-                        transitions: [WhenFoundTarget((to: "idle"))],
-                    ),
-                    "idle": (
-                        components: [],
-                        transitions: [AfterTime((to: "shoot", duration: "2.0"))],
-                    ),
-                    "shoot": (
-                        components: [
-                            UseAbilities((abilities: ["tower_shot"], cooldown: Some("10"), immediate: Some(true))),
-                        ],
-                        transitions: [AfterTime((to: "idle", duration: "0.5"))],
-                    ),
-                }
-            ))
         )
     ]
 )

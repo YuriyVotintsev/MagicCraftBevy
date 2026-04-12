@@ -8,7 +8,6 @@ pub mod spawn;
 mod registry;
 mod recalc;
 mod cleanup;
-pub mod state;
 pub mod activation;
 
 #[macro_use]
@@ -33,8 +32,7 @@ pub struct BlueprintPlugin;
 
 impl Plugin for BlueprintPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<BlueprintRegistry>()
-            .add_message::<state::StateTransition>();
+        app.init_resource::<BlueprintRegistry>();
 
         components::register_component_systems(app);
 
@@ -49,7 +47,6 @@ impl Plugin for BlueprintPlugin {
             Update,
             (
                 cleanup::cleanup_orphaned_blueprint_entities.in_set(crate::schedule::GameSet::Cleanup),
-                state::state_transition_system.in_set(crate::schedule::GameSet::MobAI),
                 activation::respawn_on_count_change.in_set(crate::schedule::GameSet::Spawning),
                 activation::blueprint_activation_system.in_set(crate::schedule::GameSet::BlueprintActivation),
             )

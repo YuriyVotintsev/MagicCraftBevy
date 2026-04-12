@@ -19,35 +19,12 @@
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody((mass: Some("20"))),
                 Health(()),
+                FindNearestEnemy((size: "4000.0")),
+                SpinnerAi((idle_duration: Some("0.5"), windup_duration: Some("3.0"), charge_duration: Some("1.0"), cooldown_duration: Some("0.5"), charge_speed: Some("1200"))),
                 OnDeath((entities: [
                     (components: [Particles((config: "enemy_death_large"))]),
                 ])),
             ],
-            states: Some((
-                initial: "find_target",
-                states: {
-                    "find_target": (
-                        components: [FindNearestEnemy((size: "4000.0"))],
-                        transitions: [WhenFoundTarget((to: "idle"))],
-                    ),
-                    "idle": (
-                        components: [],
-                        transitions: [AfterTime((to: "windup", duration: "0.5"))],
-                    ),
-                    "windup": (
-                        components: [SpinnerWindup(())],
-                        transitions: [AfterTime((to: "charge", duration: "3"))],
-                    ),
-                    "charge": (
-                        components: [SpinnerCharge((speed: "1200.0"))],
-                        transitions: [AfterTime((to: "cooldown", duration: "1.0"))],
-                    ),
-                    "cooldown": (
-                        components: [],
-                        transitions: [AfterTime((to: "idle", duration: "0.5"))],
-                    ),
-                }
-            ))
         )
     ]
 )

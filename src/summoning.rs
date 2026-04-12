@@ -4,7 +4,6 @@ use crate::blueprints::BlueprintId;
 use crate::blueprints::components::common::health::Health;
 use crate::blueprints::BlueprintRegistry;
 use crate::blueprints::spawn::EntitySpawner;
-use crate::blueprints::state::{PendingInitialState, StateTransition};
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
 use crate::schedule::GameSet;
@@ -73,7 +72,7 @@ impl Plugin for SummoningPlugin {
             )
             .add_systems(
                 Last,
-                (init_rise, animate_rise, activate_pending_initial_state)
+                (init_rise, animate_rise)
                     .chain()
                     .run_if(in_state(WavePhase::Combat)),
             )
@@ -220,20 +219,6 @@ fn animate_rise(
             transform.translation.y = rise.target_y;
             commands.entity(entity).remove::<RiseFromGround>();
         }
-    }
-}
-
-fn activate_pending_initial_state(
-    mut commands: Commands,
-    query: Query<(Entity, &PendingInitialState), Without<RiseFromGround>>,
-    mut events: MessageWriter<StateTransition>,
-) {
-    for (entity, pending) in &query {
-        events.write(StateTransition {
-            entity,
-            to: pending.0,
-        });
-        commands.entity(entity).remove::<PendingInitialState>();
     }
 }
 

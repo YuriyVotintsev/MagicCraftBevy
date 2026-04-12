@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
 use crate::blueprints::SpawnSource;
+use crate::blueprints::context::TargetInfo;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
@@ -29,11 +30,11 @@ pub fn register_systems(app: &mut App) {
 
 fn find_nearest_enemy_system(
     mut commands: Commands,
-    query: Query<(Entity, &FindNearestEnemy, &SpawnSource), Without<FoundTarget>>,
+    mut query: Query<(Entity, &FindNearestEnemy, &mut SpawnSource), Without<FoundTarget>>,
     spatial_query: SpatialQuery,
     transforms: Query<&Transform>,
 ) {
-    for (entity, finder, source) in &query {
+    for (entity, finder, mut source) in &mut query {
         let caster_pos = transforms
             .get(finder.center)
             .map(|t| crate::coord::to_2d(t.translation))
@@ -55,10 +56,11 @@ fn find_nearest_enemy_system(
                 Some((caster_pos.distance_squared(pos), e, pos))
             })
             .min_by(|(dist_a, _, _), (dist_b, _, _)| dist_a.total_cmp(dist_b))
-            .map(|(_, e, pos)| (e, crate::coord::ground_pos(pos)));
+            .map(|(_, e, pos)| (e, pos));
 
         if let Some((target_entity, target_pos)) = target {
-            commands.entity(entity).insert(FoundTarget(target_entity, target_pos));
+            source.target = TargetInfo::from_entity_and_position(target_entity, target_pos);
+            commands.entity(entity).insert(FoundTarget(target_entity, crate::coord::ground_pos(target_pos)));
         }
     }
 }

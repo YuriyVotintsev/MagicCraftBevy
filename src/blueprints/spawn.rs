@@ -6,10 +6,9 @@ use crate::Faction;
 use crate::stats::{ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry, DEFAULT_STATS};
 use super::components::ComponentDef;
 use super::context::TargetInfo;
-use super::entity_def::{EntityDef, StatesBlock};
+use super::entity_def::EntityDef;
 use super::expr::EvalCtx;
 use super::recalc::StoredComponentDefs;
-use super::state::{CurrentState, PendingInitialState, StoredStatesBlock};
 use super::{SpawnSource, BlueprintId, BlueprintRegistry, spawn_blueprint_entity};
 
 #[derive(SystemParam)]
@@ -111,14 +110,7 @@ impl EntitySpawner<'_, '_> {
             stats,
         );
         self.spawn_blueprint_entities(entity_id, &entity_def.abilities, source.caster_faction);
-        let state_recalc = init_fsm(
-            &mut self.commands,
-            entity_id,
-            entity_def.states.as_ref(),
-            &source,
-            stats,
-        );
-        store_recalc(&mut self.commands, entity_id, base_recalc, state_recalc);
+        store_recalc(&mut self.commands, entity_id, base_recalc);
 
         entity_id
     }
@@ -146,14 +138,7 @@ impl EntitySpawner<'_, '_> {
             stats,
         );
         self.spawn_blueprint_entities(entity_id, &entity_def.abilities, source.caster_faction);
-        let state_recalc = init_fsm(
-            &mut self.commands,
-            entity_id,
-            entity_def.states.as_ref(),
-            &source,
-            stats,
-        );
-        store_recalc(&mut self.commands, entity_id, base_recalc, state_recalc);
+        store_recalc(&mut self.commands, entity_id, base_recalc);
 
         entity_id
     }
@@ -229,31 +214,12 @@ fn insert_components(
     recalc
 }
 
-fn init_fsm(
-    commands: &mut Commands,
-    entity_id: Entity,
-    states_block: Option<&StatesBlock>,
-    _source: &SpawnSource,
-    _stats: &ComputedStats,
-) -> Vec<ComponentDef> {
-    let Some(states_block) = states_block else { return Vec::new() };
-
-    commands.entity(entity_id).insert((
-        CurrentState(usize::MAX),
-        StoredStatesBlock(states_block.clone()),
-        PendingInitialState(states_block.initial),
-    ));
-
-    Vec::new()
-}
-
 fn store_recalc(
     commands: &mut Commands,
     entity_id: Entity,
     base: Vec<ComponentDef>,
-    state: Vec<ComponentDef>,
 ) {
-    if !base.is_empty() || !state.is_empty() {
-        commands.entity(entity_id).insert(StoredComponentDefs { base, state });
+    if !base.is_empty() {
+        commands.entity(entity_id).insert(StoredComponentDefs { base });
     }
 }

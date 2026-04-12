@@ -20,31 +20,12 @@
                 Collider((shape: Circle, sensor: Some(false))),
                 DynamicBody((mass: Some("10"))),
                 Health(()),
+                FindNearestEnemy((size: "4000.0")),
+                JumperAi((ability: "jumper_shot", idle_duration: Some("3.0"), jump_duration: Some("0.5"), land_duration: Some("0.5"), jump_distance: Some("350"))),
                 OnDeath((entities: [
                     (components: [Particles((config: "enemy_death_large"))]),
                 ])),
             ],
-            states: Some((
-                initial: "find_target",
-                states: {
-                    "find_target": (
-                        components: [FindNearestEnemy((size: "4000.0"))],
-                        transitions: [WhenFoundTarget((to: "idle"))],
-                    ),
-                    "idle": (
-                        components: [],
-                        transitions: [AfterTime((to: "jump", duration: "3.0"))],
-                    ),
-                    "jump": (
-                        components: [RandomJump((distance: Some("350"), duration: Some("0.5")))],
-                        transitions: [AfterTime((to: "land", duration: "0.5"))],
-                    ),
-                    "land": (
-                        components: [UseAbilities((abilities: ["jumper_shot"], cooldown: Some("10"), immediate: Some(true)))],
-                        transitions: [AfterTime((to: "idle", duration: "0.5"))],
-                    ),
-                }
-            ))
         )
     ]
 )

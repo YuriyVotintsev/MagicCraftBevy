@@ -92,17 +92,14 @@ fn load_all_defs() -> (HashMap<String, BlueprintDefRaw>, HashSet<String>) {
 fn collect_use_abilities_refs(entity_raw: &EntityDefRaw) -> Vec<String> {
     let mut refs = Vec::new();
     for component in &entity_raw.components {
-        if let ComponentDefRaw::UseAbilities(raw) = component {
-            refs.extend(raw.abilities.clone());
-        }
-    }
-    if let Some(states) = &entity_raw.states {
-        for state in states.states.values() {
-            for component in &state.components {
-                if let ComponentDefRaw::UseAbilities(raw) = component {
-                    refs.extend(raw.abilities.clone());
-                }
+        match component {
+            ComponentDefRaw::UseAbilities(raw) => {
+                refs.extend(raw.abilities.clone());
             }
+            ComponentDefRaw::JumperAi(raw) => {
+                refs.push(raw.ability.clone());
+            }
+            _ => {}
         }
     }
     refs

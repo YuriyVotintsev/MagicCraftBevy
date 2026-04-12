@@ -2,13 +2,12 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::blueprints::SpawnSource;
 use crate::movement::SelfMoving;
 use crate::stats::{ComputedStats, StatRegistry};
+
 #[blueprint_component]
-pub struct MoveToward {
-    #[default_expr("target.entity")]
-    pub target: EntityExpr,
-}
+pub struct MoveToward {}
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -23,13 +22,20 @@ pub fn register_systems(app: &mut App) {
 fn move_toward_system(
     mut commands: Commands,
     stat_registry: Res<StatRegistry>,
-    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &MoveToward)>,
+    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &SpawnSource), With<MoveToward>>,
     transforms: Query<&Transform, Without<MoveToward>>,
 ) {
     let speed_id = stat_registry.get("movement_speed");
 
-    for (entity, transform, mut velocity, stats, move_toward) in &mut query {
-        let Ok(target_transform) = transforms.get(move_toward.target) else {
+    for (entity, transform, mut velocity, stats, source) in &mut query {
+        let Some(target_entity) = source.target.entity else {
+            velocity.0 = Vec3::ZERO;
+            commands.entity(entity).remove::<SelfMoving>();
+            continue;
+        };
+        let Ok(target_transform) = transforms.get(target_entity) else {
+            velocity.0 = Vec3::ZERO;
+            commands.entity(entity).remove::<SelfMoving>();
             continue;
         };
         let speed = speed_id.map(|id| stats.get(id)).unwrap_or_default();

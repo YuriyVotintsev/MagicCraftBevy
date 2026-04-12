@@ -9,13 +9,12 @@ pub struct ShotFired;
 
 #[blueprint_component]
 pub struct UseAbilities {
-    #[default_expr("target.entity")]
-    pub target: EntityExpr,
     pub abilities: Vec<String>,
     #[raw(default = 1.0)]
     pub cooldown: ScalarExpr,
     #[raw(default = false)]
     pub immediate: bool,
+    pub max_range: Option<ScalarExpr>,
 }
 
 #[derive(Component)]
@@ -57,17 +56,23 @@ fn use_abilities_system(
     blueprint_registry: Res<BlueprintRegistry>,
     transforms: Query<&Transform, Without<UseAbilities>>,
     mut query: Query<(&Transform, &UseAbilities, &mut UseAbilitiesTimer, &SpawnSource)>,
-    mut activation_input_query: Query<(&SpawnSource, &mut BlueprintActivationInput)>,
+    mut activation_input_query: Query<(&SpawnSource, &mut BlueprintActivationInput), Without<UseAbilities>>,
 ) {
     for (transform, use_abilities, mut timer, owner_source) in &mut query {
-        let Ok(target_transform) = transforms.get(use_abilities.target) else {
-            continue;
-        };
+        let Some(target_entity) = owner_source.target.entity else { continue };
+        let Ok(target_transform) = transforms.get(target_entity) else { continue };
 
         timer.elapsed += time.delta_secs();
 
         if timer.elapsed < use_abilities.cooldown {
             continue;
+        }
+
+        if let Some(max_range) = use_abilities.max_range {
+            let dist = transform.translation.distance(target_transform.translation);
+            if dist > max_range {
+                continue;
+            }
         }
 
         timer.elapsed = 0.0;
@@ -82,7 +87,7 @@ fn use_abilities_system(
                     if source.blueprint_id == bid && source.caster.entity == Some(caster_entity) {
                         input.pressed = true;
                         input.target = TargetInfo {
-                            entity: Some(use_abilities.target),
+                            entity: Some(target_entity),
                             position: Some(target_pos),
                             direction: Some(crate::coord::to_2d(direction)),
                         };

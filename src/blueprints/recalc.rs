@@ -7,13 +7,6 @@ use super::SpawnSource;
 #[derive(Component)]
 pub struct StoredComponentDefs {
     pub base: Vec<ComponentDef>,
-    pub state: Vec<ComponentDef>,
-}
-
-impl StoredComponentDefs {
-    pub fn all(&self) -> impl Iterator<Item = &ComponentDef> {
-        self.base.iter().chain(self.state.iter())
-    }
 }
 
 pub fn recalculate_on_stats_change(
@@ -21,7 +14,7 @@ pub fn recalculate_on_stats_change(
     query: Query<(Entity, &SpawnSource, &ComputedStats, &StoredComponentDefs), Changed<ComputedStats>>,
 ) {
     for (entity, source, stats, defs) in &query {
-        for def in defs.all() {
+        for def in &defs.base {
             def.update_component(&mut commands.entity(entity), source, stats);
         }
     }

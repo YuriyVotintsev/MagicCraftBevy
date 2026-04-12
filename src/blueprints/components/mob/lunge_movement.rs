@@ -2,13 +2,12 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use magic_craft_macros::blueprint_component;
 
+use crate::blueprints::SpawnSource;
 use crate::movement::SelfMoving;
 use crate::stats::{ComputedStats, StatRegistry};
 
 #[blueprint_component]
 pub struct LungeMovement {
-    #[default_expr("target.entity")]
-    pub target: EntityExpr,
     pub speed: Option<ScalarExpr>,
     pub duration: Option<ScalarExpr>,
     #[raw(default = 0.4)]
@@ -87,12 +86,13 @@ fn lunge_movement_system(
         &mut LinearVelocity,
         &LungeMovement,
         &mut LungeMovementState,
+        &SpawnSource,
     )>,
     transforms: Query<&Transform, Without<LungeMovement>>,
 ) {
     let dt = time.delta_secs();
 
-    for (entity, transform, mut velocity, lunge, mut state) in &mut query {
+    for (entity, transform, mut velocity, lunge, mut state, source) in &mut query {
         state.elapsed += dt;
 
         match state.phase {
@@ -106,7 +106,11 @@ fn lunge_movement_system(
                 }
 
                 if state.direction == Vec2::ZERO {
-                    let Ok(target_transform) = transforms.get(lunge.target) else {
+                    let Some(target_entity) = source.target.entity else {
+                        velocity.0 = Vec3::ZERO;
+                        continue;
+                    };
+                    let Ok(target_transform) = transforms.get(target_entity) else {
                         velocity.0 = Vec3::ZERO;
                         continue;
                     };
