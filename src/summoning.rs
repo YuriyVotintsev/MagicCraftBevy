@@ -14,7 +14,6 @@ const CIRCLE_GROW_DURATION: f32 = 0.7;
 const CIRCLE_SHRINK_DURATION: f32 = 0.3;
 const RISE_DURATION: f32 = 0.4;
 const RISE_Y_OFFSET: f32 = 200.0;
-pub const DEFAULT_CIRCLE_SIZE: f32 = 150.0;
 
 enum SummonPhase {
     CircleGrow,

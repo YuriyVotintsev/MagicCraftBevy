@@ -38,6 +38,7 @@ pub enum MobKind {
 }
 
 impl MobKind {
+    #[allow(dead_code)]
     pub fn from_id(s: &str) -> Option<Self> {
         match s {
             "ghost" => Some(MobKind::Ghost),
@@ -171,10 +172,7 @@ fn make_source(entity: Entity, pos: Vec2) -> SpawnSource {
     SpawnSource {
         caster: TargetInfo::from_entity_and_position(entity, pos),
         caster_faction: Faction::Enemy,
-        source: TargetInfo::EMPTY,
         target: TargetInfo::EMPTY,
-        index: 0,
-        count: 1,
     }
 }
 
@@ -238,13 +236,13 @@ fn spawn_slime_small(
     ));
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+        p.spawn(Shadow { opacity: 0.45 });
         p.spawn((
             Sprite {
                 color: enemy_sprite_color(), shape: SpriteShape::Circle,
                 position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
             },
-            JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, max_tilt: 12.0, land_squish: 0.3, land_duration: 0.4 },
+            JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, land_squish: 0.3, land_duration: 0.4 },
         ));
     });
 
@@ -274,7 +272,7 @@ fn spawn_ghost(
         modifiers, dirty, computed,
         Size { value: s.size },
         Collider { shape: ColliderShape::Circle, sensor: false },
-        DynamicBody { mass: 1.0 },
+        DynamicBody { mass: s.mass },
         Health { current: hp },
         GhostTransparency { visible_distance: s.visible_distance, invisible_distance: s.invisible_distance },
         FindNearestEnemy { size: 4000.0, center: Entity::PLACEHOLDER },
@@ -289,7 +287,7 @@ fn spawn_ghost(
     ));
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+        p.spawn(Shadow { opacity: 0.45 });
         p.spawn((
             Sprite {
                 color: enemy_sprite_color(), shape: SpriteShape::Circle,
@@ -340,7 +338,7 @@ fn spawn_tower(
     ));
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+        p.spawn(Shadow { opacity: 0.45 });
         p.spawn(Sprite {
             color: enemy_sprite_color(), shape: SpriteShape::Circle,
             position: Vec2::ZERO, scale: 1.0, image: None, elevation: 1.2, half_length: 0.5,
@@ -392,13 +390,13 @@ fn spawn_jumper(
     ));
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+        p.spawn(Shadow { opacity: 0.45 });
         p.spawn((
             Sprite {
                 color: enemy_sprite_color(), shape: SpriteShape::Circle,
                 position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
             },
-            JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, max_tilt: 12.0, land_squish: 0.7, land_duration: 0.4 },
+            JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, land_squish: 0.7, land_duration: 0.4 },
         ));
     });
 
@@ -448,7 +446,7 @@ fn spawn_spinner(
     ));
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+        p.spawn(Shadow { opacity: 0.45 });
         p.spawn(Sprite {
             color: enemy_sprite_color(), shape: SpriteShape::Circle,
             position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,

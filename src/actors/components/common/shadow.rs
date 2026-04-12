@@ -4,7 +4,6 @@ use crate::palette;
 
 #[derive(Component)]
 pub struct Shadow {
-    pub y_offset: f32,
     pub opacity: f32,
 }
 

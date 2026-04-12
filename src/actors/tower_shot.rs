@@ -181,7 +181,7 @@ pub fn fire_tower_shot_impl(
         Size { value: params.projectile_size },
     )).id();
     commands.entity(proj).with_children(|p| {
-        p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+        p.spawn(Shadow { opacity: 0.45 });
         p.spawn(Sprite {
             color: {
                 let (r, g, b) = palette::lookup("enemy_ability").unwrap_or((1.0, 0.5, 0.5));

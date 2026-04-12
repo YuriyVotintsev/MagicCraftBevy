@@ -14,6 +14,7 @@ impl TargetInfo {
         Self { entity: Some(entity), position: Some(position), direction: None }
     }
 
+    #[allow(dead_code)]
     pub fn from_position(position: Vec2) -> Self {
         Self { entity: None, position: Some(position), direction: None }
     }

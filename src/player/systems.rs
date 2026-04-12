@@ -83,10 +83,7 @@ pub fn spawn_player(
         SpawnSource {
             caster: TargetInfo::from_entity_and_position(entity, Vec2::ZERO),
             caster_faction: Faction::Player,
-            source: TargetInfo::EMPTY,
             target: TargetInfo::EMPTY,
-            index: 0,
-            count: 1,
         },
         PlayerInput {
             bindings: vec![
@@ -98,13 +95,13 @@ pub fn spawn_player(
     ));
 
     commands.entity(entity).with_children(|p| {
-        p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+        p.spawn(Shadow { opacity: 0.45 });
         p.spawn((
             Sprite {
                 color: player_sprite_color(), shape: SpriteShape::Circle,
                 position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
             },
-            JumpWalkAnimation { bounce_height: 0.6, bounce_duration: 0.45, max_tilt: 12.0, land_squish: 0.3, land_duration: 0.125 },
+            JumpWalkAnimation { bounce_height: 0.6, bounce_duration: 0.45, land_squish: 0.3, land_duration: 0.125 },
         ));
     });
 

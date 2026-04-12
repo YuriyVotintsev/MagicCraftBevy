@@ -26,6 +26,7 @@ pub enum AbilityKind {
 }
 
 impl AbilityKind {
+    #[allow(dead_code)]
     pub fn from_id(s: &str) -> Option<Self> {
         match s {
             "melee_attack" => Some(AbilityKind::MeleeAttack),
@@ -36,6 +37,7 @@ impl AbilityKind {
         }
     }
 
+    #[allow(dead_code)]
     pub fn id(&self) -> &'static str {
         match self {
             AbilityKind::MeleeAttack => "melee_attack",
@@ -138,14 +140,11 @@ fn enemy_ability_sprite_color() -> SpriteColor {
     SpriteColor { r, g, b, a: 1.0, flash }
 }
 
-fn make_projectile_source(caster: Entity, caster_pos: Vec2, caster_faction: Faction, target: TargetInfo, index: usize, count: usize) -> SpawnSource {
+fn make_projectile_source(caster: Entity, caster_pos: Vec2, caster_faction: Faction, target: TargetInfo) -> SpawnSource {
     SpawnSource {
         caster: TargetInfo::from_entity_and_position(caster, caster_pos),
         caster_faction,
-        source: TargetInfo::from_entity_and_position(caster, caster_pos),
         target,
-        index,
-        count,
     }
 }
 
@@ -181,7 +180,7 @@ fn fire_jumper_shot(
             Transform::from_translation(ground),
             Visibility::default(),
             caster_faction,
-            make_projectile_source(caster, caster_pos, caster_faction, target, i, count),
+            make_projectile_source(caster, caster_pos, caster_faction, target),
             Projectile,
             Size { value: params.projectile_size },
             Collider { shape: ColliderShape::Circle, sensor: true },
@@ -193,7 +192,7 @@ fn fire_jumper_shot(
         )).id();
 
         commands.entity(proj).with_children(|p| {
-            p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+            p.spawn(Shadow { opacity: 0.45 });
             p.spawn(Sprite {
                 color: enemy_ability_sprite_color(), shape: SpriteShape::Circle,
                 position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.7, half_length: 0.5,
@@ -235,7 +234,7 @@ fn fire_fireball(
             Transform::from_translation(ground),
             Visibility::default(),
             caster_faction,
-            make_projectile_source(caster, caster_pos, caster_faction, target, i as usize, count as usize),
+            make_projectile_source(caster, caster_pos, caster_faction, target),
             Projectile,
             Size { value: params.size },
             Collider { shape: ColliderShape::Circle, sensor: true },
@@ -247,7 +246,7 @@ fn fire_fireball(
         )).id();
 
         commands.entity(proj).with_children(|p| {
-            p.spawn(Shadow { y_offset: -0.5, opacity: 0.45 });
+            p.spawn(Shadow { opacity: 0.45 });
             p.spawn(Sprite {
                 color: player_ability_sprite_color(), shape: SpriteShape::Circle,
                 position: Vec2::ZERO, scale: 1.0, image: None, elevation: 2.0, half_length: 0.5,
@@ -271,10 +270,7 @@ fn fire_melee_attack(
     let source = SpawnSource {
         caster: TargetInfo::from_entity_and_position(caster, caster_pos),
         caster_faction,
-        source: TargetInfo::from_entity_and_position(caster, caster_pos),
         target,
-        index: 0,
-        count: 1,
     };
 
     commands.spawn((

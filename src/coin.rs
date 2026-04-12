@@ -68,10 +68,7 @@ fn spawn_coins(
                 DespawnOnExit(WavePhase::Combat),
             ))
             .with_children(|parent| {
-                parent.spawn(Shadow {
-                    y_offset: -0.5,
-                    opacity: 0.45,
-                });
+                parent.spawn(Shadow { opacity: 0.45 });
                 parent.spawn((
                     CircleSprite {
                         color: palette::color("coin"),

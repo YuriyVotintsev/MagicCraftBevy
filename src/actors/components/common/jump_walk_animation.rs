@@ -7,7 +7,6 @@ use crate::movement::SelfMoving;
 pub struct JumpWalkAnimation {
     pub bounce_height: f32,
     pub bounce_duration: f32,
-    pub max_tilt: f32,
     pub land_squish: f32,
     pub land_duration: f32,
 }
@@ -80,7 +79,6 @@ pub fn animate(
 
         let h = state.phase.sin().abs();
         let y = h * anim.bounce_height * state.amplitude;
-        let tilt = 0.0;
 
         let ng = 1.0 - h;
         let squash = ng.powi(3) * anim.land_squish;
@@ -90,7 +88,6 @@ pub fn animate(
         let scale_xz = 1.0 / scale_y.sqrt();
 
         transform.translation.y = 0.5 + y - 0.5 * (1.0 - scale_y);
-        transform.rotation = Quat::from_rotation_z(tilt);
         modifiers.set(layer.0, Vec3::new(scale_xz, scale_y, scale_xz));
     }
 }

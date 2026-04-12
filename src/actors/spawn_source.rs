@@ -7,8 +7,5 @@ use crate::faction::Faction;
 pub struct SpawnSource {
     pub caster: TargetInfo,
     pub caster_faction: Faction,
-    pub source: TargetInfo,
     pub target: TargetInfo,
-    pub index: usize,
-    pub count: usize,
 }

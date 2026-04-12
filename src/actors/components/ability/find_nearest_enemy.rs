@@ -15,7 +15,7 @@ pub struct FindNearestEnemy {
 }
 
 #[derive(Component)]
-pub struct FoundTarget(pub Entity, pub Vec3);
+pub struct FoundTarget;
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(
@@ -58,7 +58,7 @@ fn find_nearest_enemy_system(
 
         if let Some((target_entity, target_pos)) = target {
             source.target = TargetInfo::from_entity_and_position(target_entity, target_pos);
-            commands.entity(entity).insert(FoundTarget(target_entity, crate::coord::ground_pos(target_pos)));
+            commands.entity(entity).insert(FoundTarget);
         }
     }
 }

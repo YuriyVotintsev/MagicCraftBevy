@@ -47,18 +47,8 @@ impl WaveState {
 pub struct WaveEnemy;
 
 #[derive(Component)]
+#[allow(dead_code)]
 pub struct InvulnerableStack(pub u32);
-
-impl InvulnerableStack {
-    pub fn increment(&mut self) {
-        self.0 += 1;
-    }
-
-    pub fn decrement(&mut self) -> bool {
-        self.0 = self.0.saturating_sub(1);
-        self.0 == 0
-    }
-}
 
 #[derive(Resource)]
 pub struct ShopDelayTimer(pub Timer);

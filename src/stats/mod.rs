@@ -12,7 +12,7 @@ mod stat_id;
 pub(crate) mod systems;
 
 pub use calculators::StatCalculators;
-pub use computed_stats::{ComputedStats, DEFAULT_STATS};
+pub use computed_stats::ComputedStats;
 #[allow(unused_imports)]
 pub use crate::expr::StatProvider;
 pub use dirty_stats::DirtyStats;

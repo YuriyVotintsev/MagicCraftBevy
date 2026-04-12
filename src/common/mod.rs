@@ -1,7 +1,5 @@
 mod lifecycle;
 
-pub use lifecycle::AttachedTo;
-
 use bevy::prelude::*;
 
 pub struct CommonPlugin;
