@@ -1,7 +1,0 @@
-(
-    id: "dash",
-    cooldown: Some("1.0"),
-    entities: [
-        (components: [Dash((speed: "stat(movement_speed) * 4.0", duration: "0.2"))])
-    ]
-)

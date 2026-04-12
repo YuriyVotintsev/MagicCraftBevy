@@ -16,8 +16,10 @@ pub use computed_stats::{ComputedStats, DEFAULT_STATS};
 #[allow(unused_imports)]
 pub use crate::expr::StatProvider;
 pub use dirty_stats::DirtyStats;
+#[expect(unused_imports, reason = "StatDisplayRegistry — scaffolding for shop perk UI, not wired yet")]
 pub use display::{FormatSpan, SignMode, StatDisplayRegistry, ValueTemplate};
 pub use health::{Dead, SkipCleanup, death_system, DeathEvent};
+#[expect(unused_imports, reason = "ModifierDefRaw/StatRange — scaffolding for shop modifier perks, not wired yet")]
 pub use modifier_def::{ModifierDefRaw, StatRange};
 pub use modifiers::Modifiers;
 pub use pending_damage::PendingDamage;

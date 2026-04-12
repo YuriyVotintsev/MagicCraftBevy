@@ -1,9 +1,0 @@
-(
-    id: "melee_attack",
-    cooldown: Some("0"),
-    entities: [
-        (components: [
-            MeleeStrike((range: "300.0", damage: "stat(physical_damage_flat)")),
-        ])
-    ]
-)

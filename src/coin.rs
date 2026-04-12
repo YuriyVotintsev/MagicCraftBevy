@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
 use crate::balance::GameBalance;
-use crate::blueprints::components::common::shadow::Shadow;
-use crate::blueprints::components::common::sprite::CircleSprite;
+use crate::actors::components::common::shadow::Shadow;
+use crate::actors::components::common::sprite::CircleSprite;
 use crate::money::PlayerMoney;
 use crate::palette;
 use crate::player::Player;

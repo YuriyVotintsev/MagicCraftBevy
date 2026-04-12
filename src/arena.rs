@@ -4,14 +4,13 @@ use bevy::camera::ScalingMode;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 use rand::Rng;
 
+use crate::actors::mobs::{MobKind, MobsBalance};
 use crate::balance::{CurrentArenaSize, GameBalance};
-use crate::blueprints::components::common::health::Health;
-use crate::blueprints::BlueprintRegistry;
+use crate::actors::components::common::health::Health;
 use crate::physics::{GameLayer, Wall};
 use crate::run::RunState;
 use crate::schedule::GameSet;
 use crate::stats::StatRegistry;
-use crate::blueprints::components::ComponentDef;
 use crate::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh, DEFAULT_CIRCLE_SIZE};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
@@ -20,27 +19,30 @@ use crate::GameState;
 pub const WINDOW_WIDTH: f32 = 1920.0;
 pub const WINDOW_HEIGHT: f32 = 1080.0;
 
-const ALL_ENEMY_TYPES: &[&str] = &["slime_small", "jumper", "tower", "ghost", "spinner"];
+const ALL_ENEMY_TYPES: &[MobKind] = &[
+    MobKind::SlimeSmall,
+    MobKind::Jumper,
+    MobKind::Tower,
+    MobKind::Ghost,
+    MobKind::Spinner,
+];
 
 #[derive(Resource)]
 pub struct EnemySpawnPool {
-    pub enabled: Vec<(String, bool)>,
+    pub enabled: Vec<(MobKind, bool)>,
 }
 
 impl Default for EnemySpawnPool {
     fn default() -> Self {
         Self {
-            enabled: ALL_ENEMY_TYPES.iter().map(|&name| (name.to_string(), true)).collect(),
+            enabled: ALL_ENEMY_TYPES.iter().map(|&k| (k, true)).collect(),
         }
     }
 }
 
 impl EnemySpawnPool {
-    pub fn active_names(&self) -> Vec<&str> {
-        self.enabled.iter()
-            .filter(|(_, on)| *on)
-            .map(|(name, _)| name.as_str())
-            .collect()
+    pub fn active_kinds(&self) -> Vec<MobKind> {
+        self.enabled.iter().filter(|(_, on)| *on).map(|(k, _)| *k).collect()
     }
 }
 
@@ -276,7 +278,7 @@ fn spawn_enemies(
     mut commands: Commands,
     mut wave_state: ResMut<WaveState>,
     player_query: Query<&Transform, With<crate::player::Player>>,
-    blueprint_registry: Res<BlueprintRegistry>,
+    mobs_balance: Res<MobsBalance>,
     balance: Res<GameBalance>,
     run_state: Res<RunState>,
     stat_registry: Res<StatRegistry>,
@@ -333,88 +335,49 @@ fn spawn_enemies(
             }
         };
 
-        let active = spawn_pool.active_names();
+        let active = spawn_pool.active_kinds();
         if active.is_empty() {
             break;
         }
-        let blueprint_name = active[rng.random_range(0..active.len())];
+        let kind = active[rng.random_range(0..active.len())];
+        let circle_size = kind.size(&mobs_balance).max(DEFAULT_CIRCLE_SIZE);
+        let ground = crate::coord::ground_pos(Vec2::new(x, y));
 
-        if let Some(blueprint_id) = blueprint_registry.get_id(blueprint_name) {
-            let circle_size = blueprint_registry
-                .get(blueprint_id)
-                .and_then(|bp| bp.entities.first())
-                .and_then(|entity_def| {
-                    entity_def.components.iter().find_map(|c| match c {
-                        ComponentDef::Size(def) => match def.value {
-                            crate::expr::ScalarExpr::Literal(v) => Some(v),
-                            _ => None,
-                        },
-                        _ => None,
-                    })
-                })
-                .unwrap_or(DEFAULT_CIRCLE_SIZE);
-
-            let ground = crate::coord::ground_pos(Vec2::new(x, y));
-
-            let is_ghost = blueprint_name == "ghost";
-            let mat_handle = if is_ghost {
-                let cloned = materials.get(&circle_material.0).cloned();
-                if let Some(base_mat) = cloned {
-                    MeshMaterial3d(materials.add(base_mat))
-                } else {
-                    MeshMaterial3d(circle_material.0.clone())
-                }
+        let is_ghost = matches!(kind, MobKind::Ghost);
+        let mat_handle = if is_ghost {
+            let cloned = materials.get(&circle_material.0).cloned();
+            if let Some(base_mat) = cloned {
+                MeshMaterial3d(materials.add(base_mat))
             } else {
                 MeshMaterial3d(circle_material.0.clone())
-            };
-
-            let mut entity_commands = commands.spawn((
-                Name::new("SummoningCircle"),
-                Mesh3d(circle_mesh.0.clone()),
-                mat_handle,
-                Transform::from_translation(ground + Vec3::Y * 0.02)
-                    .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
-                    .with_scale(Vec3::ZERO),
-                SummoningCircle::new(blueprint_id, circle_size, extra_modifiers.clone()),
-                DespawnOnExit(WavePhase::Combat),
-            ));
-
-            if is_ghost {
-                use crate::blueprints::components::mob::ghost_transparency::{GhostTransparency, GhostAlpha};
-                use crate::expr::ScalarExpr;
-
-                let (vis_dist, invis_dist) = blueprint_registry
-                    .get(blueprint_id)
-                    .and_then(|bp| bp.entities.first())
-                    .and_then(|entity_def| {
-                        entity_def.components.iter().find_map(|c| match c {
-                            ComponentDef::GhostTransparency(def) => {
-                                let vis = match def.visible_distance {
-                                    ScalarExpr::Literal(v) => v,
-                                    _ => 200.0,
-                                };
-                                let invis = match def.invisible_distance {
-                                    ScalarExpr::Literal(v) => v,
-                                    _ => 800.0,
-                                };
-                                Some((vis, invis))
-                            }
-                            _ => None,
-                        })
-                    })
-                    .unwrap_or((200.0, 800.0));
-
-                entity_commands.insert((
-                    GhostTransparency {
-                        visible_distance: vis_dist,
-                        invisible_distance: invis_dist,
-                    },
-                    GhostAlpha { value: 0.0 },
-                ));
             }
-            wave_state.spawned_count += 1;
-            wave_state.summoning_count += 1;
+        } else {
+            MeshMaterial3d(circle_material.0.clone())
+        };
+
+        let mut entity_commands = commands.spawn((
+            Name::new("SummoningCircle"),
+            Mesh3d(circle_mesh.0.clone()),
+            mat_handle,
+            Transform::from_translation(ground + Vec3::Y * 0.02)
+                .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
+                .with_scale(Vec3::ZERO),
+            SummoningCircle::new(kind, circle_size, extra_modifiers.clone()),
+            DespawnOnExit(WavePhase::Combat),
+        ));
+
+        if is_ghost {
+            use crate::actors::components::mob::ghost_transparency::{GhostTransparency, GhostAlpha};
+            entity_commands.insert((
+                GhostTransparency {
+                    visible_distance: mobs_balance.ghost.visible_distance,
+                    invisible_distance: mobs_balance.ghost.invisible_distance,
+                },
+                GhostAlpha { value: 0.0 },
+            ));
         }
+        wave_state.spawned_count += 1;
+        wave_state.summoning_count += 1;
     }
 }
 

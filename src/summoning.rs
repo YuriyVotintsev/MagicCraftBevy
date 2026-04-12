@@ -1,13 +1,12 @@
 use bevy::prelude::*;
 
-use crate::blueprints::BlueprintId;
-use crate::blueprints::components::common::health::Health;
-use crate::blueprints::BlueprintRegistry;
-use crate::blueprints::spawn::EntitySpawner;
+use crate::actors::abilities::AbilitiesBalance;
+use crate::actors::mobs::{spawn_mob, MobKind, MobsBalance};
+use crate::actors::components::common::health::Health;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
 use crate::schedule::GameSet;
-use crate::stats::StatId;
+use crate::stats::{StatCalculators, StatId, StatRegistry};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
 
@@ -28,18 +27,18 @@ pub struct SummoningCircle {
     phase: SummonPhase,
     elapsed: f32,
     pub circle_size: f32,
-    pub blueprint_id: BlueprintId,
+    pub kind: MobKind,
     extra_modifiers: Vec<(StatId, f32)>,
     pub emitter: Option<Entity>,
 }
 
 impl SummoningCircle {
-    pub fn new(blueprint_id: BlueprintId, circle_size: f32, extra_modifiers: Vec<(StatId, f32)>) -> Self {
+    pub fn new(kind: MobKind, circle_size: f32, extra_modifiers: Vec<(StatId, f32)>) -> Self {
         Self {
             phase: SummonPhase::CircleGrow,
             elapsed: 0.0,
             circle_size,
-            blueprint_id,
+            kind,
             extra_modifiers,
             emitter: None,
         }
@@ -109,8 +108,10 @@ fn animate_summoning(
     mut query: Query<(Entity, &mut SummoningCircle, &mut Transform)>,
     mut wave_state: ResMut<WaveState>,
     mut emitter_query: Query<&mut ParticleEmitter>,
-    mut spawner: EntitySpawner,
-    blueprint_registry: Res<BlueprintRegistry>,
+    mobs_balance: Res<MobsBalance>,
+    abilities_balance: Res<AbilitiesBalance>,
+    stat_registry: Res<StatRegistry>,
+    calculators: Res<StatCalculators>,
 ) {
     let dt = time.delta_secs();
 
@@ -142,19 +143,17 @@ fn animate_summoning(
                         particles::stop_particles(&mut commands, emitter_entity);
                     }
 
-                    let Some(blueprint_def) = blueprint_registry.get(circle.blueprint_id) else {
-                        commands.entity(entity).despawn();
-                        continue;
-                    };
-                    let Some(entity_def) = blueprint_def.entities.first() else {
-                        commands.entity(entity).despawn();
-                        continue;
-                    };
-
-                    let mob = spawner.spawn_root(entity_def, Faction::Enemy, &circle.extra_modifiers);
-                    let ground = crate::coord::ground_pos(pos);
-                    spawner.commands.entity(mob).insert((
-                        Transform::from_translation(ground),
+                    let mob = spawn_mob(
+                        &mut commands,
+                        circle.kind,
+                        pos,
+                        &mobs_balance,
+                        &abilities_balance,
+                        &stat_registry,
+                        &calculators,
+                        &circle.extra_modifiers,
+                    );
+                    commands.entity(mob).insert((
                         WaveEnemy,
                         DespawnOnExit(WavePhase::Combat),
                     ));

@@ -14,7 +14,6 @@
     ),
     run: (
         coins_per_kill: 1,
-        node_cost: 5,
         hp_scale_per_sec: 0.02,
         dmg_scale_per_sec: 0.015,
         coin_attraction_duration: 0.5,

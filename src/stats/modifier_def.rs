@@ -1,3 +1,5 @@
+#![expect(dead_code, reason = "scaffolding for shop modifier perks, not wired yet")]
+
 use serde::{Deserialize, Serialize};
 
 use super::{StatId, StatRegistry};

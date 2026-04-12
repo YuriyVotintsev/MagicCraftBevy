@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::blueprints::components::common::sprite::{CapsuleSprite, CircleSprite};
+use crate::actors::components::common::sprite::{CapsuleSprite, CircleSprite};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::health_material::HealthMaterial;
 

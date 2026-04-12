@@ -42,10 +42,10 @@
       "Read(//c/Users/yuriy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_render-0.18.0/**)",
       "Read(//c/Users/yuriy/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/**)",
       "Bash(cargo doc:*)",
-      "Bash(HEADLESS=1 SKIP_MENU=1 cargo run --features dev -- --timeout 10)",
       "Bash(HEADLESS=1 SCENARIO=tests/scenarios/* cargo run --features dev *)",
       "Bash(SCENARIO=assets/scenarios/* cargo run:*)",
-      "Bash(SCENARIO=assets/scenarios/* cargo run --features dev)"
+      "Bash(SCENARIO=assets/scenarios/* cargo run --features dev)",
+      "Bash(HEADLESS=1 SKIP_MENU=1 cargo run --features dev -- --timeout *)"
     ],
     "additionalDirectories": [
       "D:/Projects/_reference"

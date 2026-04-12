@@ -1,3 +1,5 @@
+#![expect(dead_code, reason = "stat diff UI helpers — scaffolding for shop perk comparison, not wired yet")]
+
 use bevy::prelude::*;
 
 use crate::stats::{FormatSpan, SignMode, ValueTemplate};

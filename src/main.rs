@@ -1,5 +1,5 @@
+mod actors;
 mod balance;
-mod blueprints;
 mod coin;
 mod composite_scale;
 mod arena;
@@ -45,7 +45,7 @@ fn toggle_physics_debug(key: Res<ButtonInput<KeyCode>>, mut store: ResMut<GizmoC
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use blueprints::BlueprintPlugin;
+use actors::ActorsPlugin;
 use arena::ArenaPlugin;
 use common::CommonPlugin;
 use health_material::HealthMaterialPlugin;
@@ -169,9 +169,9 @@ fn main() {
                 GameSet::Input,
                 GameSet::MobAI,
                 GameSet::Spawning,
-                GameSet::BlueprintActivation,
-                GameSet::BlueprintExecution,
-                GameSet::BlueprintLifecycle,
+                GameSet::AbilityActivation,
+                GameSet::AbilityExecution,
+                GameSet::AbilityLifecycle,
                 GameSet::Damage,
                 GameSet::DamageApply,
                 GameSet::WaveManagement,
@@ -191,13 +191,13 @@ fn main() {
             Update,
             ApplyDeferred
                 .after(GameSet::Spawning)
-                .before(GameSet::BlueprintActivation),
+                .before(GameSet::AbilityActivation),
         )
         .add_systems(
             Update,
             ApplyDeferred
-                .after(GameSet::BlueprintExecution)
-                .before(GameSet::BlueprintLifecycle),
+                .after(GameSet::AbilityExecution)
+                .before(GameSet::AbilityLifecycle),
         )
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
@@ -211,7 +211,7 @@ fn main() {
             ArenaPlugin,
             PlayerPlugin,
             StatsPlugin,
-            BlueprintPlugin,
+            ActorsPlugin,
             RunPlugin,
             CoinPlugin,
             HealthMaterialPlugin,

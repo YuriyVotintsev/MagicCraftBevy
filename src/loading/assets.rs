@@ -3,8 +3,9 @@ use bevy::asset::{Asset, AssetLoader, LoadContext};
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
 
+use crate::actors::abilities::AbilitiesBalance;
+use crate::actors::mobs::MobsBalance;
 use crate::balance::GameBalance;
-use crate::blueprints::BlueprintDefRaw;
 use crate::expr::calc::CalcTemplateRaw;
 use crate::stats::display::StatDisplayRuleRaw;
 use crate::stats::loader::StatDefRaw;
@@ -18,10 +19,13 @@ pub struct StatsConfigAsset {
 }
 
 #[derive(Asset, TypePath)]
-pub struct BlueprintDefAsset(pub BlueprintDefRaw);
+pub struct GameBalanceAsset(pub GameBalance);
 
 #[derive(Asset, TypePath)]
-pub struct GameBalanceAsset(pub GameBalance);
+pub struct MobsBalanceAsset(pub MobsBalance);
+
+#[derive(Asset, TypePath)]
+pub struct AbilitiesBalanceAsset(pub AbilitiesBalance);
 
 #[derive(Default, TypePath)]
 pub struct GameBalanceLoader;
@@ -30,7 +34,10 @@ pub struct GameBalanceLoader;
 pub struct StatsConfigLoader;
 
 #[derive(Default, TypePath)]
-pub struct BlueprintDefLoader;
+pub struct MobsBalanceLoader;
+
+#[derive(Default, TypePath)]
+pub struct AbilitiesBalanceLoader;
 
 impl AssetLoader for GameBalanceLoader {
     type Asset = GameBalanceAsset;
@@ -91,8 +98,8 @@ struct StatsConfigRaw {
     display: Vec<StatDisplayRuleRaw>,
 }
 
-impl AssetLoader for BlueprintDefLoader {
-    type Asset = BlueprintDefAsset;
+impl AssetLoader for MobsBalanceLoader {
+    type Asset = MobsBalanceAsset;
     type Settings = ();
     type Error = anyhow::Error;
 
@@ -105,12 +112,36 @@ impl AssetLoader for BlueprintDefLoader {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let content = std::str::from_utf8(&bytes)?;
-        let blueprint_def: BlueprintDefRaw = ron::from_str(content)?;
-        Ok(BlueprintDefAsset(blueprint_def))
+        let balance: MobsBalance = ron::from_str(content)?;
+        Ok(MobsBalanceAsset(balance))
     }
 
     fn extensions(&self) -> &[&str] {
-        &["ability.ron", "mob.ron", "hero.ron"]
+        &["mobs.ron"]
     }
 }
+
+impl AssetLoader for AbilitiesBalanceLoader {
+    type Asset = AbilitiesBalanceAsset;
+    type Settings = ();
+    type Error = anyhow::Error;
+
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        _load_context: &mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = Vec::new();
+        reader.read_to_end(&mut bytes).await?;
+        let content = std::str::from_utf8(&bytes)?;
+        let balance: AbilitiesBalance = ron::from_str(content)?;
+        Ok(AbilitiesBalanceAsset(balance))
+    }
+
+    fn extensions(&self) -> &[&str] {
+        &["abilities.ron"]
+    }
+}
+
 

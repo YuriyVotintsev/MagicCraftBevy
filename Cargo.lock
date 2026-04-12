@@ -3242,21 +3242,10 @@ dependencies = [
  "bevy",
  "bevy_tweening",
  "delaunator",
- "magic_craft_macros",
- "paste",
  "rand",
  "ron",
  "serde",
  "smallvec",
-]
-
-[[package]]
-name = "magic_craft_macros"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

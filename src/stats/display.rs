@@ -1,3 +1,5 @@
+#![expect(dead_code, reason = "stat display registry — scaffolding for shop perk UI, not wired yet")]
+
 use std::collections::HashMap;
 
 use bevy::prelude::*;

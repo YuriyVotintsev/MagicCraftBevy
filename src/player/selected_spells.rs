@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::blueprints::BlueprintId;
+use crate::actors::abilities::AbilityKind;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, serde::Deserialize)]
 pub enum SpellSlot {
@@ -11,13 +11,13 @@ pub enum SpellSlot {
 
 #[derive(Resource, Default)]
 pub struct SelectedSpells {
-    pub active: Option<BlueprintId>,
-    pub passive: Option<BlueprintId>,
-    pub defensive: Option<BlueprintId>,
+    pub active: Option<AbilityKind>,
+    pub passive: Option<AbilityKind>,
+    pub defensive: Option<AbilityKind>,
 }
 
 impl SelectedSpells {
-    pub fn get(&self, slot: SpellSlot) -> Option<BlueprintId> {
+    pub fn get(&self, slot: SpellSlot) -> Option<AbilityKind> {
         match slot {
             SpellSlot::Active => self.active,
             SpellSlot::Passive => self.passive,
@@ -25,11 +25,11 @@ impl SelectedSpells {
         }
     }
 
-    pub fn set(&mut self, slot: SpellSlot, blueprint_id: BlueprintId) {
+    pub fn set(&mut self, slot: SpellSlot, kind: AbilityKind) {
         match slot {
-            SpellSlot::Active => self.active = Some(blueprint_id),
-            SpellSlot::Passive => self.passive = Some(blueprint_id),
-            SpellSlot::Defensive => self.defensive = Some(blueprint_id),
+            SpellSlot::Active => self.active = Some(kind),
+            SpellSlot::Passive => self.passive = Some(kind),
+            SpellSlot::Defensive => self.defensive = Some(kind),
         }
     }
 }

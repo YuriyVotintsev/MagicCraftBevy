@@ -1,4 +1,3 @@
-pub mod hero_class;
 pub mod selected_spells;
 mod systems;
 
@@ -6,7 +5,6 @@ use bevy::prelude::*;
 
 use crate::wave::WavePhase;
 
-pub use hero_class::AvailableHeroes;
 pub use selected_spells::{SelectedSpells, SpellSlot};
 pub use systems::Player;
 

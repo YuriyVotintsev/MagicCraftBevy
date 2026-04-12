@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 
 use crate::arena::{CameraAngle, EnemySpawnPool};
-use crate::blueprints::components::common::health::Health;
+use crate::actors::components::common::health::Health;
 use crate::money::PlayerMoney;
 use crate::player::Player;
 use crate::stats::{DirtyStats, Modifiers, StatRegistry};
@@ -130,8 +130,8 @@ pub(super) fn spawn_dev_menu(
     let t = (camera_angle.degrees - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN);
 
     let mut enemy_rows: Vec<Entity> = Vec::new();
-    for (i, (name, enabled)) in spawn_pool.enabled.iter().enumerate() {
-        let row = commands.spawn(enemy_toggle_row(i, name, *enabled)).id();
+    for (i, (kind, enabled)) in spawn_pool.enabled.iter().enumerate() {
+        let row = commands.spawn(enemy_toggle_row(i, kind.id(), *enabled)).id();
         enemy_rows.push(row);
     }
 
@@ -310,11 +310,11 @@ pub(super) fn toggle_enemy_type(
 ) {
     for (interaction, toggle) in &query {
         if *interaction == Interaction::Pressed {
-            if let Some((name, enabled)) = spawn_pool.enabled.get_mut(toggle.0) {
+            if let Some((kind, enabled)) = spawn_pool.enabled.get_mut(toggle.0) {
                 *enabled = !*enabled;
                 let new_enabled = *enabled;
-                let name_clone = name.clone();
-                update_toggle_text(&mut text_query, toggle.0, &name_clone, new_enabled);
+                let name = kind.id();
+                update_toggle_text(&mut text_query, toggle.0, name, new_enabled);
             }
         }
     }
@@ -329,8 +329,8 @@ pub(super) fn enable_all_enemies(
         if *interaction == Interaction::Pressed {
             for i in 0..spawn_pool.enabled.len() {
                 spawn_pool.enabled[i].1 = true;
-                let name = spawn_pool.enabled[i].0.clone();
-                update_toggle_text(&mut text_query, i, &name, true);
+                let name = spawn_pool.enabled[i].0.id();
+                update_toggle_text(&mut text_query, i, name, true);
             }
         }
     }
@@ -345,8 +345,8 @@ pub(super) fn disable_all_enemies(
         if *interaction == Interaction::Pressed {
             for i in 0..spawn_pool.enabled.len() {
                 spawn_pool.enabled[i].1 = false;
-                let name = spawn_pool.enabled[i].0.clone();
-                update_toggle_text(&mut text_query, i, &name, false);
+                let name = spawn_pool.enabled[i].0.id();
+                update_toggle_text(&mut text_query, i, name, false);
             }
         }
     }

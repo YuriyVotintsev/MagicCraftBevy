@@ -1,9 +1,9 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::blueprints::components::common::health::Health;
-use crate::blueprints::components::common::jump_walk_animation::JumpWalkAnimationState;
-use crate::blueprints::SpawnSource;
+use crate::actors::components::common::health::Health;
+use crate::actors::components::common::jump_walk_animation::JumpWalkAnimationState;
+use crate::actors::SpawnSource;
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};

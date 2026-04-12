@@ -2,8 +2,8 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
-use crate::blueprints::components::common::health::Health;
-use crate::blueprints::components::common::sprite::{CapsuleSprite, CircleSprite, Sprite};
+use crate::actors::components::common::health::Health;
+use crate::actors::components::common::sprite::{CapsuleSprite, CircleSprite, Sprite};
 use crate::palette;
 use crate::stats::{ComputedStats, StatRegistry};
 use crate::Faction;

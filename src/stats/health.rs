@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::blueprints::components::common::health::Health;
+use crate::actors::components::common::health::Health;
 
 #[derive(Component)]
 pub struct Dead;
