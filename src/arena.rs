@@ -11,7 +11,7 @@ use crate::physics::{GameLayer, Wall};
 use crate::run::RunState;
 use crate::schedule::GameSet;
 use crate::stats::StatRegistry;
-use crate::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh, DEFAULT_CIRCLE_SIZE};
+use crate::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
 use crate::GameState;
@@ -340,7 +340,7 @@ fn spawn_enemies(
             break;
         }
         let kind = active[rng.random_range(0..active.len())];
-        let circle_size = kind.size(&mobs_balance).max(DEFAULT_CIRCLE_SIZE);
+        let circle_size = kind.size(&mobs_balance);
         let ground = crate::coord::ground_pos(Vec2::new(x, y));
 
         let is_ghost = matches!(kind, MobKind::Ghost);

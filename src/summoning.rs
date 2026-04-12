@@ -196,10 +196,7 @@ fn init_rise(
         }
         let target_y = transform.translation.y;
         transform.translation.y = target_y - RISE_Y_OFFSET;
-        commands.entity(entity).insert(RiseFromGround {
-            elapsed: 0.0,
-            target_y,
-        });
+        commands.entity(entity).insert(RiseFromGround { elapsed: 0.0, target_y });
     }
 }
 

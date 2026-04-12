@@ -23,7 +23,7 @@ fn init_projectile(mut commands: Commands, query: Query<Entity, Added<Projectile
     }
 }
 
-fn projectile_collision_physics(
+pub fn projectile_collision_physics(
     mut commands: Commands,
     mut collision_events: MessageReader<CollisionStart>,
     projectile_query: Query<(&Projectile, &Faction), Without<Wall>>,

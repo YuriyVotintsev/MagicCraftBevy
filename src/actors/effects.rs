@@ -25,7 +25,12 @@ pub struct OnCollisionParticles {
 
 pub fn register_systems(app: &mut App) {
     app.add_observer(on_death_particles_observer);
-    app.add_systems(Update, on_collision_effects_system.in_set(GameSet::Damage));
+    app.add_systems(
+        Update,
+        on_collision_effects_system
+            .in_set(GameSet::AbilityExecution)
+            .before(crate::actors::components::ability::projectile::projectile_collision_physics),
+    );
 }
 
 fn on_death_particles_observer(
@@ -44,8 +49,11 @@ fn on_collision_effects_system(
     mut commands: Commands,
     mut events: MessageReader<CollisionStart>,
     mut pending: MessageWriter<PendingDamage>,
-    damage_query: Query<(Option<&OnCollisionDamage>, Option<&OnCollisionParticles>, &Faction, &Transform, &SpawnSource)>,
-    target_query: Query<&Faction, Without<OnCollisionDamage>>,
+    damage_query: Query<
+        (Option<&OnCollisionDamage>, Option<&OnCollisionParticles>, &Faction, &Transform, &SpawnSource),
+        Or<(With<OnCollisionDamage>, With<OnCollisionParticles>)>,
+    >,
+    target_query: Query<&Faction>,
     wall_query: Query<(), With<Wall>>,
     mut processed: Local<bevy::platform::collections::HashSet<(Entity, Entity)>>,
 ) {

@@ -21,7 +21,7 @@ pub fn register_systems(app: &mut App) {
 fn move_toward_system(
     mut commands: Commands,
     stat_registry: Res<StatRegistry>,
-    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &SpawnSource), With<MoveToward>>,
+    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &SpawnSource), (With<MoveToward>, Without<crate::summoning::RiseFromGround>)>,
     transforms: Query<&Transform, Without<MoveToward>>,
 ) {
     let speed_id = stat_registry.get("movement_speed");

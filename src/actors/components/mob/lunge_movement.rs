@@ -85,7 +85,7 @@ fn lunge_movement_system(
         &LungeMovement,
         &mut LungeMovementState,
         &SpawnSource,
-    )>,
+    ), Without<crate::summoning::RiseFromGround>>,
     transforms: Query<&Transform, Without<LungeMovement>>,
 ) {
     let dt = time.delta_secs();
