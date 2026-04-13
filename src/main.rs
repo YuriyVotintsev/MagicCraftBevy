@@ -3,7 +3,6 @@ mod balance;
 mod coin;
 mod composite_scale;
 mod arena;
-pub mod expr;
 mod common;
 mod faction;
 mod game_state;
@@ -23,9 +22,6 @@ mod stats;
 mod summoning;
 mod ui;
 mod wave;
-
-#[cfg(test)]
-mod validation_tests;
 
 pub use faction::Faction;
 pub use game_state::GameState;

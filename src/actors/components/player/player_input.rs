@@ -7,7 +7,7 @@ use crate::actors::TargetInfo;
 use crate::Faction;
 use crate::player::{SelectedSpells, SpellSlot};
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::ComputedStats;
 use crate::wave::WavePhase;
 
 #[derive(Debug, Clone, Copy, Deserialize)]
@@ -90,7 +90,6 @@ fn player_input_system(
     mut player_query: Query<(Entity, &Transform, &LinearVelocity, &PlayerInput, Option<&ComputedStats>, &mut PlayerAbilityCooldowns)>,
     selected_spells: Res<SelectedSpells>,
     abilities_balance: Res<AbilitiesBalance>,
-    stat_registry: Res<StatRegistry>,
 ) {
     for (player_entity, player_transform, velocity, player_input, stats, mut cooldowns) in &mut player_query {
         for binding in &player_input.bindings {
@@ -133,7 +132,7 @@ fn player_input_system(
                 crate::actors::abilities::AbilityKind::Fireball => abilities_balance.fireball.cooldown,
                 _ => 0.5,
             };
-            fire_ability(&mut commands, kind, player_entity, caster_pos, Faction::Player, target, &abilities_balance, stats, &stat_registry);
+            fire_ability(&mut commands, kind, player_entity, caster_pos, Faction::Player, target, &abilities_balance, stats);
             *slot_cd = ability_cooldown;
         }
     }

@@ -5,7 +5,7 @@ use crate::arena::{CameraAngle, EnemySpawnPool};
 use crate::actors::components::common::health::Health;
 use crate::money::PlayerMoney;
 use crate::player::Player;
-use crate::stats::{DirtyStats, Modifiers, StatRegistry};
+use crate::stats::{DirtyStats, Modifiers, Stat};
 use crate::wave::CombatPhase;
 
 const SLIDER_MIN: f32 = 1.0;
@@ -271,16 +271,13 @@ pub(super) fn cheat_money(
 pub(super) fn cheat_health(
     query: Query<&Interaction, (Changed<Interaction>, With<CheatHealthButton>)>,
     mut player_query: Query<(&mut Modifiers, &mut DirtyStats, &mut Health), With<Player>>,
-    stat_registry: Res<StatRegistry>,
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
-            if let Some(stat) = stat_registry.get("max_life_flat") {
-                for (mut modifiers, mut dirty, mut health) in &mut player_query {
-                    modifiers.add(stat, 100.0);
-                    dirty.mark(stat);
-                    health.current += 100.0;
-                }
+            for (mut modifiers, mut dirty, mut health) in &mut player_query {
+                modifiers.add(Stat::MaxLifeFlat, 100.0);
+                dirty.mark(Stat::MaxLifeFlat);
+                health.current += 100.0;
             }
         }
     }
@@ -289,15 +286,12 @@ pub(super) fn cheat_health(
 pub(super) fn cheat_damage(
     query: Query<&Interaction, (Changed<Interaction>, With<CheatDamageButton>)>,
     mut player_query: Query<(&mut Modifiers, &mut DirtyStats), With<Player>>,
-    stat_registry: Res<StatRegistry>,
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
-            if let Some(stat) = stat_registry.get("physical_damage_flat") {
-                for (mut modifiers, mut dirty) in &mut player_query {
-                    modifiers.add(stat, 100.0);
-                    dirty.mark(stat);
-                }
+            for (mut modifiers, mut dirty) in &mut player_query {
+                modifiers.add(Stat::PhysicalDamageFlat, 100.0);
+                dirty.mark(Stat::PhysicalDamageFlat);
             }
         }
     }

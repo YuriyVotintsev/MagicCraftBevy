@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::actors::abilities::{fire_ability, AbilitiesBalance, AbilityKind};
 use crate::actors::SpawnSource;
 use crate::actors::components::mob::random_jump::RandomJump;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::ComputedStats;
 
 #[derive(Component)]
 pub struct JumperAi {
@@ -54,7 +54,6 @@ fn jumper_ai_system(
     mut commands: Commands,
     time: Res<Time>,
     abilities_balance: Res<AbilitiesBalance>,
-    stat_registry: Res<StatRegistry>,
     stats_q: Query<&ComputedStats>,
     transforms: Query<&Transform>,
     mut query: Query<(Entity, &JumperAi, &mut JumperAiState, &SpawnSource), Without<crate::summoning::RiseFromGround>>,
@@ -96,7 +95,6 @@ fn jumper_ai_system(
                             source.target,
                             &abilities_balance,
                             caster_stats,
-                            &stat_registry,
                         );
                     }
                 }

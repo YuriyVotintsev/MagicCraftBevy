@@ -15,7 +15,7 @@ use crate::actors::TargetInfo;
 use crate::actors::SpawnSource;
 use crate::faction::Faction;
 use crate::palette;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::{ComputedStats, Stat};
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum AbilityKind {
@@ -91,28 +91,25 @@ pub struct TowerShotParams {
     pub indicator_duration: f32,
 }
 
-pub fn stat_flat(stats: Option<&ComputedStats>, registry: &StatRegistry, name: &str) -> f32 {
-    match (stats, registry.get(name)) {
-        (Some(s), Some(id)) => s.get(id),
-        _ => 0.0,
-    }
+pub fn stat_value(stats: Option<&ComputedStats>, stat: Stat) -> f32 {
+    stats.map(|s| s.get(stat)).unwrap_or(0.0)
 }
 
-fn calc_physical_damage(stats: Option<&ComputedStats>, registry: &StatRegistry, base: f32, scale: f32) -> f32 {
-    let flat = stat_flat(stats, registry, "physical_damage_flat");
-    let inc = stat_flat(stats, registry, "physical_damage_increased");
-    let more = stat_flat(stats, registry, "physical_damage_more").max(0.0001);
+fn calc_physical_damage(stats: Option<&ComputedStats>, base: f32, scale: f32) -> f32 {
+    let flat = stat_value(stats, Stat::PhysicalDamageFlat);
+    let inc = stat_value(stats, Stat::PhysicalDamageIncreased);
+    let more = stat_value(stats, Stat::PhysicalDamageMore).max(0.0001);
     (base + flat * scale) * (1.0 + inc) * more
 }
 
-fn calc_projectile_speed(stats: Option<&ComputedStats>, registry: &StatRegistry, base: f32) -> f32 {
-    let flat = stat_flat(stats, registry, "projectile_speed_flat");
-    let inc = stat_flat(stats, registry, "projectile_speed_increased");
+fn calc_projectile_speed(stats: Option<&ComputedStats>, base: f32) -> f32 {
+    let flat = stat_value(stats, Stat::ProjectileSpeedFlat);
+    let inc = stat_value(stats, Stat::ProjectileSpeedIncreased);
     (base + flat) * (1.0 + inc)
 }
 
-fn projectile_count(stats: Option<&ComputedStats>, registry: &StatRegistry, base: u32) -> u32 {
-    base + stat_flat(stats, registry, "projectile_count").max(0.0) as u32
+fn projectile_count(stats: Option<&ComputedStats>, base: u32) -> u32 {
+    base + stat_value(stats, Stat::ProjectileCount).max(0.0) as u32
 }
 
 pub fn fire_ability(
@@ -124,13 +121,12 @@ pub fn fire_ability(
     target: TargetInfo,
     abilities: &AbilitiesBalance,
     caster_stats: Option<&ComputedStats>,
-    stat_registry: &StatRegistry,
 ) {
     match kind {
-        AbilityKind::MeleeAttack => fire_melee_attack(commands, caster, caster_pos, caster_faction, target, &abilities.melee_attack, caster_stats, stat_registry),
-        AbilityKind::JumperShot => fire_jumper_shot(commands, caster, caster_pos, caster_faction, target, &abilities.jumper_shot, caster_stats, stat_registry),
-        AbilityKind::TowerShot => crate::actors::tower_shot::fire_tower_shot_impl(commands, caster, caster_pos, caster_faction, target, &abilities.tower_shot, caster_stats, stat_registry),
-        AbilityKind::Fireball => fire_fireball(commands, caster, caster_pos, caster_faction, target, &abilities.fireball, caster_stats, stat_registry),
+        AbilityKind::MeleeAttack => fire_melee_attack(commands, caster, caster_pos, caster_faction, target, &abilities.melee_attack, caster_stats),
+        AbilityKind::JumperShot => fire_jumper_shot(commands, caster, caster_pos, caster_faction, target, &abilities.jumper_shot, caster_stats),
+        AbilityKind::TowerShot => crate::actors::tower_shot::fire_tower_shot_impl(commands, caster, caster_pos, caster_faction, target, &abilities.tower_shot, caster_stats),
+        AbilityKind::Fireball => fire_fireball(commands, caster, caster_pos, caster_faction, target, &abilities.fireball, caster_stats),
     }
 }
 
@@ -161,9 +157,8 @@ fn fire_jumper_shot(
     target: TargetInfo,
     params: &JumperShotParams,
     caster_stats: Option<&ComputedStats>,
-    stat_registry: &StatRegistry,
 ) {
-    let damage = stat_flat(caster_stats, stat_registry, "physical_damage_flat");
+    let damage = stat_value(caster_stats, Stat::PhysicalDamageFlat);
     let count = params.projectile_count as usize;
     let base_dir = target.direction.unwrap_or(Vec2::X).normalize_or_zero();
     let spread_rad = params.spread_degrees.to_radians();
@@ -216,11 +211,10 @@ fn fire_fireball(
     target: TargetInfo,
     params: &FireballParams,
     caster_stats: Option<&ComputedStats>,
-    stat_registry: &StatRegistry,
 ) {
-    let count = projectile_count(caster_stats, stat_registry, 1).max(1);
-    let speed = calc_projectile_speed(caster_stats, stat_registry, params.base_speed);
-    let damage = calc_physical_damage(caster_stats, stat_registry, params.base_damage, 1.0);
+    let count = projectile_count(caster_stats, 1).max(1);
+    let speed = calc_projectile_speed(caster_stats, params.base_speed);
+    let damage = calc_physical_damage(caster_stats, params.base_damage, 1.0);
     let base_dir = target.direction.unwrap_or(Vec2::X).normalize_or_zero();
     let perpendicular = Vec2::new(-base_dir.y, base_dir.x);
 
@@ -263,9 +257,8 @@ fn fire_melee_attack(
     target: TargetInfo,
     params: &MeleeAttackParams,
     caster_stats: Option<&ComputedStats>,
-    stat_registry: &StatRegistry,
 ) {
-    let damage = stat_flat(caster_stats, stat_registry, "physical_damage_flat");
+    let damage = stat_value(caster_stats, Stat::PhysicalDamageFlat);
 
     let source = SpawnSource {
         caster: TargetInfo::from_entity_and_position(caster, caster_pos),

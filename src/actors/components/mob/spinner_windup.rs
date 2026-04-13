@@ -6,7 +6,7 @@ use crate::actors::components::common::spinner_visual::SpinnerVisualState;
 use crate::particles;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, PendingDamage, StatRegistry};
+use crate::stats::{ComputedStats, PendingDamage, Stat};
 use crate::Faction;
 
 #[derive(Component)]
@@ -57,7 +57,6 @@ fn windup_system(
         &Faction,
         Option<&Size>,
     )>,
-    stat_registry: Option<Res<StatRegistry>>,
     stats_query: Query<&ComputedStats>,
     spatial_query: SpatialQuery,
     mut pending: MessageWriter<PendingDamage>,
@@ -95,10 +94,9 @@ fn windup_system(
         let position = crate::coord::to_2d(transform.translation);
         let entity_radius = size.map_or(0.0, |s| s.value / 2.0);
 
-        let damage = stat_registry
-            .as_ref()
-            .and_then(|sr| sr.get("physical_damage_flat"))
-            .and_then(|id| stats_query.get(entity).ok().map(|s| s.get(id)))
+        let damage = stats_query
+            .get(entity)
+            .map(|s| s.get(Stat::PhysicalDamageFlat))
             .unwrap_or(windup.contact_radius);
 
         let filter = SpatialQueryFilter::from_mask(GameLayer::Player);

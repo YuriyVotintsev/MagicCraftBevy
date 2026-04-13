@@ -5,7 +5,7 @@ use bevy::shader::ShaderRef;
 use crate::actors::components::common::health::Health;
 use crate::actors::components::common::sprite::{CapsuleSprite, CircleSprite, Sprite};
 use crate::palette;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
 
 #[derive(ShaderType, Clone)]
@@ -54,7 +54,6 @@ impl Plugin for HealthMaterialPlugin {
 
 fn apply_health_material(
     mut commands: Commands,
-    stat_registry: Res<StatRegistry>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
     enemy_query: Query<
         (Entity, &Faction, &Health, &ComputedStats, &Children),
@@ -63,8 +62,6 @@ fn apply_health_material(
     circle_query: Query<(Entity, &CircleSprite), With<MeshMaterial3d<StandardMaterial>>>,
     capsule_query: Query<(Entity, &CapsuleSprite, &Sprite), With<MeshMaterial3d<StandardMaterial>>>,
 ) {
-    let max_life_id = stat_registry.get("max_life");
-
     for (enemy_entity, faction, health, stats, children) in &enemy_query {
         if *faction != Faction::Enemy {
             continue;
@@ -88,7 +85,7 @@ fn apply_health_material(
                 continue;
             };
 
-            let max = max_life_id.map(|id| stats.get(id)).unwrap_or(1.0).max(1.0);
+            let max = stats.get(Stat::MaxLife).max(1.0);
             let hp_frac = (health.current / max).clamp(0.0, 1.0);
 
             let handle = health_materials.add(HealthMaterial {
@@ -117,17 +114,14 @@ fn apply_health_material(
 }
 
 fn update_health_material(
-    stat_registry: Res<StatRegistry>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
     query: Query<
         (&Health, &ComputedStats, &HealthMaterialLink),
         Or<(Changed<Health>, Changed<ComputedStats>)>,
     >,
 ) {
-    let max_life_id = stat_registry.get("max_life");
-
     for (health, stats, link) in &query {
-        let max = max_life_id.map(|id| stats.get(id)).unwrap_or(1.0).max(1.0);
+        let max = stats.get(Stat::MaxLife).max(1.0);
         let hp_frac = (health.current / max).clamp(0.0, 1.0);
 
         if let Some(material) = health_materials.get_mut(&link.handle) {

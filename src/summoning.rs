@@ -6,7 +6,7 @@ use crate::actors::components::common::health::Health;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
 use crate::schedule::GameSet;
-use crate::stats::{StatCalculators, StatId, StatRegistry};
+use crate::stats::{Stat, StatCalculators};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
 
@@ -27,12 +27,12 @@ pub struct SummoningCircle {
     elapsed: f32,
     pub circle_size: f32,
     pub kind: MobKind,
-    extra_modifiers: Vec<(StatId, f32)>,
+    extra_modifiers: Vec<(Stat, f32)>,
     pub emitter: Option<Entity>,
 }
 
 impl SummoningCircle {
-    pub fn new(kind: MobKind, circle_size: f32, extra_modifiers: Vec<(StatId, f32)>) -> Self {
+    pub fn new(kind: MobKind, circle_size: f32, extra_modifiers: Vec<(Stat, f32)>) -> Self {
         Self {
             phase: SummonPhase::CircleGrow,
             elapsed: 0.0,
@@ -109,7 +109,6 @@ fn animate_summoning(
     mut emitter_query: Query<&mut ParticleEmitter>,
     mobs_balance: Res<MobsBalance>,
     abilities_balance: Res<AbilitiesBalance>,
-    stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
 ) {
     let dt = time.delta_secs();
@@ -148,7 +147,6 @@ fn animate_summoning(
                         pos,
                         &mobs_balance,
                         &abilities_balance,
-                        &stat_registry,
                         &calculators,
                         &circle.extra_modifiers,
                     );

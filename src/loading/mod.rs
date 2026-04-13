@@ -4,10 +4,7 @@ mod systems;
 use bevy::prelude::*;
 
 use crate::GameState;
-use assets::{
-    GameBalanceAsset, GameBalanceLoader,
-    StatsConfigAsset, StatsConfigLoader,
-};
+use assets::{GameBalanceAsset, GameBalanceLoader};
 use crate::particles::{ParticleConfigRaw, ParticleConfigLoader};
 use systems::LoadingState;
 
@@ -17,10 +14,8 @@ impl Plugin for LoadingPlugin {
     fn build(&self, app: &mut App) {
         crate::palette::init();
 
-        app.init_asset::<StatsConfigAsset>()
-            .init_asset::<GameBalanceAsset>()
+        app.init_asset::<GameBalanceAsset>()
             .init_asset::<ParticleConfigRaw>()
-            .register_asset_loader(StatsConfigLoader)
             .register_asset_loader(GameBalanceLoader)
             .register_asset_loader(ParticleConfigLoader)
             .init_resource::<LoadingState>()

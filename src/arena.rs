@@ -10,7 +10,7 @@ use crate::actors::components::common::health::Health;
 use crate::physics::{GameLayer, Wall};
 use crate::run::RunState;
 use crate::schedule::GameSet;
-use crate::stats::StatRegistry;
+use crate::stats::Stat;
 use crate::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
 use crate::wave::{WaveEnemy, WavePhase, WaveState};
 use crate::Faction;
@@ -281,7 +281,6 @@ fn spawn_enemies(
     mobs_balance: Res<MobsBalance>,
     balance: Res<GameBalance>,
     run_state: Res<RunState>,
-    stat_registry: Res<StatRegistry>,
     circle_mesh: Res<SummoningCircleMesh>,
     circle_material: Res<SummoningCircleMaterial>,
     mut materials: ResMut<Assets<StandardMaterial>>,
@@ -305,17 +304,13 @@ fn spawn_enemies(
     let hh = arena_size.half_h() - margin;
     let mut rng = rand::rng();
 
-    let mut extra_modifiers = Vec::new();
+    let mut extra_modifiers: Vec<(Stat, f32)> = Vec::new();
     let elapsed = run_state.elapsed;
     if elapsed > 0.0 {
         let hp_bonus = elapsed * balance.run.hp_scale_per_sec;
         let dmg_bonus = elapsed * balance.run.dmg_scale_per_sec;
-        if let Some(stat) = stat_registry.get("max_life_increased") {
-            extra_modifiers.push((stat, hp_bonus));
-        }
-        if let Some(stat) = stat_registry.get("physical_damage_increased") {
-            extra_modifiers.push((stat, dmg_bonus));
-        }
+        extra_modifiers.push((Stat::MaxLifeIncreased, hp_bonus));
+        extra_modifiers.push((Stat::PhysicalDamageIncreased, dmg_bonus));
     }
 
     for _ in 0..deficit {

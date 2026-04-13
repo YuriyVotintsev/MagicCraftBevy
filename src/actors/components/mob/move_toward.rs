@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use crate::actors::SpawnSource;
 use crate::movement::SelfMoving;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::{ComputedStats, Stat};
 
 #[derive(Component)]
 pub struct MoveToward {}
@@ -20,12 +20,9 @@ pub fn register_systems(app: &mut App) {
 
 fn move_toward_system(
     mut commands: Commands,
-    stat_registry: Res<StatRegistry>,
     mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &SpawnSource), (With<MoveToward>, Without<crate::summoning::RiseFromGround>)>,
     transforms: Query<&Transform, Without<MoveToward>>,
 ) {
-    let speed_id = stat_registry.get("movement_speed");
-
     for (entity, transform, mut velocity, stats, source) in &mut query {
         let Some(target_entity) = source.target.entity else {
             velocity.0 = Vec3::ZERO;
@@ -37,7 +34,7 @@ fn move_toward_system(
             commands.entity(entity).remove::<SelfMoving>();
             continue;
         };
-        let speed = speed_id.map(|id| stats.get(id)).unwrap_or_default();
+        let speed = stats.get(Stat::MovementSpeed);
         let direction = crate::coord::to_2d(target_transform.translation - transform.translation);
 
         velocity.0 = if direction.length_squared() > 1.0 {

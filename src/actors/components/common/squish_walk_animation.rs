@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use crate::actors::components::common::sprite::Sprite as SpriteComp;
 use crate::actors::components::mob::lunge_movement::{LungeMovementState, LungePhase};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::{ComputedStats, Stat};
 
 #[derive(Component)]
 pub struct SquishWalkAnimation {
@@ -36,7 +36,6 @@ fn init(mut commands: Commands, query: Query<Entity, Added<SquishWalkAnimation>>
 
 pub fn animate(
     layer: Res<SquishScaleLayer>,
-    stat_registry: Option<Res<StatRegistry>>,
     mut query: Query<(
         &SquishWalkAnimation,
         &SpriteComp,
@@ -47,11 +46,6 @@ pub fn animate(
     )>,
     parent_query: Query<(&LinearVelocity, &ComputedStats, Option<&LungeMovementState>)>,
 ) {
-    let Some(stat_registry) = stat_registry else {
-        return;
-    };
-    let speed_id = stat_registry.get("movement_speed");
-
     for (anim, sprite, mut transform, child_of, mut state, mut modifiers) in &mut query {
         let (vel2d, lunge_state) = parent_query
             .get(child_of.parent())
@@ -80,7 +74,7 @@ pub fn animate(
             let max = parent_query
                 .get(child_of.parent())
                 .ok()
-                .and_then(|(_, stats, _)| speed_id.map(|id| stats.get(id)))
+                .map(|(_, stats, _)| stats.get(Stat::MovementSpeed))
                 .unwrap_or_default();
             let t = if max > 0.0 { (speed / max).clamp(0.0, 1.0) } else { 0.0 };
             (anim.amount * t, 0.0)

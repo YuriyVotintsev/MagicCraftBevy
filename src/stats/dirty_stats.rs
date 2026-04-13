@@ -1,19 +1,19 @@
 use bevy::prelude::*;
 use std::collections::HashSet;
 
-use super::StatId;
+use super::Stat;
 
 #[derive(Component, Default)]
 pub struct DirtyStats {
-    pub stats: HashSet<StatId>,
+    pub stats: HashSet<Stat>,
 }
 
 impl DirtyStats {
-    pub fn mark(&mut self, stat: StatId) {
+    pub fn mark(&mut self, stat: Stat) {
         self.stats.insert(stat);
     }
 
-    pub fn mark_all(&mut self, stats: impl IntoIterator<Item = StatId>) {
+    pub fn mark_all(&mut self, stats: impl IntoIterator<Item = Stat>) {
         self.stats.extend(stats);
     }
 

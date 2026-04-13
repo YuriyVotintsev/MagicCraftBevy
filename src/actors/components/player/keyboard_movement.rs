@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use crate::MovementLocked;
 use crate::movement::SelfMoving;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::{ComputedStats, Stat};
 use crate::wave::WavePhase;
 
 #[derive(Component)]
@@ -22,7 +22,6 @@ pub fn register_systems(app: &mut App) {
 fn keyboard_movement_system(
     mut commands: Commands,
     keyboard: Res<ButtonInput<KeyCode>>,
-    stat_registry: Res<StatRegistry>,
     mut query: Query<(Entity, &mut LinearVelocity, &ComputedStats), (With<KeyboardMovement>, Without<MovementLocked>)>,
 ) {
     for (entity, mut velocity, stats) in &mut query {
@@ -41,10 +40,7 @@ fn keyboard_movement_system(
             direction.x += 1.0;
         }
 
-        let speed = stat_registry
-            .get("movement_speed")
-            .map(|id| stats.get(id))
-            .unwrap_or_default();
+        let speed = stats.get(Stat::MovementSpeed);
 
         velocity.0 = if direction != Vec2::ZERO {
             commands.entity(entity).insert(SelfMoving);

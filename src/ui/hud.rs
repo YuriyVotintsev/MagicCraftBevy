@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::money::PlayerMoney;
 use crate::player::Player;
 use crate::actors::components::common::health::Health;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::{ComputedStats, Stat};
 use crate::GameState;
 
 #[derive(Component)]
@@ -86,7 +86,6 @@ pub fn spawn_hud(mut commands: Commands) {
 
 pub fn update_hud(
     money: Res<PlayerMoney>,
-    stat_registry: Res<StatRegistry>,
     player_query: Query<(&Health, &ComputedStats), With<Player>>,
     mut money_text: Query<&mut Text, (With<MoneyText>, Without<LifeText>)>,
     mut life_text: Query<&mut Text, (With<LifeText>, Without<MoneyText>)>,
@@ -97,10 +96,7 @@ pub fn update_hud(
     }
 
     if let Ok((health, stats)) = player_query.single() {
-        let max_life = stat_registry
-            .get("max_life")
-            .map(|id| stats.get(id))
-            .unwrap_or_default();
+        let max_life = stats.get(Stat::MaxLife);
 
         if let Ok(mut text) = life_text.single_mut() {
             **text = format!("Life: {}/{}", health.current as i32, max_life as i32);

@@ -4,26 +4,19 @@ mod damage;
 pub mod display;
 mod dirty_stats;
 mod health;
-pub mod loader;
-pub mod modifier_def;
 mod modifiers;
 mod pending_damage;
-mod stat_id;
+mod registry;
 pub(crate) mod systems;
 
 pub use calculators::StatCalculators;
 pub use computed_stats::ComputedStats;
-#[allow(unused_imports)]
-pub use crate::expr::StatProvider;
 pub use dirty_stats::DirtyStats;
-#[expect(unused_imports, reason = "StatDisplayRegistry — scaffolding for shop perk UI, not wired yet")]
 pub use display::{FormatSpan, SignMode, StatDisplayRegistry, ValueTemplate};
 pub use health::{Dead, SkipCleanup, death_system, DeathEvent};
-#[expect(unused_imports, reason = "ModifierDefRaw/StatRange — scaffolding for shop modifier perks, not wired yet")]
-pub use modifier_def::{ModifierDefRaw, StatRange};
 pub use modifiers::Modifiers;
 pub use pending_damage::PendingDamage;
-pub use stat_id::{StatEvalKind, StatId, StatRegistry};
+pub use registry::Stat;
 
 use bevy::prelude::*;
 
@@ -54,3 +47,6 @@ impl Plugin for StatsPlugin {
     }
 }
 
+pub fn build_stat_system() -> (StatCalculators, StatDisplayRegistry) {
+    (StatCalculators::build(), StatDisplayRegistry::build())
+}

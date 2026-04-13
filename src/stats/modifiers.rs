@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 use std::collections::HashSet;
 
-use super::StatId;
+use super::Stat;
 
 #[derive(Debug, Clone)]
 pub struct Modifier {
-    pub stat: StatId,
+    pub stat: Stat,
     pub value: f32,
 }
 
@@ -19,11 +19,11 @@ impl Modifiers {
         Self::default()
     }
 
-    pub fn add(&mut self, stat: StatId, value: f32) {
+    pub fn add(&mut self, stat: Stat, value: f32) {
         self.list.push(Modifier { stat, value });
     }
 
-    pub fn sum(&self, stat: StatId) -> f32 {
+    pub fn sum(&self, stat: Stat) -> f32 {
         self.list
             .iter()
             .filter(|m| m.stat == stat)
@@ -31,7 +31,7 @@ impl Modifiers {
             .sum()
     }
 
-    pub fn product(&self, stat: StatId) -> f32 {
+    pub fn product(&self, stat: Stat) -> f32 {
         let mut result = 1.0;
         for m in &self.list {
             if m.stat == stat {
@@ -46,7 +46,7 @@ impl Modifiers {
         self.list.iter()
     }
 
-    pub fn affected_stats(&self) -> impl Iterator<Item = StatId> + '_ {
+    pub fn affected_stats(&self) -> impl Iterator<Item = Stat> + '_ {
         let mut seen = HashSet::new();
         self.list.iter().filter_map(move |m| {
             if seen.insert(m.stat) {

@@ -26,7 +26,7 @@ use crate::actors::TargetInfo;
 use crate::actors::SpawnSource;
 use crate::faction::Faction;
 use crate::palette;
-use crate::stats::{ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry};
+use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum MobKind {
@@ -147,23 +147,20 @@ fn enemy_sprite_color() -> SpriteColor {
 }
 
 fn compute_stats(
-    stat_registry: &StatRegistry,
     calculators: &StatCalculators,
-    base_stats: &[(&str, f32)],
-    extra_modifiers: &[(StatId, f32)],
+    base_stats: &[(Stat, f32)],
+    extra_modifiers: &[(Stat, f32)],
 ) -> (Modifiers, DirtyStats, ComputedStats) {
     let mut modifiers = Modifiers::new();
-    for (name, value) in base_stats {
-        if let Some(id) = stat_registry.get(name) {
-            modifiers.add(id, *value);
-        }
+    for &(stat, value) in base_stats {
+        modifiers.add(stat, value);
     }
-    for &(id, value) in extra_modifiers {
-        modifiers.add(id, value);
+    for &(stat, value) in extra_modifiers {
+        modifiers.add(stat, value);
     }
     let mut dirty = DirtyStats::default();
-    let mut computed = ComputedStats::new(stat_registry.len());
-    dirty.mark_all((0..stat_registry.len() as u32).map(StatId));
+    let mut computed = ComputedStats::default();
+    dirty.mark_all(Stat::ALL.iter().copied());
     calculators.recalculate(&modifiers, &mut computed, &mut dirty);
     (modifiers, dirty, computed)
 }
@@ -176,8 +173,8 @@ fn make_source(entity: Entity, pos: Vec2) -> SpawnSource {
     }
 }
 
-fn current_max_life(computed: &ComputedStats, registry: &StatRegistry) -> f32 {
-    registry.get("max_life").map(|id| computed.get(id)).unwrap_or(1.0)
+fn current_max_life(computed: &ComputedStats) -> f32 {
+    computed.get(Stat::MaxLife)
 }
 
 pub fn spawn_mob(
@@ -186,16 +183,15 @@ pub fn spawn_mob(
     pos: Vec2,
     mobs: &MobsBalance,
     _abilities: &AbilitiesBalance,
-    stat_registry: &StatRegistry,
     calculators: &StatCalculators,
-    extra_modifiers: &[(StatId, f32)],
+    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     match kind {
-        MobKind::Ghost => spawn_ghost(commands, pos, &mobs.ghost, stat_registry, calculators, extra_modifiers),
-        MobKind::Tower => spawn_tower(commands, pos, &mobs.tower, stat_registry, calculators, extra_modifiers),
-        MobKind::SlimeSmall => spawn_slime_small(commands, pos, &mobs.slime_small, stat_registry, calculators, extra_modifiers),
-        MobKind::Spinner => spawn_spinner(commands, pos, &mobs.spinner, stat_registry, calculators, extra_modifiers),
-        MobKind::Jumper => spawn_jumper(commands, pos, &mobs.jumper, stat_registry, calculators, extra_modifiers),
+        MobKind::Ghost => spawn_ghost(commands, pos, &mobs.ghost, calculators, extra_modifiers),
+        MobKind::Tower => spawn_tower(commands, pos, &mobs.tower, calculators, extra_modifiers),
+        MobKind::SlimeSmall => spawn_slime_small(commands, pos, &mobs.slime_small, calculators, extra_modifiers),
+        MobKind::Spinner => spawn_spinner(commands, pos, &mobs.spinner, calculators, extra_modifiers),
+        MobKind::Jumper => spawn_jumper(commands, pos, &mobs.jumper, calculators, extra_modifiers),
     }
 }
 
@@ -203,16 +199,15 @@ fn spawn_slime_small(
     commands: &mut Commands,
     pos: Vec2,
     s: &SlimeSmallStats,
-    stat_registry: &StatRegistry,
     calculators: &StatCalculators,
-    extra_modifiers: &[(StatId, f32)],
+    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
-        stat_registry, calculators,
-        &[("movement_speed_flat", s.speed), ("max_life_flat", s.hp), ("physical_damage_flat", s.damage)],
+        calculators,
+        &[(Stat::MovementSpeedFlat, s.speed), (Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
         extra_modifiers,
     );
-    let hp = current_max_life(&computed, stat_registry);
+    let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
 
     let id = commands.spawn((
@@ -253,16 +248,15 @@ fn spawn_ghost(
     commands: &mut Commands,
     pos: Vec2,
     s: &GhostStats,
-    stat_registry: &StatRegistry,
     calculators: &StatCalculators,
-    extra_modifiers: &[(StatId, f32)],
+    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
-        stat_registry, calculators,
-        &[("movement_speed_flat", s.speed), ("max_life_flat", s.hp), ("physical_damage_flat", s.damage)],
+        calculators,
+        &[(Stat::MovementSpeedFlat, s.speed), (Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
         extra_modifiers,
     );
-    let hp = current_max_life(&computed, stat_registry);
+    let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
 
     let id = commands.spawn((
@@ -304,16 +298,15 @@ fn spawn_tower(
     commands: &mut Commands,
     pos: Vec2,
     s: &TowerStats,
-    stat_registry: &StatRegistry,
     calculators: &StatCalculators,
-    extra_modifiers: &[(StatId, f32)],
+    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
-        stat_registry, calculators,
-        &[("max_life_flat", s.hp), ("physical_damage_flat", s.damage)],
+        calculators,
+        &[(Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
         extra_modifiers,
     );
-    let hp = current_max_life(&computed, stat_registry);
+    let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
 
     let id = commands.spawn((
@@ -352,16 +345,15 @@ fn spawn_jumper(
     commands: &mut Commands,
     pos: Vec2,
     s: &JumperStats,
-    stat_registry: &StatRegistry,
     calculators: &StatCalculators,
-    extra_modifiers: &[(StatId, f32)],
+    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
-        stat_registry, calculators,
-        &[("movement_speed_flat", s.speed), ("max_life_flat", s.hp), ("physical_damage_flat", s.damage)],
+        calculators,
+        &[(Stat::MovementSpeedFlat, s.speed), (Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
         extra_modifiers,
     );
-    let hp = current_max_life(&computed, stat_registry);
+    let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
 
     let id = commands.spawn((
@@ -407,16 +399,15 @@ fn spawn_spinner(
     commands: &mut Commands,
     pos: Vec2,
     s: &SpinnerStats,
-    stat_registry: &StatRegistry,
     calculators: &StatCalculators,
-    extra_modifiers: &[(StatId, f32)],
+    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
-        stat_registry, calculators,
-        &[("max_life_flat", s.hp), ("physical_damage_flat", s.damage)],
+        calculators,
+        &[(Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
         extra_modifiers,
     );
-    let hp = current_max_life(&computed, stat_registry);
+    let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
 
     let id = commands.spawn((

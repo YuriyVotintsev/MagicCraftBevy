@@ -7,7 +7,7 @@ use crate::money::PlayerMoney;
 use crate::palette;
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
-use crate::stats::{death_system, ComputedStats, DeathEvent, StatRegistry};
+use crate::stats::{death_system, ComputedStats, DeathEvent, Stat};
 use crate::wave::{WaveEnemy, WavePhase};
 use crate::GameState;
 
@@ -82,7 +82,6 @@ fn spawn_coins(
 
 fn attract_coins(
     mut commands: Commands,
-    stat_registry: Res<StatRegistry>,
     player_query: Query<(&Transform, &ComputedStats), With<Player>>,
     coins: Query<(Entity, &Transform), (With<Coin>, Without<CoinAttracted>)>,
 ) {
@@ -90,10 +89,10 @@ fn attract_coins(
         return;
     };
     let player_pos = crate::coord::to_2d(player_transform.translation);
-    let radius = stat_registry
-        .get("pickup_radius")
-        .map(|id| stats.get(id))
-        .unwrap_or(2000.0);
+    let radius = {
+        let r = stats.get(Stat::PickupRadius);
+        if r > 0.0 { r } else { 2000.0 }
+    };
     let radius_sq = radius * radius;
 
     for (entity, coin_transform) in &coins {

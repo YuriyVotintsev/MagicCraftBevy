@@ -4,7 +4,7 @@ use crate::actors::abilities::{fire_ability, AbilitiesBalance, AbilityKind};
 use crate::actors::target_info::TargetInfo;
 use crate::actors::SpawnSource;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::ComputedStats;
 
 #[derive(Component)]
 pub struct ShotFired;
@@ -38,7 +38,6 @@ fn mob_abilities_system(
     mut commands: Commands,
     time: Res<Time>,
     abilities_balance: Res<AbilitiesBalance>,
-    stat_registry: Res<StatRegistry>,
     transforms: Query<&Transform, Without<MobAbilities>>,
     stats_query: Query<&ComputedStats>,
     mut query: Query<(Entity, &Transform, &mut MobAbilities, &SpawnSource), Without<crate::summoning::RiseFromGround>>,
@@ -79,7 +78,6 @@ fn mob_abilities_system(
                 target_info,
                 &abilities_balance,
                 caster_stats,
-                &stat_registry,
             );
         }
     }

@@ -17,7 +17,7 @@ use crate::actors::TargetInfo;
 use crate::actors::SpawnSource;
 use crate::palette;
 use crate::player::selected_spells::SpellSlot;
-use crate::stats::{ComputedStats, DirtyStats, Modifiers, StatCalculators, StatId, StatRegistry};
+use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
 use crate::wave::WavePhase;
 use crate::Faction;
 
@@ -40,29 +40,26 @@ fn player_sprite_color() -> SpriteColor {
 
 pub fn spawn_player(
     mut commands: Commands,
-    stat_registry: Res<StatRegistry>,
     calculators: Res<StatCalculators>,
     mut selected_spells: ResMut<SelectedSpells>,
 ) {
-    let base_stats: &[(&str, f32)] = &[
-        ("max_life_flat", 20.0),
-        ("movement_speed_flat", 550.0),
-        ("crit_chance_flat", 0.05),
-        ("crit_multiplier", 1.5),
-        ("pickup_radius_flat", 200.0),
+    let base_stats: &[(Stat, f32)] = &[
+        (Stat::MaxLifeFlat, 20.0),
+        (Stat::MovementSpeedFlat, 550.0),
+        (Stat::CritChanceFlat, 0.05),
+        (Stat::CritMultiplier, 1.5),
+        (Stat::PickupRadiusFlat, 200.0),
     ];
 
     let mut modifiers = Modifiers::new();
-    for (name, value) in base_stats {
-        if let Some(id) = stat_registry.get(name) {
-            modifiers.add(id, *value);
-        }
+    for &(stat, value) in base_stats {
+        modifiers.add(stat, value);
     }
     let mut dirty = DirtyStats::default();
-    let mut computed = ComputedStats::new(stat_registry.len());
-    dirty.mark_all((0..stat_registry.len() as u32).map(StatId));
+    let mut computed = ComputedStats::default();
+    dirty.mark_all(Stat::ALL.iter().copied());
     calculators.recalculate(&modifiers, &mut computed, &mut dirty);
-    let hp = stat_registry.get("max_life").map(|id| computed.get(id)).unwrap_or(20.0);
+    let hp = computed.get(Stat::MaxLife);
 
     let entity = commands.spawn((
         Name::new("Player"),

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use crate::actors::SpawnSource;
 use crate::movement::SelfMoving;
-use crate::stats::{ComputedStats, StatRegistry};
+use crate::stats::{ComputedStats, Stat};
 
 #[derive(Component)]
 pub struct LungeMovement {
@@ -45,16 +45,11 @@ pub fn register_systems(app: &mut App) {
 fn init_lunge_movement(
     mut commands: Commands,
     query: Query<(Entity, &LungeMovement, Option<&ComputedStats>), Added<LungeMovement>>,
-    stat_registry: Option<Res<StatRegistry>>,
 ) {
     for (entity, lunge, stats) in &query {
         let stat_speed = stats
-            .and_then(|s| {
-                stat_registry
-                    .as_ref()
-                    .and_then(|sr| sr.get("movement_speed"))
-                    .map(|id| s.get(id))
-            })
+            .map(|s| s.get(Stat::MovementSpeed))
+            .filter(|v| *v > 0.0)
             .unwrap_or(400.0);
 
         let (speed, duration) = match (lunge.speed, lunge.duration, lunge.distance) {

@@ -1,35 +1,26 @@
 use bevy::prelude::*;
 
-use crate::expr::StatProvider;
-use super::StatId;
+use super::Stat;
 
-#[derive(Component, Default, Clone)]
+#[derive(Component, Clone)]
 pub struct ComputedStats {
-    values: Vec<f32>,
+    values: [f32; Stat::COUNT],
+}
+
+impl Default for ComputedStats {
+    fn default() -> Self {
+        Self {
+            values: [0.0; Stat::COUNT],
+        }
+    }
 }
 
 impl ComputedStats {
-    pub fn new(capacity: usize) -> Self {
-        Self {
-            values: vec![0.0; capacity],
-        }
+    pub fn get(&self, stat: Stat) -> f32 {
+        self.values[stat.index()]
     }
 
-    pub fn get(&self, stat: StatId) -> f32 {
-        self.values.get(stat.0 as usize).copied().unwrap_or(0.0)
-    }
-
-    pub fn set(&mut self, stat: StatId, value: f32) {
-        let idx = stat.0 as usize;
-        if idx >= self.values.len() {
-            self.values.resize(idx + 1, 0.0);
-        }
-        self.values[idx] = value;
-    }
-}
-
-impl StatProvider for ComputedStats {
-    fn get_stat(&self, id: StatId) -> f32 {
-        self.get(id)
+    pub fn set(&mut self, stat: Stat, value: f32) {
+        self.values[stat.index()] = value;
     }
 }

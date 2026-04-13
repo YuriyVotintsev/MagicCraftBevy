@@ -3,9 +3,8 @@
 use std::collections::HashMap;
 
 use bevy::prelude::*;
-use serde::Deserialize;
 
-use super::{StatId, StatRegistry};
+use super::Stat;
 
 #[derive(Clone, Debug)]
 pub enum SignMode {
@@ -33,22 +32,40 @@ pub enum FormatSpan {
     Label(String),
 }
 
-#[derive(Clone, Deserialize)]
-pub struct StatDisplayRuleRaw {
-    pub stats: Vec<String>,
-    pub format: String,
-}
-
 struct MultiStatEntry {
-    stats: Vec<StatId>,
+    stats: Vec<Stat>,
     lines: Vec<Vec<FormatSpan>>,
 }
 
 #[derive(Resource, Default)]
 pub struct StatDisplayRegistry {
-    single_stat_formats: HashMap<StatId, Vec<FormatSpan>>,
-    multi_stat_formats: HashMap<Vec<StatId>, MultiStatEntry>,
+    single_stat_formats: HashMap<Stat, Vec<FormatSpan>>,
+    multi_stat_formats: HashMap<Vec<Stat>, MultiStatEntry>,
 }
+
+const DISPLAY_RULES: &[(&[Stat], &str)] = &[
+    (&[Stat::PhysicalDamageFlat], "[{+0}] physical damage"),
+    (&[Stat::PhysicalDamageIncreased], "[{+0}%] physical damage"),
+    (&[Stat::PhysicalDamageMore], "[{|0|}% more;{|0|}% less] physical damage"),
+    (&[Stat::MaxLifeFlat], "[{+0}] max life"),
+    (&[Stat::MaxLifeIncreased], "[{+0}%] max life"),
+    (&[Stat::MaxLifeMore], "[{|0|}% more;{|0|}% less] max life"),
+    (&[Stat::MovementSpeedFlat], "[{+0}] movement speed"),
+    (&[Stat::MovementSpeedIncreased], "[{+0}%] movement speed"),
+    (&[Stat::CritChanceFlat], "[{+0}%] crit chance"),
+    (&[Stat::CritMultiplier], "[{+0}%] crit multiplier"),
+    (&[Stat::ProjectileSpeedFlat], "[{+0}] projectile speed"),
+    (&[Stat::ProjectileSpeedIncreased], "[{+0}%] projectile speed"),
+    (&[Stat::ProjectileCount], "[{+0}] projectile"),
+    (&[Stat::MaxManaFlat], "[{+0}] max mana"),
+    (&[Stat::MaxManaIncreased], "[{+0}%] max mana"),
+    (&[Stat::AreaOfEffectFlat], "[{+0}] area of effect"),
+    (&[Stat::AreaOfEffectIncreased], "[{+0}%] area of effect"),
+    (&[Stat::DurationFlat], "[{+0}] duration"),
+    (&[Stat::DurationIncreased], "[{+0}%] duration"),
+    (&[Stat::PickupRadiusFlat], "[{+0}] pickup radius"),
+    (&[Stat::PickupRadiusIncreased], "[{+0}%] pickup radius"),
+];
 
 fn parse_template_half(half: &str) -> Option<(usize, ValueTemplate)> {
     let brace_start = half.find('{')?;
@@ -122,18 +139,6 @@ fn parse_format_string(fmt: &str) -> Vec<FormatSpan> {
     spans
 }
 
-fn embed_lower_is_better(spans: &mut [FormatSpan], stats: &[StatId], registry: &StatRegistry) {
-    for span in spans {
-        if let FormatSpan::Value { index, lower_is_better, .. } = span {
-            if let Some(stat_id) = stats.get(*index) {
-                if let Some(def) = registry.get_def(*stat_id) {
-                    *lower_is_better = def.lower_is_better;
-                }
-            }
-        }
-    }
-}
-
 fn to_title_case(name: &str) -> String {
     name.split('_')
         .map(|word| {
@@ -148,45 +153,32 @@ fn to_title_case(name: &str) -> String {
 }
 
 impl StatDisplayRegistry {
-    pub fn new(raw_rules: Vec<StatDisplayRuleRaw>, registry: &StatRegistry) -> Self {
-        let mut single_stat_formats: HashMap<StatId, Vec<FormatSpan>> = HashMap::new();
-        let mut multi_stat_formats: HashMap<Vec<StatId>, MultiStatEntry> = HashMap::new();
+    pub fn build() -> Self {
+        let mut single_stat_formats: HashMap<Stat, Vec<FormatSpan>> = HashMap::new();
+        let mut multi_stat_formats: HashMap<Vec<Stat>, MultiStatEntry> = HashMap::new();
 
-        for raw in &raw_rules {
-            let stats: Vec<StatId> = raw
-                .stats
-                .iter()
-                .filter_map(|name| registry.get(name))
-                .collect();
-            if stats.len() != raw.stats.len() {
-                continue;
-            }
-
-            let mut spans = parse_format_string(&raw.format);
-            embed_lower_is_better(&mut spans, &stats, registry);
-
+        for (stats, format) in DISPLAY_RULES {
+            let spans = parse_format_string(format);
             if stats.len() == 1 {
                 single_stat_formats.insert(stats[0], spans);
             } else {
-                let mut sorted_key = stats.clone();
-                sorted_key.sort_by_key(|s| s.0);
+                let mut sorted_key = stats.to_vec();
+                sorted_key.sort_by_key(|s| s.index());
                 multi_stat_formats.insert(
                     sorted_key,
                     MultiStatEntry {
-                        stats,
+                        stats: stats.to_vec(),
                         lines: vec![spans],
                     },
                 );
             }
         }
 
-        for (stat_id, def) in registry.iter() {
-            if !single_stat_formats.contains_key(&stat_id) {
-                let title = to_title_case(&def.name);
+        for &stat in Stat::ALL {
+            if !single_stat_formats.contains_key(&stat) {
+                let title = to_title_case(stat.name());
                 let fallback_fmt = format!("[{{+0}}] {}", title);
-                let mut spans = parse_format_string(&fallback_fmt);
-                embed_lower_is_better(&mut spans, &[stat_id], registry);
-                single_stat_formats.insert(stat_id, spans);
+                single_stat_formats.insert(stat, parse_format_string(&fallback_fmt));
             }
         }
 
@@ -196,9 +188,9 @@ impl StatDisplayRegistry {
         }
     }
 
-    pub fn get_format(&self, stat_ids: &[StatId]) -> Vec<Vec<FormatSpan>> {
-        if stat_ids.len() == 1 {
-            if let Some(spans) = self.single_stat_formats.get(&stat_ids[0]) {
+    pub fn get_format(&self, stats: &[Stat]) -> Vec<Vec<FormatSpan>> {
+        if stats.len() == 1 {
+            if let Some(spans) = self.single_stat_formats.get(&stats[0]) {
                 return vec![spans.clone()];
             }
             return vec![vec![FormatSpan::Value {
@@ -214,13 +206,13 @@ impl StatDisplayRegistry {
             }]];
         }
 
-        let mut sorted_key: Vec<StatId> = stat_ids.to_vec();
-        sorted_key.sort_by_key(|s| s.0);
+        let mut sorted_key: Vec<Stat> = stats.to_vec();
+        sorted_key.sort_by_key(|s| s.index());
 
         if let Some(entry) = self.multi_stat_formats.get(&sorted_key) {
             let mut remap = vec![0usize; entry.stats.len()];
             for (rule_pos, stat) in entry.stats.iter().enumerate() {
-                if let Some(caller_pos) = stat_ids.iter().position(|s| s == stat) {
+                if let Some(caller_pos) = stats.iter().position(|s| s == stat) {
                     remap[rule_pos] = caller_pos;
                 }
             }
@@ -251,7 +243,7 @@ impl StatDisplayRegistry {
                 .collect();
         }
 
-        stat_ids
+        stats
             .iter()
             .filter_map(|stat| self.single_stat_formats.get(stat).cloned())
             .collect()

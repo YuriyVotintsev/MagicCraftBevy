@@ -153,9 +153,8 @@ pub fn fire_tower_shot_impl(
     target: crate::actors::TargetInfo,
     params: &crate::actors::abilities::TowerShotParams,
     caster_stats: Option<&crate::stats::ComputedStats>,
-    stat_registry: &crate::stats::StatRegistry,
 ) {
-    let damage = crate::actors::abilities::stat_flat(caster_stats, stat_registry, "physical_damage_flat");
+    let damage = crate::actors::abilities::stat_value(caster_stats, crate::stats::Stat::PhysicalDamageFlat);
     let mut target_pos = target.position.unwrap_or(caster_pos);
     if params.spread > 0.0 {
         let mut rng = rand::rng();
