@@ -1,8 +1,7 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::MovementLocked;
-use crate::movement::SelfMoving;
+use crate::actors::components::common::movement::{MovementLocked, SelfMoving};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat};
 use crate::wave::WavePhase;

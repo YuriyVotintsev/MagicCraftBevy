@@ -51,7 +51,7 @@ fn init_spinner_ai(
 fn spinner_ai_system(
     mut commands: Commands,
     time: Res<Time>,
-    mut query: Query<(Entity, &SpinnerAi, &mut SpinnerAiState, &SpawnSource), Without<crate::summoning::RiseFromGround>>,
+    mut query: Query<(Entity, &SpinnerAi, &mut SpinnerAiState, &SpawnSource), Without<crate::wave::summoning::RiseFromGround>>,
 ) {
     let dt = time.delta_secs();
     for (entity, ai, mut state, source) in &mut query {

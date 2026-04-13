@@ -56,7 +56,7 @@ fn jumper_ai_system(
     abilities_balance: Res<AbilitiesBalance>,
     stats_q: Query<&ComputedStats>,
     transforms: Query<&Transform>,
-    mut query: Query<(Entity, &JumperAi, &mut JumperAiState, &SpawnSource), Without<crate::summoning::RiseFromGround>>,
+    mut query: Query<(Entity, &JumperAi, &mut JumperAiState, &SpawnSource), Without<crate::wave::summoning::RiseFromGround>>,
 ) {
     let dt = time.delta_secs();
     for (entity, ai, mut state, source) in &mut query {

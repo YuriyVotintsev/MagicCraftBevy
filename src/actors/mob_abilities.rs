@@ -40,7 +40,7 @@ fn mob_abilities_system(
     abilities_balance: Res<AbilitiesBalance>,
     transforms: Query<&Transform, Without<MobAbilities>>,
     stats_query: Query<&ComputedStats>,
-    mut query: Query<(Entity, &Transform, &mut MobAbilities, &SpawnSource), Without<crate::summoning::RiseFromGround>>,
+    mut query: Query<(Entity, &Transform, &mut MobAbilities, &SpawnSource), Without<crate::wave::summoning::RiseFromGround>>,
 ) {
     for (caster, transform, mut ma, source) in &mut query {
         ma.elapsed += time.delta_secs();

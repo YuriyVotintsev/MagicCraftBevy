@@ -2,8 +2,8 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::balance::CurrentArenaSize;
-use crate::movement::SelfMoving;
+use crate::arena::CurrentArenaSize;
+use crate::actors::components::common::movement::SelfMoving;
 
 #[derive(Component)]
 pub struct RandomJump {

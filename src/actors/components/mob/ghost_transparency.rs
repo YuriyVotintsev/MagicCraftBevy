@@ -6,7 +6,7 @@ use crate::actors::components::common::sprite::{CircleSprite, CapsuleSprite};
 use crate::health_material::{HealthMaterial, HealthMaterialLink};
 use crate::actors::player::Player;
 use crate::schedule::GameSet;
-use crate::summoning::SummoningCircle;
+use crate::wave::summoning::SummoningCircle;
 use crate::GameState;
 
 #[derive(Component)]

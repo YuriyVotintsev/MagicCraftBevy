@@ -1,5 +1,9 @@
 use bevy::prelude::*;
 
+pub fn register(app: &mut App) {
+    app.init_resource::<PlayerMoney>();
+}
+
 #[derive(Resource, Default)]
 pub struct PlayerMoney(u32);
 

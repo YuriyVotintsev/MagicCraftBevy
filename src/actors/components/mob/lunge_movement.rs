@@ -2,7 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::actors::SpawnSource;
-use crate::movement::SelfMoving;
+use crate::actors::components::common::movement::SelfMoving;
 use crate::stats::{ComputedStats, Stat};
 
 #[derive(Component)]
@@ -80,7 +80,7 @@ fn lunge_movement_system(
         &LungeMovement,
         &mut LungeMovementState,
         &SpawnSource,
-    ), Without<crate::summoning::RiseFromGround>>,
+    ), Without<crate::wave::summoning::RiseFromGround>>,
     transforms: Query<&Transform, Without<LungeMovement>>,
 ) {
     let dt = time.delta_secs();

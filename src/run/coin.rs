@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
-use crate::balance::GameBalance;
+use crate::actors::combat::{death_system, DeathEvent};
 use crate::actors::components::common::shadow::Shadow;
 use crate::actors::components::common::sprite::CircleSprite;
-use crate::money::PlayerMoney;
-use crate::palette;
 use crate::actors::player::Player;
+use crate::balance::GameBalance;
+use crate::palette;
+use crate::run::money::PlayerMoney;
 use crate::schedule::{GameSet, PostGameSet};
-use crate::actors::combat::{death_system, DeathEvent};
 use crate::stats::{ComputedStats, Stat};
 use crate::wave::{WaveEnemy, WavePhase};
 use crate::GameState;
@@ -25,24 +25,20 @@ pub struct CoinAttracted {
     elapsed: f32,
 }
 
-pub struct CoinPlugin;
-
-impl Plugin for CoinPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(
-            PostUpdate,
-            spawn_coins
-                .in_set(PostGameSet)
-                .after(death_system)
-                .run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            (attract_coins, move_coins, collect_coins)
-                .chain()
-                .in_set(GameSet::WaveManagement),
-        );
-    }
+pub fn register(app: &mut App) {
+    app.add_systems(
+        PostUpdate,
+        spawn_coins
+            .in_set(PostGameSet)
+            .after(death_system)
+            .run_if(in_state(GameState::Playing)),
+    )
+    .add_systems(
+        Update,
+        (attract_coins, move_coins, collect_coins)
+            .chain()
+            .in_set(GameSet::WaveManagement),
+    );
 }
 
 fn spawn_coins(

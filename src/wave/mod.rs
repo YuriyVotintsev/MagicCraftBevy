@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
+pub mod spawn;
+pub mod summoning;
+
 use crate::balance::GameBalance;
-use crate::money::PlayerMoney;
 use crate::schedule::PostGameSet;
 use crate::actors::combat::{death_system, DeathEvent};
 use crate::GameState;
@@ -63,8 +65,9 @@ pub struct WavePlugin;
 
 impl Plugin for WavePlugin {
     fn build(&self, app: &mut App) {
+        spawn::register(app);
+        summoning::register(app);
         app.init_resource::<WaveState>()
-            .init_resource::<PlayerMoney>()
             .init_resource::<ShopDelayTimer>()
             .add_systems(OnEnter(WavePhase::Combat), reset_wave_state)
             .add_systems(

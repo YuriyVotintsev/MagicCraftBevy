@@ -56,31 +56,27 @@ pub struct SummoningCircleMesh(pub Handle<Mesh>);
 #[derive(Resource)]
 pub struct SummoningCircleMaterial(pub Handle<StandardMaterial>);
 
-pub struct SummoningPlugin;
-
-impl Plugin for SummoningPlugin {
-    fn build(&self, app: &mut App) {
-        app.add_systems(Startup, setup_resources)
-            .add_systems(
-                Update,
-                animate_summoning
-                    .in_set(GameSet::Spawning)
-                    .run_if(in_state(WavePhase::Combat))
-                    .run_if(not(resource_exists::<PlayerDying>)),
-            )
-            .add_systems(
-                Last,
-                (init_rise, animate_rise)
-                    .chain()
-                    .run_if(in_state(WavePhase::Combat)),
-            )
-            .add_systems(
-                Update,
-                cleanup_summoning_on_death
-                    .in_set(GameSet::Cleanup)
-                    .run_if(resource_exists::<PlayerDying>),
-            );
-    }
+pub fn register(app: &mut App) {
+    app.add_systems(Startup, setup_resources)
+        .add_systems(
+            Update,
+            animate_summoning
+                .in_set(GameSet::Spawning)
+                .run_if(in_state(WavePhase::Combat))
+                .run_if(not(resource_exists::<PlayerDying>)),
+        )
+        .add_systems(
+            Last,
+            (init_rise, animate_rise)
+                .chain()
+                .run_if(in_state(WavePhase::Combat)),
+        )
+        .add_systems(
+            Update,
+            cleanup_summoning_on_death
+                .in_set(GameSet::Cleanup)
+                .run_if(resource_exists::<PlayerDying>),
+        );
 }
 
 fn setup_resources(

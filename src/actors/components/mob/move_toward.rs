@@ -2,7 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::actors::SpawnSource;
-use crate::movement::SelfMoving;
+use crate::actors::components::common::movement::SelfMoving;
 use crate::stats::{ComputedStats, Stat};
 
 #[derive(Component)]
@@ -20,7 +20,7 @@ pub fn register_systems(app: &mut App) {
 
 fn move_toward_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &SpawnSource), (With<MoveToward>, Without<crate::summoning::RiseFromGround>)>,
+    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &SpawnSource), (With<MoveToward>, Without<crate::wave::summoning::RiseFromGround>)>,
     transforms: Query<&Transform, Without<MoveToward>>,
 ) {
     for (entity, transform, mut velocity, stats, source) in &mut query {

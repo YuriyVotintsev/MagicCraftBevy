@@ -13,6 +13,7 @@ pub mod common {
     pub mod spinner_visual;
     pub mod tower_visual;
     pub mod fade_out;
+    pub mod movement;
 }
 
 pub mod ability {

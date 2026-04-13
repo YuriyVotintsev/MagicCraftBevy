@@ -1,6 +1,5 @@
 mod actors;
 mod balance;
-mod coin;
 mod composite_scale;
 mod arena;
 mod faction;
@@ -8,21 +7,17 @@ mod game_state;
 mod health_material;
 mod hit_flash;
 mod loading;
-mod money;
 mod coord;
-mod movement;
 pub mod palette;
 mod particles;
 mod run;
 mod schedule;
 mod stats;
-mod summoning;
 mod ui;
 mod wave;
 
 pub use faction::Faction;
 pub use game_state::GameState;
-pub use movement::MovementLocked;
 
 fn disable_physics_debug(mut store: ResMut<GizmoConfigStore>) {
     store.config_mut::<PhysicsGizmos>().0.enabled = false;
@@ -47,9 +42,7 @@ use schedule::{GameSet, PostGameSet, ShopSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
-use coin::CoinPlugin;
 use run::RunPlugin;
-use summoning::SummoningPlugin;
 use wave::{CombatPhase, WavePhase, WavePlugin};
 
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
@@ -202,13 +195,11 @@ fn main() {
             StatsPlugin,
             ActorsPlugin,
             RunPlugin,
-            CoinPlugin,
             HealthMaterialPlugin,
             HitFlashPlugin,
             TweeningPlugin,
             UiPlugin,
             WavePlugin,
-            SummoningPlugin,
         ))
         .add_plugins(particles::ParticlesPlugin)
         .add_plugins(composite_scale::CompositeScalePlugin);
