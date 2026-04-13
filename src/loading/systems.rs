@@ -2,7 +2,6 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::GameState;
-use crate::actors::abilities::AbilitiesBalance;
 use crate::actors::mobs::MobsBalance;
 use crate::balance::GameBalance;
 use crate::particles::{ParticleConfigRaw, ParticleRegistry};
@@ -11,7 +10,6 @@ use crate::particles::{ParticleConfigRaw, ParticleRegistry};
 pub struct LoadingState {
     pub balance_handle: Option<Handle<GameBalance>>,
     pub mobs_balance_handle: Option<Handle<MobsBalance>>,
-    pub abilities_balance_handle: Option<Handle<AbilitiesBalance>>,
     pub particles_folder: Option<Handle<LoadedFolder>>,
 }
 
@@ -19,7 +17,6 @@ pub fn start_loading(mut loading_state: ResMut<LoadingState>, asset_server: Res<
     info!("Starting asset loading...");
     loading_state.balance_handle = Some(asset_server.load("balance.ron"));
     loading_state.mobs_balance_handle = Some(asset_server.load("mobs.ron"));
-    loading_state.abilities_balance_handle = Some(asset_server.load("abilities.ron"));
     loading_state.particles_folder = Some(asset_server.load_folder("particles"));
 }
 
@@ -29,14 +26,12 @@ pub fn check_loaded(
     asset_server: Res<AssetServer>,
     balance_assets: Res<Assets<GameBalance>>,
     mobs_balance_assets: Res<Assets<MobsBalance>>,
-    abilities_balance_assets: Res<Assets<AbilitiesBalance>>,
     particle_assets: Res<Assets<ParticleConfigRaw>>,
     folders: Res<Assets<LoadedFolder>>,
     mut next_game_state: ResMut<NextState<GameState>>,
 ) {
     let ready = poll_asset(loading_state.balance_handle.as_ref(), &asset_server, &balance_assets, &mut commands, "balance")
         && poll_asset(loading_state.mobs_balance_handle.as_ref(), &asset_server, &mobs_balance_assets, &mut commands, "mobs balance")
-        && poll_asset(loading_state.abilities_balance_handle.as_ref(), &asset_server, &abilities_balance_assets, &mut commands, "abilities balance")
         && poll_folder(loading_state.particles_folder.as_ref(), &asset_server);
     if !ready { return }
 

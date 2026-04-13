@@ -1,9 +1,37 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
+use serde::Deserialize;
 
+use crate::actors::combat::Health;
+use crate::actors::components::ability::find_nearest_enemy::FindNearestEnemy;
+use crate::actors::components::common::collider::{Collider, Shape as ColliderShape};
+use crate::actors::components::common::dynamic_body::DynamicBody;
+use crate::actors::components::common::jump_walk_animation::{JumpWalkAnimation, SelfMoving};
+use crate::actors::components::common::shadow::Shadow;
+use crate::actors::components::common::size::Size;
+use crate::actors::components::common::sprite::{Sprite, SpriteShape};
+use crate::actors::effects::OnDeathParticles;
+use crate::actors::mobs::melee_attack::MeleeAttacker;
 use crate::actors::SpawnSource;
-use crate::actors::components::common::jump_walk_animation::SelfMoving;
-use crate::stats::{ComputedStats, Stat};
+use crate::faction::Faction;
+use crate::schedule::GameSet;
+use crate::stats::{ComputedStats, Stat, StatCalculators};
+
+use super::{compute_stats, current_max_life, enemy_sprite_color};
+
+const LUNGE_DEFAULT_DURATION: f32 = 0.6;
+
+#[derive(Clone, Deserialize, Debug)]
+pub struct SlimeSmallStats {
+    pub hp: f32,
+    pub damage: f32,
+    pub speed: f32,
+    pub size: f32,
+    pub mass: f32,
+    pub melee_range: f32,
+    pub melee_cooldown: f32,
+    pub lunge_duration: f32,
+}
 
 #[derive(Component)]
 pub struct LungeMovement {
@@ -28,18 +56,65 @@ pub struct LungeMovementState {
     pub duration: f32,
 }
 
-const DEFAULT_DURATION: f32 = 0.6;
-
 pub fn register_systems(app: &mut App) {
     app.add_systems(
         Update,
         (init_lunge_movement, lunge_movement_system)
             .chain()
-            .in_set(crate::schedule::GameSet::MobAI),
+            .in_set(GameSet::MobAI),
     );
     app.add_observer(|on: On<Remove, LungeMovement>, mut q: Query<&mut LinearVelocity>| {
         if let Ok(mut v) = q.get_mut(on.event_target()) { v.0 = Vec3::ZERO; }
     });
+}
+
+pub fn spawn_slime_small(
+    commands: &mut Commands,
+    pos: Vec2,
+    s: &SlimeSmallStats,
+    calculators: &StatCalculators,
+    extra_modifiers: &[(Stat, f32)],
+) -> Entity {
+    let (modifiers, dirty, computed) = compute_stats(
+        calculators,
+        &[(Stat::MovementSpeedFlat, s.speed), (Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
+        extra_modifiers,
+    );
+    let hp = current_max_life(&computed);
+    let ground = crate::coord::ground_pos(pos);
+
+    let id = commands.spawn((
+        Transform::from_translation(ground),
+        Visibility::default(),
+        Faction::Enemy,
+        modifiers, dirty, computed,
+        Size { value: s.size },
+        Collider { shape: ColliderShape::Circle, sensor: false },
+        DynamicBody { mass: s.mass },
+        Health { current: hp },
+        FindNearestEnemy { size: 4000.0, center: Entity::PLACEHOLDER },
+        LungeMovement { speed: None, duration: Some(s.lunge_duration), pause_duration: 0.4, distance: None },
+        MeleeAttacker::new(s.melee_cooldown, s.melee_range),
+    )).id();
+
+    commands.entity(id).insert((
+        SpawnSource::from_caster(id, pos),
+        FindNearestEnemy { size: 4000.0, center: id },
+        OnDeathParticles { config: "enemy_death" },
+    ));
+
+    commands.entity(id).with_children(|p| {
+        p.spawn(Shadow { opacity: 0.45 });
+        p.spawn((
+            Sprite {
+                color: enemy_sprite_color(), shape: SpriteShape::Circle,
+                position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
+            },
+            JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, land_squish: 0.3, land_duration: 0.4 },
+        ));
+    });
+
+    id
 }
 
 fn init_lunge_movement(
@@ -56,8 +131,8 @@ fn init_lunge_movement(
             (Some(s), _, Some(d)) => (s, d / s),
             (None, Some(dur), Some(d)) => (d / dur, dur),
             (None, None, Some(d)) => (stat_speed, d / stat_speed),
-            (Some(s), dur, None) => (s, dur.unwrap_or(DEFAULT_DURATION)),
-            (None, dur, None) => (stat_speed, dur.unwrap_or(DEFAULT_DURATION)),
+            (Some(s), dur, None) => (s, dur.unwrap_or(LUNGE_DEFAULT_DURATION)),
+            (None, dur, None) => (stat_speed, dur.unwrap_or(LUNGE_DEFAULT_DURATION)),
         };
 
         commands.entity(entity).insert(LungeMovementState {

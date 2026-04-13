@@ -6,7 +6,6 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
-use crate::actors::abilities::AbilitiesBalance;
 use crate::actors::mobs::MobsBalance;
 use crate::balance::GameBalance;
 use crate::particles::ParticleConfigRaw;
@@ -52,10 +51,6 @@ impl RonAsset for GameBalance {
 
 impl RonAsset for MobsBalance {
     const EXTENSION: &'static str = "mobs.ron";
-}
-
-impl RonAsset for AbilitiesBalance {
-    const EXTENSION: &'static str = "abilities.ron";
 }
 
 impl RonAsset for ParticleConfigRaw {

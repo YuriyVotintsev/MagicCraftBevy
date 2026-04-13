@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 
-use crate::actors::abilities::AbilitiesBalance;
 use crate::actors::mobs::{spawn_mob, MobKind, MobsBalance};
 use crate::actors::combat::Health;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
@@ -104,7 +103,6 @@ fn animate_summoning(
     mut wave_state: ResMut<WaveState>,
     mut emitter_query: Query<&mut ParticleEmitter>,
     mobs_balance: Res<MobsBalance>,
-    abilities_balance: Res<AbilitiesBalance>,
     calculators: Res<StatCalculators>,
 ) {
     let dt = time.delta_secs();
@@ -142,7 +140,6 @@ fn animate_summoning(
                         circle.kind,
                         pos,
                         &mobs_balance,
-                        &abilities_balance,
                         &calculators,
                         &circle.extra_modifiers,
                     );

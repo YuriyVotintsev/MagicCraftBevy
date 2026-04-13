@@ -174,7 +174,7 @@ fn spawn_enemies(
         ));
 
         if is_ghost {
-            use crate::actors::components::mob::ghost_transparency::{GhostTransparency, GhostAlpha};
+            use crate::actors::mobs::ghost::{GhostAlpha, GhostTransparency};
             entity_commands.insert((
                 GhostTransparency {
                     visible_distance: mobs_balance.ghost.visible_distance,
