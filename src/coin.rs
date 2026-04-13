@@ -5,7 +5,7 @@ use crate::actors::components::common::shadow::Shadow;
 use crate::actors::components::common::sprite::CircleSprite;
 use crate::money::PlayerMoney;
 use crate::palette;
-use crate::player::Player;
+use crate::actors::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::actors::combat::{death_system, DeathEvent};
 use crate::stats::{ComputedStats, Stat};

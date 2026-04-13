@@ -179,10 +179,10 @@ fn spawn_arena(
 }
 
 fn camera_follow(
-    player_query: Query<&Transform, With<crate::player::Player>>,
+    player_query: Query<&Transform, With<crate::actors::player::Player>>,
     mut camera_query: Query<
         &mut Transform,
-        (With<Camera3d>, Without<crate::player::Player>),
+        (With<Camera3d>, Without<crate::actors::player::Player>),
     >,
     camera_angle: Res<CameraAngle>,
 ) {
@@ -277,7 +277,7 @@ fn update_target_count(
 fn spawn_enemies(
     mut commands: Commands,
     mut wave_state: ResMut<WaveState>,
-    player_query: Query<&Transform, With<crate::player::Player>>,
+    player_query: Query<&Transform, With<crate::actors::player::Player>>,
     mobs_balance: Res<MobsBalance>,
     balance: Res<GameBalance>,
     run_state: Res<RunState>,

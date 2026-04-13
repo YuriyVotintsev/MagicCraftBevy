@@ -5,7 +5,7 @@ use crate::actors::components::common::health::Health;
 use crate::actors::components::common::jump_walk_animation::JumpWalkAnimationState;
 use crate::actors::SpawnSource;
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
-use crate::player::Player;
+use crate::actors::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::actors::combat::{DeathEvent, SkipCleanup, death_system};
 use crate::wave::WavePhase;

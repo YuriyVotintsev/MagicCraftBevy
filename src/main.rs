@@ -14,7 +14,6 @@ mod movement;
 pub mod palette;
 mod particles;
 mod physics;
-mod player;
 mod run;
 mod schedule;
 mod stats;
@@ -45,7 +44,6 @@ use arena::ArenaPlugin;
 use health_material::HealthMaterialPlugin;
 use hit_flash::HitFlashPlugin;
 use loading::LoadingPlugin;
-use player::PlayerPlugin;
 use schedule::{GameSet, PostGameSet, ShopSet};
 use stats::StatsPlugin;
 use ui::UiPlugin;
@@ -202,7 +200,6 @@ fn main() {
         .add_plugins((
             LoadingPlugin,
             ArenaPlugin,
-            PlayerPlugin,
             StatsPlugin,
             ActorsPlugin,
             RunPlugin,

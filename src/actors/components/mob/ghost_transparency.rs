@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use crate::actors::components::common::shadow::Shadow;
 use crate::actors::components::common::sprite::{CircleSprite, CapsuleSprite};
 use crate::health_material::{HealthMaterial, HealthMaterialLink};
-use crate::player::Player;
+use crate::actors::player::Player;
 use crate::schedule::GameSet;
 use crate::summoning::SummoningCircle;
 use crate::GameState;

@@ -1,4 +1,3 @@
-use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::actors::abilities::AbilityKind;
@@ -11,25 +10,20 @@ use crate::actors::components::common::size::Size;
 use crate::actors::components::common::sprite::{Sprite, SpriteColor, SpriteShape};
 use crate::actors::components::player::keyboard_movement::KeyboardMovement;
 use crate::actors::components::player::player_input::{
-    InputBinding, InputTrigger, KeyKind, MouseButtonKind, PlayerAbilityCooldowns, PlayerInput, TargetingMode,
+    InputBinding, InputTrigger, MouseButtonKind, PlayerAbilityCooldowns, PlayerInput, TargetingMode,
 };
 use crate::actors::TargetInfo;
 use crate::actors::SpawnSource;
 use crate::palette;
-use crate::player::selected_spells::SpellSlot;
 use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
 use crate::wave::WavePhase;
 use crate::Faction;
 
-use super::SelectedSpells;
-
 #[derive(Component)]
 pub struct Player;
 
-pub fn reset_player_velocity(mut query: Query<&mut LinearVelocity, With<Player>>) {
-    for mut velocity in &mut query {
-        velocity.0 = Vec3::ZERO;
-    }
+pub fn register_systems(app: &mut App) {
+    app.add_systems(OnEnter(WavePhase::Combat), spawn_player);
 }
 
 fn player_sprite_color() -> SpriteColor {
@@ -41,7 +35,6 @@ fn player_sprite_color() -> SpriteColor {
 pub fn spawn_player(
     mut commands: Commands,
     calculators: Res<StatCalculators>,
-    mut selected_spells: ResMut<SelectedSpells>,
 ) {
     let base_stats: &[(Stat, f32)] = &[
         (Stat::MaxLifeFlat, 20.0),
@@ -84,9 +77,11 @@ pub fn spawn_player(
         },
         PlayerInput {
             bindings: vec![
-                InputBinding { slot: SpellSlot::Active, trigger: InputTrigger::MouseHold(MouseButtonKind::Left), targeting: TargetingMode::Cursor },
-                InputBinding { slot: SpellSlot::Defensive, trigger: InputTrigger::KeyJustPressed(KeyKind::Space), targeting: TargetingMode::MovementDirection },
-                InputBinding { slot: SpellSlot::Passive, trigger: InputTrigger::Auto, targeting: TargetingMode::Untargeted },
+                InputBinding {
+                    ability: AbilityKind::Fireball,
+                    trigger: InputTrigger::MouseHold(MouseButtonKind::Left),
+                    targeting: TargetingMode::Cursor,
+                },
             ],
         },
     ));
@@ -101,6 +96,4 @@ pub fn spawn_player(
             JumpWalkAnimation { bounce_height: 0.6, bounce_duration: 0.45, land_squish: 0.3, land_duration: 0.125 },
         ));
     });
-
-    selected_spells.set(SpellSlot::Active, AbilityKind::Fireball);
 }

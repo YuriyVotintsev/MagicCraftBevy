@@ -1,23 +1,18 @@
-use avian3d::prelude::*;
 use bevy::prelude::*;
-use serde::Deserialize;
 
-use crate::actors::abilities::{fire_ability, AbilitiesBalance};
+use crate::actors::abilities::{fire_ability, AbilitiesBalance, AbilityKind};
 use crate::actors::TargetInfo;
 use crate::Faction;
-use crate::player::{SelectedSpells, SpellSlot};
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
 use crate::wave::WavePhase;
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy)]
 pub enum InputTrigger {
     MouseHold(MouseButtonKind),
-    KeyJustPressed(KeyKind),
-    Auto,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
+#[derive(Debug, Clone, Copy)]
 pub enum MouseButtonKind { Left, Right, Middle }
 
 impl From<MouseButtonKind> for MouseButton {
@@ -30,21 +25,12 @@ impl From<MouseButtonKind> for MouseButton {
     }
 }
 
-#[derive(Debug, Clone, Copy, Deserialize)]
-pub enum KeyKind { Space }
+#[derive(Debug, Clone, Copy)]
+pub enum TargetingMode { Cursor }
 
-impl From<KeyKind> for KeyCode {
-    fn from(kind: KeyKind) -> Self {
-        match kind { KeyKind::Space => KeyCode::Space }
-    }
-}
-
-#[derive(Debug, Clone, Copy, Deserialize)]
-pub enum TargetingMode { Cursor, MovementDirection, Untargeted }
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct InputBinding {
-    pub slot: SpellSlot,
+    pub ability: AbilityKind,
     pub trigger: InputTrigger,
     pub targeting: TargetingMode,
 }
@@ -56,9 +42,7 @@ pub struct PlayerInput {
 
 #[derive(Component, Default)]
 pub struct PlayerAbilityCooldowns {
-    pub active: f32,
-    pub passive: f32,
-    pub defensive: f32,
+    pub current: f32,
 }
 
 pub fn register_systems(app: &mut App) {
@@ -74,9 +58,7 @@ pub fn register_systems(app: &mut App) {
 fn tick_cooldowns(time: Res<Time>, mut q: Query<&mut PlayerAbilityCooldowns>) {
     let dt = time.delta_secs();
     for mut c in &mut q {
-        c.active = (c.active - dt).max(0.0);
-        c.passive = (c.passive - dt).max(0.0);
-        c.defensive = (c.defensive - dt).max(0.0);
+        c.current = (c.current - dt).max(0.0);
     }
 }
 
@@ -84,30 +66,19 @@ fn tick_cooldowns(time: Res<Time>, mut q: Query<&mut PlayerAbilityCooldowns>) {
 fn player_input_system(
     mut commands: Commands,
     mouse: Res<ButtonInput<MouseButton>>,
-    keyboard: Res<ButtonInput<KeyCode>>,
     windows: Query<&Window>,
     camera_query: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
-    mut player_query: Query<(Entity, &Transform, &LinearVelocity, &PlayerInput, Option<&ComputedStats>, &mut PlayerAbilityCooldowns)>,
-    selected_spells: Res<SelectedSpells>,
+    mut player_query: Query<(Entity, &Transform, &PlayerInput, Option<&ComputedStats>, &mut PlayerAbilityCooldowns)>,
     abilities_balance: Res<AbilitiesBalance>,
 ) {
-    for (player_entity, player_transform, velocity, player_input, stats, mut cooldowns) in &mut player_query {
+    for (player_entity, player_transform, player_input, stats, mut cooldowns) in &mut player_query {
         for binding in &player_input.bindings {
             let triggered = match binding.trigger {
                 InputTrigger::MouseHold(btn) => mouse.pressed(btn.into()),
-                InputTrigger::KeyJustPressed(key) => keyboard.just_pressed(key.into()),
-                InputTrigger::Auto => true,
             };
             if !triggered { continue }
 
-            let Some(kind) = selected_spells.get(binding.slot) else { continue };
-
-            let slot_cd = match binding.slot {
-                SpellSlot::Active => &mut cooldowns.active,
-                SpellSlot::Passive => &mut cooldowns.passive,
-                SpellSlot::Defensive => &mut cooldowns.defensive,
-            };
-            if *slot_cd > 0.0 { continue }
+            if cooldowns.current > 0.0 { continue }
 
             let target = match binding.targeting {
                 TargetingMode::Cursor => {
@@ -121,19 +92,15 @@ fn player_input_system(
                     if direction == Vec2::ZERO { continue }
                     TargetInfo::from_direction(direction)
                 }
-                TargetingMode::MovementDirection => {
-                    TargetInfo::from_direction(crate::coord::to_2d(velocity.0).normalize_or_zero())
-                }
-                TargetingMode::Untargeted => TargetInfo::EMPTY,
             };
 
             let caster_pos = crate::coord::to_2d(player_transform.translation);
-            let ability_cooldown = match kind {
-                crate::actors::abilities::AbilityKind::Fireball => abilities_balance.fireball.cooldown,
+            let ability_cooldown = match binding.ability {
+                AbilityKind::Fireball => abilities_balance.fireball.cooldown,
                 _ => 0.5,
             };
-            fire_ability(&mut commands, kind, player_entity, caster_pos, Faction::Player, target, &abilities_balance, stats);
-            *slot_cd = ability_cooldown;
+            fire_ability(&mut commands, binding.ability, player_entity, caster_pos, Faction::Player, target, &abilities_balance, stats);
+            cooldowns.current = ability_cooldown;
         }
     }
 }

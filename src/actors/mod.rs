@@ -4,6 +4,7 @@ pub mod combat;
 pub mod components;
 pub mod effects;
 pub mod mob_abilities;
+pub mod player;
 pub mod spawn_source;
 pub mod target_info;
 pub mod tower_shot;
@@ -20,6 +21,7 @@ impl Plugin for ActorsPlugin {
         combat::register_systems(app);
         effects::register_systems(app);
         mob_abilities::register_systems(app);
+        player::register_systems(app);
         tower_shot::register_systems(app);
         components::register_component_systems(app);
     }

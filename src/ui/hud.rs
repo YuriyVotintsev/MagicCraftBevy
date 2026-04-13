@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::money::PlayerMoney;
-use crate::player::Player;
+use crate::actors::player::Player;
 use crate::actors::components::common::health::Health;
 use crate::stats::{ComputedStats, Stat};
 use crate::GameState;
