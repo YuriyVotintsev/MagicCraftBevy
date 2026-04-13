@@ -2,7 +2,7 @@ use bevy::platform::collections::HashSet;
 use bevy::prelude::*;
 use avian3d::prelude::*;
 
-use crate::physics::Wall;
+use crate::arena::Wall;
 use crate::schedule::GameSet;
 use crate::Faction;
 

@@ -7,7 +7,7 @@ use rand::Rng;
 use crate::actors::mobs::{MobKind, MobsBalance};
 use crate::balance::{CurrentArenaSize, GameBalance};
 use crate::actors::components::common::health::Health;
-use crate::physics::{GameLayer, Wall};
+use crate::faction::GameLayer;
 use crate::run::RunState;
 use crate::schedule::GameSet;
 use crate::stats::Stat;
@@ -50,6 +50,9 @@ impl EnemySpawnPool {
 struct FloorParams {
     radius: f32,
 }
+
+#[derive(Component)]
+pub struct Wall;
 
 #[derive(Component)]
 enum WallSide { North, South, West, East }

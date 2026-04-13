@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use crate::actors::SpawnSource;
 use crate::faction::Faction;
 use crate::particles;
-use crate::physics::Wall;
+use crate::arena::Wall;
 use crate::schedule::GameSet;
 use crate::actors::combat::{Dead, PendingDamage};
 

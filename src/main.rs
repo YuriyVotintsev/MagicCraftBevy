@@ -13,7 +13,6 @@ mod coord;
 mod movement;
 pub mod palette;
 mod particles;
-mod physics;
 mod run;
 mod schedule;
 mod stats;

@@ -129,8 +129,8 @@ fn update_arc_tower_shot(
 
             let shape = AvianCollider::sphere(arc.explosion_radius / 2.0);
             let target_layer = match arc.caster_faction {
-                Faction::Player => crate::physics::GameLayer::Enemy,
-                Faction::Enemy => crate::physics::GameLayer::Player,
+                Faction::Player => crate::faction::GameLayer::Enemy,
+                Faction::Enemy => crate::faction::GameLayer::Player,
             };
             let filter = SpatialQueryFilter::from_mask(target_layer);
             let hits = spatial.shape_intersections(&shape, target_ground, Quat::IDENTITY, &filter);

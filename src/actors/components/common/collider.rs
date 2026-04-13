@@ -2,7 +2,7 @@ use avian3d::prelude::{Collider as AvianCollider, *};
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::physics::GameLayer;
+use crate::faction::GameLayer;
 use crate::Faction;
 
 #[derive(Debug, Clone, Copy, Deserialize)]

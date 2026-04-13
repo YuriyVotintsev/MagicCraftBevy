@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use crate::actors::components::common::size::Size;
 use crate::movement::SelfMoving;
-use crate::physics::GameLayer;
+use crate::faction::GameLayer;
 use crate::schedule::GameSet;
 use crate::actors::combat::PendingDamage;
 use crate::stats::{ComputedStats, Stat};

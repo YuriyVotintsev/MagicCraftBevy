@@ -3,7 +3,7 @@ use bevy::prelude::*;
 
 use crate::actors::SpawnSource;
 use crate::actors::TargetInfo;
-use crate::physics::GameLayer;
+use crate::faction::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
