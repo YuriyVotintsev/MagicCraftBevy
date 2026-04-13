@@ -25,6 +25,26 @@ pub struct DeathEvent {
     pub entity: Entity,
 }
 
+#[derive(Component, Clone, Copy)]
+pub struct AttachedTo {
+    pub owner: Entity,
+}
+
+fn on_owner_death(
+    on: On<Add, Dead>,
+    attached_query: Query<(Entity, &AttachedTo)>,
+    mut commands: Commands,
+) {
+    let owner = on.event_target();
+    for (entity, attached) in &attached_query {
+        if attached.owner == owner {
+            if let Ok(mut ec) = commands.get_entity(entity) {
+                ec.despawn();
+            }
+        }
+    }
+}
+
 pub fn apply_pending_damage(
     mut commands: Commands,
     mut pending: MessageReader<PendingDamage>,
@@ -89,6 +109,7 @@ pub fn cleanup_dead(mut commands: Commands, query: Query<Entity, (With<Dead>, Wi
 pub fn register_systems(app: &mut App) {
     app.add_message::<PendingDamage>()
         .add_message::<DeathEvent>()
+        .add_observer(on_owner_death)
         .add_systems(Update, apply_pending_damage.in_set(GameSet::DamageApply))
         .add_systems(PostUpdate, death_system.in_set(PostGameSet))
         .add_systems(

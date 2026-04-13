@@ -3,7 +3,6 @@ mod balance;
 mod coin;
 mod composite_scale;
 mod arena;
-mod common;
 mod faction;
 mod game_state;
 mod health_material;
@@ -43,7 +42,6 @@ use bevy::prelude::*;
 
 use actors::ActorsPlugin;
 use arena::ArenaPlugin;
-use common::CommonPlugin;
 use health_material::HealthMaterialPlugin;
 use hit_flash::HitFlashPlugin;
 use loading::LoadingPlugin;
@@ -203,7 +201,6 @@ fn main() {
         .add_systems(Update, toggle_physics_debug)
         .add_plugins((
             LoadingPlugin,
-            CommonPlugin,
             ArenaPlugin,
             PlayerPlugin,
             StatsPlugin,
