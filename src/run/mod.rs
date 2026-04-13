@@ -6,7 +6,7 @@ pub mod money;
 
 pub use death::PlayerDying;
 
-use crate::actors::components::common::health::Health;
+use crate::actors::combat::Health;
 use crate::actors::player::Player;
 use crate::wave::WavePhase;
 

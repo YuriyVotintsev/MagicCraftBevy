@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::actors::abilities::AbilityKind;
 use crate::actors::components::common::collider::{Collider, Shape as ColliderShape};
 use crate::actors::components::common::dynamic_body::DynamicBody;
-use crate::actors::components::common::health::Health;
+use crate::actors::combat::Health;
 use crate::actors::components::common::jump_walk_animation::JumpWalkAnimation;
 use crate::actors::components::common::shadow::Shadow;
 use crate::actors::components::common::size::Size;
@@ -12,7 +12,6 @@ use crate::actors::components::player::keyboard_movement::KeyboardMovement;
 use crate::actors::components::player::player_input::{
     InputBinding, InputTrigger, MouseButtonKind, PlayerAbilityCooldowns, PlayerInput, TargetingMode,
 };
-use crate::actors::TargetInfo;
 use crate::actors::SpawnSource;
 use crate::palette;
 use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
@@ -70,11 +69,7 @@ pub fn spawn_player(
         DespawnOnExit(WavePhase::Combat),
     )).id();
     commands.entity(entity).insert((
-        SpawnSource {
-            caster: TargetInfo::from_entity_and_position(entity, Vec2::ZERO),
-            caster_faction: Faction::Player,
-            target: TargetInfo::EMPTY,
-        },
+        SpawnSource::from_caster(entity, Vec2::ZERO),
         PlayerInput {
             bindings: vec![
                 InputBinding {

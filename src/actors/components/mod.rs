@@ -2,7 +2,6 @@ pub mod common {
     pub mod size;
     pub mod collider;
     pub mod sprite;
-    pub mod health;
     pub mod dynamic_body;
     pub mod static_body;
     pub mod jump_walk_animation;
@@ -13,7 +12,6 @@ pub mod common {
     pub mod spinner_visual;
     pub mod tower_visual;
     pub mod fade_out;
-    pub mod movement;
 }
 
 pub mod ability {
@@ -48,7 +46,6 @@ pub fn register_component_systems(app: &mut App) {
     common::size::register_systems(app);
     common::collider::register_systems(app);
     common::sprite::register_systems(app);
-    common::health::register_systems(app);
     common::dynamic_body::register_systems(app);
     common::static_body::register_systems(app);
     common::jump_walk_animation::register_systems(app);

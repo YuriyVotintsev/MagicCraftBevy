@@ -2,7 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::actors::SpawnSource;
-use crate::actors::components::common::movement::SelfMoving;
+use crate::actors::components::common::jump_walk_animation::SelfMoving;
 use crate::stats::{ComputedStats, Stat};
 
 #[derive(Component)]

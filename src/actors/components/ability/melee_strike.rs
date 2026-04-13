@@ -3,7 +3,6 @@ use bevy::prelude::*;
 
 use crate::actors::components::common::size::Size;
 use crate::actors::SpawnSource;
-use crate::faction::GameLayer;
 use crate::schedule::GameSet;
 use crate::actors::combat::PendingDamage;
 use crate::Faction;
@@ -24,12 +23,12 @@ pub fn register_systems(app: &mut App) {
 fn melee_strike_system(
     mut commands: Commands,
     mut pending: MessageWriter<PendingDamage>,
-    query: Query<(Entity, &MeleeStrike, &SpawnSource)>,
+    query: Query<(Entity, &MeleeStrike, &SpawnSource, &Faction)>,
     transforms: Query<&Transform>,
     sizes: Query<&Size>,
     spatial_query: SpatialQuery,
 ) {
-    for (entity, strike, source) in &query {
+    for (entity, strike, source, faction) in &query {
         let Some(caster_entity) = source.caster.entity else { continue };
         let Ok(caster_transform) = transforms.get(caster_entity) else {
             commands.entity(entity).despawn();
@@ -39,12 +38,7 @@ fn melee_strike_system(
         let position = crate::coord::to_2d(caster_transform.translation);
         let caster_radius = sizes.get(caster_entity).map_or(0.0, |s| s.value / 2.0);
 
-        let target_layer = match source.caster_faction {
-            Faction::Player => GameLayer::Enemy,
-            Faction::Enemy => GameLayer::Player,
-        };
-
-        let filter = SpatialQueryFilter::from_mask(target_layer);
+        let filter = SpatialQueryFilter::from_mask(faction.enemy_layer());
         let shape = Collider::sphere(strike.range + caster_radius);
         let hits = spatial_query.shape_intersections(&shape, crate::coord::ground_pos(position), Quat::IDENTITY, &filter);
 

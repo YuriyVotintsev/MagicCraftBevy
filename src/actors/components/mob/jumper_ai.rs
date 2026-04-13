@@ -4,6 +4,7 @@ use crate::actors::abilities::{fire_ability, AbilitiesBalance, AbilityKind};
 use crate::actors::SpawnSource;
 use crate::actors::components::mob::random_jump::RandomJump;
 use crate::stats::ComputedStats;
+use crate::Faction;
 
 #[derive(Component)]
 pub struct JumperAi {
@@ -56,10 +57,10 @@ fn jumper_ai_system(
     abilities_balance: Res<AbilitiesBalance>,
     stats_q: Query<&ComputedStats>,
     transforms: Query<&Transform>,
-    mut query: Query<(Entity, &JumperAi, &mut JumperAiState, &SpawnSource), Without<crate::wave::summoning::RiseFromGround>>,
+    mut query: Query<(Entity, &JumperAi, &mut JumperAiState, &SpawnSource, &Faction), Without<crate::wave::summoning::RiseFromGround>>,
 ) {
     let dt = time.delta_secs();
-    for (entity, ai, mut state, source) in &mut query {
+    for (entity, ai, mut state, source, faction) in &mut query {
         state.elapsed += dt;
         match state.phase {
             JumperPhase::Idle => {
@@ -91,7 +92,7 @@ fn jumper_ai_system(
                             kind,
                             entity,
                             caster_pos,
-                            source.caster_faction,
+                            *faction,
                             source.target,
                             &abilities_balance,
                             caster_stats,

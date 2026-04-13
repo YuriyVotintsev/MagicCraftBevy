@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::actors::components::common::health::Health;
+use crate::actors::combat::Health;
 use crate::actors::mobs::{MobKind, MobsBalance};
 use crate::arena::CurrentArenaSize;
 use crate::balance::GameBalance;

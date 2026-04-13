@@ -1,11 +1,15 @@
 use bevy::prelude::*;
 
-use crate::actors::components::common::health::Health;
 use crate::hit_flash::HitFlash;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::stats::{ComputedStats, Stat};
 use crate::wave::InvulnerableStack;
 use crate::GameState;
+
+#[derive(Component)]
+pub struct Health {
+    pub current: f32,
+}
 
 #[derive(Message)]
 pub struct PendingDamage {

@@ -3,7 +3,6 @@ use bevy::prelude::*;
 
 use crate::actors::SpawnSource;
 use crate::actors::TargetInfo;
-use crate::faction::GameLayer;
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
@@ -28,22 +27,17 @@ pub fn register_systems(app: &mut App) {
 
 fn find_nearest_enemy_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &FindNearestEnemy, &mut SpawnSource), Without<FoundTarget>>,
+    mut query: Query<(Entity, &FindNearestEnemy, &mut SpawnSource, &Faction), Without<FoundTarget>>,
     spatial_query: SpatialQuery,
     transforms: Query<&Transform>,
 ) {
-    for (entity, finder, mut source) in &mut query {
+    for (entity, finder, mut source, faction) in &mut query {
         let caster_pos = transforms
             .get(finder.center)
             .map(|t| crate::coord::to_2d(t.translation))
             .unwrap_or(Vec2::ZERO);
 
-        let target_layer = match source.caster_faction {
-            Faction::Player => GameLayer::Enemy,
-            Faction::Enemy => GameLayer::Player,
-        };
-
-        let filter = SpatialQueryFilter::from_mask(target_layer);
+        let filter = SpatialQueryFilter::from_mask(faction.enemy_layer());
         let shape = Collider::sphere(finder.size / 2.0);
         let hits = spatial_query.shape_intersections(&shape, crate::coord::ground_pos(caster_pos), Quat::IDENTITY, &filter);
 

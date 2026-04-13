@@ -128,11 +128,7 @@ fn update_arc_tower_shot(
             ));
 
             let shape = AvianCollider::sphere(arc.explosion_radius / 2.0);
-            let target_layer = match arc.caster_faction {
-                Faction::Player => crate::faction::GameLayer::Enemy,
-                Faction::Enemy => crate::faction::GameLayer::Player,
-            };
-            let filter = SpatialQueryFilter::from_mask(target_layer);
+            let filter = SpatialQueryFilter::from_mask(arc.caster_faction.enemy_layer());
             let hits = spatial.shape_intersections(&shape, target_ground, Quat::IDENTITY, &filter);
             for hit in hits {
                 if faction_query.get(hit).map(|f| *f != arc.caster_faction).unwrap_or(false) {

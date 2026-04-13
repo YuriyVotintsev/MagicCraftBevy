@@ -138,14 +138,6 @@ fn enemy_ability_sprite_color() -> SpriteColor {
     SpriteColor { r, g, b, a: 1.0, flash }
 }
 
-fn make_projectile_source(caster: Entity, caster_pos: Vec2, caster_faction: Faction, target: TargetInfo) -> SpawnSource {
-    SpawnSource {
-        caster: TargetInfo::from_entity_and_position(caster, caster_pos),
-        caster_faction,
-        target,
-    }
-}
-
 fn rotate_vec2(v: Vec2, angle: f32) -> Vec2 {
     let (s, c) = angle.sin_cos();
     Vec2::new(v.x * c - v.y * s, v.x * s + v.y * c)
@@ -177,7 +169,7 @@ fn fire_jumper_shot(
             Transform::from_translation(ground),
             Visibility::default(),
             caster_faction,
-            make_projectile_source(caster, caster_pos, caster_faction, target),
+            SpawnSource::with_target(caster, caster_pos, target),
             Projectile,
             Size { value: params.projectile_size },
             Collider { shape: ColliderShape::Circle, sensor: true },
@@ -230,7 +222,7 @@ fn fire_fireball(
             Transform::from_translation(ground),
             Visibility::default(),
             caster_faction,
-            make_projectile_source(caster, caster_pos, caster_faction, target),
+            SpawnSource::with_target(caster, caster_pos, target),
             Projectile,
             Size { value: params.size },
             Collider { shape: ColliderShape::Circle, sensor: true },
@@ -262,15 +254,9 @@ fn fire_melee_attack(
 ) {
     let damage = stat_value(caster_stats, Stat::PhysicalDamageFlat);
 
-    let source = SpawnSource {
-        caster: TargetInfo::from_entity_and_position(caster, caster_pos),
-        caster_faction,
-        target,
-    };
-
     commands.spawn((
         MeleeStrike { range: params.range, damage },
-        source,
+        SpawnSource::with_target(caster, caster_pos, target),
         caster_faction,
     ));
 }

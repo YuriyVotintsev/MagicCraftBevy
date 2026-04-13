@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::actors::abilities::AbilitiesBalance;
 use crate::actors::mobs::{spawn_mob, MobKind, MobsBalance};
-use crate::actors::components::common::health::Health;
+use crate::actors::combat::Health;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
 use crate::schedule::GameSet;

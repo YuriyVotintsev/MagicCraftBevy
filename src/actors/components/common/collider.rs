@@ -2,8 +2,27 @@ use avian3d::prelude::{Collider as AvianCollider, *};
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::faction::GameLayer;
 use crate::Faction;
+
+#[derive(PhysicsLayer, Clone, Copy, Debug, Default)]
+pub enum GameLayer {
+    #[default]
+    Default,
+    Player,
+    Enemy,
+    PlayerProjectile,
+    EnemyProjectile,
+    Wall,
+}
+
+impl Faction {
+    pub fn enemy_layer(self) -> GameLayer {
+        match self {
+            Faction::Player => GameLayer::Enemy,
+            Faction::Enemy => GameLayer::Player,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 pub enum Shape {

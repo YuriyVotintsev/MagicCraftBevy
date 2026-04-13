@@ -5,6 +5,7 @@ use crate::actors::target_info::TargetInfo;
 use crate::actors::SpawnSource;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
+use crate::Faction;
 
 #[derive(Component)]
 pub struct ShotFired;
@@ -40,9 +41,9 @@ fn mob_abilities_system(
     abilities_balance: Res<AbilitiesBalance>,
     transforms: Query<&Transform, Without<MobAbilities>>,
     stats_query: Query<&ComputedStats>,
-    mut query: Query<(Entity, &Transform, &mut MobAbilities, &SpawnSource), Without<crate::wave::summoning::RiseFromGround>>,
+    mut query: Query<(Entity, &Transform, &mut MobAbilities, &SpawnSource, &Faction), Without<crate::wave::summoning::RiseFromGround>>,
 ) {
-    for (caster, transform, mut ma, source) in &mut query {
+    for (caster, transform, mut ma, source, faction) in &mut query {
         ma.elapsed += time.delta_secs();
         if ma.elapsed < ma.cooldown { continue }
 
@@ -74,7 +75,7 @@ fn mob_abilities_system(
                 kind,
                 caster,
                 caster_pos,
-                source.caster_faction,
+                *faction,
                 target_info,
                 &abilities_balance,
                 caster_stats,

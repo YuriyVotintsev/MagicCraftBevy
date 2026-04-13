@@ -10,7 +10,7 @@ use crate::actors::components::ability::find_nearest_enemy::FindNearestEnemy;
 use crate::actors::components::common::bobbing_animation::BobbingAnimation;
 use crate::actors::components::common::collider::{Collider, Shape as ColliderShape};
 use crate::actors::components::common::dynamic_body::DynamicBody;
-use crate::actors::components::common::health::Health;
+use crate::actors::combat::Health;
 use crate::actors::components::common::jump_walk_animation::JumpWalkAnimation;
 use crate::actors::components::common::shadow::Shadow;
 use crate::actors::components::common::shoot_squish::ShootSquish;
@@ -24,7 +24,6 @@ use crate::actors::components::mob::jumper_ai::JumperAi;
 use crate::actors::components::mob::lunge_movement::LungeMovement;
 use crate::actors::components::mob::move_toward::MoveToward;
 use crate::actors::components::mob::spinner_ai::SpinnerAi;
-use crate::actors::TargetInfo;
 use crate::actors::SpawnSource;
 use crate::faction::Faction;
 use crate::palette;
@@ -167,14 +166,6 @@ fn compute_stats(
     (modifiers, dirty, computed)
 }
 
-fn make_source(entity: Entity, pos: Vec2) -> SpawnSource {
-    SpawnSource {
-        caster: TargetInfo::from_entity_and_position(entity, pos),
-        caster_faction: Faction::Enemy,
-        target: TargetInfo::EMPTY,
-    }
-}
-
 fn current_max_life(computed: &ComputedStats) -> f32 {
     computed.get(Stat::MaxLife)
 }
@@ -227,7 +218,7 @@ fn spawn_slime_small(
     )).id();
 
     commands.entity(id).insert((
-        make_source(id, pos),
+        SpawnSource::from_caster(id, pos),
         FindNearestEnemy { size: 4000.0, center: id },
         OnDeathParticles { config: "enemy_death" },
     ));
@@ -277,7 +268,7 @@ fn spawn_ghost(
     )).id();
 
     commands.entity(id).insert((
-        make_source(id, pos),
+        SpawnSource::from_caster(id, pos),
         FindNearestEnemy { size: 4000.0, center: id },
         OnDeathParticles { config: "enemy_death" },
     ));
@@ -327,7 +318,7 @@ fn spawn_tower(
     )).id();
 
     commands.entity(id).insert((
-        make_source(id, pos),
+        SpawnSource::from_caster(id, pos),
         FindNearestEnemy { size: 4000.0, center: id },
         OnDeathParticles { config: "enemy_death_large" },
     ));
@@ -378,7 +369,7 @@ fn spawn_jumper(
     )).id();
 
     commands.entity(id).insert((
-        make_source(id, pos),
+        SpawnSource::from_caster(id, pos),
         FindNearestEnemy { size: 4000.0, center: id },
         OnDeathParticles { config: "enemy_death_large" },
     ));
@@ -433,7 +424,7 @@ fn spawn_spinner(
     )).id();
 
     commands.entity(id).insert((
-        make_source(id, pos),
+        SpawnSource::from_caster(id, pos),
         FindNearestEnemy { size: 4000.0, center: id },
         OnDeathParticles { config: "enemy_death_large" },
     ));

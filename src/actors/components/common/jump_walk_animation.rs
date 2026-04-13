@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
-use crate::actors::components::common::movement::SelfMoving;
+
+#[derive(Component)]
+pub struct SelfMoving;
 
 #[derive(Component)]
 pub struct JumpWalkAnimation {

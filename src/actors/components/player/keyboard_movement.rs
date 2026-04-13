@@ -1,8 +1,11 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::actors::components::common::movement::{MovementLocked, SelfMoving};
+use crate::actors::components::common::jump_walk_animation::SelfMoving;
 use crate::schedule::GameSet;
+
+#[derive(Component)]
+pub struct MovementLocked;
 use crate::stats::{ComputedStats, Stat};
 use crate::wave::WavePhase;
 

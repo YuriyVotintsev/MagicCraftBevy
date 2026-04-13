@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::arena::CurrentArenaSize;
-use crate::actors::components::common::movement::SelfMoving;
+use crate::actors::components::common::jump_walk_animation::SelfMoving;
 
 #[derive(Component)]
 pub struct RandomJump {

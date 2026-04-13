@@ -3,7 +3,7 @@ use bevy::ui::UiGlobalTransform;
 
 use crate::arena::CameraAngle;
 use crate::wave::spawn::EnemySpawnPool;
-use crate::actors::components::common::health::Health;
+use crate::actors::combat::Health;
 use crate::run::money::PlayerMoney;
 use crate::actors::player::Player;
 use crate::stats::{DirtyStats, Modifiers, Stat};
