@@ -1,4 +1,4 @@
-use bevy::prelude::{Sprite as BevySprite, *};
+use bevy::prelude::*;
 use serde::Deserialize;
 
 use crate::composite_scale::ScaleModifiers;
@@ -68,7 +68,6 @@ pub struct Sprite {
     pub shape: SpriteShape,
     pub position: Vec2,
     pub scale: f32,
-    pub image: Option<String>,
     pub elevation: f32,
     pub half_length: f32,
 }
@@ -99,7 +98,6 @@ pub fn register_systems(app: &mut App) {
 
 fn init_sprite(
     mut commands: Commands,
-    asset_server: Res<AssetServer>,
     query: Query<(Entity, &Sprite, Has<Transform>), Added<Sprite>>,
 ) {
     for (entity, sprite, has_transform) in &query {
@@ -115,28 +113,19 @@ fn init_sprite(
 
         commands.entity(entity).insert(ScaleModifiers::default());
 
-        if let Some(ref image_path) = sprite.image {
-            commands.entity(entity).insert(BevySprite {
-                image: asset_server.load(image_path.clone()),
-                color,
-                custom_size: Some(Vec2::splat(sprite.scale)),
-                ..default()
-            });
-        } else {
-            match sprite.shape {
-                SpriteShape::Circle => {
-                    commands.entity(entity).insert(CircleSprite { color, flash_color });
-                }
-                SpriteShape::Capsule => {
-                    commands.entity(entity).insert(CapsuleSprite {
-                        color,
-                        flash_color,
-                        half_length: sprite.half_length,
-                    });
-                }
-                SpriteShape::Disc => {
-                    commands.entity(entity).insert(DiscSprite { color });
-                }
+        match sprite.shape {
+            SpriteShape::Circle => {
+                commands.entity(entity).insert(CircleSprite { color, flash_color });
+            }
+            SpriteShape::Capsule => {
+                commands.entity(entity).insert(CapsuleSprite {
+                    color,
+                    flash_color,
+                    half_length: sprite.half_length,
+                });
+            }
+            SpriteShape::Disc => {
+                commands.entity(entity).insert(DiscSprite { color });
             }
         }
     }

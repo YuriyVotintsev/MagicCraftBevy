@@ -21,15 +21,13 @@ pub struct StatsPlugin;
 
 impl Plugin for StatsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(
-            PreUpdate,
-            (systems::mark_dirty_on_modifier_change, systems::recalculate_stats)
-                .chain()
-                .run_if(not(in_state(GameState::Loading))),
-        );
+        app.insert_resource(StatCalculators::build())
+            .insert_resource(StatDisplayRegistry::build())
+            .add_systems(
+                PreUpdate,
+                (systems::mark_dirty_on_modifier_change, systems::recalculate_stats)
+                    .chain()
+                    .run_if(not(in_state(GameState::Loading))),
+            );
     }
-}
-
-pub fn build_stat_system() -> (StatCalculators, StatDisplayRegistry) {
-    (StatCalculators::build(), StatDisplayRegistry::build())
 }

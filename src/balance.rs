@@ -1,7 +1,9 @@
+use bevy::asset::Asset;
 use bevy::prelude::*;
+use bevy::reflect::TypePath;
 use serde::Deserialize;
 
-#[derive(Resource, Clone, Deserialize)]
+#[derive(Asset, Resource, TypePath, Clone, Deserialize)]
 pub struct GameBalance {
     pub wave: WaveBalance,
     pub arena: ArenaBalance,

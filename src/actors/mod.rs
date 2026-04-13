@@ -13,16 +13,10 @@ pub use target_info::TargetInfo;
 
 use bevy::prelude::*;
 
-use crate::loading::assets::{MobsBalanceAsset, AbilitiesBalanceAsset, MobsBalanceLoader, AbilitiesBalanceLoader};
-
 pub struct ActorsPlugin;
 
 impl Plugin for ActorsPlugin {
     fn build(&self, app: &mut App) {
-        app.init_asset::<MobsBalanceAsset>()
-            .init_asset::<AbilitiesBalanceAsset>()
-            .init_asset_loader::<MobsBalanceLoader>()
-            .init_asset_loader::<AbilitiesBalanceLoader>();
         combat::register_systems(app);
         effects::register_systems(app);
         mob_abilities::register_systems(app);

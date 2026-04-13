@@ -82,7 +82,7 @@ fn update_arc_tower_shot(
                 Size { value: arc.explosion_radius },
                 Sprite {
                     color: enemy_ability_color_alpha(0.2), shape: SpriteShape::Disc,
-                    position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.02, half_length: 0.5,
+                    position: Vec2::ZERO, scale: 1.0, elevation: 0.02, half_length: 0.5,
                 },
                 Growing { start_size: 0.0, end_size: arc.explosion_radius },
                 Lifetime { remaining: arc.indicator_duration },
@@ -121,7 +121,7 @@ fn update_arc_tower_shot(
                 Size { value: arc.explosion_radius },
                 Sprite {
                     color: enemy_ability_color_alpha(0.4), shape: SpriteShape::Disc,
-                    position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.02, half_length: 0.5,
+                    position: Vec2::ZERO, scale: 1.0, elevation: 0.02, half_length: 0.5,
                 },
                 Lifetime { remaining: arc.explosion_duration },
                 FadeOut {},
@@ -187,7 +187,7 @@ pub fn fire_tower_shot_impl(
                 SpriteColor { r, g, b, a: 1.0, flash: palette::flash_lookup("enemy_ability") }
             },
             shape: SpriteShape::Circle,
-            position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
+            position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
         });
     });
 }

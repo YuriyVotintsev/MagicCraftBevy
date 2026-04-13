@@ -1,55 +1,31 @@
+use std::marker::PhantomData;
+
 use bevy::asset::io::Reader;
 use bevy::asset::{Asset, AssetLoader, LoadContext};
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
+use serde::Deserialize;
 
 use crate::actors::abilities::AbilitiesBalance;
 use crate::actors::mobs::MobsBalance;
 use crate::balance::GameBalance;
+use crate::particles::ParticleConfigRaw;
 
-#[derive(Asset, TypePath)]
-pub struct GameBalanceAsset(pub GameBalance);
+pub trait RonAsset: Asset + for<'de> Deserialize<'de> {
+    const EXTENSION: &'static str;
+}
 
-#[derive(Asset, TypePath)]
-pub struct MobsBalanceAsset(pub MobsBalance);
+#[derive(TypePath)]
+pub struct RonAssetLoader<A: RonAsset>(PhantomData<A>);
 
-#[derive(Asset, TypePath)]
-pub struct AbilitiesBalanceAsset(pub AbilitiesBalance);
-
-#[derive(Default, TypePath)]
-pub struct GameBalanceLoader;
-
-#[derive(Default, TypePath)]
-pub struct MobsBalanceLoader;
-
-#[derive(Default, TypePath)]
-pub struct AbilitiesBalanceLoader;
-
-impl AssetLoader for GameBalanceLoader {
-    type Asset = GameBalanceAsset;
-    type Settings = ();
-    type Error = anyhow::Error;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).await?;
-        let content = std::str::from_utf8(&bytes)?;
-        let balance: GameBalance = ron::from_str(content)?;
-        Ok(GameBalanceAsset(balance))
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["balance.ron"]
+impl<A: RonAsset> Default for RonAssetLoader<A> {
+    fn default() -> Self {
+        Self(PhantomData)
     }
 }
 
-impl AssetLoader for MobsBalanceLoader {
-    type Asset = MobsBalanceAsset;
+impl<A: RonAsset> AssetLoader for RonAssetLoader<A> {
+    type Asset = A;
     type Settings = ();
     type Error = anyhow::Error;
 
@@ -62,34 +38,26 @@ impl AssetLoader for MobsBalanceLoader {
         let mut bytes = Vec::new();
         reader.read_to_end(&mut bytes).await?;
         let content = std::str::from_utf8(&bytes)?;
-        let balance: MobsBalance = ron::from_str(content)?;
-        Ok(MobsBalanceAsset(balance))
+        Ok(ron::from_str(content)?)
     }
 
     fn extensions(&self) -> &[&str] {
-        &["mobs.ron"]
+        &[A::EXTENSION]
     }
 }
 
-impl AssetLoader for AbilitiesBalanceLoader {
-    type Asset = AbilitiesBalanceAsset;
-    type Settings = ();
-    type Error = anyhow::Error;
+impl RonAsset for GameBalance {
+    const EXTENSION: &'static str = "balance.ron";
+}
 
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).await?;
-        let content = std::str::from_utf8(&bytes)?;
-        let balance: AbilitiesBalance = ron::from_str(content)?;
-        Ok(AbilitiesBalanceAsset(balance))
-    }
+impl RonAsset for MobsBalance {
+    const EXTENSION: &'static str = "mobs.ron";
+}
 
-    fn extensions(&self) -> &[&str] {
-        &["abilities.ron"]
-    }
+impl RonAsset for AbilitiesBalance {
+    const EXTENSION: &'static str = "abilities.ron";
+}
+
+impl RonAsset for ParticleConfigRaw {
+    const EXTENSION: &'static str = "particle.ron";
 }

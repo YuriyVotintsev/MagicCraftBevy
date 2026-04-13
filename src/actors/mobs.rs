@@ -1,4 +1,6 @@
+use bevy::asset::Asset;
 use bevy::prelude::*;
+use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use crate::actors::abilities::{AbilitiesBalance, AbilityKind};
@@ -71,7 +73,7 @@ impl MobKind {
     }
 }
 
-#[derive(Resource, Clone, Deserialize, Debug)]
+#[derive(Asset, Resource, TypePath, Clone, Deserialize, Debug)]
 pub struct MobsBalance {
     pub ghost: GhostStats,
     pub tower: TowerStats,
@@ -235,7 +237,7 @@ fn spawn_slime_small(
         p.spawn((
             Sprite {
                 color: enemy_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
+                position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
             },
             JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, land_squish: 0.3, land_duration: 0.4 },
         ));
@@ -285,7 +287,7 @@ fn spawn_ghost(
         p.spawn((
             Sprite {
                 color: enemy_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
+                position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
             },
             BobbingAnimation { amplitude: 0.2, speed: 2.0, base_elevation: 0.5 },
         ));
@@ -334,7 +336,7 @@ fn spawn_tower(
         p.spawn(Shadow { opacity: 0.45 });
         p.spawn(Sprite {
             color: enemy_sprite_color(), shape: SpriteShape::Circle,
-            position: Vec2::ZERO, scale: 1.0, image: None, elevation: 1.2, half_length: 0.5,
+            position: Vec2::ZERO, scale: 1.0, elevation: 1.2, half_length: 0.5,
         });
     });
 
@@ -386,7 +388,7 @@ fn spawn_jumper(
         p.spawn((
             Sprite {
                 color: enemy_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
+                position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
             },
             JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, land_squish: 0.7, land_duration: 0.4 },
         ));
@@ -440,7 +442,7 @@ fn spawn_spinner(
         p.spawn(Shadow { opacity: 0.45 });
         p.spawn(Sprite {
             color: enemy_sprite_color(), shape: SpriteShape::Circle,
-            position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
+            position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
         });
     });
     id

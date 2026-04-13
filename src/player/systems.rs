@@ -96,7 +96,7 @@ pub fn spawn_player(
         p.spawn((
             Sprite {
                 color: player_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.5, half_length: 0.5,
+                position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
             },
             JumpWalkAnimation { bounce_height: 0.6, bounce_duration: 0.45, land_squish: 0.3, land_duration: 0.125 },
         ));

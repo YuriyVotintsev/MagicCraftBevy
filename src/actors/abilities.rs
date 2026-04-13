@@ -1,5 +1,7 @@
 use avian3d::prelude::*;
+use bevy::asset::Asset;
 use bevy::prelude::*;
+use bevy::reflect::TypePath;
 use rand::Rng;
 use serde::Deserialize;
 
@@ -48,7 +50,7 @@ impl AbilityKind {
     }
 }
 
-#[derive(Resource, Clone, Deserialize, Debug)]
+#[derive(Asset, Resource, TypePath, Clone, Deserialize, Debug)]
 pub struct AbilitiesBalance {
     pub melee_attack: MeleeAttackParams,
     pub jumper_shot: JumperShotParams,
@@ -190,7 +192,7 @@ fn fire_jumper_shot(
             p.spawn(Shadow { opacity: 0.45 });
             p.spawn(Sprite {
                 color: enemy_ability_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, image: None, elevation: 0.7, half_length: 0.5,
+                position: Vec2::ZERO, scale: 1.0, elevation: 0.7, half_length: 0.5,
             });
         });
     }
@@ -243,7 +245,7 @@ fn fire_fireball(
             p.spawn(Shadow { opacity: 0.45 });
             p.spawn(Sprite {
                 color: player_ability_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, image: None, elevation: 2.0, half_length: 0.5,
+                position: Vec2::ZERO, scale: 1.0, elevation: 2.0, half_length: 0.5,
             });
         });
     }

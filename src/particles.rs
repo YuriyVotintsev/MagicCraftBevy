@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use bevy::asset::{Asset, io::Reader, AssetLoader, LoadContext};
+use bevy::asset::Asset;
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use rand::Rng;
@@ -374,28 +374,3 @@ fn update_particles(
     }
 }
 
-#[derive(Default, TypePath)]
-pub struct ParticleConfigLoader;
-
-impl AssetLoader for ParticleConfigLoader {
-    type Asset = ParticleConfigRaw;
-    type Settings = ();
-    type Error = anyhow::Error;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = Vec::new();
-        reader.read_to_end(&mut bytes).await?;
-        let content = std::str::from_utf8(&bytes)?;
-        let config: ParticleConfigRaw = ron::from_str(content)?;
-        Ok(config)
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["particle.ron"]
-    }
-}
