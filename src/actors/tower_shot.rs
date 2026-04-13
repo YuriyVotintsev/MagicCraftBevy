@@ -9,7 +9,7 @@ use crate::faction::Faction;
 use crate::palette;
 use crate::particles;
 use crate::schedule::GameSet;
-use crate::stats::PendingDamage;
+use crate::actors::combat::PendingDamage;
 use crate::GameState;
 
 #[derive(Component)]

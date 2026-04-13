@@ -6,7 +6,7 @@ use crate::faction::Faction;
 use crate::particles;
 use crate::physics::Wall;
 use crate::schedule::GameSet;
-use crate::stats::{Dead, PendingDamage};
+use crate::actors::combat::{Dead, PendingDamage};
 
 #[derive(Component, Debug, Clone)]
 pub struct OnDeathParticles {

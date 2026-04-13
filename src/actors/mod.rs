@@ -1,5 +1,6 @@
 pub mod mobs;
 pub mod abilities;
+pub mod combat;
 pub mod components;
 pub mod effects;
 pub mod mob_abilities;
@@ -22,6 +23,7 @@ impl Plugin for ActorsPlugin {
             .init_asset::<AbilitiesBalanceAsset>()
             .init_asset_loader::<MobsBalanceLoader>()
             .init_asset_loader::<AbilitiesBalanceLoader>();
+        combat::register_systems(app);
         effects::register_systems(app);
         mob_abilities::register_systems(app);
         tower_shot::register_systems(app);

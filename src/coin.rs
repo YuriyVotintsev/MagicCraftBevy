@@ -7,7 +7,8 @@ use crate::money::PlayerMoney;
 use crate::palette;
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
-use crate::stats::{death_system, ComputedStats, DeathEvent, Stat};
+use crate::actors::combat::{death_system, DeathEvent};
+use crate::stats::{ComputedStats, Stat};
 use crate::wave::{WaveEnemy, WavePhase};
 use crate::GameState;
 

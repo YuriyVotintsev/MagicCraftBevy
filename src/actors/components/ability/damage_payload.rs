@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::actors::SpawnSource;
 use crate::schedule::GameSet;
-use crate::stats::PendingDamage;
+use crate::actors::combat::PendingDamage;
 use crate::GameState;
 
 #[derive(Component)]

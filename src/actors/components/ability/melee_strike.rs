@@ -5,7 +5,7 @@ use crate::actors::components::common::size::Size;
 use crate::actors::SpawnSource;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::PendingDamage;
+use crate::actors::combat::PendingDamage;
 use crate::Faction;
 
 #[derive(Component)]

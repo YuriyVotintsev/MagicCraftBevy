@@ -7,7 +7,7 @@ use crate::actors::SpawnSource;
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::player::Player;
 use crate::schedule::{GameSet, PostGameSet};
-use crate::stats::{DeathEvent, SkipCleanup, death_system};
+use crate::actors::combat::{DeathEvent, SkipCleanup, death_system};
 use crate::wave::WavePhase;
 use crate::MovementLocked;
 

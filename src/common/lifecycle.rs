@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use crate::stats::Dead;
+use crate::actors::combat::Dead;
 
 #[derive(Component, Clone, Copy)]
 pub struct AttachedTo {

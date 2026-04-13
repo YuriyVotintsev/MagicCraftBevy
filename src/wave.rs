@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::balance::GameBalance;
 use crate::money::PlayerMoney;
 use crate::schedule::PostGameSet;
-use crate::stats::{death_system, DeathEvent};
+use crate::actors::combat::{death_system, DeathEvent};
 use crate::GameState;
 
 #[derive(SubStates, Default, Clone, PartialEq, Eq, Hash, Debug)]

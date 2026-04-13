@@ -5,7 +5,8 @@ use crate::actors::components::common::size::Size;
 use crate::movement::SelfMoving;
 use crate::physics::GameLayer;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, PendingDamage, Stat};
+use crate::actors::combat::PendingDamage;
+use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
 
 #[derive(Component)]
