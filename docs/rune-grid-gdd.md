@@ -226,16 +226,37 @@ Write(Pattern, Filter, Effect(value))    [опционально]
 
 | Effect | Что делает |
 |--------|------------|
-| `Grant(value)` | Добавляет плоский бонус (к base или к стату) |
-| `Amplify(factor)` | Умножает base целей |
-| `Suppress(factor)` | Уменьшает base целей |
-| `Echo` | Эффекты целей срабатывают дважды (рекурсия макс. 1 уровень) |
-| `Chain(value)` | Передаёт значение дальше по Ray (цепочка) |
+| `Grant(+value)` | **Flat** бонус — прибавляет плоскую величину к стату/пулу цели (`Grant(+3 damage)`, `Grant(+5 HP)`). Несколько Grant на один стат — суммируются. |
+| `More(×factor)` | **More-мультипликатор** — отдельный множитель стата (`More(×1.10 damage)` = «10% more damage»). Каждый More — свой множитель; несколько More на одном стате перемножаются: `×1.10 · ×1.15 = ×1.265`. |
+| `Amplify(×factor)` | **Масштабирует силу Write цели** на `factor`. Применимо к Grant и More: `Grant(+3)` после `Amplify(×1.2)` → `Grant(+3.6)`; `More(×1.10)` после `Amplify(×1.2)` → `More(×1.12)` (бонус-часть `0.10 · 1.2 = 0.12`). Несколько Amplify перемножаются. `factor < 1` даёт обратный эффект (ослабление Write цели) — отдельный примитив «Suppress» не нужен. |
+| `Echo` | Write целей срабатывает дважды (рекурсия макс. 1 уровень). |
+| `Chain(value)` | Передаёт значение дальше по Ray (цепочка). |
 
-Значение `value` в Grant / Chain / Suppress / Amplify может быть:
-- Константа (`+3%`, `x1.2`).
-- Выражение от `N` из Read (`N * 0.5%`, `10% if N == 0 else 0`).
-- `own.base` — собственный base руны.
+**Стакинг на одном стате:**
+- Flat-часть: всё складывается в плоский пул (`+X damage`).
+- More-часть: все More-множители перемножаются (`×Π(1 + more_i)`).
+- Никакого «increase» / аддитивного процентного пула в модели нет.
+
+**Форма записи значений:**
+- Flat: `+3 damage`, `+5 HP`, `+1 projectile`. Линейно складываются.
+- More: `×1.10 damage` (= «10% more damage»). Перемножаются между собой.
+- Выражения от `N` из Read: `+3·N HP`, `×(1 + 0.005·N) crit`, `×1.10 if N == 0 else ×1.00`.
+- `own.base` — значение собственного base-эффекта руны (может быть как flat, так и more).
+
+**Нет `+3% damage`** — проценты в модели статов либо `flat` (сколько-то единиц), либо `more` (множитель). Это POE-подобная схема без `increase`.
+
+### More vs Amplify — как объяснять игроку
+
+Обе механики мультипликативны, но **работают с разными вещами**. Для тултипов и обучения используется такая рамка:
+
+- **More** — «делает тебя сильнее». Руна с `More(×1.10 damage)` напрямую даёт цели +10% damage. Работает **всегда**, неважно что делает цель.
+- **Amplify** — «делает твои эффекты громче». Руна с `Amplify(×1.2)` не меняет статы цели — она усиливает то, **что цель сама раздаёт соседям**. Если цель ничего никому не даёт (pure-base руна вроде Nugget), Amplify не делает ничего.
+
+Пример для игрока:
+- Поставь `Spark` рядом с `Lens` — Lens amplify-ит Spark-овую раздачу damage, соседи Spark-а получают 2.4% more вместо 2% more. Синергия работает.
+- Поставь `Nugget` рядом с `Lens` — Nugget просто сидит и даёт свой базовый damage. Lens ничего не усиливает, потому что Nugget ничего не раздаёт. Синергии нет.
+
+Правило большого пальца: **More — надёжный бафф, Amplify — множитель на синергии**. Amplify-руны в одиночку бесполезны, но в комбинации с активными соседями дают экспоненциальный рост.
 
 ## Пример синергии (Hex)
 
@@ -246,30 +267,32 @@ Write(Pattern, Filter, Effect(value))    [опционально]
        [Spark]  [ ... ]
 
 Lens (Rare):
-  Base:  +1% all stats
+  Base:  ×1.01 all stats  (more на всём подряд)
   Read:  —
-  Write: (Adjacent, any, Amplify(x1.2))
+  Write: (Adjacent, any, Amplify(×1.2))
 
 Spark (Common):
-  Base:  +3% damage
+  Base:  ×1.03 damage  (more)
   Read:  —
-  Write: (Adjacent, any, Grant(+2% damage))
+  Write: (Adjacent, any, More(×1.02 damage))
 
 Оба Spark — соседи Lens и соседи друг друга.
 
-Spark #1 получает:
-  Base:                       +3% dmg
-  от Spark #2 (Write):        +2% dmg (Adjacent Grant)
-  Lens (Write Amplify x1.2):  усиливает Write Spark #1
-  Итого Spark #1 base:        3% + 2% = 5% dmg
-  Write Spark #1 после Lens:  раздаёт +2.4% вместо +2%
+Шаг 1 — Lens (Amplify ×1.2) усиливает Write каждого Spark:
+  More(×1.02) → бонус-часть 0.02 · 1.2 = 0.024 → More(×1.024)
 
-Spark #2 получает:
-  Base:                       +3% dmg
-  от Spark #1 (Write):        +2.4% dmg (усилен Lens)
-  Итого:                      5.4% dmg
+Шаг 2 — итоговый множитель damage у каждого Spark:
+  own Base:                      ×1.03
+  More от соседа Spark:          ×1.024 (усилен Lens)
+  Стакинг More перемножается:    ×1.03 · ×1.024 ≈ ×1.055
 
-vs +3% без синергий у каждого
+Шаг 3 — у Lens:
+  own Base:                      ×1.01 damage
+  More от Spark #1:              ×1.024
+  More от Spark #2:              ×1.024
+  Стакинг More:                  ×1.01 · ×1.024 · ×1.024 ≈ ×1.059
+
+Без Lens-а Spark давал бы ×1.03 · ×1.02 ≈ ×1.0506, Lens — ×1.01 · ×1.02² ≈ ×1.0508. Lens прибавляет ~0.5 п.п. каждому Spark и ~1 п.п. себе за счёт Amplify.
 ```
 
 ## Примеры конкретных рун
@@ -280,34 +303,34 @@ vs +3% без синергий у каждого
 
 | Руна | Base | Read | Write | Limit |
 |------|------|------|-------|-------|
-| Spark | +3% damage | — | `(Adjacent, any, Grant(+2% damage))` | ∞ |
-| Frost Shard | +4% proj speed | — | `(Ray, any, Grant(+3% proj speed))` | ∞ |
+| Spark | ×1.03 damage | — | `(Adjacent, any, More(×1.02 damage))` | ∞ |
+| Frost Shard | ×1.04 proj speed | — | `(Ray, any, More(×1.03 proj speed))` | ∞ |
 | Vine | +5 HP | — | `(Adjacent, any, Grant(+3 HP))` | ∞ |
-| Void Wisp | +2% crit | `(Ring, empty, count) → N` | `(Self, any, Grant(+0.5N% crit))` | 4 |
-| Hermit | +10% damage | `(Adjacent, rune, count) → N` | `(Self, any, Grant(10% damage if N == 0 else 0))` | 3 |
-| Lens | +1% all stats | — | `(Adjacent, any, Amplify(x1.2))` | 3 |
+| Void Wisp | ×1.02 crit | `(Ring, empty, count) → N` | `(Self, any, More(×(1 + 0.005·N) crit))` | 4 |
+| Hermit | ×1.10 damage | `(Adjacent, rune, count) → N` | `(Self, any, More(×1.10 damage if N == 0 else ×1.00))` | 3 |
+| Lens | ×1.01 all stats | — | `(Adjacent, any, Amplify(×1.2))` | 3 |
 
 ### Rare Tier
 
 | Руна | Base | Read | Write | Limit |
 |------|------|------|-------|-------|
-| Inferno Core | +8% damage | — | `(AllSameRune, any, Amplify(x1.15))` | 2 |
-| Glacier | +6% slow | — | `(Nearby, any, Grant(+4% slow))` | 2 |
+| Inferno Core | ×1.08 damage | — | `(AllSameRune, any, Amplify(×1.15))` | 2 |
+| Glacier | ×1.06 slow | — | `(Nearby, any, More(×1.04 slow))` | 2 |
 | Living Root | +15 HP | — | `(Cone, any, Grant(regen 1 HP/s))` | 2 |
-| Eclipse | +5% crit dmg | — | `(Ring, any, Grant(+3% crit chance))` | 2 |
-| Prism | Нет base | `(Adjacent, rune, max(base)) → V` | `(Self, any, Grant(V))` | 2 |
-| Radiant Void | +2% damage | `(Adjacent, empty, count) → N` | `(Ring, any, Grant(+2N% damage))` | 2 |
-| Nugget | +8% damage | — | — | 2 |
+| Eclipse | ×1.05 crit dmg | — | `(Ring, any, More(×1.03 crit chance))` | 2 |
+| Prism | Нет base | `(Adjacent, rune, max(base)) → V` | `(Self, any, Grant(V) / More(V))` | 2 |
+| Radiant Void | ×1.02 damage | `(Adjacent, empty, count) → N` | `(Ring, any, More(×(1 + 0.02·N) damage))` | 2 |
+| Nugget | ×1.08 damage | — | — | 2 |
 
 ### Epic Tier
 
 | Руна | Base | Read | Write | Limit |
 |------|------|------|-------|-------|
-| Phoenix Heart | +15% damage | — | `(AllOnGrid, any, Echo)` | 1 |
-| Absolute Zero | +10% slow, -5% speed | — | `(Line, any, Suppress(-30%))` | 1 |
-| World Tree | +30 HP | `(Nearby, rune, count) → N` | `(Self, any, Grant(+3N HP))` | 1 |
-| Singularity | +8% crit | `(Ring, rune, count) → N` | `(Self, any, Grant(+2N% crit))` | 1 |
-| Tier Sniper | +5% damage | `(AllOnGrid, tier(Common), count) → N` | `(Self, any, Grant(+1N% damage))` | 1 |
+| Phoenix Heart | ×1.15 damage | — | `(AllOnGrid, any, Echo)` | 1 |
+| Absolute Zero | ×1.10 slow, ×0.95 speed | — | `(Line, any, Amplify(×0.70))` | 1 |
+| World Tree | +30 HP | `(Nearby, rune, count) → N` | `(Self, any, Grant(+3·N HP))` | 1 |
+| Singularity | ×1.08 crit | `(Ring, rune, count) → N` | `(Self, any, More(×(1 + 0.02·N) crit))` | 1 |
+| Tier Sniper | ×1.05 damage | `(AllOnGrid, tier(Common), count) → N` | `(Self, any, More(×(1 + 0.01·N) damage))` | 1 |
 
 *Radiant Void* — пример cross-pattern: читает пустые ячейки в Adjacent, усиливает руны в Ring пропорционально. *Tier Sniper* — пример Filter по тиру. *Nugget* — pure-base: ни Read, ни Write; даёт высокий base за счёт редкости в пуле и занятого слота.
 
@@ -335,7 +358,7 @@ vs +3% без синергий у каждого
 - **Уникальный пул**, отдельный от рун сетки. Свой список контента, свои механики.
 - **Асимметричное взаимодействие с сеткой:**
   - Джокер **читает** сетку (количество рун определённого типа, положение, пустые ячейки, статы игрока, любые условия).
-  - Сетка **не видит** джокера. Write-эффекты рун (Grant / Amplify / Suppress / Echo / Chain) не могут выбирать джокера как цель; Read рун не считает джокеров в своих Formulas. Джокер не считается руной сетки.
+  - Сетка **не видит** джокера. Write-эффекты рун (Grant / More / Amplify / Echo / Chain) не могут выбирать джокера как цель; Read рун не считает джокеров в своих Formulas. Джокер не считается руной сетки.
 - **Уникальность.** `Limit=1` на каждого конкретного джокера — двух одинаковых на поле быть не может.
 - **Тиры** — те же, что у рун сетки: Common / Rare / Epic / Legendary. Масштаб эффекта растёт с тиром.
 - **Никакого общего правила «что умеет джокер»** — как в Balatro, джокер делает что угодно: новую способность, conditional-триггер, рулбук-мод, условный множитель, игнорирование правила, специфическую реакцию на событие.
@@ -343,11 +366,11 @@ vs +3% без синергий у каждого
 ### Возможные формы эффекта (не исчерпывающий список)
 
 - **Грант способности** — даёт новую активную/пассивную механику (Orbital Shield, Split Shot, Frost Nova и т.п.).
-- **Условный множитель** — «+X% damage за каждую Common-руну на сетке».
-- **Sector-buff** — «+Y% к base effect рун на ближайшей трети сетки».
+- **Условный множитель** — `More(×(1 + 0.0X·N) damage)`, где N — число Common-рун на сетке.
+- **Sector-buff** — `Amplify(×1.Y)` на Write рун в ближайшей трети сетки.
 - **Рулбук-мод** — «все Adjacent-паттерны теперь работают как Nearby», «Echo рекурсивен до 2 уровней», «первая проданная руна за волну возвращает 100% цены».
 - **Event-trigger** — «раз в волну при получении урона: спавнит щит», «при убийстве элиты: +1 reroll в следующем Shop».
-- **Meta-влияние на Shop** — «в Shop на 1 предложение больше», «цена реролла −50%».
+- **Meta-влияние на Shop** — «в Shop на 1 предложение больше», «цена реролла ×0.50».
 
 ### Примеры конкретных джокеров
 
@@ -357,12 +380,12 @@ vs +3% без синергий у каждого
 | Split Shot | +1 проджектайл | Epic |
 | Frost Nova | Раз в 4с волна замедления вокруг игрока | Rare |
 | Thorns | Отражает 15% урона | Common |
-| Collector | +3% damage за каждую уникальную руну на сетке | Common |
-| Sector Lord | Руны в ближайшей трети сетки получают x1.3 к base | Rare |
+| Collector | More(×(1 + 0.03·N) damage), где N — число уникальных рун на сетке | Common |
+| Sector Lord | Руны в ближайшей трети сетки получают Amplify(×1.3) на их Write | Rare |
 | Loan Shark | +200 gold сейчас; −50 gold после каждой волны | Rare |
 | Echoing Void | Echo теперь срабатывает 3 раза вместо 2 | Epic |
-| Last Stand | При HP ≤ 20%: +100% damage и +50% speed | Epic |
-| Zero | На сетке 0 Common-рун? → +50% ко всем статам | Legendary |
+| Last Stand | При HP ≤ 20%: More(×2.00 damage) и More(×1.50 speed) | Epic |
+| Zero | На сетке 0 Common-рун? → More(×1.50 ко всем статам) | Legendary |
 | Plural | Limit всех рун удваивается | Legendary |
 
 ### Экономика джокеров
@@ -388,7 +411,7 @@ vs +3% без синергий у каждого
 │                     ◆               │ Roll │  │
 │                                     └──────┘  │
 │   Hover: [Rune/Joker details + pattern vis]   │
-│   Total stats: DMG +23% SPD +12%              │
+│   Total stats: DMG 23% more, SPD 12% more      │
 └───────────────────────────────────────────────┘
 
 ○ — ячейка сетки
@@ -403,13 +426,26 @@ vs +3% без синергий у каждого
 3. **Кто пишет в неё** — руны, чей собственный Write (Pattern+Filter) включает наведённую как цель. Получается обратным обходом: для каждой другой руны проверяем, попадает ли hovered-руна в её Write-зону.
 
 Тултип рядом с курсором показывает:
-- Формулу Read с актуальным вычисленным значением (`N = 3`, `V = +6% damage` и т.п.).
+- Формулу Read с актуальным вычисленным значением (`N = 3`, `V = 6% more damage` и т.п.).
 - Effect Write с подставленным значением.
 - Список рун из множества 3 с краткой расшифровкой их вклада.
 
 При наведении на джокер:
-- Показать, что и как он читает с сетки (если есть условия) — подсветить читаемые ячейки/сектор
-- Показать текущее значение его эффекта (например, «сейчас активен: +18% damage»)
+- Показать, что и как он читает с сетки (если есть условия) — подсветить читаемые ячейки/сектор.
+- Показать текущее значение его эффекта (например, «сейчас активен: 18% more damage»).
+
+### Нотация UI vs модели
+
+В **модели данных и документации** используется компактная форма: `×1.04 damage`, `More(×(1 + 0.03·N) damage)`, `Amplify(×1.2)`, `Grant(+3 HP)`. Это однозначно читается разработчиками и не допускает двусмысленности.
+
+В **текстах UI для игрока** — **только человеко-читаемая форма**:
+- `×1.04 damage` → **«4% more damage»**
+- `More(×(1 + 0.03·N) damage)` → **«3% more damage per X»** (где X — что читает Read).
+- `Amplify(×1.2)` → **«+20% strength to neighbours' effects»** или **«20% more effect»**.
+- `Grant(+3 HP)` → **«+3 HP»**.
+- `Amplify(×0.7)` → **«30% less effect»**.
+
+Никаких `×1.04` или `x(1+0.03·N)` в UI-тексте. Игрок видит только натуральные формулировки в стиле «4% more / 3% more per X / +5 HP».
 
 При перетаскивании руны/джокера из магазина:
 - Preview: подсветка паттерна + preview итоговых статов
