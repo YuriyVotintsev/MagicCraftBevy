@@ -15,7 +15,7 @@ use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
 use crate::wave::SummoningCircle;
 
-use super::helpers::{compute_stats, current_max_life, enemy_sprite_color};
+use super::spawn::{compute_stats, current_max_life, enemy_sprite_color};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct GhostStats {

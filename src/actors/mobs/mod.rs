@@ -1,19 +1,14 @@
 use bevy::prelude::*;
 
-mod balance;
 mod ghost;
-mod helpers;
 mod jumper;
-mod kind;
 mod slime;
 mod spawn;
 mod spinner;
 mod tower;
 
-pub use balance::MobsBalance;
 pub use ghost::{GhostAlpha, GhostTransparency};
-pub use kind::MobKind;
-pub use spawn::spawn_mob;
+pub use spawn::{spawn_mob, MobKind, MobsBalance};
 
 pub struct MobsPlugin;
 

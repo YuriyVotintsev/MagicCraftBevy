@@ -11,7 +11,7 @@ use crate::faction::Faction;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
 
-use super::helpers::{compute_stats, current_max_life, enemy_sprite_color};
+use super::spawn::{compute_stats, current_max_life, enemy_sprite_color};
 
 const LUNGE_DEFAULT_DURATION: f32 = 0.6;
 

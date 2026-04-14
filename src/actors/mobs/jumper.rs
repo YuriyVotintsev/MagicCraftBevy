@@ -13,7 +13,7 @@ use crate::faction::Faction;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
 
-use super::helpers::{compute_stats, current_max_life, enemy_ability_sprite_color, enemy_sprite_color};
+use super::spawn::{compute_stats, current_max_life, enemy_ability_sprite_color, enemy_sprite_color};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct JumperStats {
