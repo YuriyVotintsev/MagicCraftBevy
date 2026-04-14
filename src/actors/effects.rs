@@ -29,7 +29,7 @@ pub fn register_systems(app: &mut App) {
         Update,
         on_collision_effects_system
             .in_set(GameSet::AbilityExecution)
-            .before(crate::actors::components::ability::projectile::projectile_collision_physics),
+            .before(crate::actors::components::combat::projectile::projectile_collision_physics),
     );
 }
 

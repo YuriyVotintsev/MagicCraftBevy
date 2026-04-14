@@ -5,16 +5,17 @@ use serde::Deserialize;
 
 use crate::GameState;
 use crate::actors::combat::{Health, PendingDamage};
-use crate::actors::components::ability::find_nearest_enemy::FindNearestEnemy;
-use crate::actors::components::ability::growing::Growing;
-use crate::actors::components::ability::lifetime::Lifetime;
-use crate::actors::components::common::collider::{Collider, Shape as ColliderShape};
-use crate::actors::components::common::fade_out::FadeOut;
-use crate::actors::components::common::shadow::Shadow;
-use crate::actors::components::common::shoot_squish::ShootSquish;
-use crate::actors::components::common::size::Size;
-use crate::actors::components::common::sprite::{CircleSprite, Sprite, SpriteColor, SpriteShape};
-use crate::actors::components::common::static_body::StaticBody;
+use crate::actors::components::combat::find_nearest_enemy::FindNearestEnemy;
+use crate::actors::components::visual::growing::Growing;
+use crate::actors::components::lifetime::Lifetime;
+use crate::actors::components::physics::collider::{Collider, Shape as ColliderShape};
+use crate::actors::components::visual::fade_out::FadeOut;
+use crate::actors::components::visual::shadow::Shadow;
+use crate::actors::components::visual::shoot_squish::ShootSquish;
+use crate::actors::components::combat::shot_fired::ShotFired;
+use crate::actors::components::physics::size::Size;
+use crate::actors::components::visual::sprite::{CircleSprite, Sprite, SpriteColor, SpriteShape};
+use crate::actors::components::physics::static_body::StaticBody;
 use crate::actors::effects::OnDeathParticles;
 use crate::actors::{SpawnSource, TargetInfo};
 use crate::faction::Faction;
@@ -23,7 +24,7 @@ use crate::particles;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
 
-use super::{compute_stats, current_max_life, enemy_sprite_color, ShotFired};
+use super::{compute_stats, current_max_life, enemy_sprite_color};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct TowerStats {

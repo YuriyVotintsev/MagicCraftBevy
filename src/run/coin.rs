@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
 use crate::actors::combat::{death_system, DeathEvent};
-use crate::actors::components::common::shadow::Shadow;
-use crate::actors::components::common::sprite::CircleSprite;
+use crate::actors::components::visual::shadow::Shadow;
+use crate::actors::components::visual::sprite::CircleSprite;
 use crate::actors::player::Player;
 use crate::balance::GameBalance;
 use crate::palette;

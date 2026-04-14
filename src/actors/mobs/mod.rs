@@ -1,6 +1,5 @@
 pub mod ghost;
 pub mod jumper;
-pub mod melee_attack;
 pub mod slime;
 pub mod spinner;
 pub mod tower;
@@ -12,18 +11,7 @@ use serde::Deserialize;
 
 use crate::palette;
 use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
-use crate::actors::components::common::sprite::SpriteColor;
-
-#[derive(Component)]
-pub struct ShotFired;
-
-pub fn register_shot_fired_cleanup(app: &mut App) {
-    app.add_systems(Update, cleanup_shot_fired);
-}
-
-fn cleanup_shot_fired(mut commands: Commands, q: Query<Entity, With<ShotFired>>) {
-    for e in &q { commands.entity(e).remove::<ShotFired>(); }
-}
+use crate::actors::components::visual::sprite::SpriteColor;
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
 pub enum MobKind {
@@ -78,8 +66,6 @@ pub struct MobsBalance {
 }
 
 pub fn register_systems(app: &mut App) {
-    register_shot_fired_cleanup(app);
-    melee_attack::register_systems(app);
     ghost::register_systems(app);
     slime::register_systems(app);
     tower::register_systems(app);

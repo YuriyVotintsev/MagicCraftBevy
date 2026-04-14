@@ -1,113 +1,112 @@
-# ТЗ: Система баланса для Magic Craft Bevy из Google Sheets
+# ТЗ: Система баланса для Magic Craft Bevy из xlsx
 
 ## Обзор
 
-Система загрузки игрового баланса из Google Sheets. В dev-режиме (`--features dev`) данные загружаются из Google Sheets по сети с горячей перезагрузкой по F5. В сборке без `feature = "dev"` данные вшиваются в бинарник на этапе компиляции через `build.rs`.
+Система загрузки игрового баланса из локального файла `assets/balance.xlsx`. В dev-режиме (`--features dev`) файл читается с диска при старте и перечитывается по F5 (горячая перезагрузка). В сборке без `feature = "dev"` файл вшивается в бинарник через `include_bytes!`.
 
-Система заменяет текущий RON-пайплайн балансных файлов (`assets/balance.ron`, `assets/mobs.ron`, `assets/abilities.ron`), загружаемых через `RonAssetLoader` в `src/loading/`. Структурные ассеты (`assets/particles/*.particle.ron`, `assets/palette.ron`) остаются в RON и продолжают загружаться через `AssetLoader`/`LoadedFolder`.
+Система заменяет текущий RON-пайплайн балансных файлов (`assets/balance.ron`, `assets/mobs.ron`), загружаемых через `RonAssetLoader` в `src/loading/`. Структурные ассеты (`assets/particles/*.particle.ron`, `assets/palette.ron`) остаются в RON и продолжают загружаться через `AssetLoader`/`LoadedFolder`.
+
+Редактирование баланса — в Excel или LibreOffice Calc. Claude Code при необходимости правит тот же файл через Excel MCP-сервер (см. раздел «Инструментарий»).
 
 ---
 
 ## Контекст архитектуры (важно)
 
-После удаления data-driven blueprint-системы и FSM (коммиты `9034dac`, `0a85951`, `ed03379`) в RON остались **только числа**. Структура мобов (компоненты, AI, визуалы, коллайдеры), стат-система (`enum Stat` в `src/stats/registry.rs`) и абилки (модули в `src/actors/components/ability/` и `src/actors/tower_shot.rs`) — хардкод в Rust под `src/actors/`.
+После удаления data-driven blueprint-системы, FSM, DSL выражений и генерик-абилок (коммиты `9034dac`, `0a85951`, `ed03379`, `7586174`, `c1d36c6`) в RON остались **только числа**. Структура мобов (компоненты, AI, визуалы, коллайдеры) и стат-система (`enum Stat` в `src/stats/registry.rs`) — хардкод в Rust. Абилки мобов сколокированы с самими мобами в `src/actors/mobs/{ghost,tower,slime,jumper,spinner,melee_attack}.rs`: числа атаки/выстрела лежат в per-mob `*Stats`-структурах (например, `TowerStats` содержит `flight_duration`/`arc_height`/`explosion_radius` и т.д., раньше живших в `tower_shot.ability.ron`). Абилка игрока (`fireball`) — хардкод-константы в `src/actors/player.rs` (`FIREBALL_BASE_DAMAGE`/`FIREBALL_COOLDOWN`/...), в xlsx не выносится.
 
-Соответственно Sheets покрывает **весь текущий числовой баланс целиком**, а не параллельный RON-поток. После миграции `balance.ron`/`mobs.ron`/`abilities.ron` удаляются, `GameBalance`/`MobsBalance`/`AbilitiesBalance` как `RonAsset` — тоже.
+Соответственно xlsx покрывает **весь числовой баланс мобов + глобалы + волны**. После миграции `balance.ron` и `mobs.ron` удаляются, `GameBalance`/`MobsBalance` как `RonAsset` — тоже.
 
-### Что в Sheets, что в RON
+### Что в xlsx, что в RON/Rust
 
 | Область | Источник | Комментарий |
 |---------|----------|-------------|
-| Числовой баланс мобов (`assets/mobs.ron` целиком) | **Sheets** (Enemies) | Типизированные per-mob структуры `GhostStats`/`TowerStats`/`SlimeSmallStats`/`JumperStats`/`SpinnerStats` в `src/actors/mobs.rs`. |
-| Числовой баланс абилок (`assets/abilities.ron` целиком) | **Sheets** (Abilities) | Типизированные per-ability структуры в `src/actors/abilities.rs`. |
-| Структура мобов (компоненты, AI, визуалы) | Rust (`src/actors/`) | Sheets не описывает. Изменение — правка кода. |
+| Числовой баланс мобов + их абилок (`assets/mobs.ron` целиком) | **xlsx** (MobsSpecific) | Типизированные per-mob структуры `GhostStats`/`TowerStats`/`SlimeSmallStats`/`JumperStats`/`SpinnerStats` в `src/actors/mobs/{ghost,tower,slime,jumper,spinner}.rs`. Числа абилки моба лежат прямо в его `*Stats`. |
+| Числа абилки игрока (`fireball`) | Rust (const) | `FIREBALL_*` в `src/actors/player.rs`. В xlsx **не выносится** — игрок пока ровно один, балансится правкой кода. Если появятся варианты/герои — тогда пересмотр. |
+| Структура мобов (компоненты, AI, визуалы, эффекты) | Rust (`src/actors/`) | xlsx не описывает. Изменение — правка кода. |
 | Стат-система (`enum Stat`, калькуляторы) | Rust (`src/stats/`) | Хардкод. RON-конфига статов больше нет. |
-| Волны (сегменты рампа + пул мобов + рамп арены) | **Sheets** (Waves) | См. раздел Waves. На момент миграции код использует единый рамп (`balance.ron::wave`/`arena`); переход на per-segment — часть миграции. |
-| Глобальные параметры (кроме полей из `wave`/`arena`, ставших per-segment) | **Sheets** (Globals) | См. раздел Globals. |
+| Волны (сегменты рампа + пул мобов + рамп арены) | **xlsx** (Waves) | См. раздел Waves. На момент миграции код использует единый рамп (`balance.ron::wave`/`arena`); переход на per-segment — часть миграции. |
+| Глобальные параметры (кроме полей из `wave`/`arena`, ставших per-segment) | **xlsx** (Globals) | См. раздел Globals. |
 | Визуалы частиц (`assets/particles/*.particle.ron`) | RON | Не трогается. |
 | Палитра (`assets/palette.ron`) | RON | Не трогается. |
 
 ---
 
-## Структура Google Sheets
+## Структура xlsx
 
-Один документ Google Sheets содержит несколько листов. Документ должен быть опубликован (Share → Anyone with the link). Каждый лист экспортируется как CSV по URL:
+Один файл `assets/balance.xlsx` содержит четыре листа: **MobsSpecific**, **MobsCommon**, **Waves**, **Globals**. Парсер читает три из них — MobsSpecific, Waves, Globals. MobsCommon — вспомогательный вид для дизайнера, в код не подгружается.
 
-```
-https://docs.google.com/spreadsheets/d/{DOC_ID}/export?format=csv&gid={GID}
-```
+### Лист "MobsSpecific" (source of truth)
 
-`DOC_ID` — идентификатор документа из URL таблицы. `GID` — идентификатор листа, виден в URL при переключении листов (`#gid=...`).
+Числовой баланс мобов и их абилок (после `7586174` числа абилки моба живут в его `*Stats`). Вертикальный формат в две колонки: `key | value`. Мобы описываются блоками. Блок начинается со строки, где `key = id` и `value` — идентификатор моба (`ghost`, `tower`, `slime_small`, `jumper`, `spinner`, совпадает с `MobKind::id()` в `src/actors/mobs/mod.rs`). Остальные строки блока — пары `key | value` для полей его `*Stats`-структуры (в любом порядке). Следующая строка `key = id` начинает новый блок. Пустые строки между блоками допустимы и игнорируются.
 
-### Лист "Enemies"
+Пример:
 
-Числовой баланс мобов. Один ряд — один моб. `id` совпадает с ключом в текущем `assets/mobs.ron` и с `MobKind::id()` в `src/actors/mobs.rs` (`ghost`, `tower`, `slime_small`, `jumper`, `spinner`).
+| key | value |
+|-----|-------|
+| id | ghost |
+| hp | 10 |
+| damage | 3 |
+| speed | 150 |
+| size | 40 |
+| mass | 1 |
+| melee_range | 60 |
+| melee_cooldown | 1.2 |
+| visible_distance | 400 |
+| invisible_distance | 600 |
+|  |  |
+| id | tower |
+| hp | 25 |
+| damage | 5 |
+| size | 48 |
+| shot_cooldown | 2.0 |
+| flight_duration | 1.5 |
+| arc_height | 200 |
+| start_elevation | 30 |
+| spread | 10 |
+| projectile_size | 20 |
+| explosion_radius | 80 |
+| explosion_duration | 0.4 |
+| indicator_duration | 0.6 |
+|  |  |
+| id | spinner |
+| hp | 40 |
+| damage | 8 |
+| size | 56 |
+| mass | 2 |
+| spike_length | 1.2 |
+| idle_duration | 1.5 |
+| windup_duration | 1.0 |
+| charge_duration | 1.2 |
+| cooldown_duration | 1.0 |
+| charge_speed | 600 |
 
-Колонки — **объединение всех числовых полей per-mob структур** в `src/actors/mobs.rs`. Неприменимые ячейки остаются пустыми (например, у `tower` не заполняется `speed`/`mass`/`melee_range`).
+**Ключи внутри блока** соответствуют полям per-mob `*Stats`-структуры в `src/actors/mobs/{ghost,tower,slime,jumper,spinner}.rs`. Неизвестный для данного `id` ключ — ошибка валидации. Отсутствие обязательного поля — ошибка валидации. Дубликат ключа в одном блоке — ошибка.
 
-| Колонка | Тип | Применимо к |
-|---------|-----|-------------|
-| id | string | все |
-| _name | string (debug) | все |
-| _notes | string (debug) | все |
-| hp | float | все |
-| damage | float | все |
-| speed | float | ghost, slime_small, jumper |
-| size | float | все |
-| mass | float | ghost, slime_small, jumper, spinner |
-| melee_range | float | ghost, slime_small |
-| melee_cooldown | float | ghost, slime_small |
-| visible_distance | float | ghost |
-| invisible_distance | float | ghost |
-| shot_cooldown | float | tower |
-| lunge_duration | float | slime_small |
-| idle_duration | float | jumper, spinner |
-| jump_duration | float | jumper |
-| land_duration | float | jumper |
-| jump_distance | float | jumper |
-| spike_length | float | spinner |
-| windup_duration | float | spinner |
-| charge_duration | float | spinner |
-| cooldown_duration | float | spinner |
-| charge_speed | float | spinner |
+**Отладочные ключи** с префиксом `_` (`_name`, `_notes`) игнорируются парсером.
 
-**Пустая ячейка** для применимого поля = валидационная ошибка (поле обязательно в структуре). Пустая ячейка для неприменимого поля — ожидаема, игнорируется.
+**Почему именно так:** блочный key-value формат даёт нулевую разреженность — у каждого моба только его поля, без широкой таблицы с пустыми ячейками. Новое поле для моба = одна строка; новый моб = новый блок; новая `*Stats`-структура в Rust задаёт список допустимых ключей автоматически.
 
-Отладочные колонки (имя начинается с `_`) игнорируются при парсинге.
+### Лист "MobsCommon" (авто-производный, не парсится)
 
-При добавлении нового моба (новой `*Stats`-структуры в `src/actors/mobs.rs`) в лист добавляются только недостающие колонки; существующие мобы оставляют их пустыми.
+Горизонтальная таблица для удобства балансировки общих параметров (hp/damage/size/mass и любых других, которые дизайнер хочет видеть колонкой для сравнения между мобами).
 
-### Лист "Abilities"
+**Строится формулами из MobsSpecific**, руками не заполняется. Парсер его **игнорирует** — source of truth это MobsSpecific.
 
-Числовой баланс абилок. Один ряд — одна абилка. `id` совпадает с ключом в `assets/abilities.ron` и полем `AbilitiesBalance` (`melee_attack`, `jumper_shot`, `tower_shot`, `fireball`).
+Пример структуры (конкретный набор колонок — на усмотрение дизайнера):
 
-Колонки — объединение числовых полей per-ability структур в `src/actors/abilities.rs`.
+| id | hp | damage | size | mass |
+|----|-----|--------|------|------|
+| ghost | =формула | =формула | =формула | =формула |
+| tower | =формула | =формула | =формула | =формула |
+| slime_small | ... | ... | ... | ... |
+| jumper | ... | ... | ... | ... |
+| spinner | ... | ... | ... | ... |
 
-| Колонка | Тип | Применимо к |
-|---------|-----|-------------|
-| id | string | все |
-| _name | string (debug) | все |
-| _notes | string (debug) | все |
-| range | float | melee_attack |
-| projectile_count | int | jumper_shot |
-| projectile_speed | float | jumper_shot |
-| projectile_size | float | jumper_shot, tower_shot |
-| projectile_lifetime | float | jumper_shot |
-| spread_degrees | float | jumper_shot |
-| flight_duration | float | tower_shot |
-| arc_height | float | tower_shot |
-| start_elevation | float | tower_shot |
-| spread | float | tower_shot |
-| explosion_radius | float | tower_shot |
-| explosion_duration | float | tower_shot |
-| indicator_duration | float | tower_shot |
-| base_damage | float | fireball |
-| base_speed | float | fireball |
-| cooldown | float | fireball |
-| size | float | fireball |
-| gap | float | fireball |
+Колонка `id` — `=UNIQUE(FILTER(MobsSpecific!B:B; MobsSpecific!A:A="id"))` (Excel 365 / LibreOffice 7+) или эквивалент через `INDEX`/`SMALL`.
 
-Правила валидации — те же, что у Enemies: обязательное поле-ячейка пустой быть не может.
+Каждая value-колонка — лукап «в блоке с данным id найти строку с нужным key и вернуть value». Рабочий рецепт: вспомогательная колонка в MobsSpecific, разворачивающая текущий id вниз по блоку (last-non-empty-above через `LOOKUP`), и `XLOOKUP` по паре (id, key) из MobsCommon. Добавить новую общую колонку = скопировать формулу с новым именем ключа.
+
+**Побочный бонус**: колонка `id` из MobsCommon — удобный источник для Data Validation у `enemy_id` на листе Waves.
 
 ### Лист "Waves"
 
@@ -129,9 +128,9 @@ https://docs.google.com/spreadsheets/d/{DOC_ID}/export?format=csv&gid={GID}
 | arena_start_height | float | (segment) высота арены в начале сегмента. |
 | arena_end_width | float | (segment) ширина арены к концу сегмента. |
 | arena_end_height | float | (segment) высота арены к концу сегмента. |
-| enemy_id | string (dropdown) | (pool) ссылка на `id` из Enemies. |
+| enemy_id | string (dropdown) | (pool) ссылка на `id` из MobsCommon (т.е. из MobsSpecific). |
 | weight | float | (pool) вес моба в пуле сегмента. |
-| _enemy_name | string (формула) | **Отладочная.** `=VLOOKUP(enemy_id, Enemies!A:B, 2, FALSE)`. |
+| _enemy_name | string (формула) | **Отладочная.** `=XLOOKUP(enemy_id; MobsCommon!A:A; MobsCommon!A:A)` или любая подпись. |
 
 **Правила:**
 - Для каждого `wave` должна быть ровно одна строка `kind = segment` и ≥1 строк `kind = pool`.
@@ -163,146 +162,97 @@ https://docs.google.com/spreadsheets/d/{DOC_ID}/export?format=csv&gid={GID}
 
 ---
 
-## Валидация в Google Sheets
+## Валидация в Excel (UX для дизайнера)
 
-### Dropdown-валидация
+### Data Validation (Dropdown)
 
-- `enemy_id` на Waves: Data Validation → Dropdown from range → `Enemies!A2:A`, режим "Reject input".
-- `kind` на Waves: Dropdown from list → `segment,pool`.
-- `id` на Abilities — свободный ввод с подсветкой ошибок (см. ниже).
+- `enemy_id` на Waves: Data Validation → List → source `=MobsCommon!$A$2:$A`, стиль Stop. MobsCommon автоматически содержит полный список id из MobsSpecific, валидация всегда актуальна.
+- `kind` на Waves: Data Validation → List → `segment,pool`.
+- Значение в строке `key = id` на MobsSpecific (колонка B) — свободный ввод; подсветка незнакомых id через Conditional Formatting (ниже).
 
-### Подсветка битых ссылок
+### Conditional Formatting (подсветка битых ссылок)
 
-На Waves условное форматирование (красный фон) на `enemy_id`:
+На Waves, колонка `enemy_id`, формула красной заливки:
 
 ```
-=ISNA(MATCH(B2, Enemies!$A$2:$A, 0))
+=ISNA(MATCH(B2; MobsCommon!$A$2:$A; 0))
 ```
 
-### Рекомендация по удалению мобов/абилок
+На MobsSpecific, колонка B в строках где `A="id"`: заливка если `value` не совпадает ни с одним `MobKind` (список можно захардкодить формулой или держать на скрытом листе `MobKinds`).
 
-Вместо удаления строки из Enemies/Abilities добавить колонку `deprecated` (bool). Запись с `deprecated = TRUE` фильтруется при экспорте, но остаётся в dropdown-ах.
+### Рекомендация по удалению мобов
+
+Вместо удаления блока из MobsSpecific добавить в блок строку `deprecated | TRUE`. При экспорте такой блок исключается, но id остаётся в MobsCommon и в dropdown-ах (опционально можно скрыть в MobsCommon дополнительной формулой).
 
 ---
 
-## Реестр листов в коде
+## Инструментарий
 
-```rust
-const DOC_ID: &str = "..."; // ID таблицы
+### Редактирование дизайнером
 
-struct SheetMeta {
-    name: &'static str,
-    gid: u32,
-}
+Основной путь — Excel или LibreOffice Calc. Файл `assets/balance.xlsx` хранится в репозитории под git (бинарный — diff не работает, merge conflict не резолвится штатно; для соло-работы это приемлемо, для командной — договариваться о монопольной правке).
 
-const SHEETS: &[SheetMeta] = &[
-    SheetMeta { name: "enemies",   gid: 0 },
-    SheetMeta { name: "abilities", gid: XXXXXXXXX },
-    SheetMeta { name: "waves",     gid: XXXXXXXXX },
-    SheetMeta { name: "globals",   gid: XXXXXXXXX },
-];
-```
+### Редактирование Claude Code через Excel MCP-сервер
+
+Для того чтобы Claude Code мог править баланс напрямую, а не через одноразовые скрипты, подключается community MCP-сервер для локальных xlsx (например, [`haris-musa/excel-mcp-server`](https://github.com/haris-musa/excel-mcp-server) — Python, без сети/OAuth). После установки у Claude появляются тулы уровня `read_sheet`/`write_cells`/`apply_formula`/`create_sheet` над локальными файлами.
+
+**Установка (пример для `haris-musa/excel-mcp-server`):**
+
+1. `pip install excel-mcp-server` (или `uvx excel-mcp-server`, зависит от способа запуска в проекте сервера).
+2. Добавить запись в `~/.claude.json` (или `.claude/mcp.json` в корне проекта) по образцу:
+   ```json
+   {
+     "mcpServers": {
+       "excel": {
+         "command": "uvx",
+         "args": ["excel-mcp-server", "--root", "D:/Projects/MagicCraftBevy/assets"]
+       }
+     }
+   }
+   ```
+3. Перезапустить Claude Code. Появятся `mcp__excel__*` тулы.
+
+Точные имена тулов и флагов зависят от выбранного сервера — сверяться с его README. Кандидаты помимо `haris-musa/excel-mcp-server`: `excel-mcp`, `openpyxl-mcp` и т.п.
+
+**Use case:** через этот же сервер выполняется и **первоначальное создание** `assets/balance.xlsx` — Claude Code читает текущие `assets/mobs.ron` + `assets/balance.ron` и через MCP-тулы создаёт файл с четырьмя листами, формулами MobsCommon и Data Validation на Waves. Отдельной утилиты-мигратора нет. Дальнейшие точечные правки (добавление нового поля в `*Stats` после рефакторинга и т.п.) тоже идут через MCP; массовые правки значений дизайнер делает руками в Excel.
 
 ---
 
-## Сборка: `build.rs`
+## Загрузка и парсинг
 
-### Release-режим (без `feature = "dev"`)
+### Зависимости рантайма
 
-`build.rs`:
+```toml
+[dependencies]
+calamine = "0.26"   # чтение xlsx
 
-1. Итерирует по `SHEETS`.
-2. Скачивает CSV по URL.
-3. Сохраняет в `OUT_DIR` как `{name}.csv`.
+# build-dependencies не нужны — нет сетевой загрузки
+```
 
-Зависимость: `ureq` в `[build-dependencies]`.
+`calamine` читает xlsx из `&[u8]` (`Cursor<Vec<u8>>`) либо из пути на диске — одинаково работает и для `include_bytes!`, и для F5-перечитывания.
 
-### Dev-режим (`--features dev`)
-
-`build.rs` ничего не скачивает. Данные загружаются в рантайме по сети.
-
-### Встраивание в бинарник
+### Встраивание в бинарник (release)
 
 ```rust
 #[cfg(not(feature = "dev"))]
-mod embedded {
-    pub const ENEMIES:   &str = include_str!(concat!(env!("OUT_DIR"), "/enemies.csv"));
-    pub const ABILITIES: &str = include_str!(concat!(env!("OUT_DIR"), "/abilities.csv"));
-    pub const WAVES:     &str = include_str!(concat!(env!("OUT_DIR"), "/waves.csv"));
-    pub const GLOBALS:   &str = include_str!(concat!(env!("OUT_DIR"), "/globals.csv"));
-}
+const BALANCE_XLSX: &[u8] = include_bytes!("../../assets/balance.xlsx");
 ```
 
-Гейтинг по `feature = "dev"` (не `debug_assertions`) — симметрично dev-рантайму.
-
----
-
-## Парсинг CSV
-
-### Фильтрация отладочных колонок
-
-Любая колонка, заголовок которой начинается с `_`, удаляется из CSV перед десериализацией.
-
-Алгоритм:
-1. Прочитать заголовки.
-2. Оставить индексы колонок, чей заголовок НЕ начинается с `_`.
-3. Пересобрать CSV только из этих колонок.
-4. Десериализовать.
+Гейтинг по `feature = "dev"` — симметрично dev-рантайму.
 
 ### Структуры данных
 
 ```rust
-// Одна строка листа Enemies. Значения приходят как Option<f32> — неприменимые
-// поля пусты. После резолва мапятся в конкретную *Stats-структуру по id.
-#[derive(Debug, Clone, Deserialize)]
-struct EnemyRow {
+use std::collections::HashMap;
+
+// Один блок из MobsSpecific: id моба + его поля.
+#[derive(Debug, Clone)]
+struct MobBlock {
     id: String,
-    hp: Option<f32>,
-    damage: Option<f32>,
-    speed: Option<f32>,
-    size: Option<f32>,
-    mass: Option<f32>,
-    melee_range: Option<f32>,
-    melee_cooldown: Option<f32>,
-    visible_distance: Option<f32>,
-    invisible_distance: Option<f32>,
-    shot_cooldown: Option<f32>,
-    lunge_duration: Option<f32>,
-    idle_duration: Option<f32>,
-    jump_duration: Option<f32>,
-    land_duration: Option<f32>,
-    jump_distance: Option<f32>,
-    spike_length: Option<f32>,
-    windup_duration: Option<f32>,
-    charge_duration: Option<f32>,
-    cooldown_duration: Option<f32>,
-    charge_speed: Option<f32>,
+    fields: HashMap<String, String>, // key → raw value (числа тоже как строки, парсятся на resolve-стадии)
 }
 
-#[derive(Debug, Clone, Deserialize)]
-struct AbilityRow {
-    id: String,
-    range: Option<f32>,
-    projectile_count: Option<u32>,
-    projectile_speed: Option<f32>,
-    projectile_size: Option<f32>,
-    projectile_lifetime: Option<f32>,
-    spread_degrees: Option<f32>,
-    flight_duration: Option<f32>,
-    arc_height: Option<f32>,
-    start_elevation: Option<f32>,
-    spread: Option<f32>,
-    explosion_radius: Option<f32>,
-    explosion_duration: Option<f32>,
-    indicator_duration: Option<f32>,
-    base_damage: Option<f32>,
-    base_speed: Option<f32>,
-    cooldown: Option<f32>,
-    size: Option<f32>,
-    gap: Option<f32>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 struct WaveRow {
     wave: u32,
     kind: String, // "segment" | "pool"
@@ -318,7 +268,7 @@ struct WaveRow {
     weight: Option<f32>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 struct GlobalRow {
     key: String,
     value: String,
@@ -343,14 +293,27 @@ struct WaveSpawn {
 }
 ```
 
+### Алгоритм парсинга MobsSpecific
+
+1. Открыть workbook через `calamine::open_workbook_from_rs` (release) или `calamine::open_workbook` (dev, из файла).
+2. Получить лист `MobsSpecific` как `Range<DataType>`.
+3. Пройти по строкам, извлекая пару `(key, value)` из колонок A и B как строки (числа конвертируются через `DataType::to_string()`).
+4. Пропустить пустые строки и строки с `key`, начинающимся на `_`.
+5. На строке `key == "id"` — закрыть текущий блок (если был) и открыть новый с `id = value`. Дубликат id — ошибка.
+6. Иначе — добавить пару в `fields` текущего блока. Дубликат ключа в блоке — ошибка. Ключ до первой `id`-строки — ошибка.
+7. По исчерпании ввода — вернуть `Vec<MobBlock>`.
+
+### Алгоритм парсинга Waves / Globals
+
+Первая строка листа — заголовок. Колонки с заголовком, начинающимся на `_`, отбрасываются. Оставшиеся колонки мапятся по имени на поля `WaveRow`/`GlobalRow`. Значения конвертируются через `DataType` (числа → `f32`/`u32` напрямую, строки — как есть, `Empty` → `None` для `Option<_>`).
+
 ---
 
 ## Сборка данных (resolve)
 
-1. **MobsBalance.** По `EnemyRow.id` матчинг на `MobKind` (`ghost`/`tower`/`slime_small`/`jumper`/`spinner`). Заполнение соответствующей `*Stats`-структуры из колонок; недостающая обязательная колонка — ошибка валидации.
-2. **AbilitiesBalance.** По `AbilityRow.id` матчинг на поле в `AbilitiesBalance` (`melee_attack`/`jumper_shot`/`tower_shot`/`fireball`); аналогично заполняем per-ability структуру.
-3. **Сегменты волн.** Группировка `WaveRow` по полю `wave`. Из строки `kind=segment` — параметры сегмента и арены; из строк `kind=pool` — пул.
-4. **Globals.** Лист Globals → `HashMap<String, String>`.
+1. **MobsBalance.** Для каждого `MobKind` ищем блок с соответствующим `id` (`ghost`/`tower`/`slime_small`/`jumper`/`spinner`). Из `HashMap` блока заполняем соответствующую `*Stats`-структуру (числа — `str::parse::<f32>()`/`parse::<u32>()`; ошибка парсинга или отсутствие обязательного поля — валидационная ошибка). Неизвестный ключ в блоке — ошибка.
+2. **Сегменты волн.** Группировка `WaveRow` по полю `wave`. Из строки `kind=segment` — параметры сегмента и арены; из строк `kind=pool` — пул.
+3. **Globals.** Строки листа Globals → `HashMap<String, String>` → типизированная `Globals`-структура.
 
 ---
 
@@ -360,14 +323,13 @@ struct WaveSpawn {
 
 ### Проверки
 
-1. **Уникальность id мобов** в Enemies.
-2. **id из Enemies — валидный `MobKind`.** Незарегистрированный id — ошибка. Непокрытый `MobKind` в Enemies — тоже ошибка (у игры есть моб без статов).
-3. **Заполненность полей Enemies** по маске применимости для каждого `MobKind`. Пустая ячейка в обязательном поле — ошибка; непустая ячейка в неприменимом поле — предупреждение.
-4. **Уникальность id абилок** в Abilities и такая же маска применимости по полям `AbilitiesBalance`.
-5. **Ссылки Waves → Enemies.** `enemy_id` существует в Enemies и не помечен `deprecated`.
-6. **Структура Waves.** Для каждого `wave` — ровно одна строка `kind=segment` с заполненными `duration_sec`/`start_enemies`/`max_enemies`/`ramp_duration_sec` и четырьмя `arena_*`; ≥1 строка `kind=pool` с непустыми `enemy_id`/`weight > 0`. Номера сегментов идут без разрывов, начиная с 1.
-7. **Globals.** Все ожидаемые ключи (`safe_spawn_radius`, `shop_delay`, `coins_per_kill`, `hp_scale_per_sec`, `dmg_scale_per_sec`, `coin_attraction_duration`) присутствуют и парсятся в ожидаемые типы.
-8. **Фильтрация deprecated.** Записи с `deprecated = TRUE` исключаются; ссылки на них в Waves — предупреждение.
+1. **Уникальность id блоков** в MobsSpecific.
+2. **id блока — валидный `MobKind`.** Незарегистрированный id — ошибка. Непокрытый `MobKind` (нет соответствующего блока) — тоже ошибка (у игры есть моб без статов).
+3. **Полнота и корректность полей блока** для каждого `MobKind`: все обязательные поля заполнены, все ключи известны соответствующей `*Stats`, дубликатов ключей нет, значения парсятся в нужный тип.
+4. **Ссылки Waves → MobsSpecific.** `enemy_id` существует среди id блоков и не помечен `deprecated`.
+5. **Структура Waves.** Для каждого `wave` — ровно одна строка `kind=segment` с заполненными `duration_sec`/`start_enemies`/`max_enemies`/`ramp_duration_sec` и четырьмя `arena_*`; ≥1 строка `kind=pool` с непустыми `enemy_id`/`weight > 0`. Номера сегментов идут без разрывов, начиная с 1.
+6. **Globals.** Все ожидаемые ключи (`safe_spawn_radius`, `shop_delay`, `coins_per_kill`, `hp_scale_per_sec`, `dmg_scale_per_sec`, `coin_attraction_duration`) присутствуют и парсятся в ожидаемые типы.
+7. **Фильтрация deprecated.** Блоки с ключом `deprecated = TRUE` исключаются; ссылки на них в Waves — предупреждение.
 
 ### Поведение при ошибках
 
@@ -383,10 +345,9 @@ struct WaveSpawn {
 ```rust
 #[derive(Resource)]
 struct Balance {
-    mobs: MobsBalance,          // переиспользуем типы из src/actors/mobs.rs
-    abilities: AbilitiesBalance, // переиспользуем типы из src/actors/abilities.rs
+    mobs: MobsBalance,   // переиспользуем типы из src/actors/mobs/{ghost,tower,slime,jumper,spinner}.rs
     waves: Vec<WaveSegment>,
-    globals: Globals,            // типизированная структура с полями из листа Globals
+    globals: Globals,    // типизированная структура с полями из листа Globals
 }
 ```
 
@@ -398,7 +359,7 @@ struct Balance {
 - **`src/wave/spawn.rs`** (`reset_arena_size`, `update_arena_size`, `update_target_count`, `spawn_enemies`): `arena_start/arena_end`, `start_enemies`, `max_enemies`, `ramp_duration_sec` берутся из текущего сегмента; `safe_spawn_radius`, `hp_scale_per_sec`, `dmg_scale_per_sec` — из Globals. `MobsBalance` берётся из `Balance.mobs` вместо отдельного ресурса.
 - **`src/run/coin.rs`**, **`src/run/money.rs`**: `coins_per_kill`, `coin_attraction_duration` — из Globals.
 - **`src/arena/mod.rs`** (`spawn_arena`, `update_walls`, `update_floor_mesh`): читает `CurrentArenaSize` (рантайм-ресурс, пересчитывается из текущего сегмента в `src/wave/spawn.rs::update_arena_size`). Первоначальный размер арены при `MainMenu` тоже берётся из первого сегмента.
-- **`src/actors/mobs.rs::spawn_mob`** и потребители `AbilitiesBalance` (спеллы игрока, `tower_shot`, `jumper_shot`, `melee_strike`) — через `&Balance.abilities`.
+- **`src/actors/mobs/mod.rs::spawn_mob`** и per-mob `spawn_*` (`ghost.rs`/`tower.rs`/`slime.rs`/`jumper.rs`/`spinner.rs`) — получают `&MobsBalance` через `&Balance.mobs`. Числа абилок моба (tower-shot/jumper-shot/melee) теперь часть его `*Stats` и не требуют отдельного ресурса.
 
 Добавляется новая система-оркестратор сегментов: `advance_wave_segment` тикает `run_state.elapsed_in_segment`, переключает `current_segment_index` по истечении `duration_sec`, обновляет `WaveState.max_concurrent`, `CurrentArenaSize` и активный пул.
 
@@ -408,20 +369,21 @@ struct Balance {
 
 Система `setup_balance` на `Startup`:
 
-- **Release** (без `feature = "dev"`): парсит `embedded::*`.
-- **Dev** (`--features dev`): скачивает CSV через `ureq`.
+- **Release** (без `feature = "dev"`): `calamine::open_workbook_from_rs(Cursor::new(BALANCE_XLSX))`.
+- **Dev** (`--features dev`): `calamine::open_workbook("assets/balance.xlsx")`.
 
 ### Горячая перезагрузка (только `--features dev`)
 
 Система `reload_balance` в `Update`:
 
 - Отслеживает `F5`.
-- Перекачивает CSV, парсит, валидирует.
+- Перечитывает `assets/balance.xlsx` с диска, парсит, валидирует.
 - При успехе — заменяет `Balance`, логирует `info!("Balance reloaded")`.
 - При ошибке — `error!(...)`, старый `Balance` сохраняется.
-- **Скачанные CSV не пишутся в `assets/`** — живут только в памяти.
 
 Гейтинг: `#[cfg(feature = "dev")]`.
+
+Альтернатива F5 — автоматический watch файла через `notify` crate. На первом этапе не делаем, чтобы не тянуть лишнюю зависимость; F5 даёт явный контроль.
 
 ### Регистрация в App
 
@@ -434,44 +396,27 @@ app.add_systems(Update, reload_balance);
 
 ### Удаляется из кодовой базы при миграции
 
-- `assets/balance.ron`, `assets/mobs.ron`, `assets/abilities.ron`.
+- `assets/balance.ron`, `assets/mobs.ron`.
 - `src/balance.rs` (`GameBalance`, `WaveBalance`, `ArenaBalance`, `RunBalance`) — замещается модулем `src/balance/`.
-- Реализации `RonAsset for GameBalance / MobsBalance / AbilitiesBalance` в `src/loading/assets.rs`; соответствующие `.init_asset::<…>()` и `.register_asset_loader(…)` в `src/loading/mod.rs`.
-- Поля `balance_handle`/`mobs_balance_handle`/`abilities_balance_handle` в `src/loading/systems.rs::LoadingState` и их загрузка/poll в `start_loading`/`check_loaded`.
-- Структуры `MobsBalance`/`*Stats` и `AbilitiesBalance`/per-ability структуры либо остаются на месте в `src/actors/mobs.rs` и `src/actors/abilities.rs` и переиспользуются модулем `balance/` как чистые типы (без `#[derive(Asset)]`), либо переезжают в `src/balance/types.rs` — по вкусу. Рекомендуется оставить на месте и снять `Asset`/`RonAsset`.
-
----
-
-## Зависимости (Cargo.toml)
-
-```toml
-[dependencies]
-# существующие (bevy 0.18, serde, ron, ...)
-csv = "1"
-
-# Только dev — сетевая загрузка в рантайме
-[target.'cfg(feature = "dev")'.dependencies]
-ureq = "2"
-
-[build-dependencies]
-ureq = "2"
-```
+- Реализации `RonAsset for GameBalance / MobsBalance` в `src/loading/assets.rs`; соответствующие `.init_asset::<…>()` и `.register_asset_loader(…)` в `src/loading/mod.rs`.
+- Поля `balance_handle`/`mobs_balance_handle` в `src/loading/systems.rs::LoadingState` и их загрузка/poll в `start_loading`/`check_loaded`.
+- Структуры `MobsBalance`/`*Stats` остаются на месте в `src/actors/mobs/{mod,ghost,tower,slime,jumper,spinner}.rs` и переиспользуются модулем `balance/` как чистые типы — с `MobsBalance` снимаются `Asset`/`Resource`/`TypePath`-деривы (теперь это поле внутри `Balance`, а не отдельный Bevy-ресурс).
 
 ---
 
 ## Файловая структура проекта
 
 ```
+assets/
+  balance.xlsx              — SSOT баланса (бинарный, хранится в git)
 src/
   balance/
-    mod.rs          — публичный API модуля, ре-экспорт
-    sheets.rs       — реестр листов, URL, константы DOC_ID и GID
-    parser.rs       — парсинг CSV, фильтрация _-колонок
-    types.rs        — структуры данных (EnemyRow, AbilityRow, WaveRow, Globals, ...)
-    resolve.rs      — сборка MobsBalance, AbilitiesBalance, WaveSegment, Globals
-    loader.rs       — загрузка (embedded / network), валидация, F5-перезагрузка
-    plugin.rs       — BalancePlugin, ресурс Balance, advance_wave_segment
-build.rs            — скачивание CSV для release-билда
+    mod.rs                  — публичный API модуля, ре-экспорт
+    types.rs                — структуры данных (MobBlock, WaveRow, GlobalRow, Globals, ...)
+    parser.rs               — парсинг листов xlsx через calamine
+    resolve.rs              — сборка MobsBalance (block → *Stats), Vec<WaveSegment>, Globals
+    loader.rs               — загрузка (embedded / disk), валидация, F5-перезагрузка
+    plugin.rs               — BalancePlugin, ресурс Balance, advance_wave_segment
 ```
 
 `CurrentArenaSize` остаётся в `src/arena/size.rs` (рантайм-ресурс, не часть Balance).
@@ -480,21 +425,23 @@ build.rs            — скачивание CSV для release-билда
 
 ## Порядок реализации
 
-1. **Подготовка Google Sheets.** Создать документ с листами Enemies / Abilities / Waves / Globals. Перенести текущий `assets/mobs.ron` в Enemies, `assets/abilities.ron` в Abilities, `assets/balance.ron::wave/arena` в Waves (один стартовый сегмент), `assets/balance.ron::run` + `wave.safe_spawn_radius`/`wave.shop_delay` в Globals.
-2. `types.rs` — все структуры данных.
-3. `sheets.rs` — `DOC_ID`, `GID`, формирование URL.
-4. `parser.rs` — парсинг CSV с фильтрацией `_`.
-5. `resolve.rs` — сборка `MobsBalance`, `AbilitiesBalance`, `Vec<WaveSegment>`, `Globals`.
-6. `loader.rs` — загрузка + валидация + F5-перезагрузка.
+1. **Excel MCP-сервер.** Поставить (`haris-musa/excel-mcp-server` или аналог), прописать в `~/.claude.json`, проверить что появились тулы `mcp__excel__*`. Разовая настройка.
+2. **Создание `assets/balance.xlsx`.** Claude Code через MCP читает текущие `assets/{mobs,balance}.ron` и создаёт файл с четырьмя листами (MobsSpecific блоками из мобов, MobsCommon с формулами, Waves с одним стартовым сегментом из `balance.ron::wave+arena`, Globals). Настраивает Data Validation и Conditional Formatting. Коммитим.
+3. `types.rs` — `MobBlock`, `WaveRow`, `GlobalRow`, `WaveSegment`, `WaveSpawn`, `Globals`.
+4. `parser.rs` — парсинг трёх листов через calamine (MobsSpecific блоками, Waves/Globals построчно по шапке, фильтрация `_`-ключей/колонок).
+5. `resolve.rs` — сборка `MobsBalance` (block → per-mob `*Stats`), `Vec<WaveSegment>`, `Globals`.
+6. `loader.rs` — загрузка (embedded / disk) + валидация + F5-перезагрузка.
 7. `plugin.rs` — `BalancePlugin`, ресурс `Balance`, система `advance_wave_segment`.
-8. **Миграция потребителей** (`src/wave/`, `src/arena/`, `src/run/`, `src/actors/mobs.rs`, `src/actors/abilities.rs` и производные): `GameBalance`/`MobsBalance`/`AbilitiesBalance`-ресурсы → `Balance` + текущий сегмент.
-9. **Удаление** `assets/balance.ron`, `assets/mobs.ron`, `assets/abilities.ron`, `src/balance.rs`, `RonAsset`-имплементаций и регистраций в `src/loading/`.
-10. `build.rs` — скачивание CSV при release-билде.
-11. Unit-тесты парсинга и резолва на захардкоженных CSV-строках (в `src/balance/*.rs` через `#[cfg(test)]`).
+8. **Миграция потребителей** (`src/wave/`, `src/arena/`, `src/run/`, `src/actors/mobs/`): `GameBalance`/`MobsBalance`-ресурсы → `Balance` + текущий сегмент.
+9. **Удаление** `assets/balance.ron`, `assets/mobs.ron`, `src/balance.rs`, `RonAsset`-имплементаций и регистраций в `src/loading/`.
+10. Unit-тесты парсинга и резолва на зафиксированном тестовом xlsx (в `src/balance/*.rs` через `#[cfg(test)]`; тестовый файл лежит в `src/balance/testdata/`).
 
 ---
 
 ## Известные TODO
 
-- **Per-ability оверрайды или ветвление.** Если появится потребность в разных балансах одной абилки (например, `fireball` для разных геров/билдов), Sheets-схема `Abilities` расширится id-ветвлением (`fireball.hero_a`, `fireball.hero_b`) или отдельным листом `AbilityVariants`. Конкретный механизм не зафиксирован.
+- **Fireball → xlsx, когда появятся варианты.** Сейчас `FIREBALL_*` — `const` в `src/actors/player.rs`. Если появятся герои/билды с разным балансом `fireball`, вынести числа в отдельный лист/секцию с `variant_id` (конкретная схема не зафиксирована).
 - **Веса спавна vs dev-меню.** Полное замещение пулов dev-оверрайдом — сознательный выбор; в будущем можно дать pooling-слайдер вместо бинарных тогглов.
+- **Формулы MobsCommon.** Точная форма лукапа (через helper-колонку или чистым массивным `FILTER`) выбирается при первой настройке листа мигратором — это деталь UX, код на неё не завязан.
+- **Auto-watch вместо F5.** Опционально подключить `notify` для авто-перезагрузки по сохранению файла, если F5 окажется неудобным.
+- **Командная работа с xlsx.** Если появится второй редактор — договориться о монопольной правке или включить в xlsx ведение ревизий (Excel track-changes), либо переключиться на текстовый формат (CSV per lsheet) с потерей live-формул MobsCommon.

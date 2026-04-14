@@ -1,7 +1,7 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::actors::components::common::size::Size;
+use crate::actors::components::physics::size::Size;
 use crate::actors::SpawnSource;
 use crate::schedule::GameSet;
 use crate::actors::combat::PendingDamage;

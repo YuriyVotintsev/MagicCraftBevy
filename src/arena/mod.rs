@@ -7,7 +7,7 @@ pub mod size;
 pub use size::CurrentArenaSize;
 
 use crate::balance::GameBalance;
-use crate::actors::components::common::collider::GameLayer;
+use crate::actors::components::physics::collider::GameLayer;
 use crate::GameState;
 
 pub const WINDOW_WIDTH: f32 = 1920.0;

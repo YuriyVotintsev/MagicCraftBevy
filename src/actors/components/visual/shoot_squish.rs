@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::sprite::{CapsuleSprite, CircleSprite, Sprite};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
-use crate::actors::mobs::ShotFired;
+use super::super::combat::shot_fired::ShotFired;
 
 #[derive(Component)]
 pub struct ShootSquish {

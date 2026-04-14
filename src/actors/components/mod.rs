@@ -1,24 +1,28 @@
-pub mod common {
-    pub mod size;
-    pub mod collider;
+pub mod visual {
     pub mod sprite;
-    pub mod dynamic_body;
-    pub mod static_body;
-    pub mod jump_walk_animation;
-    pub mod shoot_squish;
     pub mod shadow;
     pub mod bobbing_animation;
+    pub mod jump_walk_animation;
+    pub mod shoot_squish;
     pub mod fade_out;
+    pub mod growing;
+    pub mod particles;
 }
 
-pub mod ability {
+pub mod physics {
+    pub mod collider;
+    pub mod dynamic_body;
+    pub mod static_body;
+    pub mod size;
+}
+
+pub mod combat {
     pub mod projectile;
-    pub mod lifetime;
-    pub mod growing;
     pub mod damage_payload;
-    pub mod find_nearest_enemy;
     pub mod melee_strike;
-    pub mod particles;
+    pub mod melee_attacker;
+    pub mod find_nearest_enemy;
+    pub mod shot_fired;
 }
 
 pub mod player {
@@ -26,28 +30,34 @@ pub mod player {
     pub mod player_input;
 }
 
+pub mod lifetime;
+
 use bevy::prelude::*;
 
 pub fn register_component_systems(app: &mut App) {
-    common::size::register_systems(app);
-    common::collider::register_systems(app);
-    common::sprite::register_systems(app);
-    common::dynamic_body::register_systems(app);
-    common::static_body::register_systems(app);
-    common::jump_walk_animation::register_systems(app);
-    common::shoot_squish::register_systems(app);
-    common::shadow::register_systems(app);
-    common::bobbing_animation::register_systems(app);
-    common::fade_out::register_systems(app);
+    visual::sprite::register_systems(app);
+    visual::shadow::register_systems(app);
+    visual::bobbing_animation::register_systems(app);
+    visual::jump_walk_animation::register_systems(app);
+    visual::shoot_squish::register_systems(app);
+    visual::fade_out::register_systems(app);
+    visual::growing::register_systems(app);
+    visual::particles::register_systems(app);
 
-    ability::projectile::register_systems(app);
-    ability::lifetime::register_systems(app);
-    ability::growing::register_systems(app);
-    ability::damage_payload::register_systems(app);
-    ability::find_nearest_enemy::register_systems(app);
-    ability::melee_strike::register_systems(app);
-    ability::particles::register_systems(app);
+    physics::collider::register_systems(app);
+    physics::dynamic_body::register_systems(app);
+    physics::static_body::register_systems(app);
+    physics::size::register_systems(app);
+
+    combat::projectile::register_systems(app);
+    combat::damage_payload::register_systems(app);
+    combat::melee_strike::register_systems(app);
+    combat::melee_attacker::register_systems(app);
+    combat::find_nearest_enemy::register_systems(app);
+    combat::shot_fired::register_systems(app);
 
     player::keyboard_movement::register_systems(app);
     player::player_input::register_systems(app);
+
+    lifetime::register_systems(app);
 }

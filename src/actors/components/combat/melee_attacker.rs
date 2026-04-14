@@ -1,12 +1,11 @@
 use bevy::prelude::*;
 
-use crate::actors::components::ability::melee_strike::MeleeStrike;
+use super::melee_strike::MeleeStrike;
+use super::shot_fired::ShotFired;
 use crate::actors::SpawnSource;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
-
-use super::ShotFired;
 
 pub const MELEE_STRIKE_RANGE: f32 = 300.0;
 

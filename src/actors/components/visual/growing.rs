@@ -1,11 +1,11 @@
 use bevy::prelude::*;
 
-use crate::actors::components::common::size::SizeScaleLayer;
+use crate::actors::components::physics::size::SizeScaleLayer;
 use crate::composite_scale::ScaleModifiers;
 use crate::schedule::GameSet;
 use crate::GameState;
 
-use super::lifetime::Lifetime;
+use super::super::lifetime::Lifetime;
 
 #[derive(Component)]
 pub struct Growing {

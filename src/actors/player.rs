@@ -2,13 +2,13 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::actors::combat::Health;
-use crate::actors::components::ability::projectile::Projectile;
-use crate::actors::components::common::collider::{Collider, Shape as ColliderShape};
-use crate::actors::components::common::dynamic_body::DynamicBody;
-use crate::actors::components::common::jump_walk_animation::JumpWalkAnimation;
-use crate::actors::components::common::shadow::Shadow;
-use crate::actors::components::common::size::Size;
-use crate::actors::components::common::sprite::{Sprite, SpriteColor, SpriteShape};
+use crate::actors::components::combat::projectile::Projectile;
+use crate::actors::components::physics::collider::{Collider, Shape as ColliderShape};
+use crate::actors::components::physics::dynamic_body::DynamicBody;
+use crate::actors::components::visual::jump_walk_animation::JumpWalkAnimation;
+use crate::actors::components::visual::shadow::Shadow;
+use crate::actors::components::physics::size::Size;
+use crate::actors::components::visual::sprite::{Sprite, SpriteColor, SpriteShape};
 use crate::actors::components::player::keyboard_movement::KeyboardMovement;
 use crate::actors::components::player::player_input::{
     InputTrigger, MouseButtonKind, PlayerAbilityCooldowns, PlayerInput, TargetingMode,

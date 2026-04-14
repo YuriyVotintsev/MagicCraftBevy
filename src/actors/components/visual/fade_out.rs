@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::super::ability::lifetime::Lifetime;
+use super::super::lifetime::Lifetime;
 
 #[derive(Component)]
 pub struct FadeOut {}

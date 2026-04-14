@@ -2,7 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::actors::combat::{death_system, DeathEvent, SkipCleanup};
-use crate::actors::components::common::jump_walk_animation::JumpWalkAnimationState;
+use crate::actors::components::visual::jump_walk_animation::JumpWalkAnimationState;
 use crate::actors::components::player::keyboard_movement::MovementLocked;
 use crate::actors::player::Player;
 use crate::actors::SpawnSource;

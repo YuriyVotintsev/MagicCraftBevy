@@ -3,7 +3,7 @@ use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
 use crate::actors::combat::Health;
-use crate::actors::components::common::sprite::{CapsuleSprite, CircleSprite, Sprite};
+use crate::actors::components::visual::sprite::{CapsuleSprite, CircleSprite, Sprite};
 use crate::palette;
 use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
