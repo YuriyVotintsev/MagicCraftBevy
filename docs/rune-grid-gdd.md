@@ -109,13 +109,19 @@ Ratio `1/2` — стартовое значение для балансного 
 | Свойство | Описание |
 |----------|----------|
 | **Base Effect** | Прямой бонус к стату игрока (слабый) |
-| **Aura Pattern** | Геометрия влияния — определяет зону для Aura Effect и Self Effect |
-| **Aura Effect** | Что получают руны, попавшие в зону паттерна |
-| **Self Effect** | Как руны в зоне паттерна влияют на саму эту руну |
+| **Read** | Опциональное: `(Pattern, Filter, Formula)` — что и откуда руна считывает с сетки; даёт скаляр/булев |
+| **Write** | Опциональное: `(Pattern, Filter, Effect)` — куда руна пишет результат; `Pattern` может быть `Self`. Если пуст — руна существует ради своего Base Effect, её цена — занимаемый слот |
 | **Tier** | Common, Rare, Epic, Legendary (масштаб эффектов). Все тиры могут появляться с самого начала |
 | **Limit** | Макс. копий на поле. Legendary=1, некоторые Common=∞ |
 
-Руны на сетке — единый класс сущностей. Новые способности и рулбук-модификаторы — отдельная система: см. **Джокеры**.
+Модель руны — строго **одна** пара `Read? → Write?`. Оба слота опциональны. Параметры Effect в Write могут использовать значение из Read.
+
+- **Self-эффекты** — Write с `Pattern = Self` (читаем окружение, пишем в себя).
+- **Other-эффекты** — Write с любым другим паттерном (пишем в цели, Read-а может не быть).
+- **Cross-pattern** — Read по одной геометрии, Write в другую. Поддерживается штатно.
+- **Pure-base** — ни Read, ни Write. Руна существует ради Base Effect; цена — занимаемый слот. Обычно редкий тир: за бесплатную статичку с высоким base приходится платить редкостью в пуле.
+
+Более сложные рулбук-моды, conditional-триггеры и сложные event-реакции — это **джокеры**, не руны. Руны остаются линейной моделью Read → Write.
 
 ## Паттерны влияния (Aura Patterns) — Hex
 
@@ -161,27 +167,63 @@ Half (полусфера)            All Same Rune
 | **All on Grid** | Все руны на сетке | variable |
 | **Nearby (dist ≤ 2)** | Все в радиусе 2 (Adjacent + Ring) | 18 |
 
-## Типы эффектов
+## Модель эффекта (Read / Write)
 
-### Aura Effect (руна → цели в паттерне)
+Эффект руны — это пара:
 
-| Тип | Пример | Что делает |
-|-----|--------|------------|
-| **Amplify** | "Adjacent: x1.5 к их base effect" | Умножает базовый эффект целей |
-| **Echo** | "Line: их аура срабатывает дважды" | Удваивает ауру целей |
-| **Grant** | "Adjacent: +3% damage" | Даёт плоский бонус целям |
-| **Chain** | "Передаёт свой base effect руне по Ray E" | Передача эффекта по направлению |
-| **Suppress** | "Ring: -50% base effect" | Негативное влияние (trade-off) |
+```
+Read(Pattern, Filter, Formula) → value   [опционально]
+Write(Pattern, Filter, Effect(value))    [обязательно]
+```
 
-### Self Effect (цели в паттерне → руна)
+Каждый слот — типизированный, строго перечисленных вариантов. Это позволяет UI автоматически извлечь все задействованные паттерны и подсветить их при hover/drag (без парсинга free-form строк).
 
-| Тип | Пример | Что делает |
-|-----|--------|------------|
-| **Catalyze** | "За каждую руну в Adjacent: +2% к base" | Стакающийся бонус от количества соседей |
-| **Absorb** | "За каждую руну в Ring: +1% crit" | Набирает силу от окружения |
-| **Mirror** | "Копирует лучший base effect из Adjacent" | Берёт эффект от соседа |
-| **Void** | "За каждую пустую разблокированную ячейку в Ring: +1% crit" | Питается пустотой — бонус от незаполненных ячеек в паттерне |
-| **Isolate** | "Работает только если Adjacent полностью пуст" | Триггер от условия «нет соседей», большой эффект за изоляцию |
+### Pattern
+
+Список паттернов из секции «Паттерны влияния» + специальный `Self` (только для Write; означает «сама руна»).
+
+### Filter
+
+Фильтрует, какие ячейки/руны в Pattern учитываются.
+
+| Filter | Значение |
+|--------|----------|
+| `any` | Любая ячейка (дефолт) |
+| `empty` | Только пустые разблокированные ячейки |
+| `rune` | Только ячейки с рунами |
+| `tier(T)` | Только руны тира T (Common/Rare/Epic/Legendary) |
+| `name(N)` | Только руны с конкретным именем (для синергий типа «все Spark») |
+
+### Formula (для Read)
+
+Простая функция над отфильтрованными ячейками, возвращает скаляр или булев.
+
+| Formula | Что возвращает |
+|---------|----------------|
+| `count` | Количество ячеек, прошедших Filter |
+| `sum(stat)` | Сумма конкретного стата base у отобранных рун |
+| `max(stat)` | Максимум конкретного стата base |
+| `any` | Булев: есть ли хотя бы одна подходящая ячейка |
+| `none` | Булев: пусто ли |
+
+Результат Read подставляется в параметры Effect в Write как переменная `N` (или `V` для value-типов).
+
+### Effect (для Write)
+
+Что именно делаем в целях Write.
+
+| Effect | Что делает |
+|--------|------------|
+| `Grant(value)` | Добавляет плоский бонус (к base или к стату) |
+| `Amplify(factor)` | Умножает base целей |
+| `Suppress(factor)` | Уменьшает base целей |
+| `Echo` | Эффекты целей срабатывают дважды (рекурсия макс. 1 уровень) |
+| `Chain(value)` | Передаёт значение дальше по Ray (цепочка) |
+
+Значение `value` в Grant / Chain / Suppress / Amplify может быть:
+- Константа (`+3%`, `x1.2`).
+- Выражение от `N` из Read (`N * 0.5%`, `10% if N == 0 else 0`).
+- `own.base` — собственный base руны.
 
 ## Пример синергии (Hex)
 
@@ -192,63 +234,70 @@ Half (полусфера)            All Same Rune
        [Spark]  [ ... ]
 
 Lens (Rare):
-  Base: +1% all stats
-  Aura (Adjacent): Amplify x1.2 к аурам целей
+  Base:  +1% all stats
+  Read:  —
+  Write: (Adjacent, any, Amplify(x1.2))
 
 Spark (Common):
-  Base: +3% damage
-  Aura (Adjacent): Grant +2% damage
-  Self: --
+  Base:  +3% damage
+  Read:  —
+  Write: (Adjacent, any, Grant(+2% damage))
 
 Оба Spark — соседи Lens и соседи друг друга.
 
 Spark #1 получает:
-  Base:                +3% dmg
-  от Spark #2 (Aura):  +2% dmg (Adjacent Grant)
-  от Lens (Aura):      Amplify x1.2 к аурам Spark #1
-  Итого base:          3% + 2% = 5% dmg
-  Аура Spark #1 усилена Lens: раздаёт +2.4% вместо +2%
+  Base:                       +3% dmg
+  от Spark #2 (Write):        +2% dmg (Adjacent Grant)
+  Lens (Write Amplify x1.2):  усиливает Write Spark #1
+  Итого Spark #1 base:        3% + 2% = 5% dmg
+  Write Spark #1 после Lens:  раздаёт +2.4% вместо +2%
 
 Spark #2 получает:
-  Base:                +3% dmg
-  от Spark #1 (Aura):  +2.4% dmg (усилена Lens)
-  Итого:               5.4% dmg
+  Base:                       +3% dmg
+  от Spark #1 (Write):        +2.4% dmg (усилен Lens)
+  Итого:                      5.4% dmg
 
 vs +3% без синергий у каждого
 ```
 
 ## Примеры конкретных рун
 
-### Common Tier (Stat)
+Формат записи: `Base | Read | Write | Limit`. Пустой Read — руна не читает сетку, пишет по константе. Пустой Write невозможен (Write обязателен).
 
-| Руна | Base | Pattern | Aura Effect | Self Effect | Limit |
-|------|------|---------|-------------|-------------|-------|
-| Spark | +3% damage | Adjacent | Grant: +2% damage | -- | ∞ |
-| Frost Shard | +4% proj speed | Ray | Grant: +3% proj speed | -- | ∞ |
-| Vine | +5 HP | Adjacent | Grant: +3 HP | -- | ∞ |
-| Void Wisp | +2% crit | Ring | Grant: +1% crit | Void: +0.5% crit за пустую ячейку в Ring | 4 |
-| Hermit | +10% damage | Adjacent | -- | Isolate: активен только при пустом Adjacent | 3 |
-| Lens | +1% all stats | Adjacent | Amplify: ауры целей x1.2 | -- | 3 |
+### Common Tier
 
-### Rare Tier (Stat)
+| Руна | Base | Read | Write | Limit |
+|------|------|------|-------|-------|
+| Spark | +3% damage | — | `(Adjacent, any, Grant(+2% damage))` | ∞ |
+| Frost Shard | +4% proj speed | — | `(Ray, any, Grant(+3% proj speed))` | ∞ |
+| Vine | +5 HP | — | `(Adjacent, any, Grant(+3 HP))` | ∞ |
+| Void Wisp | +2% crit | `(Ring, empty, count) → N` | `(Self, any, Grant(+0.5N% crit))` | 4 |
+| Hermit | +10% damage | `(Adjacent, rune, count) → N` | `(Self, any, Grant(10% damage if N == 0 else 0))` | 3 |
+| Lens | +1% all stats | — | `(Adjacent, any, Amplify(x1.2))` | 3 |
 
-| Руна | Base | Pattern | Aura Effect | Self Effect | Limit |
-|------|------|---------|-------------|-------------|-------|
-| Inferno Core | +8% damage | All Same Rune | Amplify: x1.15 base | -- | 2 |
-| Glacier | +6% slow | Nearby | Grant: +4% slow | -- | 2 |
-| Living Root | +15 HP | Cone | Grant: regen 1 HP/s | -- | 2 |
-| Eclipse | +5% crit dmg | Ring | Grant: +3% crit chance | -- | 2 |
-| Prism | Нет base | Adjacent | -- | Mirror: копирует лучший base соседа | 2 |
+### Rare Tier
 
-### Epic Tier (Stat)
+| Руна | Base | Read | Write | Limit |
+|------|------|------|-------|-------|
+| Inferno Core | +8% damage | — | `(AllSameRune, any, Amplify(x1.15))` | 2 |
+| Glacier | +6% slow | — | `(Nearby, any, Grant(+4% slow))` | 2 |
+| Living Root | +15 HP | — | `(Cone, any, Grant(regen 1 HP/s))` | 2 |
+| Eclipse | +5% crit dmg | — | `(Ring, any, Grant(+3% crit chance))` | 2 |
+| Prism | Нет base | `(Adjacent, rune, max(base)) → V` | `(Self, any, Grant(V))` | 2 |
+| Radiant Void | +2% damage | `(Adjacent, empty, count) → N` | `(Ring, any, Grant(+2N% damage))` | 2 |
+| Nugget | +8% damage | — | — | 2 |
 
-| Руна | Base | Pattern | Aura Effect | Self Effect | Limit |
-|------|------|---------|-------------|-------------|-------|
-| Phoenix Heart | +15% damage | All on Grid | Echo: ауры целей x2 | -- | 1 |
-| Absolute Zero | +10% slow, -5% speed | Line | Suppress: -30% base, но Freeze on hit | -- | 1 |
-| World Tree | +30 HP | Nearby | Grant: +5 HP | Catalyze: +3 HP за каждого соседа | 1 |
-| Singularity | +8% crit | Ring | Suppress: -10% base | Absorb: +2% crit за каждую подавленную руну | 1 |
-| Arcane Nexus | Нет base | All on Grid | Все ауры +1 range | -- | 1 |
+### Epic Tier
+
+| Руна | Base | Read | Write | Limit |
+|------|------|------|-------|-------|
+| Phoenix Heart | +15% damage | — | `(AllOnGrid, any, Echo)` | 1 |
+| Absolute Zero | +10% slow, -5% speed | — | `(Line, any, Suppress(-30%))` | 1 |
+| World Tree | +30 HP | `(Nearby, rune, count) → N` | `(Self, any, Grant(+3N HP))` | 1 |
+| Singularity | +8% crit | `(Ring, rune, count) → N` | `(Self, any, Grant(+2N% crit))` | 1 |
+| Tier Sniper | +5% damage | `(AllOnGrid, tier(Common), count) → N` | `(Self, any, Grant(+1N% damage))` | 1 |
+
+*Radiant Void* — пример cross-pattern: читает пустые ячейки в Adjacent, усиливает руны в Ring пропорционально. *Tier Sniper* — пример Filter по тиру. *Nugget* — pure-base: ни Read, ни Write; даёт высокий base за счёт редкости в пуле и занятого слота.
 
 ## Джокеры
 
@@ -357,10 +406,10 @@ vs +3% без синергий у каждого
 Пайплайн сетки:
 
 1. Собрать base effects всех рун сетки
-2. Применить Self Effects (Catalyze, Absorb, Mirror, Void, Isolate — руна читает окружение, включая пустые разблокированные ячейки)
-3. Применить Aura Effects: Grant, Amplify, Suppress (руна пишет в цели)
-4. Применить Echo (удвоение аур — рекурсия макс. 1 уровень)
-5. Суммировать финальные эффекты сетки → статы игрока
+2. Для каждой руны: **вычислить Read** (если есть) — обойти Pattern с Filter, применить Formula, получить `N`/`V`. Результаты складываются в буфер, чтобы шаг 3 читал согласованный снапшот состояния (никаких race-ов между рунами).
+3. Для каждой руны: **применить Write** — в целях Pattern/Filter выполнить Effect, параметризованный значением из Read. Write с `Pattern=Self` пишет в саму руну, Other Write пишет в цели.
+4. Применить Echo (Write-эффекты целей срабатывают дважды — рекурсия макс. 1 уровень).
+5. Суммировать финальные эффекты сетки → статы игрока.
 
 Джокеры **не привязаны к этому пайплайну** и могут хукаться в любую точку вычислений: до, во время, после, а также на игровые события (вход в волну, получение урона, убийство, покупка в Shop, reroll и т.п.). Каждый джокер сам определяет, в какой момент он срабатывает и что читает — это описывается в его эффекте индивидуально. Сетка джокеров не видит: ауры/паттерны/Void/Isolate на джокеров не действуют в любом случае.
 
