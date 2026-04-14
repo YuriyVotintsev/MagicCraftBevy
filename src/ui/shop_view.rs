@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::run::money::PlayerMoney;
+use crate::run::PlayerMoney;
 use crate::run::RunState;
 use crate::wave::WavePhase;
 

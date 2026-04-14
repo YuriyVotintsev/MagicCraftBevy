@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use super::sprite::{CapsuleSprite, CircleSprite, Sprite};
+use super::{CapsuleSprite, CircleSprite, Sprite};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
-use super::super::combat::shot_fired::ShotFired;
+use super::super::combat::ShotFired;
 
 #[derive(Component)]
 pub struct ShootSquish {

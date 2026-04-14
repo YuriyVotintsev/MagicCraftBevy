@@ -1,7 +1,7 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::actors::components::visual::jump_walk_animation::SelfMoving;
+use super::super::visual::SelfMoving;
 use crate::schedule::GameSet;
 
 #[derive(Component)]

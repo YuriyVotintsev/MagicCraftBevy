@@ -1,11 +1,10 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::actors::combat::{death_system, DeathEvent, SkipCleanup};
-use crate::actors::components::visual::jump_walk_animation::JumpWalkAnimationState;
-use crate::actors::components::player::keyboard_movement::MovementLocked;
-use crate::actors::player::Player;
-use crate::actors::SpawnSource;
+use crate::actors::{
+    death_system, Caster, DeathEvent, JumpWalkAnimationState, MovementLocked, SkipCleanup,
+};
+use crate::actors::Player;
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::schedule::{GameSet, PostGameSet};
 use crate::wave::WavePhase;
@@ -68,7 +67,7 @@ fn check_run_end(
     combat_entities: Query<
         (Entity, Has<ScaleModifiers>),
         (
-            Or<(With<DespawnOnExit<WavePhase>>, With<SpawnSource>)>,
+            Or<(With<DespawnOnExit<WavePhase>>, With<Caster>)>,
             Without<Player>,
         ),
     >,
@@ -108,7 +107,7 @@ fn mark_new_shrink_targets(
     query: Query<
         (Entity, Has<ScaleModifiers>),
         (
-            Or<(With<DespawnOnExit<WavePhase>>, With<SpawnSource>)>,
+            Or<(With<DespawnOnExit<WavePhase>>, With<Caster>)>,
             Without<Player>,
             Without<ShrinkToZero>,
         ),

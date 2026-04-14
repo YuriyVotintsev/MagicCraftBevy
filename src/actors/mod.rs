@@ -1,24 +1,24 @@
-pub mod mobs;
-pub mod combat;
-pub mod components;
-pub mod effects;
-pub mod player;
-pub mod spawn_source;
-pub mod target_info;
-
-pub use spawn_source::SpawnSource;
-pub use target_info::TargetInfo;
-
 use bevy::prelude::*;
+
+mod components;
+mod mobs;
+mod player;
+
+pub use components::{
+    death_system, CapsuleSprite, Caster, CircleSprite, DeathEvent, GameLayer, Health,
+    JumpWalkAnimationState, MovementLocked, Shadow, SkipCleanup, Sprite,
+};
+pub use mobs::{spawn_mob, GhostAlpha, GhostTransparency, MobKind, MobsBalance};
+pub use player::Player;
 
 pub struct ActorsPlugin;
 
 impl Plugin for ActorsPlugin {
     fn build(&self, app: &mut App) {
-        combat::register_systems(app);
-        effects::register_systems(app);
-        mobs::register_systems(app);
-        player::register_systems(app);
-        components::register_component_systems(app);
+        app.add_plugins((
+            mobs::MobsPlugin,
+            components::ComponentsPlugin,
+            player::PlayerPlugin,
+        ));
     }
 }

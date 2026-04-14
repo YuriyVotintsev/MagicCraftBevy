@@ -3,26 +3,19 @@ use bevy::prelude::*;
 use serde::Deserialize;
 
 use crate::GameState;
-use crate::actors::combat::Health;
-use crate::actors::components::combat::find_nearest_enemy::FindNearestEnemy;
-use crate::actors::components::visual::bobbing_animation::BobbingAnimation;
-use crate::actors::components::physics::collider::{Collider, Shape as ColliderShape};
-use crate::actors::components::physics::dynamic_body::DynamicBody;
-use crate::actors::components::visual::jump_walk_animation::SelfMoving;
-use crate::actors::components::visual::shadow::Shadow;
-use crate::actors::components::physics::size::Size;
-use crate::actors::components::visual::sprite::{CapsuleSprite, CircleSprite, Sprite, SpriteShape};
-use crate::actors::effects::OnDeathParticles;
-use crate::actors::components::combat::melee_attacker::MeleeAttacker;
-use crate::actors::player::Player;
-use crate::actors::SpawnSource;
+use super::super::components::{
+    BobbingAnimation, CapsuleSprite, Caster, CircleSprite, Collider, DynamicBody, FindNearestEnemy,
+    Health, MeleeAttacker, OnDeathParticles, SelfMoving, Shadow, Shape as ColliderShape, Size,
+    Sprite, SpriteShape, Target,
+};
+use super::super::player::Player;
 use crate::faction::Faction;
 use crate::health_material::{HealthMaterial, HealthMaterialLink};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
-use crate::wave::summoning::SummoningCircle;
+use crate::wave::SummoningCircle;
 
-use super::{compute_stats, current_max_life, enemy_sprite_color};
+use super::helpers::{compute_stats, current_max_life, enemy_sprite_color};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct GhostStats {
@@ -108,7 +101,7 @@ pub fn spawn_ghost(
     )).id();
 
     commands.entity(id).insert((
-        SpawnSource::from_caster(id, pos),
+        Caster(id),
         FindNearestEnemy { size: 4000.0, center: id },
         OnDeathParticles { config: "enemy_death" },
     ));
@@ -258,15 +251,16 @@ fn toggle_ghost_collider(
 
 fn move_toward_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, &SpawnSource), (With<MoveToward>, Without<crate::wave::summoning::RiseFromGround>)>,
+    mut query: Query<(Entity, &Transform, &mut LinearVelocity, &ComputedStats, Option<&Target>), (With<MoveToward>, Without<crate::wave::RiseFromGround>)>,
     transforms: Query<&Transform, Without<MoveToward>>,
 ) {
-    for (entity, transform, mut velocity, stats, source) in &mut query {
-        let Some(target_entity) = source.target.entity else {
+    for (entity, transform, mut velocity, stats, target) in &mut query {
+        let Some(target) = target else {
             velocity.0 = Vec3::ZERO;
             commands.entity(entity).remove::<SelfMoving>();
             continue;
         };
+        let target_entity = target.0;
         let Ok(target_transform) = transforms.get(target_entity) else {
             velocity.0 = Vec3::ZERO;
             commands.entity(entity).remove::<SelfMoving>();

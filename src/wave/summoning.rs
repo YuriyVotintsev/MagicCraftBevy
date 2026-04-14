@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 
-use crate::actors::mobs::{spawn_mob, MobKind, MobsBalance};
-use crate::actors::combat::Health;
+use crate::actors::{spawn_mob, MobKind, MobsBalance};
+use crate::actors::Health;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
 use crate::schedule::GameSet;
 use crate::stats::{Stat, StatCalculators};
-use crate::wave::{WaveEnemy, WavePhase, WaveState};
+use super::phase::WavePhase;
+use super::state::{WaveEnemy, WaveState};
 use crate::Faction;
 
 const CIRCLE_GROW_DURATION: f32 = 0.7;

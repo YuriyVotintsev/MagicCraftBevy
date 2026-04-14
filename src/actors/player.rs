@@ -1,20 +1,12 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::actors::combat::Health;
-use crate::actors::components::combat::projectile::Projectile;
-use crate::actors::components::physics::collider::{Collider, Shape as ColliderShape};
-use crate::actors::components::physics::dynamic_body::DynamicBody;
-use crate::actors::components::visual::jump_walk_animation::JumpWalkAnimation;
-use crate::actors::components::visual::shadow::Shadow;
-use crate::actors::components::physics::size::Size;
-use crate::actors::components::visual::sprite::{Sprite, SpriteColor, SpriteShape};
-use crate::actors::components::player::keyboard_movement::KeyboardMovement;
-use crate::actors::components::player::player_input::{
-    InputTrigger, MouseButtonKind, PlayerAbilityCooldowns, PlayerInput, TargetingMode,
+use super::components::{
+    Caster, Collider, DynamicBody, Health, InputTrigger, JumpWalkAnimation, KeyboardMovement,
+    MouseButtonKind, OnCollisionDamage, OnCollisionParticles, PlayerAbilityCooldowns, PlayerInput,
+    Projectile, Shadow, Shape as ColliderShape, Size, Sprite, SpriteColor, SpriteShape,
+    TargetingMode,
 };
-use crate::actors::effects::{OnCollisionDamage, OnCollisionParticles};
-use crate::actors::{SpawnSource, TargetInfo};
 use crate::palette;
 use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
 use crate::wave::WavePhase;
@@ -29,8 +21,12 @@ pub const FIREBALL_GAP: f32 = 60.0;
 #[derive(Component)]
 pub struct Player;
 
-pub fn register_systems(app: &mut App) {
-    app.add_systems(OnEnter(WavePhase::Combat), spawn_player);
+pub struct PlayerPlugin;
+
+impl Plugin for PlayerPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(OnEnter(WavePhase::Combat), spawn_player);
+    }
 }
 
 fn player_sprite_color() -> SpriteColor {
@@ -82,13 +78,10 @@ pub fn spawn_player(
         PlayerAbilityCooldowns::default(),
         DespawnOnExit(WavePhase::Combat),
     )).id();
-    commands.entity(entity).insert((
-        SpawnSource::from_caster(entity, Vec2::ZERO),
-        PlayerInput {
-            trigger: InputTrigger::MouseHold(MouseButtonKind::Left),
-            targeting: TargetingMode::Cursor,
-        },
-    ));
+    commands.entity(entity).insert(PlayerInput {
+        trigger: InputTrigger::MouseHold(MouseButtonKind::Left),
+        targeting: TargetingMode::Cursor,
+    });
 
     commands.entity(entity).with_children(|p| {
         p.spawn(Shadow { opacity: 0.45 });
@@ -128,13 +121,13 @@ pub fn fire_fireball(
     caster: Entity,
     caster_pos: Vec2,
     caster_faction: Faction,
-    target: TargetInfo,
+    direction: Vec2,
     caster_stats: Option<&ComputedStats>,
 ) {
     let count = projectile_count(caster_stats, 1).max(1);
     let speed = calc_projectile_speed(caster_stats, FIREBALL_BASE_SPEED);
     let damage = calc_physical_damage(caster_stats, FIREBALL_BASE_DAMAGE, 1.0);
-    let base_dir = target.direction.unwrap_or(Vec2::X).normalize_or_zero();
+    let base_dir = direction.normalize_or_zero();
     let perpendicular = Vec2::new(-base_dir.y, base_dir.x);
 
     for i in 0..count {
@@ -147,7 +140,7 @@ pub fn fire_fireball(
             Transform::from_translation(ground),
             Visibility::default(),
             caster_faction,
-            SpawnSource::with_target(caster, caster_pos, target),
+            Caster(caster),
             Projectile,
             Size { value: FIREBALL_SIZE },
             Collider { shape: ColliderShape::Circle, sensor: true },

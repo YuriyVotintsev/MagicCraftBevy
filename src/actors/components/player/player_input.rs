@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
-use crate::actors::player::{fire_fireball, FIREBALL_COOLDOWN};
-use crate::actors::TargetInfo;
+use super::super::super::player::{fire_fireball, FIREBALL_COOLDOWN};
 use crate::Faction;
 use crate::schedule::GameSet;
 use crate::stats::ComputedStats;
@@ -71,7 +70,7 @@ fn player_input_system(
         if !triggered { continue }
         if cooldowns.current > 0.0 { continue }
 
-        let target = match player_input.targeting {
+        let direction = match player_input.targeting {
             TargetingMode::Cursor => {
                 let Ok(window) = windows.single() else { continue };
                 let Ok((camera, camera_transform)) = camera_query.single() else { continue };
@@ -81,12 +80,12 @@ fn player_input_system(
                 let world_pos = ray.get_point(distance);
                 let direction = crate::coord::to_2d(world_pos - player_transform.translation).normalize_or_zero();
                 if direction == Vec2::ZERO { continue }
-                TargetInfo::from_direction(direction)
+                direction
             }
         };
 
         let caster_pos = crate::coord::to_2d(player_transform.translation);
-        fire_fireball(&mut commands, player_entity, caster_pos, Faction::Player, target, stats);
+        fire_fireball(&mut commands, player_entity, caster_pos, Faction::Player, direction, stats);
         cooldowns.current = FIREBALL_COOLDOWN;
     }
 }

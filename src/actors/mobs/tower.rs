@@ -4,27 +4,18 @@ use rand::Rng;
 use serde::Deserialize;
 
 use crate::GameState;
-use crate::actors::combat::{Health, PendingDamage};
-use crate::actors::components::combat::find_nearest_enemy::FindNearestEnemy;
-use crate::actors::components::visual::growing::Growing;
-use crate::actors::components::lifetime::Lifetime;
-use crate::actors::components::physics::collider::{Collider, Shape as ColliderShape};
-use crate::actors::components::visual::fade_out::FadeOut;
-use crate::actors::components::visual::shadow::Shadow;
-use crate::actors::components::visual::shoot_squish::ShootSquish;
-use crate::actors::components::combat::shot_fired::ShotFired;
-use crate::actors::components::physics::size::Size;
-use crate::actors::components::visual::sprite::{CircleSprite, Sprite, SpriteColor, SpriteShape};
-use crate::actors::components::physics::static_body::StaticBody;
-use crate::actors::effects::OnDeathParticles;
-use crate::actors::{SpawnSource, TargetInfo};
+use super::super::components::{
+    Caster, CircleSprite, Collider, FadeOut, FindNearestEnemy, Growing, Health, Lifetime,
+    OnDeathParticles, PendingDamage, Shadow, Shape as ColliderShape, ShootSquish, ShotFired, Size,
+    Sprite, SpriteColor, SpriteShape, StaticBody, Target,
+};
 use crate::faction::Faction;
 use crate::palette;
 use crate::particles;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
 
-use super::{compute_stats, current_max_life, enemy_sprite_color};
+use super::helpers::{compute_stats, current_max_life, enemy_sprite_color};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct TowerStats {
@@ -161,7 +152,7 @@ pub fn spawn_tower(
     )).id();
 
     commands.entity(id).insert((
-        SpawnSource::from_caster(id, pos),
+        Caster(id),
         FindNearestEnemy { size: 4000.0, center: id },
         OnDeathParticles { config: "enemy_death_large" },
     ));
@@ -182,29 +173,23 @@ fn tower_shooter_system(
     time: Res<Time>,
     transforms: Query<&Transform, Without<TowerShooter>>,
     stats_query: Query<&ComputedStats>,
-    mut query: Query<(Entity, &Transform, &mut TowerShooter, &SpawnSource, &Faction), Without<crate::wave::summoning::RiseFromGround>>,
+    mut query: Query<(Entity, &Transform, &mut TowerShooter, Option<&Target>, &Faction), Without<crate::wave::RiseFromGround>>,
 ) {
-    for (caster, transform, mut shooter, source, faction) in &mut query {
+    for (caster, transform, mut shooter, target, faction) in &mut query {
         shooter.elapsed += time.delta_secs();
         if shooter.elapsed < shooter.cooldown { continue }
 
-        let Some(target_entity) = source.target.entity else { continue };
-        let Ok(target_transform) = transforms.get(target_entity) else { continue };
+        let Some(target) = target else { continue };
+        let Ok(target_transform) = transforms.get(target.0) else { continue };
 
         shooter.elapsed = 0.0;
 
         let caster_pos = crate::coord::to_2d(transform.translation);
         let target_pos = crate::coord::to_2d(target_transform.translation);
-        let direction = (target_pos - caster_pos).normalize_or_zero();
-        let target = TargetInfo {
-            entity: Some(target_entity),
-            position: Some(target_pos),
-            direction: Some(direction),
-        };
         let caster_stats = stats_query.get(caster).ok();
 
         commands.entity(caster).insert(ShotFired);
-        fire_tower_shot(&mut commands, caster, caster_pos, *faction, target, &shooter, caster_stats);
+        fire_tower_shot(&mut commands, caster, caster_pos, *faction, target_pos, &shooter, caster_stats);
     }
 }
 
@@ -213,12 +198,11 @@ fn fire_tower_shot(
     caster: Entity,
     caster_pos: Vec2,
     caster_faction: Faction,
-    target: TargetInfo,
+    mut target_pos: Vec2,
     shooter: &TowerShooter,
     caster_stats: Option<&ComputedStats>,
 ) {
     let damage = caster_stats.map(|s| s.get(Stat::PhysicalDamageFlat)).unwrap_or(0.0);
-    let mut target_pos = target.position.unwrap_or(caster_pos);
     if shooter.spread > 0.0 {
         let mut rng = rand::rng();
         let angle = rng.random_range(0.0..std::f32::consts::TAU);

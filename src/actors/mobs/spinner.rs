@@ -4,16 +4,11 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::actors::combat::{Health, PendingDamage};
-use crate::actors::components::combat::find_nearest_enemy::FindNearestEnemy;
-use crate::actors::components::physics::collider::{Collider, GameLayer, Shape as ColliderShape};
-use crate::actors::components::physics::dynamic_body::DynamicBody;
-use crate::actors::components::visual::jump_walk_animation::SelfMoving;
-use crate::actors::components::visual::shadow::Shadow;
-use crate::actors::components::physics::size::Size;
-use crate::actors::components::visual::sprite::{CircleSprite, Sprite, SpriteShape};
-use crate::actors::effects::OnDeathParticles;
-use crate::actors::SpawnSource;
+use super::super::components::{
+    Caster, CircleSprite, Collider, DynamicBody, FindNearestEnemy, GameLayer, Health,
+    OnDeathParticles, PendingDamage, SelfMoving, Shadow, Shape as ColliderShape, Size, Sprite,
+    SpriteShape, Target,
+};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::faction::Faction;
 use crate::palette;
@@ -21,7 +16,7 @@ use crate::particles;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
 
-use super::{compute_stats, current_max_life, enemy_sprite_color};
+use super::helpers::{compute_stats, current_max_life, enemy_sprite_color};
 
 const SPIKE_COUNT: usize = 6;
 const SPIKE_OFFSET: f32 = 0.55;
@@ -119,7 +114,7 @@ pub fn spawn_spinner(
         DynamicBody { mass: s.mass },
         Health { current: hp },
         FindNearestEnemy { size: 4000.0, center: id },
-        SpawnSource::from_caster(id, pos),
+        Caster(id),
         OnDeathParticles { config: "enemy_death_large" },
         Spinner {
             idle_duration: s.idle_duration,
@@ -160,12 +155,12 @@ fn spinner_tick(
             Entity,
             &mut Spinner,
             &Transform,
-            &SpawnSource,
+            Option<&Target>,
             &Faction,
             Option<&Size>,
             Option<&CollisionLayers>,
         ),
-        Without<crate::wave::summoning::RiseFromGround>,
+        Without<crate::wave::RiseFromGround>,
     >,
     stats_query: Query<&ComputedStats>,
     target_transforms: Query<&Transform>,
@@ -173,12 +168,12 @@ fn spinner_tick(
     mut pending: MessageWriter<PendingDamage>,
 ) {
     let dt = time.delta_secs();
-    for (entity, mut spinner, transform, source, faction, size, current_layers) in &mut query {
+    for (entity, mut spinner, transform, target, faction, size, current_layers) in &mut query {
         spinner.elapsed += dt;
 
         match spinner.phase {
             SpinnerPhase::Idle => {
-                if spinner.elapsed >= spinner.idle_duration && source.target.entity.is_some() {
+                if spinner.elapsed >= spinner.idle_duration && target.is_some() {
                     spinner.phase = SpinnerPhase::Windup;
                     spinner.elapsed = 0.0;
                     spinner.damage_cooldown = 0.0;
@@ -218,7 +213,7 @@ fn spinner_tick(
                 }
 
                 if spinner.elapsed >= spinner.windup_duration {
-                    let target_entity = source.target.entity.unwrap_or(entity);
+                    let target_entity = target.map(|t| t.0).unwrap_or(entity);
                     let target_pos = target_transforms
                         .get(target_entity)
                         .map(|t| crate::coord::to_2d(t.translation))

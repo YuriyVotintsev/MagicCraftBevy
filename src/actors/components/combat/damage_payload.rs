@@ -1,8 +1,8 @@
 use bevy::prelude::*;
 
-use crate::actors::SpawnSource;
+use super::Caster;
 use crate::schedule::GameSet;
-use crate::actors::combat::PendingDamage;
+use super::PendingDamage;
 use crate::GameState;
 
 #[derive(Component)]
@@ -23,13 +23,13 @@ pub fn register_systems(app: &mut App) {
 fn process_damage_payloads(
     mut commands: Commands,
     mut pending: MessageWriter<PendingDamage>,
-    query: Query<(Entity, &DamagePayload, &SpawnSource)>,
+    query: Query<(Entity, &DamagePayload, &Caster)>,
 ) {
-    for (entity, payload, source) in &query {
+    for (entity, payload, caster) in &query {
         pending.write(PendingDamage {
             target: payload.target,
             amount: payload.amount,
-            source: source.caster.entity,
+            source: Some(caster.0),
         });
         commands.entity(entity).despawn();
     }

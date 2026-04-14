@@ -4,7 +4,7 @@ mod loading;
 mod main_menu;
 mod pause_menu;
 mod shop_view;
-pub mod stat_line_builder;
+mod stat_line_builder;
 
 use bevy::prelude::*;
 

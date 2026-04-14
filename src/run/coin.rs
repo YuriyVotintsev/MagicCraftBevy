@@ -1,12 +1,10 @@
 use bevy::prelude::*;
 
-use crate::actors::combat::{death_system, DeathEvent};
-use crate::actors::components::visual::shadow::Shadow;
-use crate::actors::components::visual::sprite::CircleSprite;
-use crate::actors::player::Player;
+use crate::actors::{death_system, CircleSprite, DeathEvent, Shadow};
+use crate::actors::Player;
 use crate::balance::GameBalance;
 use crate::palette;
-use crate::run::money::PlayerMoney;
+use super::money::PlayerMoney;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::stats::{ComputedStats, Stat};
 use crate::wave::{WaveEnemy, WavePhase};

@@ -1,15 +1,15 @@
 mod calculators;
 mod computed_stats;
-pub mod display;
+mod display;
 mod dirty_stats;
 mod modifiers;
 mod registry;
-pub(crate) mod systems;
+mod systems;
 
 pub use calculators::StatCalculators;
 pub use computed_stats::ComputedStats;
 pub use dirty_stats::DirtyStats;
-pub use display::{FormatSpan, SignMode, StatDisplayRegistry, ValueTemplate};
+pub use display::{FormatSpan, SignMode, ValueTemplate};
 pub use modifiers::Modifiers;
 pub use registry::Stat;
 
@@ -22,7 +22,7 @@ pub struct StatsPlugin;
 impl Plugin for StatsPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(StatCalculators::build())
-            .insert_resource(StatDisplayRegistry::build())
+            .insert_resource(display::StatDisplayRegistry::build())
             .add_systems(
                 PreUpdate,
                 (systems::mark_dirty_on_modifier_change, systems::recalculate_stats)

@@ -2,22 +2,16 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use crate::actors::combat::Health;
-use crate::actors::components::combat::find_nearest_enemy::FindNearestEnemy;
-use crate::actors::components::physics::collider::{Collider, Shape as ColliderShape};
-use crate::actors::components::physics::dynamic_body::DynamicBody;
-use crate::actors::components::visual::jump_walk_animation::{JumpWalkAnimation, SelfMoving};
-use crate::actors::components::visual::shadow::Shadow;
-use crate::actors::components::physics::size::Size;
-use crate::actors::components::visual::sprite::{Sprite, SpriteShape};
-use crate::actors::effects::OnDeathParticles;
-use crate::actors::components::combat::melee_attacker::MeleeAttacker;
-use crate::actors::SpawnSource;
+use super::super::components::{
+    Caster, Collider, DynamicBody, FindNearestEnemy, Health, JumpWalkAnimation, MeleeAttacker,
+    OnDeathParticles, SelfMoving, Shadow, Shape as ColliderShape, Size, Sprite, SpriteShape,
+    Target,
+};
 use crate::faction::Faction;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
 
-use super::{compute_stats, current_max_life, enemy_sprite_color};
+use super::helpers::{compute_stats, current_max_life, enemy_sprite_color};
 
 const LUNGE_DEFAULT_DURATION: f32 = 0.6;
 
@@ -98,7 +92,7 @@ pub fn spawn_slime_small(
     )).id();
 
     commands.entity(id).insert((
-        SpawnSource::from_caster(id, pos),
+        Caster(id),
         FindNearestEnemy { size: 4000.0, center: id },
         OnDeathParticles { config: "enemy_death" },
     ));
@@ -154,13 +148,13 @@ fn lunge_movement_system(
         &mut LinearVelocity,
         &LungeMovement,
         &mut LungeMovementState,
-        &SpawnSource,
-    ), Without<crate::wave::summoning::RiseFromGround>>,
+        Option<&Target>,
+    ), Without<crate::wave::RiseFromGround>>,
     transforms: Query<&Transform, Without<LungeMovement>>,
 ) {
     let dt = time.delta_secs();
 
-    for (entity, transform, mut velocity, lunge, mut state, source) in &mut query {
+    for (entity, transform, mut velocity, lunge, mut state, target) in &mut query {
         state.elapsed += dt;
 
         match state.phase {
@@ -174,10 +168,11 @@ fn lunge_movement_system(
                 }
 
                 if state.direction == Vec2::ZERO {
-                    let Some(target_entity) = source.target.entity else {
+                    let Some(target) = target else {
                         velocity.0 = Vec3::ZERO;
                         continue;
                     };
+                    let target_entity = target.0;
                     let Ok(target_transform) = transforms.get(target_entity) else {
                         velocity.0 = Vec3::ZERO;
                         continue;

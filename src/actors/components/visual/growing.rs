@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::actors::components::physics::size::SizeScaleLayer;
+use super::super::physics::SizeScaleLayer;
 use crate::composite_scale::ScaleModifiers;
 use crate::schedule::GameSet;
 use crate::GameState;

@@ -2,7 +2,7 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::GameState;
-use crate::actors::mobs::MobsBalance;
+use crate::actors::MobsBalance;
 use crate::balance::GameBalance;
 use crate::particles::{ParticleConfigRaw, ParticleRegistry};
 

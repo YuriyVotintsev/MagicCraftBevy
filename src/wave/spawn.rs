@@ -1,15 +1,16 @@
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::actors::combat::Health;
-use crate::actors::mobs::{MobKind, MobsBalance};
+use crate::actors::Health;
+use crate::actors::{MobKind, MobsBalance};
 use crate::arena::CurrentArenaSize;
 use crate::balance::GameBalance;
 use crate::run::{PlayerDying, RunState};
 use crate::schedule::GameSet;
 use crate::stats::Stat;
-use crate::wave::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
-use crate::wave::{WaveEnemy, WavePhase, WaveState};
+use super::phase::WavePhase;
+use super::state::{WaveEnemy, WaveState};
+use super::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
 use crate::Faction;
 
 const ALL_ENEMY_TYPES: &[MobKind] = &[
@@ -89,7 +90,7 @@ fn update_target_count(
 fn spawn_enemies(
     mut commands: Commands,
     mut wave_state: ResMut<WaveState>,
-    player_query: Query<&Transform, With<crate::actors::player::Player>>,
+    player_query: Query<&Transform, With<crate::actors::Player>>,
     mobs_balance: Res<MobsBalance>,
     balance: Res<GameBalance>,
     run_state: Res<RunState>,
@@ -174,7 +175,7 @@ fn spawn_enemies(
         ));
 
         if is_ghost {
-            use crate::actors::mobs::ghost::{GhostAlpha, GhostTransparency};
+            use crate::actors::{GhostAlpha, GhostTransparency};
             entity_commands.insert((
                 GhostTransparency {
                     visible_distance: mobs_balance.ghost.visible_distance,

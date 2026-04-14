@@ -1,8 +1,7 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::actors::SpawnSource;
-use crate::actors::TargetInfo;
+use super::Target;
 use crate::schedule::GameSet;
 use crate::Faction;
 use crate::GameState;
@@ -27,11 +26,11 @@ pub fn register_systems(app: &mut App) {
 
 fn find_nearest_enemy_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &FindNearestEnemy, &mut SpawnSource, &Faction), Without<FoundTarget>>,
+    query: Query<(Entity, &FindNearestEnemy, &Faction), Without<FoundTarget>>,
     spatial_query: SpatialQuery,
     transforms: Query<&Transform>,
 ) {
-    for (entity, finder, mut source, faction) in &mut query {
+    for (entity, finder, faction) in &query {
         let caster_pos = transforms
             .get(finder.center)
             .map(|t| crate::coord::to_2d(t.translation))
@@ -41,18 +40,17 @@ fn find_nearest_enemy_system(
         let shape = Collider::sphere(finder.size / 2.0);
         let hits = spatial_query.shape_intersections(&shape, crate::coord::ground_pos(caster_pos), Quat::IDENTITY, &filter);
 
-        let target = hits
+        let nearest = hits
             .iter()
             .filter_map(|&e| {
                 let pos = crate::coord::to_2d(transforms.get(e).ok()?.translation);
-                Some((caster_pos.distance_squared(pos), e, pos))
+                Some((caster_pos.distance_squared(pos), e))
             })
-            .min_by(|(dist_a, _, _), (dist_b, _, _)| dist_a.total_cmp(dist_b))
-            .map(|(_, e, pos)| (e, pos));
+            .min_by(|(dist_a, _), (dist_b, _)| dist_a.total_cmp(dist_b))
+            .map(|(_, e)| e);
 
-        if let Some((target_entity, target_pos)) = target {
-            source.target = TargetInfo::from_entity_and_position(target_entity, target_pos);
-            commands.entity(entity).insert(FoundTarget);
+        if let Some(target_entity) = nearest {
+            commands.entity(entity).insert((Target(target_entity), FoundTarget));
         }
     }
 }

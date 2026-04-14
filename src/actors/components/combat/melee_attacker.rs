@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use super::melee_strike::MeleeStrike;
 use super::shot_fired::ShotFired;
-use crate::actors::SpawnSource;
+use super::{Caster, Target};
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
@@ -34,13 +34,14 @@ fn melee_attacker_system(
     time: Res<Time>,
     transforms: Query<&Transform, Without<MeleeAttacker>>,
     stats_query: Query<&ComputedStats>,
-    mut query: Query<(Entity, &Transform, &mut MeleeAttacker, &SpawnSource, &Faction), Without<crate::wave::summoning::RiseFromGround>>,
+    mut query: Query<(Entity, &Transform, &mut MeleeAttacker, Option<&Target>, &Faction), Without<crate::wave::RiseFromGround>>,
 ) {
-    for (caster, transform, mut attacker, source, faction) in &mut query {
+    for (caster, transform, mut attacker, target, faction) in &mut query {
         attacker.elapsed += time.delta_secs();
         if attacker.elapsed < attacker.cooldown { continue }
 
-        let Some(target_entity) = source.target.entity else { continue };
+        let Some(target) = target else { continue };
+        let target_entity = target.0;
         let Ok(target_transform) = transforms.get(target_entity) else { continue };
 
         if transform.translation.distance(target_transform.translation) > attacker.trigger_range {
@@ -49,19 +50,13 @@ fn melee_attacker_system(
 
         attacker.elapsed = 0.0;
 
-        let caster_pos = crate::coord::to_2d(transform.translation);
-        let target_pos = crate::coord::to_2d(target_transform.translation);
-        let direction = (target_pos - caster_pos).normalize_or_zero();
         let damage = stats_query.get(caster).map(|s| s.get(Stat::PhysicalDamageFlat)).unwrap_or(0.0);
 
         commands.entity(caster).insert(ShotFired);
         commands.spawn((
             MeleeStrike { range: MELEE_STRIKE_RANGE, damage },
-            SpawnSource::with_target(caster, caster_pos, crate::actors::TargetInfo {
-                entity: Some(target_entity),
-                position: Some(target_pos),
-                direction: Some(direction),
-            }),
+            Caster(caster),
+            Target(target_entity),
             *faction,
         ));
     }

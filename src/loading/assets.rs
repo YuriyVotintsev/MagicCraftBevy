@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
-use crate::actors::mobs::MobsBalance;
+use crate::actors::MobsBalance;
 use crate::balance::GameBalance;
 use crate::particles::ParticleConfigRaw;
 

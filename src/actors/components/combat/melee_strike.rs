@@ -1,10 +1,10 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use crate::actors::components::physics::size::Size;
-use crate::actors::SpawnSource;
+use super::super::physics::Size;
+use super::Caster;
 use crate::schedule::GameSet;
-use crate::actors::combat::PendingDamage;
+use super::PendingDamage;
 use crate::Faction;
 
 #[derive(Component)]
@@ -23,13 +23,13 @@ pub fn register_systems(app: &mut App) {
 fn melee_strike_system(
     mut commands: Commands,
     mut pending: MessageWriter<PendingDamage>,
-    query: Query<(Entity, &MeleeStrike, &SpawnSource, &Faction)>,
+    query: Query<(Entity, &MeleeStrike, &Caster, &Faction)>,
     transforms: Query<&Transform>,
     sizes: Query<&Size>,
     spatial_query: SpatialQuery,
 ) {
-    for (entity, strike, source, faction) in &query {
-        let Some(caster_entity) = source.caster.entity else { continue };
+    for (entity, strike, caster, faction) in &query {
+        let caster_entity = caster.0;
         let Ok(caster_transform) = transforms.get(caster_entity) else {
             commands.entity(entity).despawn();
             continue;

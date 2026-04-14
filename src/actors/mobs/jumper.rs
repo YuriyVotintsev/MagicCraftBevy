@@ -3,24 +3,17 @@ use bevy::prelude::*;
 use rand::Rng;
 use serde::Deserialize;
 
-use crate::actors::combat::Health;
-use crate::actors::components::combat::find_nearest_enemy::FindNearestEnemy;
-use crate::actors::components::lifetime::Lifetime;
-use crate::actors::components::combat::projectile::Projectile;
-use crate::actors::components::physics::collider::{Collider, Shape as ColliderShape};
-use crate::actors::components::physics::dynamic_body::DynamicBody;
-use crate::actors::components::visual::jump_walk_animation::{JumpWalkAnimation, SelfMoving};
-use crate::actors::components::visual::shadow::Shadow;
-use crate::actors::components::physics::size::Size;
-use crate::actors::components::visual::sprite::{Sprite, SpriteShape};
-use crate::actors::effects::{OnCollisionDamage, OnCollisionParticles};
-use crate::actors::{SpawnSource, TargetInfo};
+use super::super::components::{
+    Caster, Collider, DynamicBody, FindNearestEnemy, Health, JumpWalkAnimation, Lifetime,
+    OnCollisionDamage, OnCollisionParticles, OnDeathParticles, Projectile, SelfMoving, Shadow,
+    Shape as ColliderShape, Size, Sprite, SpriteShape, Target,
+};
 use crate::arena::CurrentArenaSize;
 use crate::faction::Faction;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat, StatCalculators};
 
-use super::{compute_stats, current_max_life, enemy_ability_sprite_color, enemy_sprite_color};
+use super::helpers::{compute_stats, current_max_life, enemy_ability_sprite_color, enemy_sprite_color};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct JumperStats {
@@ -130,9 +123,9 @@ pub fn spawn_jumper(
     )).id();
 
     commands.entity(id).insert((
-        SpawnSource::from_caster(id, pos),
+        Caster(id),
         FindNearestEnemy { size: 4000.0, center: id },
-        crate::actors::effects::OnDeathParticles { config: "enemy_death_large" },
+        OnDeathParticles { config: "enemy_death_large" },
     ));
 
     commands.entity(id).with_children(|p| {
@@ -167,14 +160,14 @@ fn jumper_ai_system(
     time: Res<Time>,
     stats_q: Query<&ComputedStats>,
     transforms: Query<&Transform>,
-    mut query: Query<(Entity, &JumperAi, &mut JumperAiState, &SpawnSource, &Faction), Without<crate::wave::summoning::RiseFromGround>>,
+    mut query: Query<(Entity, &JumperAi, &mut JumperAiState, Option<&Target>, &Faction), Without<crate::wave::RiseFromGround>>,
 ) {
     let dt = time.delta_secs();
-    for (entity, ai, mut state, source, faction) in &mut query {
+    for (entity, ai, mut state, target, faction) in &mut query {
         state.elapsed += dt;
         match state.phase {
             JumperPhase::Idle => {
-                if state.elapsed >= ai.idle_duration && source.target.entity.is_some() {
+                if state.elapsed >= ai.idle_duration && target.is_some() {
                     state.phase = JumperPhase::Jump;
                     state.elapsed = 0.0;
                     state.ability_fired = false;
@@ -196,7 +189,7 @@ fn jumper_ai_system(
                     state.ability_fired = true;
                     let caster_pos = transforms.get(entity).map(|t| crate::coord::to_2d(t.translation)).unwrap_or(Vec2::ZERO);
                     let caster_stats = stats_q.get(entity).ok();
-                    fire_jumper_shot(&mut commands, entity, caster_pos, *faction, source.target, ai, caster_stats);
+                    fire_jumper_shot(&mut commands, entity, caster_pos, *faction, ai, caster_stats);
                 }
                 if state.elapsed >= ai.land_duration {
                     state.phase = JumperPhase::Idle;
@@ -217,13 +210,12 @@ fn fire_jumper_shot(
     caster: Entity,
     caster_pos: Vec2,
     caster_faction: Faction,
-    target: TargetInfo,
     ai: &JumperAi,
     caster_stats: Option<&ComputedStats>,
 ) {
     let damage = caster_stats.map(|s| s.get(Stat::PhysicalDamageFlat)).unwrap_or(0.0);
     let count = ai.projectile_count as usize;
-    let base_dir = target.direction.unwrap_or(Vec2::X).normalize_or_zero();
+    let base_dir = Vec2::X;
     let spread_rad = ai.spread_degrees.to_radians();
     let mut rng = rand::rng();
 
@@ -238,7 +230,7 @@ fn fire_jumper_shot(
             Transform::from_translation(ground),
             Visibility::default(),
             caster_faction,
-            SpawnSource::with_target(caster, caster_pos, target),
+            Caster(caster),
             Projectile,
             Size { value: ai.projectile_size },
             Collider { shape: ColliderShape::Circle, sensor: true },
