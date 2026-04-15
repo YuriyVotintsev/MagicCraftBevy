@@ -6,6 +6,7 @@ use crate::actors::{
 };
 use crate::actors::Player;
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
+use crate::game_state::GameState;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::wave::WavePhase;
 
@@ -153,7 +154,7 @@ fn player_death_sequence(
     anim_state_query: Query<&JumpWalkAnimationState>,
     children_query: Query<&Children>,
     shrink_query: Query<(), With<ShrinkToZero>>,
-    mut next_phase: ResMut<NextState<WavePhase>>,
+    mut next_game_state: ResMut<NextState<GameState>>,
 ) {
     let dt = time.delta_secs();
 
@@ -169,7 +170,7 @@ fn player_death_sequence(
             modifiers.set(layer.0, Vec3::splat(1.0 - t));
         }
         if *elapsed >= particle_lifetime && shrink_query.is_empty() {
-            next_phase.set(WavePhase::Shop);
+            next_game_state.set(GameState::GameOver);
         }
         return;
     }
@@ -180,7 +181,7 @@ fn player_death_sequence(
     *elapsed += dt;
 
     let Ok((_player_entity, transform, player_children, _)) = player_query.single_mut() else {
-        next_phase.set(WavePhase::Shop);
+        next_game_state.set(GameState::GameOver);
         return;
     };
 

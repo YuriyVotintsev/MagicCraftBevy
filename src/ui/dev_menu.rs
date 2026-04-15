@@ -7,7 +7,7 @@ use crate::actors::Health;
 use crate::run::PlayerMoney;
 use crate::actors::Player;
 use crate::stats::{DirtyStats, Modifiers, Stat};
-use crate::wave::CombatPhase;
+use crate::wave::{CombatPhase, WavePhase};
 
 const SLIDER_MIN: f32 = 1.0;
 const SLIDER_MAX: f32 = 89.0;
@@ -29,6 +29,9 @@ pub(super) struct CheatHealthButton;
 
 #[derive(Component)]
 pub(super) struct CheatDamageButton;
+
+#[derive(Component)]
+pub(super) struct CheatWinWaveButton;
 
 #[derive(Component)]
 pub(super) struct EnemyToggleButton(pub usize);
@@ -226,6 +229,7 @@ pub(super) fn spawn_dev_menu(
     let money_btn = commands.spawn(cheat_button("Money +1000", Color::srgb(0.9, 0.85, 0.3), CheatMoneyButton)).id();
     let health_btn = commands.spawn(cheat_button("Health +100", Color::srgb(0.3, 0.9, 0.4), CheatHealthButton)).id();
     let damage_btn = commands.spawn(cheat_button("Phys Damage +100", Color::srgb(0.9, 0.4, 0.3), CheatDamageButton)).id();
+    let win_wave_btn = commands.spawn(cheat_button("Win Wave", Color::srgb(0.5, 0.85, 0.95), CheatWinWaveButton)).id();
 
     let panel = commands.spawn((
         Node {
@@ -239,7 +243,7 @@ pub(super) fn spawn_dev_menu(
         },
         BackgroundColor(Color::srgba(0.1, 0.1, 0.15, 0.95)),
     )).add_children(&[
-        title, angle_row, slider, money_btn, health_btn, damage_btn, enemy_container,
+        title, angle_row, slider, money_btn, health_btn, damage_btn, win_wave_btn, enemy_container,
     ]).id();
 
     commands.spawn((
@@ -294,6 +298,21 @@ pub(super) fn cheat_damage(
                 modifiers.add(Stat::PhysicalDamageFlat, 100.0);
                 dirty.mark(Stat::PhysicalDamageFlat);
             }
+        }
+    }
+}
+
+pub(super) fn cheat_win_wave(
+    query: Query<&Interaction, (Changed<Interaction>, With<CheatWinWaveButton>)>,
+    mut next_wave: ResMut<NextState<WavePhase>>,
+    mut next_combat: ResMut<NextState<CombatPhase>>,
+    mut virtual_time: ResMut<Time<Virtual>>,
+) {
+    for interaction in &query {
+        if *interaction == Interaction::Pressed {
+            virtual_time.unpause();
+            next_combat.set(CombatPhase::Running);
+            next_wave.set(WavePhase::ShopDelay);
         }
     }
 }

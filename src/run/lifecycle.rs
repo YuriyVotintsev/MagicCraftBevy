@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
-use crate::actors::Health;
-use crate::actors::Player;
 use crate::wave::WavePhase;
 
 use super::death::PlayerDying;
+
+pub const WAVE_COMBAT_DURATION: f32 = 30.0;
 
 #[derive(Resource, Default)]
 pub struct RunState {
@@ -19,7 +19,7 @@ pub fn register(app: &mut App) {
             Update,
             (
                 tick_run,
-                drain_life.run_if(not(resource_exists::<PlayerDying>)),
+                check_combat_timeout.run_if(not(resource_exists::<PlayerDying>)),
             )
                 .run_if(in_state(WavePhase::Combat)),
         );
@@ -35,11 +35,11 @@ fn tick_run(time: Res<Time>, mut run_state: ResMut<RunState>) {
     run_state.elapsed += time.delta_secs();
 }
 
-fn drain_life(
-    time: Res<Time>,
-    mut player_query: Query<&mut Health, With<Player>>,
+fn check_combat_timeout(
+    run_state: Res<RunState>,
+    mut next_phase: ResMut<NextState<WavePhase>>,
 ) {
-    for mut health in &mut player_query {
-        health.current -= time.delta_secs();
+    if run_state.elapsed >= WAVE_COMBAT_DURATION {
+        next_phase.set(WavePhase::ShopDelay);
     }
 }
