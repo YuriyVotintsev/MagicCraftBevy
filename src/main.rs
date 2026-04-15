@@ -11,6 +11,7 @@ mod coord;
 pub mod palette;
 mod particles;
 mod run;
+mod rune;
 mod schedule;
 mod stats;
 mod ui;
@@ -43,6 +44,7 @@ use stats::StatsPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
 use run::RunPlugin;
+use rune::RunePlugin;
 use wave::{CombatPhase, WavePhase, WavePlugin};
 
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
@@ -195,6 +197,7 @@ fn main() {
             StatsPlugin,
             ActorsPlugin,
             RunPlugin,
+            RunePlugin,
             HealthMaterialPlugin,
             HitFlashPlugin,
             TweeningPlugin,

@@ -13,6 +13,7 @@ use bevy::window::{PrimaryWindow, WindowResized};
 
 use crate::arena::WINDOW_HEIGHT;
 use crate::game_state::GameState;
+use crate::rune::fill_shop_offer;
 use crate::wave::{CombatPhase, WavePhase};
 
 pub struct UiPlugin;
@@ -38,13 +39,16 @@ impl Plugin for UiPlugin {
             )
             .add_systems(
                 OnEnter(WavePhase::Shop),
-                shop_view::spawn_shop_screen,
+                (fill_shop_offer, shop_view::spawn_shop_screen).chain(),
             )
             .add_systems(
                 Update,
                 (
                     shop_view::start_run_system,
                     shop_view::update_coins_text,
+                    shop_view::start_drag,
+                    shop_view::follow_cursor,
+                    shop_view::finish_drag,
                 )
                     .run_if(in_state(WavePhase::Shop)),
             )
