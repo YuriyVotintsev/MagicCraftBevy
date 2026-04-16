@@ -159,7 +159,6 @@ fn main() {
                 GameSet::Input,
                 GameSet::MobAI,
                 GameSet::Spawning,
-                GameSet::AbilityActivation,
                 GameSet::AbilityExecution,
                 GameSet::AbilityLifecycle,
                 GameSet::Damage,
@@ -177,18 +176,6 @@ fn main() {
                 .run_if(in_state(WavePhase::Shop)),
         )
         .configure_sets(PostUpdate, PostGameSet.run_if(in_state(CombatPhase::Running)))
-        .add_systems(
-            Update,
-            ApplyDeferred
-                .after(GameSet::Spawning)
-                .before(GameSet::AbilityActivation),
-        )
-        .add_systems(
-            Update,
-            ApplyDeferred
-                .after(GameSet::AbilityExecution)
-                .before(GameSet::AbilityLifecycle),
-        )
         .add_plugins((
             PhysicsPlugins::default().with_length_unit(100.0),
             PhysicsDebugPlugin::default(),

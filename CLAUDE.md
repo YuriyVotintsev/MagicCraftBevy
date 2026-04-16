@@ -55,7 +55,7 @@ Systems are gated with `run_if(in_state(...))`. `DespawnOnExit(WavePhase::Combat
 ```rust
 GameSet {
     Input, MobAI, Spawning,
-    AbilityActivation, AbilityExecution, AbilityLifecycle,
+    AbilityExecution, AbilityLifecycle,
     Damage, DamageApply,
     WaveManagement, Cleanup,
 }
@@ -65,7 +65,7 @@ PostGameSet                           // PostUpdate, only during CombatPhase::Ru
 
 - Prefer `in_set(GameSet::X)` to `before()` / `after()`. Add a new set rather than sprinkling explicit ordering.
 - The combat chain runs only in `CombatPhase::Running`; `ShopSet` runs only in `WavePhase::Shop`.
-- Two explicit `ApplyDeferred` barriers live between `Spawning` → `AbilityActivation` and `AbilityExecution` → `AbilityLifecycle` (see `main.rs`).
+- No explicit `ApplyDeferred` barriers: entities spawned in one set and read in a later set may be 1 frame late. Consumers either handle `None`/`Added<T>` gracefully or tolerate the delay.
 
 ### Data-Driven Assets (`assets/`)
 

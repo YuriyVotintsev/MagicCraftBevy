@@ -5,7 +5,6 @@ pub enum GameSet {
     Input,
     MobAI,
     Spawning,
-    AbilityActivation,
     AbilityExecution,
     AbilityLifecycle,
     Damage,
