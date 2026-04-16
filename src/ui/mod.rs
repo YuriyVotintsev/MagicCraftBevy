@@ -21,12 +21,19 @@ pub fn panel_radius() -> BorderRadius {
     BorderRadius::all(Val::Px(PANEL_RADIUS))
 }
 
+#[derive(Resource, Default, Debug, Clone, Copy)]
+pub struct Viewport {
+    pub width: f32,
+    pub height: f32,
+}
+
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, init_ui_scale)
-            .add_systems(Update, update_ui_scale_on_resize)
+        app.init_resource::<Viewport>()
+            .add_systems(Startup, init_layout)
+            .add_systems(Update, update_layout_on_resize)
             .add_systems(OnEnter(GameState::Loading), loading::spawn_loading_screen)
             .add_systems(OnEnter(GameState::MainMenu), main_menu::spawn_main_menu)
             .add_systems(
@@ -55,6 +62,7 @@ impl Plugin for UiPlugin {
                 (
                     shop_view::start_run_system,
                     shop_view::update_coins_text,
+                    shop_view::reposition_shop_ui,
                     (
                         shop_view::start_drag,
                         shop_view::finish_drag,
@@ -107,18 +115,32 @@ impl Plugin for UiPlugin {
     }
 }
 
-fn init_ui_scale(
+fn init_layout(
     mut ui_scale: ResMut<UiScale>,
+    mut viewport: ResMut<Viewport>,
     window: Single<&Window, With<PrimaryWindow>>,
 ) {
-    ui_scale.0 = window.height() / WINDOW_HEIGHT;
+    apply_layout(window.width(), window.height(), &mut ui_scale, &mut viewport);
 }
 
-fn update_ui_scale_on_resize(
+fn update_layout_on_resize(
     mut events: MessageReader<WindowResized>,
     mut ui_scale: ResMut<UiScale>,
+    mut viewport: ResMut<Viewport>,
 ) {
     if let Some(last) = events.read().last() {
-        ui_scale.0 = last.height / WINDOW_HEIGHT;
+        apply_layout(last.width, last.height, &mut ui_scale, &mut viewport);
     }
+}
+
+fn apply_layout(
+    win_w: f32,
+    win_h: f32,
+    ui_scale: &mut UiScale,
+    viewport: &mut Viewport,
+) {
+    let scale = if win_h > 0.0 { win_h / WINDOW_HEIGHT } else { 1.0 };
+    ui_scale.0 = scale;
+    viewport.height = WINDOW_HEIGHT;
+    viewport.width = if scale > 0.0 { win_w / scale } else { win_w };
 }
