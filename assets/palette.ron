@@ -77,6 +77,10 @@
         "ui_rune_border":     "shadow",
         "ui_joker_border":    "shadow",
 
+        // UI rune tier fills
+        "ui_rune_common":     "teal",
+        "ui_rune_rare":       "purple",
+
         // UI HUD
         "ui_lifebar":         "lime",
         "ui_lifebar_bg":      "void",

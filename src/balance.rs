@@ -3,11 +3,14 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
+use crate::rune::Tier;
+
 #[derive(Asset, Resource, TypePath, Clone, Deserialize)]
 pub struct GameBalance {
     pub wave: WaveBalance,
     pub arena: ArenaBalance,
     pub run: RunBalance,
+    pub runes: RuneBalance,
 }
 
 #[derive(Clone, Deserialize)]
@@ -21,8 +24,6 @@ pub struct WaveBalance {
 
 #[derive(Clone, Deserialize)]
 pub struct ArenaBalance {
-    pub start_width: f32,
-    pub start_height: f32,
     pub width: f32,
     pub height: f32,
 }
@@ -30,7 +31,30 @@ pub struct ArenaBalance {
 #[derive(Clone, Deserialize)]
 pub struct RunBalance {
     pub coins_per_kill: u32,
-    pub hp_scale_per_sec: f32,
-    pub dmg_scale_per_sec: f32,
     pub coin_attraction_duration: f32,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct RuneBalance {
+    pub joker_probability: f32,
+    pub tier_weights: TierWeights,
+}
+
+#[derive(Clone, Deserialize)]
+pub struct TierWeights {
+    pub common: u32,
+    pub rare: u32,
+}
+
+impl TierWeights {
+    pub fn for_tier(&self, tier: Tier) -> u32 {
+        match tier {
+            Tier::Common => self.common,
+            Tier::Rare => self.rare,
+        }
+    }
+
+    pub fn total(&self) -> u32 {
+        self.common + self.rare
+    }
 }

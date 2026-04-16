@@ -8,6 +8,7 @@ use super::components::{
     TargetingMode,
 };
 use crate::palette;
+use crate::rune::RuneGrid;
 use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
 use crate::wave::WavePhase;
 use crate::Faction;
@@ -44,6 +45,7 @@ fn player_ability_sprite_color() -> SpriteColor {
 pub fn spawn_player(
     mut commands: Commands,
     calculators: Res<StatCalculators>,
+    grid: Res<RuneGrid>,
 ) {
     let base_stats: &[(Stat, f32)] = &[
         (Stat::MaxLifeFlat, 20.0),
@@ -56,6 +58,12 @@ pub fn spawn_player(
     let mut modifiers = Modifiers::new();
     for &(stat, value) in base_stats {
         modifiers.add(stat, value);
+    }
+    for rune in grid.cells.values() {
+        if let Some(kind) = rune.kind {
+            let (stat, value) = kind.def().base_effect;
+            modifiers.add(stat, value);
+        }
     }
     let mut dirty = DirtyStats::default();
     let mut computed = ComputedStats::default();

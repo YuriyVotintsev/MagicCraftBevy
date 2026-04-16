@@ -62,6 +62,7 @@ impl Plugin for UiPlugin {
                 (
                     shop_view::start_run_system,
                     shop_view::update_coins_text,
+                    shop_view::update_shop_price_labels,
                     shop_view::reposition_shop_ui,
                     (
                         shop_view::start_drag,

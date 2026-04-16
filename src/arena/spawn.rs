@@ -22,16 +22,16 @@ fn spawn_arena(
     mut arena_size: ResMut<CurrentArenaSize>,
 ) {
     let arena = &balance.arena;
-    arena_size.width = arena.start_width;
-    arena_size.height = arena.start_height;
+    arena_size.width = arena.width;
+    arena_size.height = arena.height;
 
-    spawn_walls(&mut commands, arena.start_width, arena.start_height);
+    spawn_walls(&mut commands, arena.width, arena.height);
     spawn_floor(
         &mut commands,
         &mut meshes,
         &mut materials,
-        arena.start_width,
-        arena.start_height,
+        arena.width,
+        arena.height,
         camera_angle.degrees,
     );
 }

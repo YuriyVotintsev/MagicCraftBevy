@@ -67,14 +67,13 @@ pub fn spawn_mob(
     pos: Vec2,
     mobs: &MobsBalance,
     calculators: &StatCalculators,
-    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     match kind {
-        MobKind::Ghost => ghost::spawn_ghost(commands, pos, &mobs.ghost, calculators, extra_modifiers),
-        MobKind::Tower => tower::spawn_tower(commands, pos, &mobs.tower, calculators, extra_modifiers),
-        MobKind::SlimeSmall => slime::spawn_slime_small(commands, pos, &mobs.slime_small, calculators, extra_modifiers),
-        MobKind::Spinner => spinner::spawn_spinner(commands, pos, &mobs.spinner, calculators, extra_modifiers),
-        MobKind::Jumper => jumper::spawn_jumper(commands, pos, &mobs.jumper, calculators, extra_modifiers),
+        MobKind::Ghost => ghost::spawn_ghost(commands, pos, &mobs.ghost, calculators),
+        MobKind::Tower => tower::spawn_tower(commands, pos, &mobs.tower, calculators),
+        MobKind::SlimeSmall => slime::spawn_slime_small(commands, pos, &mobs.slime_small, calculators),
+        MobKind::Spinner => spinner::spawn_spinner(commands, pos, &mobs.spinner, calculators),
+        MobKind::Jumper => jumper::spawn_jumper(commands, pos, &mobs.jumper, calculators),
     }
 }
 
@@ -93,13 +92,9 @@ pub(super) fn enemy_ability_sprite_color() -> SpriteColor {
 pub(super) fn compute_stats(
     calculators: &StatCalculators,
     base_stats: &[(Stat, f32)],
-    extra_modifiers: &[(Stat, f32)],
 ) -> (Modifiers, DirtyStats, ComputedStats) {
     let mut modifiers = Modifiers::new();
     for &(stat, value) in base_stats {
-        modifiers.add(stat, value);
-    }
-    for &(stat, value) in extra_modifiers {
         modifiers.add(stat, value);
     }
     let mut dirty = DirtyStats::default();

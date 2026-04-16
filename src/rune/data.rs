@@ -1,23 +1,26 @@
 use bevy::prelude::*;
 use std::collections::{HashMap, HashSet};
 
+use super::content::{RuneKind, Tier};
 use super::hex::HexCoord;
 
 pub const GRID_RADIUS: i32 = 3;
 pub const SHOP_SLOTS: usize = 4;
 pub const JOKER_SLOTS: usize = 6;
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum StubKind {
-    Rune,
-    Joker,
-}
-
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub struct RuneStub {
+pub struct Rune {
     pub id: u32,
     pub color: Color,
-    pub kind: StubKind,
+    pub tier: Tier,
+    pub kind: Option<RuneKind>,
+    pub cost: u32,
+}
+
+impl Rune {
+    pub fn is_joker(&self) -> bool {
+        self.kind.is_none()
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -38,25 +41,20 @@ pub struct GridCellView {
 }
 
 #[derive(Component, Copy, Clone, Debug)]
-pub struct ShopSlotView {
-    pub index: usize,
-}
-
-#[derive(Component, Copy, Clone, Debug)]
 pub struct JokerSlotView {
     pub index: usize,
 }
 
 #[derive(Component, Copy, Clone, Debug)]
 pub struct Dragging {
-    pub stub: RuneStub,
+    pub rune: Rune,
     pub from: RuneSource,
     pub grab_offset: Vec2,
 }
 
 #[derive(Resource)]
 pub struct ShopOffer {
-    pub stubs: [Option<RuneStub>; SHOP_SLOTS],
+    pub stubs: [Option<Rune>; SHOP_SLOTS],
     pub next_id: u32,
 }
 
@@ -71,7 +69,7 @@ impl Default for ShopOffer {
 
 #[derive(Resource)]
 pub struct RuneGrid {
-    pub cells: HashMap<HexCoord, RuneStub>,
+    pub cells: HashMap<HexCoord, Rune>,
     pub unlocked: HashSet<HexCoord>,
 }
 
@@ -101,15 +99,15 @@ impl Default for RuneGrid {
 
 #[derive(Resource, Default)]
 pub struct JokerSlots {
-    pub stubs: [Option<RuneStub>; JOKER_SLOTS],
+    pub stubs: [Option<Rune>; JOKER_SLOTS],
 }
 
-pub fn can_place(stub_kind: StubKind, target: RuneSource, grid: &RuneGrid) -> bool {
-    match (stub_kind, target) {
-        (StubKind::Rune, RuneSource::Grid(c)) => grid.is_unlocked(c),
-        (StubKind::Rune, RuneSource::Shop(_)) => true,
-        (StubKind::Joker, RuneSource::Joker(_)) => true,
-        (StubKind::Joker, RuneSource::Shop(_)) => true,
+pub fn can_place(is_joker: bool, target: RuneSource, grid: &RuneGrid) -> bool {
+    match (is_joker, target) {
+        (false, RuneSource::Grid(c)) => grid.is_unlocked(c),
+        (false, RuneSource::Shop(_)) => true,
+        (true, RuneSource::Joker(_)) => true,
+        (true, RuneSource::Shop(_)) => true,
         _ => false,
     }
 }

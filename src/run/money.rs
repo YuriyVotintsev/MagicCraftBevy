@@ -16,7 +16,6 @@ impl PlayerMoney {
         self.0 += amount;
     }
 
-    #[expect(dead_code, reason = "shop not wired yet — only earn() is used")]
     pub fn spend(&mut self, amount: u32) -> bool {
         if self.can_afford(amount) {
             self.0 -= amount;

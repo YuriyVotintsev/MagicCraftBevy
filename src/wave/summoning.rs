@@ -5,7 +5,7 @@ use crate::actors::Health;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
 use crate::schedule::GameSet;
-use crate::stats::{Stat, StatCalculators};
+use crate::stats::StatCalculators;
 use super::phase::WavePhase;
 use super::state::{WaveEnemy, WaveState};
 use crate::Faction;
@@ -27,18 +27,16 @@ pub struct SummoningCircle {
     elapsed: f32,
     pub circle_size: f32,
     pub kind: MobKind,
-    extra_modifiers: Vec<(Stat, f32)>,
     pub emitter: Option<Entity>,
 }
 
 impl SummoningCircle {
-    pub fn new(kind: MobKind, circle_size: f32, extra_modifiers: Vec<(Stat, f32)>) -> Self {
+    pub fn new(kind: MobKind, circle_size: f32) -> Self {
         Self {
             phase: SummonPhase::CircleGrow,
             elapsed: 0.0,
             circle_size,
             kind,
-            extra_modifiers,
             emitter: None,
         }
     }
@@ -142,7 +140,6 @@ fn animate_summoning(
                         pos,
                         &mobs_balance,
                         &calculators,
-                        &circle.extra_modifiers,
                     );
                     commands.entity(mob).insert((
                         WaveEnemy,

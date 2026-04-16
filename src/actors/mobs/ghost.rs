@@ -75,12 +75,10 @@ pub fn spawn_ghost(
     pos: Vec2,
     s: &GhostStats,
     calculators: &StatCalculators,
-    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
         calculators,
         &[(Stat::MovementSpeedFlat, s.speed), (Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
-        extra_modifiers,
     );
     let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);

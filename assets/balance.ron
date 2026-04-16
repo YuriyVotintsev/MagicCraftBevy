@@ -7,15 +7,18 @@
         shop_delay: 2.0,
     ),
     arena: (
-        start_width: 1200.0,
-        start_height: 1200.0,
-        width: 3000.0,
-        height: 3000.0,
+        width: 1200.0,
+        height: 1200.0,
     ),
     run: (
         coins_per_kill: 1,
-        hp_scale_per_sec: 0.02,
-        dmg_scale_per_sec: 0.015,
         coin_attraction_duration: 0.5,
+    ),
+    runes: (
+        joker_probability: 0.25,
+        tier_weights: (
+            common: 60,
+            rare: 30,
+        ),
     ),
 )

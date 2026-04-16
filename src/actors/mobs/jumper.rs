@@ -89,12 +89,10 @@ pub fn spawn_jumper(
     pos: Vec2,
     s: &JumperStats,
     calculators: &StatCalculators,
-    extra_modifiers: &[(Stat, f32)],
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
         calculators,
         &[(Stat::MovementSpeedFlat, s.speed), (Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
-        extra_modifiers,
     );
     let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
