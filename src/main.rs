@@ -101,53 +101,54 @@ fn headless_timeout_system(
     }
 }
 
-fn main() {
-    let mut app = App::new();
-
-    #[cfg(feature = "dev")]
-    if std::env::var("HEADLESS").is_ok() {
-        let timeout_secs = parse_timeout_arg();
-        info!("Running in headless mode with {}s timeout", timeout_secs);
-
-        app.add_plugins(
-            DefaultPlugins
-                .build()
-                .disable::<bevy::winit::WinitPlugin>()
-                .set(WindowPlugin {
-                    primary_window: None,
-                    exit_condition: ExitCondition::DontExit,
-                    ..default()
-                }),
-        )
-        .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(
-            1.0 / 60.0,
-        )))
-        .insert_resource(HeadlessTimeout {
-            timer: Timer::from_seconds(timeout_secs, TimerMode::Once),
-        })
-        .add_systems(Update, headless_timeout_system);
-    } else {
-        app.add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                resolution: WindowResolution::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
-                    .with_scale_factor_override(1.0),
-                title: "Magic Craft".to_string(),
-                ..default()
-            }),
-            ..default()
-        }));
-    }
-
-    #[cfg(not(feature = "dev"))]
-    app.add_plugins(DefaultPlugins.set(WindowPlugin {
+fn windowed_plugin() -> WindowPlugin {
+    WindowPlugin {
         primary_window: Some(Window {
             resolution: WindowResolution::new(WINDOW_WIDTH as u32, WINDOW_HEIGHT as u32)
                 .with_scale_factor_override(1.0),
             title: "Magic Craft".to_string(),
+            position: WindowPosition::Centered(MonitorSelection::Primary),
             ..default()
         }),
         ..default()
-    }));
+    }
+}
+
+fn main() {
+    let mut app = App::new();
+
+    #[cfg(feature = "dev")]
+    let headless = std::env::var("HEADLESS").is_ok();
+    #[cfg(not(feature = "dev"))]
+    let headless = false;
+
+    if headless {
+        #[cfg(feature = "dev")]
+        {
+            let timeout_secs = parse_timeout_arg();
+            info!("Running in headless mode with {}s timeout", timeout_secs);
+
+            app.add_plugins(
+                DefaultPlugins
+                    .build()
+                    .disable::<bevy::winit::WinitPlugin>()
+                    .set(WindowPlugin {
+                        primary_window: None,
+                        exit_condition: ExitCondition::DontExit,
+                        ..default()
+                    }),
+            )
+            .add_plugins(ScheduleRunnerPlugin::run_loop(Duration::from_secs_f64(
+                1.0 / 60.0,
+            )))
+            .insert_resource(HeadlessTimeout {
+                timer: Timer::from_seconds(timeout_secs, TimerMode::Once),
+            })
+            .add_systems(Update, headless_timeout_system);
+        }
+    } else {
+        app.add_plugins(DefaultPlugins.set(windowed_plugin()));
+    }
 
     app.init_state::<GameState>()
         .add_sub_state::<WavePhase>()

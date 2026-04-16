@@ -25,14 +25,14 @@ impl Faction {
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
-pub enum Shape {
+pub enum ColliderShape {
     Circle,
     Rectangle,
 }
 
 #[derive(Component)]
 pub struct Collider {
-    pub shape: Shape,
+    pub shape: ColliderShape,
     pub sensor: bool,
 }
 
@@ -46,8 +46,8 @@ fn init_collider(
 ) {
     for (entity, collider, faction) in &query {
         let avian_collider = match collider.shape {
-            Shape::Circle => AvianCollider::cylinder(0.5, 0.2),
-            Shape::Rectangle => AvianCollider::cuboid(1.0, 0.2, 1.0),
+            ColliderShape::Circle => AvianCollider::cylinder(0.5, 0.2),
+            ColliderShape::Rectangle => AvianCollider::cuboid(1.0, 0.2, 1.0),
         };
 
         if collider.sensor {

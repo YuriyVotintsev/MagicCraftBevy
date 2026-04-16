@@ -4,14 +4,14 @@ use serde::Deserialize;
 
 use super::super::components::{
     Caster, Collider, DynamicBody, FindNearestEnemy, Health, JumpWalkAnimation, MeleeAttacker,
-    OnDeathParticles, SelfMoving, Shadow, Shape as ColliderShape, Size, Sprite, SpriteShape,
+    OnDeathParticles, SelfMoving, Shadow, ColliderShape, Size, Shape, ShapeKind,
     Target,
 };
 use crate::faction::Faction;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{compute_stats, current_max_life, enemy_sprite_color};
+use super::spawn::{compute_stats, current_max_life, enemy_shape_color};
 
 const LUNGE_DEFAULT_DURATION: f32 = 0.6;
 
@@ -102,8 +102,8 @@ pub fn spawn_slime_small(
     commands.entity(id).with_children(|p| {
         p.spawn(Shadow { opacity: 0.45 });
         p.spawn((
-            Sprite {
-                color: enemy_sprite_color(), shape: SpriteShape::Circle,
+            Shape {
+                color: enemy_shape_color(), kind: ShapeKind::Circle,
                 position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
             },
             JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, land_squish: 0.3, land_duration: 0.4 },

@@ -5,8 +5,8 @@ use crate::composite_scale::ScaleModifiers;
 use crate::palette;
 
 #[derive(Debug, Clone, Copy, Deserialize)]
-#[serde(from = "SpriteColorInput")]
-pub struct SpriteColor {
+#[serde(from = "ShapeColorInput")]
+pub struct ShapeColor {
     pub r: f32,
     pub g: f32,
     pub b: f32,
@@ -14,13 +14,13 @@ pub struct SpriteColor {
     pub flash: Option<(f32, f32, f32)>,
 }
 
-impl Default for SpriteColor {
+impl Default for ShapeColor {
     fn default() -> Self {
         Self { r: 1.0, g: 1.0, b: 1.0, a: 1.0, flash: None }
     }
 }
 
-impl From<(f32, f32, f32, f32)> for SpriteColor {
+impl From<(f32, f32, f32, f32)> for ShapeColor {
     fn from(t: (f32, f32, f32, f32)) -> Self {
         Self { r: t.0, g: t.1, b: t.2, a: t.3, flash: None }
     }
@@ -28,34 +28,34 @@ impl From<(f32, f32, f32, f32)> for SpriteColor {
 
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum SpriteColorInput {
+enum ShapeColorInput {
     Named(String),
     NamedWithAlpha(String, f32),
     Rgba(f32, f32, f32, f32),
 }
 
-impl From<SpriteColorInput> for SpriteColor {
-    fn from(input: SpriteColorInput) -> Self {
+impl From<ShapeColorInput> for ShapeColor {
+    fn from(input: ShapeColorInput) -> Self {
         match input {
-            SpriteColorInput::Named(name) => {
+            ShapeColorInput::Named(name) => {
                 let (r, g, b) = palette::lookup(&name)
                     .unwrap_or_else(|| panic!("Unknown palette color: {name}"));
                 let flash = palette::flash_lookup(&name);
                 Self { r, g, b, a: 1.0, flash }
             }
-            SpriteColorInput::NamedWithAlpha(name, alpha) => {
+            ShapeColorInput::NamedWithAlpha(name, alpha) => {
                 let (r, g, b) = palette::lookup(&name)
                     .unwrap_or_else(|| panic!("Unknown palette color: {name}"));
                 let flash = palette::flash_lookup(&name);
                 Self { r, g, b, a: alpha, flash }
             }
-            SpriteColorInput::Rgba(r, g, b, a) => Self { r, g, b, a, flash: None },
+            ShapeColorInput::Rgba(r, g, b, a) => Self { r, g, b, a, flash: None },
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Default)]
-pub enum SpriteShape {
+pub enum ShapeKind {
     #[default]
     Circle,
     Capsule,
@@ -63,68 +63,68 @@ pub enum SpriteShape {
 }
 
 #[derive(Component)]
-pub struct Sprite {
-    pub color: SpriteColor,
-    pub shape: SpriteShape,
+pub struct Shape {
+    pub color: ShapeColor,
+    pub kind: ShapeKind,
     pub position: Vec2,
     pub elevation: f32,
     pub half_length: f32,
 }
 
 #[derive(Component)]
-pub struct CircleSprite {
+pub struct CircleShape {
     pub color: Color,
     pub flash_color: Option<Color>,
 }
 
 
 #[derive(Component)]
-pub struct CapsuleSprite {
+pub struct CapsuleShape {
     pub color: Color,
     pub flash_color: Option<Color>,
     pub half_length: f32,
 }
 
 #[derive(Component)]
-pub struct DiscSprite {
+pub struct DiscShape {
     pub color: Color,
 }
 
 pub fn register_systems(app: &mut App) {
     app.add_systems(Startup, (setup_sphere_mesh, setup_disc_mesh));
-    app.add_systems(PostUpdate, (init_sprite, spawn_circle_visuals, spawn_capsule_visuals, spawn_disc_visuals).chain());
+    app.add_systems(PostUpdate, (init_shape, spawn_circle_visuals, spawn_capsule_visuals, spawn_disc_visuals).chain());
 }
 
-fn init_sprite(
+fn init_shape(
     mut commands: Commands,
-    query: Query<(Entity, &Sprite, Has<Transform>), Added<Sprite>>,
+    query: Query<(Entity, &Shape, Has<Transform>), Added<Shape>>,
 ) {
-    for (entity, sprite, has_transform) in &query {
-        let color = Color::srgba(sprite.color.r, sprite.color.g, sprite.color.b, sprite.color.a);
-        let flash_color = sprite.color.flash.map(|(r, g, b)| Color::srgb(r, g, b));
+    for (entity, shape, has_transform) in &query {
+        let color = Color::srgba(shape.color.r, shape.color.g, shape.color.b, shape.color.a);
+        let flash_color = shape.color.flash.map(|(r, g, b)| Color::srgb(r, g, b));
 
         if !has_transform {
-            let pos = crate::coord::ground_pos(sprite.position);
+            let pos = crate::coord::ground_pos(shape.position);
             commands.entity(entity).insert(
-                Transform::from_translation(Vec3::new(pos.x, sprite.elevation, pos.z)),
+                Transform::from_translation(Vec3::new(pos.x, shape.elevation, pos.z)),
             );
         }
 
         commands.entity(entity).insert(ScaleModifiers::default());
 
-        match sprite.shape {
-            SpriteShape::Circle => {
-                commands.entity(entity).insert(CircleSprite { color, flash_color });
+        match shape.kind {
+            ShapeKind::Circle => {
+                commands.entity(entity).insert(CircleShape { color, flash_color });
             }
-            SpriteShape::Capsule => {
-                commands.entity(entity).insert(CapsuleSprite {
+            ShapeKind::Capsule => {
+                commands.entity(entity).insert(CapsuleShape {
                     color,
                     flash_color,
-                    half_length: sprite.half_length,
+                    half_length: shape.half_length,
                 });
             }
-            SpriteShape::Disc => {
-                commands.entity(entity).insert(DiscSprite { color });
+            ShapeKind::Disc => {
+                commands.entity(entity).insert(DiscShape { color });
             }
         }
     }
@@ -140,7 +140,7 @@ fn setup_sphere_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 fn spawn_circle_visuals(
     mut commands: Commands,
-    query: Query<(Entity, &CircleSprite), Without<Mesh3d>>,
+    query: Query<(Entity, &CircleShape), Without<Mesh3d>>,
     sphere_mesh: Option<Res<SphereMeshHandle>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -170,7 +170,7 @@ fn setup_disc_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 fn spawn_disc_visuals(
     mut commands: Commands,
-    mut query: Query<(Entity, &DiscSprite, &mut Transform), Without<Mesh3d>>,
+    mut query: Query<(Entity, &DiscShape, &mut Transform), Without<Mesh3d>>,
     disc_mesh: Option<Res<DiscMeshHandle>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
@@ -193,7 +193,7 @@ fn spawn_disc_visuals(
 
 fn spawn_capsule_visuals(
     mut commands: Commands,
-    query: Query<(Entity, &CapsuleSprite), Without<Mesh3d>>,
+    query: Query<(Entity, &CapsuleShape), Without<Mesh3d>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {

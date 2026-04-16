@@ -5,7 +5,7 @@ mod dynamic_body;
 mod size;
 mod static_body;
 
-pub use collider::{Collider, GameLayer, Shape};
+pub use collider::{Collider, ColliderShape, GameLayer};
 pub use dynamic_body::DynamicBody;
 pub use size::{Size, SizeScaleLayer};
 pub use static_body::StaticBody;

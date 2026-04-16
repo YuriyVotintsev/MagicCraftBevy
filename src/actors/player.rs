@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use super::components::{
     Caster, Collider, DynamicBody, Health, InputTrigger, JumpWalkAnimation, KeyboardMovement,
     MouseButtonKind, OnCollisionDamage, OnCollisionParticles, PlayerAbilityCooldowns, PlayerInput,
-    Projectile, Shadow, Shape as ColliderShape, Size, Sprite, SpriteColor, SpriteShape,
+    Projectile, Shadow, ColliderShape, Size, Shape, ShapeColor, ShapeKind,
     TargetingMode,
 };
 use crate::palette;
@@ -30,16 +30,16 @@ impl Plugin for PlayerPlugin {
     }
 }
 
-fn player_sprite_color() -> SpriteColor {
+fn player_shape_color() -> ShapeColor {
     let (r, g, b) = palette::lookup("player").unwrap_or((0.5, 0.8, 1.0));
     let flash = palette::flash_lookup("player");
-    SpriteColor { r, g, b, a: 1.0, flash }
+    ShapeColor { r, g, b, a: 1.0, flash }
 }
 
-fn player_ability_sprite_color() -> SpriteColor {
+fn player_ability_shape_color() -> ShapeColor {
     let (r, g, b) = palette::lookup("player_ability").unwrap_or((0.5, 0.5, 1.0));
     let flash = palette::flash_lookup("player_ability");
-    SpriteColor { r, g, b, a: 1.0, flash }
+    ShapeColor { r, g, b, a: 1.0, flash }
 }
 
 pub fn spawn_player(
@@ -94,8 +94,8 @@ pub fn spawn_player(
     commands.entity(entity).with_children(|p| {
         p.spawn(Shadow { opacity: 0.45 });
         p.spawn((
-            Sprite {
-                color: player_sprite_color(), shape: SpriteShape::Circle,
+            Shape {
+                color: player_shape_color(), kind: ShapeKind::Circle,
                 position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
             },
             JumpWalkAnimation { bounce_height: 0.6, bounce_duration: 0.45, land_squish: 0.3, land_duration: 0.125 },
@@ -156,8 +156,8 @@ pub fn fire_fireball(
 
         commands.entity(proj).with_children(|p| {
             p.spawn(Shadow { opacity: 0.45 });
-            p.spawn(Sprite {
-                color: player_ability_sprite_color(), shape: SpriteShape::Circle,
+            p.spawn(Shape {
+                color: player_ability_shape_color(), kind: ShapeKind::Circle,
                 position: Vec2::ZERO, elevation: 2.0, half_length: 0.5,
             });
         });

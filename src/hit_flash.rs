@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::actors::{CapsuleSprite, CircleSprite};
+use crate::actors::{CapsuleShape, CircleShape};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::health_material::HealthMaterial;
 
@@ -35,9 +35,9 @@ fn register_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Comman
     commands.insert_resource(HitFlashScaleLayer(registry.register()));
 }
 
-fn get_sprite_colors(
+fn get_shape_colors(
     entity: Entity,
-    color_query: &Query<(Option<&CircleSprite>, Option<&CapsuleSprite>)>,
+    color_query: &Query<(Option<&CircleShape>, Option<&CapsuleShape>)>,
 ) -> Option<(Color, Option<Color>)> {
     color_query.get(entity).ok().and_then(|(c, cap)| {
         c.map(|c| (c.color, c.flash_color))
@@ -61,7 +61,7 @@ fn tick_hit_flash(
     mut modifiers_query: Query<&mut ScaleModifiers>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
-    color_query: Query<(Option<&CircleSprite>, Option<&CapsuleSprite>)>,
+    color_query: Query<(Option<&CircleShape>, Option<&CapsuleShape>)>,
 ) {
     for (entity, mut flash, children) in &mut flash_query {
         flash.elapsed += time.delta_secs();
@@ -80,7 +80,7 @@ fn tick_hit_flash(
                 modifiers.set(layer.0, Vec3::new(scale_x, scale_y, scale_x));
             }
 
-            let Some((original_color, flash_color)) = get_sprite_colors(child, &color_query) else {
+            let Some((original_color, flash_color)) = get_shape_colors(child, &color_query) else {
                 continue;
             };
 

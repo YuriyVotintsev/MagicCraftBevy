@@ -5,9 +5,9 @@ use serde::Deserialize;
 
 use crate::GameState;
 use super::super::components::{
-    Caster, CircleSprite, Collider, FadeOut, FindNearestEnemy, Growing, Health, Lifetime,
-    OnDeathParticles, PendingDamage, Shadow, Shape as ColliderShape, ShootSquish, ShotFired, Size,
-    Sprite, SpriteColor, SpriteShape, StaticBody, Target,
+    Caster, CircleShape, Collider, FadeOut, FindNearestEnemy, Growing, Health, Lifetime,
+    OnDeathParticles, PendingDamage, Shadow, ColliderShape, ShootSquish, ShotFired, Size,
+    Shape, ShapeColor, ShapeKind, StaticBody, Target,
 };
 use crate::faction::Faction;
 use crate::palette;
@@ -15,7 +15,7 @@ use crate::particles;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{compute_stats, current_max_life, enemy_sprite_color};
+use super::spawn::{compute_stats, current_max_life, enemy_shape_color};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct TowerStats {
@@ -61,7 +61,7 @@ pub struct ArcTowerShot {
     pub damage: f32,
     pub caster: Entity,
     pub caster_faction: Faction,
-    pub sprite_entity: Option<Entity>,
+    pub shape_entity: Option<Entity>,
     pub spawned_indicator: bool,
 }
 
@@ -160,8 +160,8 @@ pub fn spawn_tower(
 
     commands.entity(id).with_children(|p| {
         p.spawn(Shadow { opacity: 0.45 });
-        p.spawn(Sprite {
-            color: enemy_sprite_color(), shape: SpriteShape::Circle,
+        p.spawn(Shape {
+            color: enemy_shape_color(), kind: ShapeKind::Circle,
             position: Vec2::ZERO, elevation: 1.2, half_length: 0.5,
         });
     });
@@ -223,26 +223,26 @@ fn fire_tower_shot(
             explosion_duration: shooter.explosion_duration,
             indicator_duration: shooter.indicator_duration,
             damage, caster, caster_faction,
-            sprite_entity: None, spawned_indicator: false,
+            shape_entity: None, spawned_indicator: false,
         },
         Size { value: shooter.projectile_size },
     )).id();
     commands.entity(proj).with_children(|p| {
         p.spawn(Shadow { opacity: 0.45 });
-        p.spawn(Sprite {
+        p.spawn(Shape {
             color: {
                 let (r, g, b) = palette::lookup("enemy_ability").unwrap_or((1.0, 0.5, 0.5));
-                SpriteColor { r, g, b, a: 1.0, flash: palette::flash_lookup("enemy_ability") }
+                ShapeColor { r, g, b, a: 1.0, flash: palette::flash_lookup("enemy_ability") }
             },
-            shape: SpriteShape::Circle,
+            kind: ShapeKind::Circle,
             position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
         });
     });
 }
 
-fn enemy_ability_color_alpha(alpha: f32) -> SpriteColor {
+fn enemy_ability_color_alpha(alpha: f32) -> ShapeColor {
     let (r, g, b) = palette::lookup("enemy_ability").unwrap_or((1.0, 0.5, 0.5));
-    SpriteColor { r, g, b, a: alpha, flash: None }
+    ShapeColor { r, g, b, a: alpha, flash: None }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -252,7 +252,7 @@ fn update_arc_tower_shot(
     mut query: Query<(Entity, &mut ArcTowerShot, &mut Transform)>,
     mut child_transforms: Query<&mut Transform, Without<ArcTowerShot>>,
     children_query: Query<&Children>,
-    sprite_marker: Query<Entity, With<CircleSprite>>,
+    shape_marker: Query<Entity, With<CircleShape>>,
     mut pending: MessageWriter<PendingDamage>,
     spatial: SpatialQuery,
     faction_query: Query<&Faction>,
@@ -279,8 +279,8 @@ fn update_arc_tower_shot(
                 Transform::from_translation(ground_ind),
                 Visibility::default(),
                 Size { value: arc.explosion_radius },
-                Sprite {
-                    color: enemy_ability_color_alpha(0.2), shape: SpriteShape::Disc,
+                Shape {
+                    color: enemy_ability_color_alpha(0.2), kind: ShapeKind::Disc,
                     position: Vec2::ZERO, elevation: 0.02, half_length: 0.5,
                 },
                 Growing { start_size: 0.0, end_size: arc.explosion_radius },
@@ -288,22 +288,22 @@ fn update_arc_tower_shot(
             ));
         }
 
-        if arc.sprite_entity.is_none() {
+        if arc.shape_entity.is_none() {
             if let Ok(children) = children_query.get(entity) {
                 for child in children.iter() {
-                    if sprite_marker.contains(child) {
-                        arc.sprite_entity = Some(child);
+                    if shape_marker.contains(child) {
+                        arc.shape_entity = Some(child);
                     } else if let Ok(grand) = children_query.get(child) {
                         for gc in grand.iter() {
-                            if sprite_marker.contains(gc) {
-                                arc.sprite_entity = Some(gc);
+                            if shape_marker.contains(gc) {
+                                arc.shape_entity = Some(gc);
                             }
                         }
                     }
                 }
             }
         }
-        if let Some(se) = arc.sprite_entity {
+        if let Some(se) = arc.shape_entity {
             if let Ok(mut tf) = child_transforms.get_mut(se) {
                 tf.translation.y = height;
             }
@@ -317,8 +317,8 @@ fn update_arc_tower_shot(
                 Transform::from_translation(target_ground),
                 Visibility::default(),
                 Size { value: arc.explosion_radius },
-                Sprite {
-                    color: enemy_ability_color_alpha(0.4), shape: SpriteShape::Disc,
+                Shape {
+                    color: enemy_ability_color_alpha(0.4), kind: ShapeKind::Disc,
                     position: Vec2::ZERO, elevation: 0.02, half_length: 0.5,
                 },
                 Lifetime { remaining: arc.explosion_duration },

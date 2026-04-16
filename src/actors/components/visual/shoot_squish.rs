@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use super::{CapsuleSprite, CircleSprite, Sprite};
+use super::{CapsuleShape, CircleShape, Shape};
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use super::super::combat::ShotFired;
 
@@ -41,11 +41,11 @@ pub fn animate(
     time: Res<Time>,
     mut query: Query<(Entity, &ShootSquish, &mut ShootSquishState, &Children)>,
     shot_fired_query: Query<(), With<ShotFired>>,
-    mut sprite_query: Query<
-        (&mut Transform, &Sprite, &mut ScaleModifiers),
-        Or<(With<CapsuleSprite>, With<CircleSprite>)>,
+    mut shape_query: Query<
+        (&mut Transform, &Shape, &mut ScaleModifiers),
+        Or<(With<CapsuleShape>, With<CircleShape>)>,
     >,
-    capsule_query: Query<&CapsuleSprite>,
+    capsule_query: Query<&CapsuleShape>,
 ) {
     let dt = time.delta_secs();
 
@@ -67,7 +67,7 @@ pub fn animate(
         };
 
         for child in children.iter() {
-            let Ok((mut transform, sprite, mut modifiers)) = sprite_query.get_mut(child) else {
+            let Ok((mut transform, shape, mut modifiers)) = shape_query.get_mut(child) else {
                 continue;
             };
 
@@ -77,7 +77,7 @@ pub fn animate(
                 .unwrap_or(0.5);
 
             modifiers.set(layer.0, Vec3::new(scale_xz, scale_y, scale_xz));
-            transform.translation.y = sprite.elevation - mesh_half * (1.0 - scale_y);
+            transform.translation.y = shape.elevation - mesh_half * (1.0 - scale_y);
         }
     }
 }

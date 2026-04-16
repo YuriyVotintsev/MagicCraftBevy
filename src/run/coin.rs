@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::actors::{death_system, CircleSprite, DeathEvent, Shadow};
+use crate::actors::{death_system, CircleShape, DeathEvent, Shadow};
 use crate::actors::Player;
 use crate::balance::GameBalance;
 use crate::palette;
@@ -65,7 +65,7 @@ fn spawn_coins(
             .with_children(|parent| {
                 parent.spawn(Shadow { opacity: 0.45 });
                 parent.spawn((
-                    CircleSprite {
+                    CircleShape {
                         color: palette::color("coin"),
                         flash_color: None,
                     },

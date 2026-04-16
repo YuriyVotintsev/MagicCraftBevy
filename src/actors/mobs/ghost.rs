@@ -4,9 +4,9 @@ use serde::Deserialize;
 
 use crate::GameState;
 use super::super::components::{
-    BobbingAnimation, CapsuleSprite, Caster, CircleSprite, Collider, DynamicBody, FindNearestEnemy,
-    Health, MeleeAttacker, OnDeathParticles, SelfMoving, Shadow, Shape as ColliderShape, Size,
-    Sprite, SpriteShape, Target,
+    BobbingAnimation, CapsuleShape, Caster, CircleShape, Collider, DynamicBody, FindNearestEnemy,
+    Health, MeleeAttacker, OnDeathParticles, SelfMoving, Shadow, ColliderShape, Size,
+    Shape, ShapeKind, Target,
 };
 use super::super::player::Player;
 use crate::faction::Faction;
@@ -15,7 +15,7 @@ use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 use crate::wave::SummoningCircle;
 
-use super::spawn::{compute_stats, current_max_life, enemy_sprite_color};
+use super::spawn::{compute_stats, current_max_life, enemy_shape_color};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct GhostStats {
@@ -111,8 +111,8 @@ pub fn spawn_ghost(
     commands.entity(id).with_children(|p| {
         p.spawn(Shadow { opacity: 0.45 });
         p.spawn((
-            Sprite {
-                color: enemy_sprite_color(), shape: SpriteShape::Circle,
+            Shape {
+                color: enemy_shape_color(), kind: ShapeKind::Circle,
                 position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
             },
             BobbingAnimation { amplitude: 0.2, speed: 2.0, base_elevation: 0.5 },
@@ -150,13 +150,13 @@ fn apply_ghost_alpha_to_children(
         Without<SummoningCircle>,
     >,
     shadow_query: Query<(&Shadow, &MeshMaterial3d<StandardMaterial>)>,
-    sprite_query: Query<
+    shape_query: Query<
         &MeshMaterial3d<StandardMaterial>,
-        Or<(With<CircleSprite>, With<CapsuleSprite>)>,
+        Or<(With<CircleShape>, With<CapsuleShape>)>,
     >,
-    sprite_health_query: Query<
+    shape_health_query: Query<
         &MeshMaterial3d<HealthMaterial>,
-        Or<(With<CircleSprite>, With<CapsuleSprite>)>,
+        Or<(With<CircleShape>, With<CapsuleShape>)>,
     >,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
@@ -173,7 +173,7 @@ fn apply_ghost_alpha_to_children(
             }
 
             if let Some(link) = health_link {
-                if sprite_health_query.get(child).is_ok() {
+                if shape_health_query.get(child).is_ok() {
                     if let Some(material) = health_materials.get_mut(&link.handle) {
                         material.data.alpha = alpha.value;
                     }
@@ -181,7 +181,7 @@ fn apply_ghost_alpha_to_children(
                 }
             }
 
-            if let Ok(mat_handle) = sprite_query.get(child) {
+            if let Ok(mat_handle) = shape_query.get(child) {
                 if let Some(material) = materials.get_mut(&mat_handle.0) {
                     let mut color = material.base_color.to_srgba();
                     color.alpha = alpha.value;

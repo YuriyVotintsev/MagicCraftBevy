@@ -6,7 +6,7 @@ use serde::Deserialize;
 use crate::palette;
 use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
 
-use super::super::components::SpriteColor;
+use super::super::components::ShapeColor;
 use super::{ghost, jumper, slime, spinner, tower};
 
 #[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
@@ -77,16 +77,16 @@ pub fn spawn_mob(
     }
 }
 
-pub(super) fn enemy_sprite_color() -> SpriteColor {
+pub(super) fn enemy_shape_color() -> ShapeColor {
     let (r, g, b) = palette::lookup("enemy").unwrap_or((1.0, 1.0, 1.0));
     let flash = palette::flash_lookup("enemy");
-    SpriteColor { r, g, b, a: 1.0, flash }
+    ShapeColor { r, g, b, a: 1.0, flash }
 }
 
-pub(super) fn enemy_ability_sprite_color() -> SpriteColor {
+pub(super) fn enemy_ability_shape_color() -> ShapeColor {
     let (r, g, b) = palette::lookup("enemy_ability").unwrap_or((1.0, 0.5, 0.5));
     let flash = palette::flash_lookup("enemy_ability");
-    SpriteColor { r, g, b, a: 1.0, flash }
+    ShapeColor { r, g, b, a: 1.0, flash }
 }
 
 pub(super) fn compute_stats(

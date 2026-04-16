@@ -11,15 +11,15 @@ pub use combat::{
     PendingDamage, Projectile, ShotFired, SkipCleanup, Target,
 };
 pub use lifetime::Lifetime;
-pub use physics::{Collider, DynamicBody, GameLayer, Shape, Size, StaticBody};
+pub use physics::{Collider, ColliderShape, DynamicBody, GameLayer, Size, StaticBody};
 pub use player::{
     InputTrigger, KeyboardMovement, MouseButtonKind, MovementLocked, PlayerAbilityCooldowns,
     PlayerInput, TargetingMode,
 };
 pub use visual::{
-    BobbingAnimation, CapsuleSprite, CircleSprite, FadeOut, Growing, JumpWalkAnimation,
+    BobbingAnimation, CapsuleShape, CircleShape, FadeOut, Growing, JumpWalkAnimation,
     JumpWalkAnimationState, OnCollisionParticles, OnDeathParticles, SelfMoving, Shadow,
-    ShootSquish, Sprite, SpriteColor, SpriteShape,
+    ShootSquish, Shape, ShapeColor, ShapeKind,
 };
 
 pub struct ComponentsPlugin;

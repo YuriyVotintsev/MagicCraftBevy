@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
-use crate::actors::{CapsuleSprite, CircleSprite, Health, Sprite};
+use crate::actors::{CapsuleShape, CircleShape, Health, Shape};
 use crate::palette;
 use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
@@ -58,8 +58,8 @@ fn apply_health_material(
         (Entity, &Faction, &Health, &ComputedStats, &Children),
         Without<HealthMaterialLink>,
     >,
-    circle_query: Query<(Entity, &CircleSprite), With<MeshMaterial3d<StandardMaterial>>>,
-    capsule_query: Query<(Entity, &CapsuleSprite, &Sprite), With<MeshMaterial3d<StandardMaterial>>>,
+    circle_query: Query<(Entity, &CircleShape), With<MeshMaterial3d<StandardMaterial>>>,
+    capsule_query: Query<(Entity, &CapsuleShape, &Shape), With<MeshMaterial3d<StandardMaterial>>>,
 ) {
     for (enemy_entity, faction, health, stats, children) in &enemy_query {
         if *faction != Faction::Enemy {
@@ -67,20 +67,20 @@ fn apply_health_material(
         }
 
         for child in children.iter() {
-            let sprite_info: Option<(Entity, Color, f32, f32)> = circle_query
+            let shape_info: Option<(Entity, Color, f32, f32)> = circle_query
                 .get(child)
                 .ok()
                 .map(|(e, c)| (e, c.color, 0.0, 1.0))
                 .or_else(|| {
-                    capsule_query.get(child).ok().map(|(e, c, sprite)| {
+                    capsule_query.get(child).ok().map(|(e, c, shape)| {
                         let mesh_half = c.half_length + 0.5;
                         let total = 2.0 * mesh_half;
-                        let ground_uv = ((mesh_half - sprite.elevation) / total).clamp(0.0, 1.0);
+                        let ground_uv = ((mesh_half - shape.elevation) / total).clamp(0.0, 1.0);
                         (e, c.color, 1.0, ground_uv)
                     })
                 });
 
-            let Some((sprite_entity, color, uv_top, uv_bottom)) = sprite_info else {
+            let Some((shape_entity, color, uv_top, uv_bottom)) = shape_info else {
                 continue;
             };
 
@@ -99,7 +99,7 @@ fn apply_health_material(
             });
 
             commands
-                .entity(sprite_entity)
+                .entity(shape_entity)
                 .remove::<MeshMaterial3d<StandardMaterial>>()
                 .insert(MeshMaterial3d(handle.clone()));
 

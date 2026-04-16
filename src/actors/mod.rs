@@ -5,8 +5,8 @@ mod mobs;
 mod player;
 
 pub use components::{
-    death_system, CapsuleSprite, Caster, CircleSprite, DeathEvent, GameLayer, Health,
-    JumpWalkAnimationState, MovementLocked, Shadow, SkipCleanup, Sprite,
+    death_system, CapsuleShape, Caster, CircleShape, DeathEvent, GameLayer, Health,
+    JumpWalkAnimationState, MovementLocked, Shadow, Shape, SkipCleanup,
 };
 pub use mobs::{spawn_mob, GhostAlpha, GhostTransparency, MobKind, MobsBalance};
 pub use player::Player;

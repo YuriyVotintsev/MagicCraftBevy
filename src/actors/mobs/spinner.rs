@@ -5,9 +5,9 @@ use bevy::prelude::*;
 use serde::Deserialize;
 
 use super::super::components::{
-    Caster, CircleSprite, Collider, DynamicBody, FindNearestEnemy, GameLayer, Health,
-    OnDeathParticles, PendingDamage, SelfMoving, Shadow, Shape as ColliderShape, Size, Sprite,
-    SpriteShape, Target,
+    Caster, CircleShape, Collider, DynamicBody, FindNearestEnemy, GameLayer, Health,
+    OnDeathParticles, PendingDamage, SelfMoving, Shadow, ColliderShape, Size, Shape,
+    ShapeKind, Target,
 };
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::faction::Faction;
@@ -16,7 +16,7 @@ use crate::particles;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{compute_stats, current_max_life, enemy_sprite_color};
+use super::spawn::{compute_stats, current_max_life, enemy_shape_color};
 
 const SPIKE_COUNT: usize = 6;
 const SPIKE_OFFSET: f32 = 0.55;
@@ -140,8 +140,8 @@ pub fn spawn_spinner(
 
     commands.entity(id).with_children(|p| {
         p.spawn(Shadow { opacity: 0.45 });
-        p.spawn(Sprite {
-            color: enemy_sprite_color(), shape: SpriteShape::Circle,
+        p.spawn(Shape {
+            color: enemy_shape_color(), kind: ShapeKind::Circle,
             position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
         });
     });
@@ -356,7 +356,7 @@ fn animate_spinner(
     mut state_query: Query<(&mut Spinner, &Transform, &Children, Option<&Size>)>,
     mut transform_query: Query<&mut Transform, Without<Spinner>>,
     mut scale_query: Query<&mut ScaleModifiers>,
-    circle_query: Query<(), With<CircleSprite>>,
+    circle_query: Query<(), With<CircleShape>>,
 ) {
     let dt = time.delta_secs();
 
