@@ -14,7 +14,7 @@ use crate::faction::Faction;
 use crate::palette;
 use crate::particles;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, Stat, StatCalculators};
+use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
 use super::spawn::{compute_stats, current_max_life, enemy_sprite_color};
 
@@ -96,7 +96,10 @@ pub fn spawn_spinner(
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
         calculators,
-        &[(Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
+        &[
+            (Stat::MaxLife, ModifierKind::Flat, s.hp),
+            (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
+        ],
     );
     let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
@@ -139,7 +142,7 @@ pub fn spawn_spinner(
         p.spawn(Shadow { opacity: 0.45 });
         p.spawn(Sprite {
             color: enemy_sprite_color(), shape: SpriteShape::Circle,
-            position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
+            position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
         });
     });
     id
@@ -290,7 +293,7 @@ fn apply_area_damage(
     let entity_radius = size.map_or(0.0, |s| s.value / 2.0);
     let damage = stats_query
         .get(entity)
-        .map(|s| s.get(Stat::PhysicalDamageFlat))
+        .map(|s| s.apply(Stat::PhysicalDamage, 0.0))
         .unwrap_or(10.0);
 
     let filter = SpatialQueryFilter::from_mask(GameLayer::Player);

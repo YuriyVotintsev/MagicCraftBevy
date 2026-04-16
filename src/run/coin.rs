@@ -85,7 +85,7 @@ fn attract_coins(
     };
     let player_pos = crate::coord::to_2d(player_transform.translation);
     let radius = {
-        let r = stats.get(Stat::PickupRadius);
+        let r = stats.final_of(Stat::PickupRadius);
         if r > 0.0 { r } else { 2000.0 }
     };
     let radius_sq = radius * radius;

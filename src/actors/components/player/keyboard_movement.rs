@@ -42,7 +42,7 @@ fn keyboard_movement_system(
             direction.x += 1.0;
         }
 
-        let speed = stats.get(Stat::MovementSpeed);
+        let speed = stats.final_of(Stat::MovementSpeed);
 
         velocity.0 = if direction != Vec2::ZERO {
             commands.entity(entity).insert(SelfMoving);

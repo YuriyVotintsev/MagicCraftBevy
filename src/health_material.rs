@@ -84,7 +84,7 @@ fn apply_health_material(
                 continue;
             };
 
-            let max = stats.get(Stat::MaxLife).max(1.0);
+            let max = stats.final_of(Stat::MaxLife).max(1.0);
             let hp_frac = (health.current / max).clamp(0.0, 1.0);
 
             let handle = health_materials.add(HealthMaterial {
@@ -120,7 +120,7 @@ fn update_health_material(
     >,
 ) {
     for (health, stats, link) in &query {
-        let max = stats.get(Stat::MaxLife).max(1.0);
+        let max = stats.final_of(Stat::MaxLife).max(1.0);
         let hp_frac = (health.current / max).clamp(0.0, 1.0);
 
         if let Some(material) = health_materials.get_mut(&link.handle) {

@@ -13,21 +13,6 @@ impl HexCoord {
         Self { q, r }
     }
 
-    pub fn s(self) -> i32 {
-        -self.q - self.r
-    }
-
-    pub fn distance(self, other: Self) -> i32 {
-        ((self.q - other.q).abs()
-            + (self.r - other.r).abs()
-            + (self.s() - other.s()).abs())
-            / 2
-    }
-
-    pub fn ring(self) -> i32 {
-        self.distance(Self::CENTER)
-    }
-
     pub fn to_pixel(self, size: f32) -> Vec2 {
         let sqrt3 = 3.0f32.sqrt();
         let x = size * (sqrt3 * self.q as f32 + sqrt3 * 0.5 * self.r as f32);

@@ -4,7 +4,6 @@
         max_enemies: 40,
         ramp_duration_secs: 300.0,
         safe_spawn_radius: 200.0,
-        shop_delay: 2.0,
     ),
     arena: (
         width: 1200.0,

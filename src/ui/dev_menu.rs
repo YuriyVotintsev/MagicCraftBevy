@@ -6,7 +6,7 @@ use crate::actors::Player;
 use crate::arena::CameraAngle;
 use crate::palette;
 use crate::run::PlayerMoney;
-use crate::stats::{DirtyStats, Modifiers, Stat};
+use crate::stats::{DirtyStats, ModifierKind, Modifiers, Stat};
 use crate::transition::{Transition, TransitionAction};
 use crate::wave::EnemySpawnPool;
 use crate::wave::{CombatPhase, WavePhase};
@@ -288,8 +288,8 @@ pub(super) fn cheat_health(
     for interaction in &query {
         if *interaction == Interaction::Pressed {
             for (mut modifiers, mut dirty, mut health) in &mut player_query {
-                modifiers.add(Stat::MaxLifeFlat, 100.0);
-                dirty.mark(Stat::MaxLifeFlat);
+                modifiers.add(Stat::MaxLife, ModifierKind::Flat, 100.0);
+                dirty.mark(Stat::MaxLife);
                 health.current += 100.0;
             }
         }
@@ -303,8 +303,8 @@ pub(super) fn cheat_damage(
     for interaction in &query {
         if *interaction == Interaction::Pressed {
             for (mut modifiers, mut dirty) in &mut player_query {
-                modifiers.add(Stat::PhysicalDamageFlat, 100.0);
-                dirty.mark(Stat::PhysicalDamageFlat);
+                modifiers.add(Stat::PhysicalDamage, ModifierKind::Flat, 100.0);
+                dirty.mark(Stat::PhysicalDamage);
             }
         }
     }

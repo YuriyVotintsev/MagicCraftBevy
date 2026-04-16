@@ -9,7 +9,7 @@ use super::components::{
 };
 use crate::palette;
 use crate::rune::RuneGrid;
-use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
+use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
 use crate::wave::WavePhase;
 use crate::Faction;
 
@@ -47,29 +47,29 @@ pub fn spawn_player(
     calculators: Res<StatCalculators>,
     grid: Res<RuneGrid>,
 ) {
-    let base_stats: &[(Stat, f32)] = &[
-        (Stat::MaxLifeFlat, 20.0),
-        (Stat::MovementSpeedFlat, 550.0),
-        (Stat::CritChanceFlat, 0.05),
-        (Stat::CritMultiplier, 1.5),
-        (Stat::PickupRadiusFlat, 200.0),
+    let base_stats: &[(Stat, ModifierKind, f32)] = &[
+        (Stat::MaxLife, ModifierKind::Flat, 20.0),
+        (Stat::MovementSpeed, ModifierKind::Flat, 550.0),
+        (Stat::CritChance, ModifierKind::Flat, 0.05),
+        (Stat::CritMultiplier, ModifierKind::Flat, 1.5),
+        (Stat::PickupRadius, ModifierKind::Flat, 200.0),
     ];
 
     let mut modifiers = Modifiers::new();
-    for &(stat, value) in base_stats {
-        modifiers.add(stat, value);
+    for &(stat, kind, value) in base_stats {
+        modifiers.add(stat, kind, value);
     }
     for rune in grid.cells.values() {
-        if let Some(kind) = rune.kind {
-            let (stat, value) = kind.def().base_effect;
-            modifiers.add(stat, value);
+        if let Some(rune_kind) = rune.kind {
+            let (stat, mod_kind, value) = rune_kind.def().base_effect;
+            modifiers.add(stat, mod_kind, value);
         }
     }
     let mut dirty = DirtyStats::default();
     let mut computed = ComputedStats::default();
-    dirty.mark_all(Stat::ALL.iter().copied());
+    dirty.mark_all(Stat::iter());
     calculators.recalculate(&modifiers, &mut computed, &mut dirty);
-    let hp = computed.get(Stat::MaxLife);
+    let hp = computed.final_of(Stat::MaxLife);
 
     let entity = commands.spawn((
         Name::new("Player"),
@@ -96,32 +96,27 @@ pub fn spawn_player(
         p.spawn((
             Sprite {
                 color: player_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
+                position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
             },
             JumpWalkAnimation { bounce_height: 0.6, bounce_duration: 0.45, land_squish: 0.3, land_duration: 0.125 },
         ));
     });
 }
 
-fn stat_value(stats: Option<&ComputedStats>, stat: Stat) -> f32 {
-    stats.map(|s| s.get(stat)).unwrap_or(0.0)
-}
-
-fn calc_physical_damage(stats: Option<&ComputedStats>, base: f32, scale: f32) -> f32 {
-    let flat = stat_value(stats, Stat::PhysicalDamageFlat);
-    let inc = stat_value(stats, Stat::PhysicalDamageIncreased);
-    let more = stat_value(stats, Stat::PhysicalDamageMore).max(0.0001);
-    (base + flat * scale) * (1.0 + inc) * more
+fn calc_physical_damage(stats: Option<&ComputedStats>, base: f32) -> f32 {
+    stats.map(|s| s.apply(Stat::PhysicalDamage, base)).unwrap_or(base)
 }
 
 fn calc_projectile_speed(stats: Option<&ComputedStats>, base: f32) -> f32 {
-    let flat = stat_value(stats, Stat::ProjectileSpeedFlat);
-    let inc = stat_value(stats, Stat::ProjectileSpeedIncreased);
-    (base + flat) * (1.0 + inc)
+    stats.map(|s| s.apply(Stat::ProjectileSpeed, base)).unwrap_or(base)
 }
 
 fn projectile_count(stats: Option<&ComputedStats>, base: u32) -> u32 {
-    base + stat_value(stats, Stat::ProjectileCount).max(0.0) as u32
+    let added = stats
+        .map(|s| s.final_of(Stat::ProjectileCount))
+        .unwrap_or(0.0)
+        .max(0.0) as u32;
+    base + added
 }
 
 pub fn fire_fireball(
@@ -134,7 +129,7 @@ pub fn fire_fireball(
 ) {
     let count = projectile_count(caster_stats, 1).max(1);
     let speed = calc_projectile_speed(caster_stats, FIREBALL_BASE_SPEED);
-    let damage = calc_physical_damage(caster_stats, FIREBALL_BASE_DAMAGE, 1.0);
+    let damage = calc_physical_damage(caster_stats, FIREBALL_BASE_DAMAGE);
     let base_dir = direction.normalize_or_zero();
     let perpendicular = Vec2::new(-base_dir.y, base_dir.x);
 
@@ -163,7 +158,7 @@ pub fn fire_fireball(
             p.spawn(Shadow { opacity: 0.45 });
             p.spawn(Sprite {
                 color: player_ability_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, elevation: 2.0, half_length: 0.5,
+                position: Vec2::ZERO, elevation: 2.0, half_length: 0.5,
             });
         });
     }

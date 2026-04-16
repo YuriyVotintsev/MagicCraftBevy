@@ -50,7 +50,7 @@ fn melee_attacker_system(
 
         attacker.elapsed = 0.0;
 
-        let damage = stats_query.get(caster).map(|s| s.get(Stat::PhysicalDamageFlat)).unwrap_or(0.0);
+        let damage = stats_query.get(caster).map(|s| s.apply(Stat::PhysicalDamage, 0.0)).unwrap_or(0.0);
 
         commands.entity(caster).insert(ShotFired);
         commands.spawn((

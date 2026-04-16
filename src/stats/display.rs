@@ -4,7 +4,7 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use super::Stat;
+use super::registry::{ModifierKind, Stat};
 
 #[derive(Clone, Debug)]
 pub enum SignMode {
@@ -32,39 +32,41 @@ pub enum FormatSpan {
     Label(String),
 }
 
+type StatKey = (Stat, ModifierKind);
+
 struct MultiStatEntry {
-    stats: Vec<Stat>,
+    stats: Vec<StatKey>,
     lines: Vec<Vec<FormatSpan>>,
 }
 
 #[derive(Resource, Default)]
 pub struct StatDisplayRegistry {
-    single_stat_formats: HashMap<Stat, Vec<FormatSpan>>,
-    multi_stat_formats: HashMap<Vec<Stat>, MultiStatEntry>,
+    single_stat_formats: HashMap<StatKey, Vec<FormatSpan>>,
+    multi_stat_formats: HashMap<Vec<StatKey>, MultiStatEntry>,
 }
 
-const DISPLAY_RULES: &[(&[Stat], &str)] = &[
-    (&[Stat::PhysicalDamageFlat], "[{+0}] physical damage"),
-    (&[Stat::PhysicalDamageIncreased], "[{+0}%] physical damage"),
-    (&[Stat::PhysicalDamageMore], "[{|0|}% more;{|0|}% less] physical damage"),
-    (&[Stat::MaxLifeFlat], "[{+0}] max life"),
-    (&[Stat::MaxLifeIncreased], "[{+0}%] max life"),
-    (&[Stat::MaxLifeMore], "[{|0|}% more;{|0|}% less] max life"),
-    (&[Stat::MovementSpeedFlat], "[{+0}] movement speed"),
-    (&[Stat::MovementSpeedIncreased], "[{+0}%] movement speed"),
-    (&[Stat::CritChanceFlat], "[{+0}%] crit chance"),
-    (&[Stat::CritMultiplier], "[{+0}%] crit multiplier"),
-    (&[Stat::ProjectileSpeedFlat], "[{+0}] projectile speed"),
-    (&[Stat::ProjectileSpeedIncreased], "[{+0}%] projectile speed"),
-    (&[Stat::ProjectileCount], "[{+0}] projectile"),
-    (&[Stat::MaxManaFlat], "[{+0}] max mana"),
-    (&[Stat::MaxManaIncreased], "[{+0}%] max mana"),
-    (&[Stat::AreaOfEffectFlat], "[{+0}] area of effect"),
-    (&[Stat::AreaOfEffectIncreased], "[{+0}%] area of effect"),
-    (&[Stat::DurationFlat], "[{+0}] duration"),
-    (&[Stat::DurationIncreased], "[{+0}%] duration"),
-    (&[Stat::PickupRadiusFlat], "[{+0}] pickup radius"),
-    (&[Stat::PickupRadiusIncreased], "[{+0}%] pickup radius"),
+const DISPLAY_RULES: &[(&[StatKey], &str)] = &[
+    (&[(Stat::PhysicalDamage, ModifierKind::Flat)], "[{+0}] physical damage"),
+    (&[(Stat::PhysicalDamage, ModifierKind::Increased)], "[{+0}%] physical damage"),
+    (&[(Stat::PhysicalDamage, ModifierKind::More)], "[{|0|}% more;{|0|}% less] physical damage"),
+    (&[(Stat::MaxLife, ModifierKind::Flat)], "[{+0}] max life"),
+    (&[(Stat::MaxLife, ModifierKind::Increased)], "[{+0}%] max life"),
+    (&[(Stat::MaxLife, ModifierKind::More)], "[{|0|}% more;{|0|}% less] max life"),
+    (&[(Stat::MovementSpeed, ModifierKind::Flat)], "[{+0}] movement speed"),
+    (&[(Stat::MovementSpeed, ModifierKind::Increased)], "[{+0}%] movement speed"),
+    (&[(Stat::CritChance, ModifierKind::Flat)], "[{+0}%] crit chance"),
+    (&[(Stat::CritMultiplier, ModifierKind::Flat)], "[{+0}%] crit multiplier"),
+    (&[(Stat::ProjectileSpeed, ModifierKind::Flat)], "[{+0}] projectile speed"),
+    (&[(Stat::ProjectileSpeed, ModifierKind::Increased)], "[{+0}%] projectile speed"),
+    (&[(Stat::ProjectileCount, ModifierKind::Flat)], "[{+0}] projectile"),
+    (&[(Stat::MaxMana, ModifierKind::Flat)], "[{+0}] max mana"),
+    (&[(Stat::MaxMana, ModifierKind::Increased)], "[{+0}%] max mana"),
+    (&[(Stat::AreaOfEffect, ModifierKind::Flat)], "[{+0}] area of effect"),
+    (&[(Stat::AreaOfEffect, ModifierKind::Increased)], "[{+0}%] area of effect"),
+    (&[(Stat::Duration, ModifierKind::Flat)], "[{+0}] duration"),
+    (&[(Stat::Duration, ModifierKind::Increased)], "[{+0}%] duration"),
+    (&[(Stat::PickupRadius, ModifierKind::Flat)], "[{+0}] pickup radius"),
+    (&[(Stat::PickupRadius, ModifierKind::Increased)], "[{+0}%] pickup radius"),
 ];
 
 fn parse_template_half(half: &str) -> Option<(usize, ValueTemplate)> {
@@ -152,33 +154,40 @@ fn to_title_case(name: &str) -> String {
         .join(" ")
 }
 
+fn key_sort_index(key: &StatKey) -> (usize, usize) {
+    (key.0.index(), key.1.index())
+}
+
 impl StatDisplayRegistry {
     pub fn build() -> Self {
-        let mut single_stat_formats: HashMap<Stat, Vec<FormatSpan>> = HashMap::new();
-        let mut multi_stat_formats: HashMap<Vec<Stat>, MultiStatEntry> = HashMap::new();
+        let mut single_stat_formats: HashMap<StatKey, Vec<FormatSpan>> = HashMap::new();
+        let mut multi_stat_formats: HashMap<Vec<StatKey>, MultiStatEntry> = HashMap::new();
 
-        for (stats, format) in DISPLAY_RULES {
+        for (keys, format) in DISPLAY_RULES {
             let spans = parse_format_string(format);
-            if stats.len() == 1 {
-                single_stat_formats.insert(stats[0], spans);
+            if keys.len() == 1 {
+                single_stat_formats.insert(keys[0], spans);
             } else {
-                let mut sorted_key = stats.to_vec();
-                sorted_key.sort_by_key(|s| s.index());
+                let mut sorted_key = keys.to_vec();
+                sorted_key.sort_by_key(key_sort_index);
                 multi_stat_formats.insert(
                     sorted_key,
                     MultiStatEntry {
-                        stats: stats.to_vec(),
+                        stats: keys.to_vec(),
                         lines: vec![spans],
                     },
                 );
             }
         }
 
-        for &stat in Stat::ALL {
-            if !single_stat_formats.contains_key(&stat) {
-                let title = to_title_case(stat.name());
-                let fallback_fmt = format!("[{{+0}}] {}", title);
-                single_stat_formats.insert(stat, parse_format_string(&fallback_fmt));
+        for stat in Stat::iter() {
+            for kind in [ModifierKind::Flat, ModifierKind::Increased, ModifierKind::More] {
+                let key = (stat, kind);
+                if !single_stat_formats.contains_key(&key) {
+                    let title = to_title_case(stat.name());
+                    let fallback_fmt = format!("[{{+0}}] {}", title);
+                    single_stat_formats.insert(key, parse_format_string(&fallback_fmt));
+                }
             }
         }
 
@@ -188,9 +197,9 @@ impl StatDisplayRegistry {
         }
     }
 
-    pub fn get_format(&self, stats: &[Stat]) -> Vec<Vec<FormatSpan>> {
-        if stats.len() == 1 {
-            if let Some(spans) = self.single_stat_formats.get(&stats[0]) {
+    pub fn get_format(&self, keys: &[StatKey]) -> Vec<Vec<FormatSpan>> {
+        if keys.len() == 1 {
+            if let Some(spans) = self.single_stat_formats.get(&keys[0]) {
                 return vec![spans.clone()];
             }
             return vec![vec![FormatSpan::Value {
@@ -206,13 +215,13 @@ impl StatDisplayRegistry {
             }]];
         }
 
-        let mut sorted_key: Vec<Stat> = stats.to_vec();
-        sorted_key.sort_by_key(|s| s.index());
+        let mut sorted_key: Vec<StatKey> = keys.to_vec();
+        sorted_key.sort_by_key(key_sort_index);
 
         if let Some(entry) = self.multi_stat_formats.get(&sorted_key) {
             let mut remap = vec![0usize; entry.stats.len()];
-            for (rule_pos, stat) in entry.stats.iter().enumerate() {
-                if let Some(caller_pos) = stats.iter().position(|s| s == stat) {
+            for (rule_pos, key) in entry.stats.iter().enumerate() {
+                if let Some(caller_pos) = keys.iter().position(|k| k == key) {
                     remap[rule_pos] = caller_pos;
                 }
             }
@@ -243,9 +252,8 @@ impl StatDisplayRegistry {
                 .collect();
         }
 
-        stats
-            .iter()
-            .filter_map(|stat| self.single_stat_formats.get(stat).cloned())
+        keys.iter()
+            .filter_map(|key| self.single_stat_formats.get(key).cloned())
             .collect()
     }
 }

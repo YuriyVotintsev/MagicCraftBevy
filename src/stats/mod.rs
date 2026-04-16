@@ -11,7 +11,7 @@ pub use computed_stats::ComputedStats;
 pub use dirty_stats::DirtyStats;
 pub use display::{FormatSpan, SignMode, ValueTemplate};
 pub use modifiers::Modifiers;
-pub use registry::Stat;
+pub use registry::{ModifierKind, Stat};
 
 use bevy::prelude::*;
 

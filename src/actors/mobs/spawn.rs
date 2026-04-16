@@ -4,7 +4,7 @@ use bevy::reflect::TypePath;
 use serde::Deserialize;
 
 use crate::palette;
-use crate::stats::{ComputedStats, DirtyStats, Modifiers, Stat, StatCalculators};
+use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
 
 use super::super::components::SpriteColor;
 use super::{ghost, jumper, slime, spinner, tower};
@@ -91,19 +91,19 @@ pub(super) fn enemy_ability_sprite_color() -> SpriteColor {
 
 pub(super) fn compute_stats(
     calculators: &StatCalculators,
-    base_stats: &[(Stat, f32)],
+    base_stats: &[(Stat, ModifierKind, f32)],
 ) -> (Modifiers, DirtyStats, ComputedStats) {
     let mut modifiers = Modifiers::new();
-    for &(stat, value) in base_stats {
-        modifiers.add(stat, value);
+    for &(stat, kind, value) in base_stats {
+        modifiers.add(stat, kind, value);
     }
     let mut dirty = DirtyStats::default();
     let mut computed = ComputedStats::default();
-    dirty.mark_all(Stat::ALL.iter().copied());
+    dirty.mark_all(Stat::iter());
     calculators.recalculate(&modifiers, &mut computed, &mut dirty);
     (modifiers, dirty, computed)
 }
 
 pub(super) fn current_max_life(computed: &ComputedStats) -> f32 {
-    computed.get(Stat::MaxLife)
+    computed.final_of(Stat::MaxLife)
 }

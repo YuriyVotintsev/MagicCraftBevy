@@ -67,7 +67,6 @@ pub struct Sprite {
     pub color: SpriteColor,
     pub shape: SpriteShape,
     pub position: Vec2,
-    pub scale: f32,
     pub elevation: f32,
     pub half_length: f32,
 }

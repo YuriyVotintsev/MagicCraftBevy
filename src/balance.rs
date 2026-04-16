@@ -19,7 +19,6 @@ pub struct WaveBalance {
     pub max_enemies: u32,
     pub ramp_duration_secs: f32,
     pub safe_spawn_radius: f32,
-    pub shop_delay: f32,
 }
 
 #[derive(Clone, Deserialize)]

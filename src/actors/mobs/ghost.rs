@@ -12,7 +12,7 @@ use super::super::player::Player;
 use crate::faction::Faction;
 use crate::health_material::{HealthMaterial, HealthMaterialLink};
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, Stat, StatCalculators};
+use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 use crate::wave::SummoningCircle;
 
 use super::spawn::{compute_stats, current_max_life, enemy_sprite_color};
@@ -78,7 +78,11 @@ pub fn spawn_ghost(
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
         calculators,
-        &[(Stat::MovementSpeedFlat, s.speed), (Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
+        &[
+            (Stat::MovementSpeed, ModifierKind::Flat, s.speed),
+            (Stat::MaxLife, ModifierKind::Flat, s.hp),
+            (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
+        ],
     );
     let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
@@ -109,7 +113,7 @@ pub fn spawn_ghost(
         p.spawn((
             Sprite {
                 color: enemy_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
+                position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
             },
             BobbingAnimation { amplitude: 0.2, speed: 2.0, base_elevation: 0.5 },
         ));
@@ -264,7 +268,7 @@ fn move_toward_system(
             commands.entity(entity).remove::<SelfMoving>();
             continue;
         };
-        let speed = stats.get(Stat::MovementSpeed);
+        let speed = stats.final_of(Stat::MovementSpeed);
         let direction = crate::coord::to_2d(target_transform.translation - transform.translation);
 
         velocity.0 = if direction.length_squared() > 1.0 {

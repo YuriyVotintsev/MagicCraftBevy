@@ -4,219 +4,190 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Magic Craft is a Bevy 0.18 incremental arena shooter. Players face waves of enemies, earn currency, and invest in a skill tree to grow progressively stronger.
+Magic Craft is a Bevy 0.18 roguelite/incremental arena shooter. Between combat waves the player buys runes in a hex-grid shop; runes grant stat modifiers. Player has a single life pool per run; death returns to main menu.
 
-**Tech Stack:** Bevy 0.18, Avian2D 0.5 (physics), Ron (config format), Serde
+**Tech Stack:** Bevy 0.18, Avian3D 0.5 (3D physics, top-down gameplay), Ron 0.12, Serde, `bevy_tweening`, `delaunator`, `rand`.
 
 ## Build Commands
 
 ```bash
-cargo run                                                         # Normal mode
-HEADLESS=1 SKIP_MENU=1 cargo run --features dev -- --timeout 10  # Headless test (skip menu, 10s timeout)
+cargo run --features dev                                             # Normal dev run
+HEADLESS=1 SKIP_MENU=1 cargo run --features dev -- --timeout 10      # Headless smoke test, 10s
 ```
 
 **Testing:**
-- Use headless mode with `--timeout 10` for quick validation (10 seconds is sufficient)
-- Longer tests are unnecessary for basic functionality verification
-- `HEADLESS=1` and `SKIP_MENU=1` are runtime env vars, only work with `--features dev`
+- `--timeout N` is required when `HEADLESS=1`; 10s is enough for smoke validation.
+- `HEADLESS=1` disables the winit plugin and runs a fixed-rate schedule loop.
+- `SKIP_MENU=1` jumps straight from `Loading` to `Playing`, bypassing the main menu.
+- Both env vars require `--features dev`.
 
 ## Architecture
 
-### Plugin-Based Structure
-Each major system is a self-contained Bevy Plugin registered in `main.rs`:
-- `BlueprintPlugin` - Data-driven entity definition system (most complex)
-- `StatsPlugin` - Stat calculation with modifiers
-- `FsmPlugin` - Finite state machine for mob AI
-- `MobAiPlugin` - Concrete behavior implementations
-- `PlayerPlugin`, `WavePlugin`, `UiPlugin`, etc.
+### Plugins (registered in `main.rs`)
+Each subsystem is a self-contained `Plugin`:
 
-### State Management
+- `LoadingPlugin` — registers RON asset loaders and gates `GameState::Loading`.
+- `ArenaPlugin` — camera, floor, walls, arena sizing.
+- `StatsPlugin` — `Stat` enum, `Modifiers`, `ComputedStats`, `DirtyStats`, `StatCalculators`.
+- `ActorsPlugin` — composed of `ComponentsPlugin` (combat / physics / player / visual), `MobsPlugin`, `PlayerPlugin`.
+- `RunPlugin` — run lifecycle (`RunState`), money, coin pickups, player death handler.
+- `RunePlugin` — shop offer, rune grid, joker slots, shop generation.
+- `HealthMaterialPlugin` / `HitFlashPlugin` — custom material for HP indication on mob sprites + hit-flash tween.
+- `TweeningPlugin` (from `bevy_tweening`).
+- `TransitionPlugin` — iris scene transitions (custom shader).
+- `UiPlugin` — HUD, main menu, shop view, game-over, pause menu, dev-menu, loading screen.
+- `WavePlugin` — wave state/spawn/summoning circles.
+- `ParticlesPlugin` — event-driven particle system.
+- `CompositeScalePlugin` — multiplicative visual scale from independent "layers".
+
+### State Machine
+
 ```rust
-GameState { Loading, MainMenu, Playing, GameOver }
-WavePhase { Combat, ShopDelay, Shop }  // SubState of Playing
+GameState   { Loading, MainMenu, Playing, GameOver }
+WavePhase   { Combat, Shop }         // SubState of GameState::Playing
+CombatPhase { Running, Paused, DevMenu }  // SubState of WavePhase::Combat
 ```
-Systems use `run_if(in_state(...))` for state gating.
 
-### System Ordering (schedule.rs)
+Systems are gated with `run_if(in_state(...))`. `DespawnOnExit(WavePhase::Combat)` tears down combat-scoped entities.
+
+### System Ordering (`src/schedule.rs`)
+
 ```rust
-GameSet { Input, MobAI, AbilityActivation, AbilityExecution, Damage, WaveManagement }
-```
-Use `in_set(GameSet::X)` instead of `before()`/`after()`.
-Create new set if required to avoid `before()`/`after()`.
-
-### Data-Driven Design
-All game content loads from `.ron` files in `assets/`:
-- `abilities/*.ability.ron` - Ability definitions
-- `mobs/*.mob.ron` - Mob AI states and behaviors
-- `player.player.ron` - Player configuration
-- `stats/config.stats.ron` - Stat definitions and formulas
-- `particles/*.particle.ron` - Particle effect configs (with inheritance via `parent` field)
-
-Custom asset loaders implement Bevy's `AssetLoader` trait.
-
-### Trait-Based Registries
-Abilities use trait registries for extensibility:
-- `Trigger` trait → `TriggerRegistry` (when abilities trigger)
-- `EffectExecutor` trait → `EffectRegistry` (what abilities do)
-- `BehaviourRegistry`, `TransitionRegistry` for FSM
-
-### Key Patterns
-- **SpawnSource**: Context data passed during entity spawning
-- **PendingDamage**: Queued damage applied in GameSet::Damage
-- **DirtyStats**: Tracks which stats need recalculation (optimization)
-- **Raw→Processed types**: `*Raw` types use strings for Ron deserialization, converted to typed IDs at load time
-
-### Blueprint Component Design Rules
-
-**1. RON name = ECS component (1:1 mapping)**
-```
-RON файл              →  ECS Component
-──────────────────────────────────────
-Speed((value: "400")) →  Speed { value: f32 }
-Straight(())          →  Straight { spread: f32, direction: Vec2 }
-Collider((shape: Circle)) →  Collider { shape: Shape }
-OnCollision((entities: [...])) →  OnCollision { entities: Vec<EntityDef> }
-```
-
-**2. Use `#[blueprint_component]` macro**
-
-The proc macro generates `DefRaw`, `Def`, Component struct, and `insert_component()`:
-```rust
-#[blueprint_component]
-pub struct Straight {
-    #[raw(default = 0)]
-    pub spread: ScalarExpr,           // → f32 in Component
-    #[default_expr("target.direction")]
-    pub direction: VecExpr,           // → Vec2 in Component
+GameSet {
+    Input, MobAI, Spawning,
+    AbilityActivation, AbilityExecution, AbilityLifecycle,
+    Damage, DamageApply,
+    WaveManagement, Cleanup,
 }
+ShopSet { Input, Process, Display }   // only during WavePhase::Shop
+PostGameSet                           // PostUpdate, only during CombatPhase::Running
 ```
 
-Field type mapping:
-| Def type | Component type | Notes |
-|----------|---------------|-------|
-| `ScalarExpr` | `f32` | Evaluated at spawn |
-| `VecExpr` | `Vec2` | Evaluated at spawn |
-| `EntityExpr` | `Entity` | Evaluated at spawn |
-| `Option<ScalarExpr>` | `Option<f32>` | Optional expression |
-| `Vec<EntityDef>` | `Vec<EntityDef>` | Cloned |
-| Other types | Same type | Cloned with `#[serde(default)]` if has `#[raw(default = ...)]` |
+- Prefer `in_set(GameSet::X)` to `before()` / `after()`. Add a new set rather than sprinkling explicit ordering.
+- The combat chain runs only in `CombatPhase::Running`; `ShopSet` runs only in `WavePhase::Shop`.
+- Two explicit `ApplyDeferred` barriers live between `Spawning` → `AbilityActivation` and `AbilityExecution` → `AbilityLifecycle` (see `main.rs`).
 
-**3. Added<T> systems handle dynamic initialization**
+### Data-Driven Assets (`assets/`)
+
+RON files loaded at startup (see `LoadingPlugin`):
+
+- `balance.ron` → `GameBalance` (wave pacing, arena size, run economy, rune tier weights).
+- `mobs.ron` → `MobsBalance` (per-mob stat blocks for ghost/tower/slime_small/spinner/jumper).
+- `runes.ron` → `RuneCosts` (price per `RuneKind`).
+- `palette.ron` → `palette::*` lookup (RGB + flash colors keyed by string).
+- `particles/*.particle.ron` → `ParticleConfigRaw`, supports inheritance via `parent`.
+
+### Stats
+
+- `Stat` is an enum of logical stats (`MaxLife`, `PhysicalDamage`, `MovementSpeed`, ...) in `src/stats/registry.rs`. Meta (`Stat::iter`, `Stat::COUNT`, `stat.name()`) is derived via `strum`.
+- `ModifierKind { Flat, Increased, More }` — every modifier addresses one bucket of one stat.
+- `Stat::formula()` returns `Formula::FlatIncMore` for nearly every stat; `Formula::Custom(fn)` is reserved for odd cases (currently `CritChance` clamps to `[0, 1]`).
+- `ComputedStats` stores per-stat bucket triples (`[[f32; 3]; Stat::COUNT]`) plus cached final values. Two read APIs:
+  - `final_of(stat)` — cached `apply(stat, 0.0)`, for self-contained stats like `MaxLife`, `MovementSpeed`.
+  - `apply(stat, base)` — applies the stat's formula to a caller-provided base, for per-ability stats like `PhysicalDamage`, `ProjectileSpeed`.
+- `Modifiers` holds `(Stat, ModifierKind, f32)` tuples. `sum()` aggregates `Flat`/`Increased` buckets; `product()` aggregates `More` starting at `1.0`.
+- `DirtyStats` tracks which stats need recomputation; `mark_dirty_on_modifier_change` runs in `PreUpdate`.
+- `StatCalculators::build()` topo-sorts on `stat.deps()` at plugin init (currently no stat has deps, but the infrastructure guards correctness if Custom formulas start reading other stats). `invalidate()` propagates dirty through `reverse_deps`.
+
+### Combat Flow
+
+1. `OnCollisionDamage` / `MeleeAttacker` / projectile systems emit `PendingDamage` messages.
+2. `apply_pending_damage` (in `GameSet::DamageApply`) reads `PendingDamage`, rolls crit from source's `ComputedStats`, subtracts from `Health`, inserts `HitFlash`.
+3. `death_system` watches `Health.current <= 0`, emits `DeathEvent`, despawns non-`SkipCleanup` entities.
+
+### Coordinate System
+
+Gameplay is 2D but physics runs in 3D with Y-up ground plane. Use helpers in `src/coord.rs`:
+
 ```rust
-fn init_straight(
-    mut commands: Commands,
-    query: Query<(Entity, &Speed, &Straight), Added<Straight>>,
-) {
-    for (entity, speed, straight) in &query {
-        commands.entity(entity).insert((
-            RigidBody::Kinematic,
-            LinearVelocity(straight.direction * speed.value),
-        ));
-    }
-}
+coord::ground_pos(v: Vec2) -> Vec3  // (x, 0, -y)
+coord::ground_vel(v: Vec2) -> Vec3
+coord::to_2d(v: Vec3)     -> Vec2
 ```
 
-**4. Runtime state in separate components**
-```rust
-#[blueprint_component]
-pub struct Growing {
-    pub start_size: ScalarExpr,
-    pub end_size: ScalarExpr,
-}
+Length unit: 100 pixels = 1 meter (`PhysicsPlugins::default().with_length_unit(100.0)`).
 
-#[derive(Component, Default)]
-pub struct GrowingProgress {  // Separate runtime state
-    pub elapsed: f32,
-    pub duration: f32,
-}
-```
+### Physics & Collision Layers
 
-**5. Naming conventions**
-- No `Trigger` suffix: `OnCollision` not `OnCollisionTrigger`
-- No `Request` suffix: `Dash` not `DashRequest`
-- No `Projectile` suffix: `Falling` not `FallingProjectile`
-- Use `as` for conflicts: `use bevy::prelude::{Sprite as BevySprite, *}`
+`GameLayer { Default, Player, Enemy, PlayerProjectile, EnemyProjectile, Wall }`. `Collider { shape, sensor }` component auto-derives Avian layers from `Faction` (see `actors/components/physics/collider.rs`). Faction filtering prevents friendly fire; projectiles are sensors.
 
-## Key Directories
+## Directory Layout
 
 ```
 src/
-├── blueprints/      # Data-driven entity definitions: components, expressions, spawning
-├── stats/           # Stat calculation: modifiers, expressions, health, damage
-├── fsm/             # Mob FSM core: states, transitions, events
-├── mob_ai/          # Concrete behaviors (move_toward_player, when_near, etc.)
-├── player/          # Player spawning and input
-├── ui/              # All UI screens (menu, HUD, shop, game over)
-├── schedule.rs      # SystemSet definitions
-└── game_state.rs    # GameState enum
+├── actors/
+│   ├── components/
+│   │   ├── combat/     # Health, damage, death, projectiles, melee, targeting
+│   │   ├── physics/    # Collider, DynamicBody, StaticBody, Size
+│   │   ├── player/     # KeyboardMovement, PlayerInput, ability cooldowns
+│   │   └── visual/     # Sprite, Shadow, Bobbing/JumpWalk animations, particles hooks
+│   ├── mobs/           # ghost, tower, slime, spinner, jumper + spawn.rs dispatch
+│   └── player.rs       # player spawn + fireball firing
+├── arena/              # camera, floor, walls, window sizing
+├── loading/            # generic RonAssetLoader + loading state machine
+├── rune/               # Rune, RuneGrid, JokerSlots, ShopOffer, hex math, shop gen
+├── run/                # RunState, PlayerMoney, coin pickups, player death
+├── stats/              # Stat, Modifiers, ComputedStats, DirtyStats, calculators, display
+├── ui/                 # main menu, HUD, shop view, pause, dev menu, game over, loading
+├── wave/               # WavePhase, CombatPhase, enemy spawning, summoning circles
+├── balance.rs          # GameBalance asset (wave / arena / run / runes)
+├── composite_scale.rs  # Multiplicative scale from named layers
+├── coord.rs            # 2D ↔ 3D ground-plane helpers
+├── faction.rs          # Faction { Player, Enemy }
+├── game_state.rs       # GameState enum
+├── health_material.rs  # Custom WGSL health-bar material
+├── hit_flash.rs        # Hit-flash tween component
+├── main.rs             # App setup, plugin registration, schedule config
+├── palette.rs          # Palette lookup from palette.ron
+├── particles.rs        # Event-driven particle system (single file)
+├── schedule.rs         # GameSet / ShopSet / PostGameSet
+└── transition.rs       # Iris scene transition
 ```
-
-## File Operations
-
-**IMPORTANT:** Never use `cat`, `sed`, `awk`, `echo >`, or heredocs for file editing. Always use dedicated tools:
-- **Read files:** Use Read tool (not cat/head/tail)
-- **Edit files:** Use Edit tool (not sed/awk)
-- **Write files:** Use Write tool (not echo/cat with heredoc)
-- **Bash tool:** Only for actual terminal operations (git, cargo, npm, etc.)
-
-## Common Development Tasks
-
-**Add new blueprint component:**
-1. Create `component_name.rs` in `blueprints/components/`
-2. Define struct with `#[blueprint_component]` macro:
-   ```rust
-   #[blueprint_component]
-   pub struct MyComponent {
-       pub damage: ScalarExpr,              // Required field
-       #[raw(default = false)]
-       pub enabled: bool,                   // Optional with default
-       #[default_expr("target.direction")]
-       pub direction: VecExpr,              // Optional with expression default
-   }
-   ```
-3. If needs Transform/RigidBody/etc — add `init_component` system with `Added<Component>` query
-4. Register in `blueprints/components/mod.rs` via `collect_components!` macro
-
-**Add new mob:**
-Create `.mob.ron` in `assets/mobs/` with visual, collider, base_stats, states
-
-**Add new stat:**
-Edit `assets/stats/config.stats.ron` to add stat_id and optional calculator formula
-
-**Add FSM behavior:**
-1. Create behavior system in `mob_ai/behaviours/`
-2. Register in `MobAiPlugin` (mob_ai/mod.rs)
 
 ## Particle System
 
-Event-driven particle system. All configs in `assets/particles/*.particle.ron`.
+Event-driven. Configs live in `assets/particles/*.particle.ron`; RON supports `parent` inheritance.
 
 **API:**
 ```rust
-// Spawn particle emitter entity. Burst auto-despawns, continuous needs stop.
 let emitter = start_particles(&mut commands, "enemy_death", position);
-stop_particles(&mut commands, emitter);  // for continuous only
+stop_particles(&mut commands, emitter);   // only for continuous emitters
 ```
 
-**RON config with inheritance:**
-```ron
-// assets/particles/enemy_death_large.particle.ron
-(
-    parent: Some("enemy_death"),   // inherits all fields, overrides listed
-    count: Some(24),
-    start_size: Some(90.0),
-    speed: Some(400.0),
-)
-```
+**Config fields:** `count` (burst size), `spawn_rate` (particles/sec, 0 = one-shot burst), `speed`, `vertical_speed`, `lifetime`, `start_size`, `end_size`, `elevation`, `color` (palette key), `shape` (`Point` or `Circle(radius)`).
 
-**Key fields:** `count` (per burst), `spawn_rate` (continuous, particles/sec, 0=burst), `speed`, `vertical_speed`, `lifetime`, `start_size`, `end_size`, `elevation` (Y spawn), `color` (palette name), `shape` (Point or Circle(radius))
+**Hook components:** `OnDeathParticles { config }`, `OnCollisionParticles { config }` — attach to an entity and the effect fires on death/collision. `ParticleEmitter::shape_override` lets a system resize the spawn shape at runtime (e.g. summoning-circle growth).
 
-**Blueprint usage:** `Particles((config: "enemy_death"))` — spawns particles at `source.position` (default). Use in OnDeath, OnCollision, etc.
+## Common Development Tasks
 
-**Emitter entity** has `ParticleEmitter` component with `shape_override: Option<SpawnShape>` for runtime dynamic shape (e.g. summoning circle growing radius).
+**Add a new mob:**
+1. Create `src/actors/mobs/newmob.rs` with a `NewMobStats` (serde `Deserialize`) struct, a spawn fn `spawn_newmob(commands, pos, stats, calculators) -> Entity`, behavior systems, and `register_systems(app)`.
+2. Add a `MobKind::NewMob` variant and update `id()`, `from_id()`, `size()`.
+3. Add the `new_mob` field to `MobsBalance` in `spawn.rs`; extend `spawn_mob` match.
+4. Add the corresponding block to `assets/mobs.ron`.
+5. Register in `MobsPlugin::build` via `newmob::register_systems(app)`.
 
-## Physics Configuration
+*(This duplication is known debt — consider a registry refactor before adding a 6th mob.)*
 
-- Length unit: 100 pixels = 1 meter
-- Faction-based collision filtering: Player vs Enemy (prevents friendly fire)
-- Projectiles use sensor colliders for hit detection
+**Add a new stat:**
+1. Add a variant to `Stat` (`src/stats/registry.rs`). `strum` handles `iter`/`COUNT`/`name`.
+2. If the stat needs a non-standard formula, add an arm to `Stat::formula()` returning `Formula::Custom(your_fn)`; otherwise it defaults to `FlatIncMore`.
+3. If a Custom formula reads other computed stats, add them to `Stat::deps()` so topo-sort orders recalculation correctly.
+4. Consume it via `computed.final_of(Stat::NewStat)` (self-contained) or `computed.apply(Stat::NewStat, base)` (per-ability base).
+
+**Add a new rune:**
+1. Add a variant to `RuneKind` and extend `RuneKind::ALL` + `RuneKind::def()` in `src/rune/content.rs`.
+2. Add its price in `assets/runes.ron`.
+3. Shop roll / grid placement picks it up automatically via `RuneKind::ALL` + tier weights.
+
+**Add a reusable actor component:**
+Write a plain `#[derive(Component)]` struct in the appropriate `actors/components/**` subfolder. If it needs init or update systems, add a `register_systems(app)` function (`Added<T>` queries are the common init pattern) and wire it into the relevant components plugin (`CombatPlugin`, `VisualPlugin`, `PhysicsPlugin`, `PlayerComponentsPlugin`).
+
+## File Operations
+
+**IMPORTANT:** Do not use `cat`, `sed`, `awk`, `echo >`, or heredocs for file editing. Use dedicated tools:
+- Read files: Read tool
+- Edit files: Edit tool
+- Write files: Write tool
+- Bash: only for real terminal operations (git, cargo, etc.)
+

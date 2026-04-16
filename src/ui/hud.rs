@@ -96,7 +96,7 @@ pub fn update_hud(
     }
 
     if let Ok((health, stats)) = player_query.single() {
-        let max_life = stats.get(Stat::MaxLife);
+        let max_life = stats.final_of(Stat::MaxLife);
 
         if let Ok(mut text) = life_text.single_mut() {
             **text = format!("Life: {}/{}", health.current as i32, max_life as i32);

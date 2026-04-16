@@ -11,7 +11,7 @@ use super::super::components::{
 use crate::arena::CurrentArenaSize;
 use crate::faction::Faction;
 use crate::schedule::GameSet;
-use crate::stats::{ComputedStats, Stat, StatCalculators};
+use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
 use super::spawn::{compute_stats, current_max_life, enemy_ability_sprite_color, enemy_sprite_color};
 
@@ -92,7 +92,11 @@ pub fn spawn_jumper(
 ) -> Entity {
     let (modifiers, dirty, computed) = compute_stats(
         calculators,
-        &[(Stat::MovementSpeedFlat, s.speed), (Stat::MaxLifeFlat, s.hp), (Stat::PhysicalDamageFlat, s.damage)],
+        &[
+            (Stat::MovementSpeed, ModifierKind::Flat, s.speed),
+            (Stat::MaxLife, ModifierKind::Flat, s.hp),
+            (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
+        ],
     );
     let hp = current_max_life(&computed);
     let ground = crate::coord::ground_pos(pos);
@@ -131,7 +135,7 @@ pub fn spawn_jumper(
         p.spawn((
             Sprite {
                 color: enemy_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, elevation: 0.5, half_length: 0.5,
+                position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
             },
             JumpWalkAnimation { bounce_height: 0.7, bounce_duration: 0.5, land_squish: 0.7, land_duration: 0.4 },
         ));
@@ -211,7 +215,7 @@ fn fire_jumper_shot(
     ai: &JumperAi,
     caster_stats: Option<&ComputedStats>,
 ) {
-    let damage = caster_stats.map(|s| s.get(Stat::PhysicalDamageFlat)).unwrap_or(0.0);
+    let damage = caster_stats.map(|s| s.apply(Stat::PhysicalDamage, 0.0)).unwrap_or(0.0);
     let count = ai.projectile_count as usize;
     let base_dir = Vec2::X;
     let spread_rad = ai.spread_degrees.to_radians();
@@ -243,7 +247,7 @@ fn fire_jumper_shot(
             p.spawn(Shadow { opacity: 0.45 });
             p.spawn(Sprite {
                 color: enemy_ability_sprite_color(), shape: SpriteShape::Circle,
-                position: Vec2::ZERO, scale: 1.0, elevation: 0.7, half_length: 0.5,
+                position: Vec2::ZERO, elevation: 0.7, half_length: 0.5,
             });
         });
     }

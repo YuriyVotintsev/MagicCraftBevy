@@ -39,16 +39,16 @@ pub fn apply_pending_damage(
 
         if let Some(source_entity) = hit.source {
             if let Ok(source_stats) = stats_query.get(source_entity) {
-                let chance = source_stats.get(Stat::CritChance);
+                let chance = source_stats.final_of(Stat::CritChance);
                 if rand::random::<f32>() < chance {
-                    let multiplier = source_stats.get(Stat::CritMultiplier);
+                    let multiplier = source_stats.final_of(Stat::CritMultiplier);
                     let effective = if multiplier > 0.0 { multiplier } else { 1.5 };
                     amount *= effective;
                 }
             }
         }
 
-        let max = stats.get(Stat::MaxLife).max(1.0);
+        let max = stats.final_of(Stat::MaxLife).max(1.0);
         health.current = (health.current - amount).clamp(0.0, max);
 
         if let Ok(mut entity_commands) = commands.get_entity(hit.target) {
