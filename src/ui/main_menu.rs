@@ -1,6 +1,10 @@
 use bevy::{app::AppExit, prelude::*};
 
 use crate::game_state::GameState;
+use crate::palette;
+use crate::transition::{Transition, TransitionAction};
+
+use super::panel_radius;
 
 #[derive(Component)]
 pub(super) enum MenuButton {
@@ -8,12 +12,10 @@ pub(super) enum MenuButton {
     Exit,
 }
 
-const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
-const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-
 pub(super) fn spawn_main_menu(mut commands: Commands) {
+    let text = palette::color("ui_text");
+    let panel = palette::color("ui_panel_bg");
+    let button = palette::color("ui_button_normal");
     commands.spawn((
         Name::new("MainMenuRoot"),
         DespawnOnExit(GameState::MainMenu),
@@ -24,15 +26,17 @@ pub(super) fn spawn_main_menu(mut commands: Commands) {
             justify_content: JustifyContent::Center,
             ..default()
         },
+        BackgroundColor(palette::color("ui_screen_bg")),
         children![
             (
                 Node {
                     flex_direction: FlexDirection::Column,
                     align_items: AlignItems::Center,
                     padding: UiRect::all(Val::Px(40.0)),
+                    border_radius: panel_radius(),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.1, 0.1, 0.2, 0.9)),
+                BackgroundColor(panel),
                 children![
                     (
                         Text::new("Magic Craft"),
@@ -40,7 +44,7 @@ pub(super) fn spawn_main_menu(mut commands: Commands) {
                             font_size: 64.0,
                             ..default()
                         },
-                        TextColor(TEXT_COLOR),
+                        TextColor(text),
                         Node {
                             margin: UiRect::bottom(Val::Px(50.0)),
                             ..default()
@@ -50,28 +54,28 @@ pub(super) fn spawn_main_menu(mut commands: Commands) {
                         Button,
                         MenuButton::Play,
                         button_node(),
-                        BackgroundColor(NORMAL_BUTTON),
+                        BackgroundColor(button),
                         children![(
                             Text::new("Play"),
                             TextFont {
                                 font_size: 32.0,
                                 ..default()
                             },
-                            TextColor(TEXT_COLOR)
+                            TextColor(text)
                         )]
                     ),
                     (
                         Button,
                         MenuButton::Exit,
                         button_node(),
-                        BackgroundColor(NORMAL_BUTTON),
+                        BackgroundColor(button),
                         children![(
                             Text::new("Exit"),
                             TextFont {
                                 font_size: 32.0,
                                 ..default()
                             },
-                            TextColor(TEXT_COLOR)
+                            TextColor(text)
                         )]
                     ),
                 ]
@@ -87,6 +91,7 @@ fn button_node() -> Node {
         margin: UiRect::all(Val::Px(10.0)),
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
+        border_radius: panel_radius(),
         ..default()
     }
 }
@@ -96,22 +101,24 @@ pub(super) fn menu_button_system(
         (&Interaction, &MenuButton, &mut BackgroundColor),
         Changed<Interaction>,
     >,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut transition: ResMut<Transition>,
     mut exit: MessageWriter<AppExit>,
 ) {
     for (interaction, button, mut color) in &mut interaction_query {
         match interaction {
             Interaction::Pressed => {
-                *color = PRESSED_BUTTON.into();
+                *color = palette::color("ui_button_pressed").into();
                 match button {
-                    MenuButton::Play => next_state.set(GameState::Playing),
+                    MenuButton::Play => {
+                        transition.request(TransitionAction::Game(GameState::Playing));
+                    }
                     MenuButton::Exit => {
                         exit.write(AppExit::Success);
                     }
                 }
             }
-            Interaction::Hovered => *color = HOVERED_BUTTON.into(),
-            Interaction::None => *color = NORMAL_BUTTON.into(),
+            Interaction::Hovered => *color = palette::color("ui_button_hover").into(),
+            Interaction::None => *color = palette::color("ui_button_normal").into(),
         }
     }
 }

@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
 
 use super::death::PlayerDying;
@@ -37,9 +38,9 @@ fn tick_run(time: Res<Time>, mut run_state: ResMut<RunState>) {
 
 fn check_combat_timeout(
     run_state: Res<RunState>,
-    mut next_phase: ResMut<NextState<WavePhase>>,
+    mut transition: ResMut<Transition>,
 ) {
     if run_state.elapsed >= WAVE_COMBAT_DURATION {
-        next_phase.set(WavePhase::ShopDelay);
+        transition.request(TransitionAction::Wave(WavePhase::Shop));
     }
 }

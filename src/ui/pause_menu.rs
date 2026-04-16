@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 
 use crate::game_state::GameState;
+use crate::palette;
 use crate::wave::CombatPhase;
+
+use super::panel_radius;
 
 #[derive(Component)]
 pub(super) enum PauseButton {
@@ -9,12 +12,9 @@ pub(super) enum PauseButton {
     EndRun,
 }
 
-const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
-const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-
 pub(super) fn spawn_pause_menu(mut commands: Commands) {
+    let text = palette::color("ui_text");
+    let button = palette::color("ui_button_normal");
     commands.spawn((
         Name::new("PauseMenuRoot"),
         DespawnOnExit(CombatPhase::Paused),
@@ -27,16 +27,17 @@ pub(super) fn spawn_pause_menu(mut commands: Commands) {
             position_type: PositionType::Absolute,
             ..default()
         },
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
+        BackgroundColor(palette::color_alpha("ui_overlay_bg", 0.6)),
         children![
             (
                 Node {
                     flex_direction: FlexDirection::Column,
                     align_items: AlignItems::Center,
                     padding: UiRect::all(Val::Px(40.0)),
+                    border_radius: panel_radius(),
                     ..default()
                 },
-                BackgroundColor(Color::srgba(0.1, 0.1, 0.15, 0.95)),
+                BackgroundColor(palette::color("ui_panel_bg")),
                 children![
                     (
                         Text::new("Paused"),
@@ -44,7 +45,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands) {
                             font_size: 64.0,
                             ..default()
                         },
-                        TextColor(Color::srgb(0.8, 0.8, 0.9)),
+                        TextColor(palette::color("ui_text_title")),
                         Node {
                             margin: UiRect::bottom(Val::Px(50.0)),
                             ..default()
@@ -54,28 +55,28 @@ pub(super) fn spawn_pause_menu(mut commands: Commands) {
                         Button,
                         PauseButton::Continue,
                         button_node(),
-                        BackgroundColor(NORMAL_BUTTON),
+                        BackgroundColor(button),
                         children![(
                             Text::new("Continue"),
                             TextFont {
                                 font_size: 32.0,
                                 ..default()
                             },
-                            TextColor(TEXT_COLOR)
+                            TextColor(text)
                         )]
                     ),
                     (
                         Button,
                         PauseButton::EndRun,
                         button_node(),
-                        BackgroundColor(NORMAL_BUTTON),
+                        BackgroundColor(button),
                         children![(
                             Text::new("End Run"),
                             TextFont {
                                 font_size: 32.0,
                                 ..default()
                             },
-                            TextColor(TEXT_COLOR)
+                            TextColor(text)
                         )]
                     ),
                 ]
@@ -91,6 +92,7 @@ fn button_node() -> Node {
         margin: UiRect::all(Val::Px(10.0)),
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
+        border_radius: panel_radius(),
         ..default()
     }
 }
@@ -128,7 +130,7 @@ pub(super) fn pause_button_system(
     for (interaction, button, mut color) in &mut interaction_query {
         match interaction {
             Interaction::Pressed => {
-                *color = PRESSED_BUTTON.into();
+                *color = palette::color("ui_button_pressed").into();
                 match button {
                     PauseButton::Continue => {
                         virtual_time.unpause();
@@ -140,8 +142,8 @@ pub(super) fn pause_button_system(
                     }
                 }
             }
-            Interaction::Hovered => *color = HOVERED_BUTTON.into(),
-            Interaction::None => *color = NORMAL_BUTTON.into(),
+            Interaction::Hovered => *color = palette::color("ui_button_hover").into(),
+            Interaction::None => *color = palette::color("ui_button_normal").into(),
         }
     }
 }

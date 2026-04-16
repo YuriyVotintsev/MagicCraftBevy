@@ -7,22 +7,24 @@ pub const GRID_RADIUS: i32 = 3;
 pub const SHOP_SLOTS: usize = 4;
 pub const JOKER_SLOTS: usize = 6;
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum StubKind {
+    Rune,
+    Joker,
+}
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct RuneStub {
     pub id: u32,
     pub color: Color,
+    pub kind: StubKind,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub struct JokerStub {
-    pub id: u32,
-    pub color: Color,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum RuneSource {
     Shop(usize),
     Grid(HexCoord),
+    Joker(usize),
 }
 
 #[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
@@ -33,32 +35,35 @@ pub struct RuneView {
 #[derive(Component, Copy, Clone, Debug)]
 pub struct GridCellView {
     pub coord: HexCoord,
-    pub center: Vec2,
-    pub unlocked: bool,
 }
 
 #[derive(Component, Copy, Clone, Debug)]
 pub struct ShopSlotView {
     pub index: usize,
-    pub center: Vec2,
 }
 
 #[derive(Component, Copy, Clone, Debug)]
 pub struct JokerSlotView {
     pub index: usize,
-    pub center: Vec2,
+}
+
+#[derive(Component, Copy, Clone, Debug)]
+pub struct Dragging {
+    pub stub: RuneStub,
+    pub from: RuneSource,
+    pub grab_offset: Vec2,
 }
 
 #[derive(Resource)]
 pub struct ShopOffer {
-    pub runes: [Option<RuneStub>; SHOP_SLOTS],
+    pub stubs: [Option<RuneStub>; SHOP_SLOTS],
     pub next_id: u32,
 }
 
 impl Default for ShopOffer {
     fn default() -> Self {
         Self {
-            runes: [None; SHOP_SLOTS],
+            stubs: [None; SHOP_SLOTS],
             next_id: 1,
         }
     }
@@ -96,15 +101,15 @@ impl Default for RuneGrid {
 
 #[derive(Resource, Default)]
 pub struct JokerSlots {
-    pub slots: [Option<JokerStub>; JOKER_SLOTS],
+    pub stubs: [Option<RuneStub>; JOKER_SLOTS],
 }
 
-#[derive(Resource, Default, Debug)]
-pub enum DragState {
-    #[default]
-    Idle,
-    Dragging {
-        entity: Entity,
-        from: RuneSource,
-    },
+pub fn can_place(stub_kind: StubKind, target: RuneSource, grid: &RuneGrid) -> bool {
+    match (stub_kind, target) {
+        (StubKind::Rune, RuneSource::Grid(c)) => grid.is_unlocked(c),
+        (StubKind::Rune, RuneSource::Shop(_)) => true,
+        (StubKind::Joker, RuneSource::Joker(_)) => true,
+        (StubKind::Joker, RuneSource::Shop(_)) => true,
+        _ => false,
+    }
 }

@@ -2,13 +2,24 @@
 
 use bevy::prelude::*;
 
+use crate::palette;
 use crate::stats::{FormatSpan, SignMode, ValueTemplate};
 
-pub const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-pub const POSITIVE_COLOR: Color = Color::srgb(0.3, 0.9, 0.3);
-pub const NEGATIVE_COLOR: Color = Color::srgb(0.9, 0.3, 0.3);
-pub const GOLD_COLOR: Color = Color::srgb(1.0, 0.84, 0.0);
-const GRAY_COLOR: Color = Color::srgb(0.4, 0.4, 0.4);
+pub fn text_color() -> Color {
+    palette::color("ui_text")
+}
+pub fn positive_color() -> Color {
+    palette::color("ui_text_positive")
+}
+pub fn negative_color() -> Color {
+    palette::color("ui_text_negative")
+}
+pub fn gold_color() -> Color {
+    palette::color("ui_text_money")
+}
+fn gray_color() -> Color {
+    palette::color("ui_text_disabled")
+}
 
 #[allow(dead_code)]
 pub enum StatRenderMode<'a> {
@@ -73,7 +84,7 @@ fn pick_and_format(
 
 fn benefit_color(value: f32, lower_is_better: bool) -> Color {
     let is_beneficial = (value >= 0.0) != lower_is_better;
-    if is_beneficial { POSITIVE_COLOR } else { NEGATIVE_COLOR }
+    if is_beneficial { positive_color() } else { negative_color() }
 }
 
 fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment> {
@@ -97,7 +108,7 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
                     FormatSpan::Label(text) => {
                         segments.push(Segment {
                             text: text.clone(),
-                            color: TEXT_COLOR,
+                            color: text_color(),
                         });
                     }
                 }
@@ -126,7 +137,7 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
                         });
                         segments.push(Segment {
                             text: " - ".to_string(),
-                            color: TEXT_COLOR,
+                            color: text_color(),
                         });
                         segments.push(Segment {
                             text: max_text,
@@ -136,7 +147,7 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
                     FormatSpan::Label(text) => {
                         segments.push(Segment {
                             text: text.clone(),
-                            color: TEXT_COLOR,
+                            color: text_color(),
                         });
                     }
                 }
@@ -159,22 +170,22 @@ fn collect_diff_segments(
         (None, None) => {
             vec![Segment {
                 text: "[empty]".to_string(),
-                color: GRAY_COLOR,
+                color: gray_color(),
             }]
         }
         (None, Some(new_side)) => {
-            let mut segments = collect_uniform(spans, new_side.values, POSITIVE_COLOR);
+            let mut segments = collect_uniform(spans, new_side.values, positive_color());
             segments.push(Segment {
                 text: format!(" [T{}]", new_side.tier + 1),
-                color: POSITIVE_COLOR,
+                color: positive_color(),
             });
             segments
         }
         (Some(old_side), None) => {
-            let mut segments = collect_uniform(spans, old_side.values, NEGATIVE_COLOR);
+            let mut segments = collect_uniform(spans, old_side.values, negative_color());
             segments.push(Segment {
                 text: format!(" [T{}]", old_side.tier + 1),
-                color: NEGATIVE_COLOR,
+                color: negative_color(),
             });
             segments
         }
@@ -185,17 +196,17 @@ fn collect_diff_segments(
             if values_differ || tiers_differ {
                 collect_inline_diff(spans, old_side, new_side)
             } else if rerolled {
-                let mut segments = collect_uniform(spans, old_side.values, GOLD_COLOR);
+                let mut segments = collect_uniform(spans, old_side.values, gold_color());
                 segments.push(Segment {
                     text: format!(" [T{}]", old_side.tier + 1),
-                    color: GOLD_COLOR,
+                    color: gold_color(),
                 });
                 segments
             } else {
-                let mut segments = collect_uniform(spans, old_side.values, TEXT_COLOR);
+                let mut segments = collect_uniform(spans, old_side.values, text_color());
                 segments.push(Segment {
                     text: format!(" [T{}]", old_side.tier + 1),
-                    color: TEXT_COLOR,
+                    color: text_color(),
                 });
                 segments
             }
@@ -251,21 +262,21 @@ fn collect_inline_diff(
                 let new_val = new_side.values.get(*index).copied().unwrap_or(0.0);
                 segments.push(Segment {
                     text: pick_and_format(old_val, template, negative_template, *is_percent),
-                    color: NEGATIVE_COLOR,
+                    color: negative_color(),
                 });
                 segments.push(Segment {
                     text: " -> ".to_string(),
-                    color: TEXT_COLOR,
+                    color: text_color(),
                 });
                 segments.push(Segment {
                     text: pick_and_format(new_val, template, negative_template, *is_percent),
-                    color: POSITIVE_COLOR,
+                    color: positive_color(),
                 });
             }
             FormatSpan::Label(text) => {
                 segments.push(Segment {
                     text: text.clone(),
-                    color: TEXT_COLOR,
+                    color: text_color(),
                 });
             }
         }
@@ -274,28 +285,28 @@ fn collect_inline_diff(
     if old_side.tier != new_side.tier {
         segments.push(Segment {
             text: " [".to_string(),
-            color: TEXT_COLOR,
+            color: text_color(),
         });
         segments.push(Segment {
             text: format!("T{}", old_side.tier + 1),
-            color: NEGATIVE_COLOR,
+            color: negative_color(),
         });
         segments.push(Segment {
             text: "->".to_string(),
-            color: TEXT_COLOR,
+            color: text_color(),
         });
         segments.push(Segment {
             text: format!("T{}", new_side.tier + 1),
-            color: POSITIVE_COLOR,
+            color: positive_color(),
         });
         segments.push(Segment {
             text: "]".to_string(),
-            color: TEXT_COLOR,
+            color: text_color(),
         });
     } else {
         segments.push(Segment {
             text: format!(" [T{}]", old_side.tier + 1),
-            color: TEXT_COLOR,
+            color: text_color(),
         });
     }
 

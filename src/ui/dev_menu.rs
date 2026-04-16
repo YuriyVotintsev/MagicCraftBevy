@@ -1,13 +1,17 @@
 use bevy::prelude::*;
 use bevy::ui::UiGlobalTransform;
 
-use crate::arena::CameraAngle;
-use crate::wave::EnemySpawnPool;
 use crate::actors::Health;
-use crate::run::PlayerMoney;
 use crate::actors::Player;
+use crate::arena::CameraAngle;
+use crate::palette;
+use crate::run::PlayerMoney;
 use crate::stats::{DirtyStats, Modifiers, Stat};
+use crate::transition::{Transition, TransitionAction};
+use crate::wave::EnemySpawnPool;
 use crate::wave::{CombatPhase, WavePhase};
+
+use super::panel_radius;
 
 const SLIDER_MIN: f32 = 1.0;
 const SLIDER_MAX: f32 = 89.0;
@@ -80,9 +84,10 @@ fn cheat_button(label: &str, color: Color, marker: impl Component) -> impl Bundl
             margin: UiRect::top(Val::Px(10.0)),
             padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
             justify_content: JustifyContent::Center,
+            border_radius: panel_radius(),
             ..default()
         },
-        BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
+        BackgroundColor(palette::color("ui_button_normal")),
         children![
             (
                 Text::new(label),
@@ -95,9 +100,9 @@ fn cheat_button(label: &str, color: Color, marker: impl Component) -> impl Bundl
 
 fn enemy_toggle_row(index: usize, name: &str, enabled: bool) -> impl Bundle {
     let text_color = if enabled {
-        Color::srgb(0.3, 0.9, 0.3)
+        palette::color("ui_text_positive")
     } else {
-        Color::srgb(0.5, 0.5, 0.5)
+        palette::color("ui_text_disabled")
     };
     let label = if enabled {
         format!("[x] {}", name)
@@ -112,9 +117,10 @@ fn enemy_toggle_row(index: usize, name: &str, enabled: bool) -> impl Bundle {
             padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
             margin: UiRect::top(Val::Px(4.0)),
             justify_content: JustifyContent::FlexStart,
+            border_radius: panel_radius(),
             ..default()
         },
-        BackgroundColor(Color::srgb(0.15, 0.15, 0.2)),
+        BackgroundColor(palette::color("ui_button_normal")),
         children![
             (
                 EnemyToggleText(index),
@@ -141,12 +147,12 @@ pub(super) fn spawn_dev_menu(
 
     let enable_all = commands.spawn(cheat_button(
         "Enable All",
-        Color::srgb(0.3, 0.9, 0.3),
+        palette::color("ui_text_positive"),
         EnableAllEnemiesButton,
     )).id();
     let disable_all = commands.spawn(cheat_button(
         "Disable All",
-        Color::srgb(0.9, 0.3, 0.3),
+        palette::color("ui_text_negative"),
         DisableAllEnemiesButton,
     )).id();
 
@@ -163,7 +169,7 @@ pub(super) fn spawn_dev_menu(
     let section_label = commands.spawn((
         Text::new("Enemy Spawn Pool"),
         TextFont { font_size: 22.0, ..default() },
-        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+        TextColor(palette::color("ui_text_subtle")),
         Node { margin: UiRect::bottom(Val::Px(6.0)), ..default() },
     )).id();
     enemy_section_children.push(section_label);
@@ -181,20 +187,20 @@ pub(super) fn spawn_dev_menu(
     let title = commands.spawn((
         Text::new("Dev Menu"),
         TextFont { font_size: 48.0, ..default() },
-        TextColor(Color::srgb(0.8, 0.8, 0.9)),
+        TextColor(palette::color("ui_text_title")),
         Node { margin: UiRect::bottom(Val::Px(30.0)), ..default() },
     )).id();
 
     let angle_label = commands.spawn((
         Text::new("Camera Angle"),
         TextFont { font_size: 20.0, ..default() },
-        TextColor(Color::srgb(0.7, 0.7, 0.7)),
+        TextColor(palette::color("ui_text_subtle")),
     )).id();
     let angle_value = commands.spawn((
         SliderValueText,
         Text::new(format!("{:.0}\u{00b0}", camera_angle.degrees)),
         TextFont { font_size: 20.0, ..default() },
-        TextColor(Color::srgb(0.9, 0.9, 0.9)),
+        TextColor(palette::color("ui_text")),
     )).id();
     let angle_row = commands.spawn((
         Node {
@@ -212,7 +218,7 @@ pub(super) fn spawn_dev_menu(
             height: Val::Percent(100.0),
             ..default()
         },
-        BackgroundColor(Color::srgb(0.3, 0.6, 0.9)),
+        BackgroundColor(palette::color("ui_button_pressed")),
     )).id();
     let slider = commands.spawn((
         CameraAngleSlider,
@@ -221,15 +227,16 @@ pub(super) fn spawn_dev_menu(
             width: Val::Percent(100.0),
             height: Val::Px(24.0),
             overflow: Overflow::clip(),
+            border_radius: panel_radius(),
             ..default()
         },
-        BackgroundColor(Color::srgb(0.2, 0.2, 0.25)),
+        BackgroundColor(palette::color("ui_button_normal")),
     )).add_child(slider_fill).id();
 
-    let money_btn = commands.spawn(cheat_button("Money +1000", Color::srgb(0.9, 0.85, 0.3), CheatMoneyButton)).id();
-    let health_btn = commands.spawn(cheat_button("Health +100", Color::srgb(0.3, 0.9, 0.4), CheatHealthButton)).id();
-    let damage_btn = commands.spawn(cheat_button("Phys Damage +100", Color::srgb(0.9, 0.4, 0.3), CheatDamageButton)).id();
-    let win_wave_btn = commands.spawn(cheat_button("Win Wave", Color::srgb(0.5, 0.85, 0.95), CheatWinWaveButton)).id();
+    let money_btn = commands.spawn(cheat_button("Money +1000", palette::color("ui_text_money"), CheatMoneyButton)).id();
+    let health_btn = commands.spawn(cheat_button("Health +100", palette::color("ui_text_positive"), CheatHealthButton)).id();
+    let damage_btn = commands.spawn(cheat_button("Phys Damage +100", palette::color("ui_text_negative"), CheatDamageButton)).id();
+    let win_wave_btn = commands.spawn(cheat_button("Win Wave", palette::color("ui_text"), CheatWinWaveButton)).id();
 
     let panel = commands.spawn((
         Node {
@@ -239,9 +246,10 @@ pub(super) fn spawn_dev_menu(
             width: Val::Px(500.0),
             max_height: Val::Percent(90.0),
             overflow: Overflow::scroll_y(),
+            border_radius: panel_radius(),
             ..default()
         },
-        BackgroundColor(Color::srgba(0.1, 0.1, 0.15, 0.95)),
+        BackgroundColor(palette::color("ui_panel_bg")),
     )).add_children(&[
         title, angle_row, slider, money_btn, health_btn, damage_btn, win_wave_btn, enemy_container,
     ]).id();
@@ -258,7 +266,7 @@ pub(super) fn spawn_dev_menu(
             position_type: PositionType::Absolute,
             ..default()
         },
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
+        BackgroundColor(palette::color_alpha("ui_overlay_bg", 0.6)),
     )).add_child(panel);
 }
 
@@ -304,15 +312,15 @@ pub(super) fn cheat_damage(
 
 pub(super) fn cheat_win_wave(
     query: Query<&Interaction, (Changed<Interaction>, With<CheatWinWaveButton>)>,
-    mut next_wave: ResMut<NextState<WavePhase>>,
     mut next_combat: ResMut<NextState<CombatPhase>>,
+    mut transition: ResMut<Transition>,
     mut virtual_time: ResMut<Time<Virtual>>,
 ) {
     for interaction in &query {
         if *interaction == Interaction::Pressed {
             virtual_time.unpause();
             next_combat.set(CombatPhase::Running);
-            next_wave.set(WavePhase::ShopDelay);
+            transition.request(TransitionAction::Wave(WavePhase::Shop));
         }
     }
 }
@@ -381,9 +389,9 @@ fn update_toggle_text(
             };
             *text = Text::new(label);
             *color = if enabled {
-                TextColor(Color::srgb(0.3, 0.9, 0.3))
+                TextColor(palette::color("ui_text_positive"))
             } else {
-                TextColor(Color::srgb(0.5, 0.5, 0.5))
+                TextColor(palette::color("ui_text_disabled"))
             };
         }
     }

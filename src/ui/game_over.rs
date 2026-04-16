@@ -1,13 +1,10 @@
 use bevy::prelude::*;
 
 use crate::game_state::GameState;
+use crate::palette;
+use crate::transition::{Transition, TransitionAction};
 
-const BG_COLOR: Color = Color::srgba(0.04, 0.02, 0.05, 0.95);
-const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-const TITLE_COLOR: Color = Color::srgb(0.95, 0.35, 0.35);
-const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
+use super::panel_radius;
 
 #[derive(Component)]
 pub enum GameOverButton {
@@ -16,6 +13,8 @@ pub enum GameOverButton {
 }
 
 pub fn spawn_game_over_screen(mut commands: Commands) {
+    let text = palette::color("ui_text");
+    let button = palette::color("ui_button_normal");
     commands.spawn((
         Name::new("GameOverRoot"),
         DespawnOnExit(GameState::GameOver),
@@ -28,12 +27,12 @@ pub fn spawn_game_over_screen(mut commands: Commands) {
             justify_content: JustifyContent::Center,
             ..default()
         },
-        BackgroundColor(BG_COLOR),
+        BackgroundColor(palette::color("ui_screen_bg")),
         children![
             (
                 Text::new("Game Over"),
                 TextFont { font_size: 72.0, ..default() },
-                TextColor(TITLE_COLOR),
+                TextColor(palette::color("ui_text_gameover")),
                 Node {
                     margin: UiRect::bottom(Val::Px(50.0)),
                     ..default()
@@ -43,22 +42,22 @@ pub fn spawn_game_over_screen(mut commands: Commands) {
                 Button,
                 GameOverButton::NewRun,
                 button_node(),
-                BackgroundColor(NORMAL_BUTTON),
+                BackgroundColor(button),
                 children![(
                     Text::new("New Run"),
                     TextFont { font_size: 32.0, ..default() },
-                    TextColor(TEXT_COLOR),
+                    TextColor(text),
                 )],
             ),
             (
                 Button,
                 GameOverButton::MainMenu,
                 button_node(),
-                BackgroundColor(NORMAL_BUTTON),
+                BackgroundColor(button),
                 children![(
                     Text::new("Main Menu"),
                     TextFont { font_size: 32.0, ..default() },
-                    TextColor(TEXT_COLOR),
+                    TextColor(text),
                 )],
             ),
         ],
@@ -72,6 +71,7 @@ fn button_node() -> Node {
         margin: UiRect::all(Val::Px(10.0)),
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
+        border_radius: panel_radius(),
         ..default()
     }
 }
@@ -81,19 +81,20 @@ pub fn game_over_button_system(
         (&Interaction, &GameOverButton, &mut BackgroundColor),
         Changed<Interaction>,
     >,
-    mut next_state: ResMut<NextState<GameState>>,
+    mut transition: ResMut<Transition>,
 ) {
     for (interaction, button, mut color) in &mut interaction_query {
         match interaction {
             Interaction::Pressed => {
-                *color = PRESSED_BUTTON.into();
-                match button {
-                    GameOverButton::NewRun => next_state.set(GameState::Playing),
-                    GameOverButton::MainMenu => next_state.set(GameState::MainMenu),
-                }
+                *color = palette::color("ui_button_pressed").into();
+                let target = match button {
+                    GameOverButton::NewRun => GameState::Playing,
+                    GameOverButton::MainMenu => GameState::MainMenu,
+                };
+                transition.request(TransitionAction::Game(target));
             }
-            Interaction::Hovered => *color = HOVERED_BUTTON.into(),
-            Interaction::None => *color = NORMAL_BUTTON.into(),
+            Interaction::Hovered => *color = palette::color("ui_button_hover").into(),
+            Interaction::None => *color = palette::color("ui_button_normal").into(),
         }
     }
 }

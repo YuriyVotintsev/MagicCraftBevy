@@ -33,18 +33,8 @@ pub struct WaveEnemy;
 #[allow(dead_code)]
 pub struct InvulnerableStack(pub u32);
 
-#[derive(Resource)]
-pub struct ShopDelayTimer(pub Timer);
-
-impl Default for ShopDelayTimer {
-    fn default() -> Self {
-        Self(Timer::from_seconds(1.0, TimerMode::Once))
-    }
-}
-
 pub fn register(app: &mut App) {
     app.init_resource::<WaveState>()
-        .init_resource::<ShopDelayTimer>()
         .add_systems(OnEnter(WavePhase::Combat), reset_wave_state)
         .add_systems(
             PostUpdate,
@@ -52,21 +42,15 @@ pub fn register(app: &mut App) {
                 .in_set(PostGameSet)
                 .after(death_system)
                 .run_if(in_state(GameState::Playing)),
-        )
-        .add_systems(
-            Update,
-            shop_delay_tick.run_if(in_state(WavePhase::ShopDelay)),
         );
 }
 
 fn reset_wave_state(
     mut wave_state: ResMut<WaveState>,
-    mut shop_timer: ResMut<ShopDelayTimer>,
     mut virtual_time: ResMut<Time<Virtual>>,
     balance: Res<GameBalance>,
 ) {
     *wave_state = WaveState::new(&balance.wave);
-    shop_timer.0 = Timer::from_seconds(balance.wave.shop_delay, TimerMode::Once);
     virtual_time.unpause();
 }
 
@@ -82,12 +66,3 @@ fn track_wave_kills(
     }
 }
 
-fn shop_delay_tick(
-    time: Res<Time>,
-    mut timer: ResMut<ShopDelayTimer>,
-    mut next_phase: ResMut<NextState<WavePhase>>,
-) {
-    if timer.0.tick(time.delta()).just_finished() {
-        next_phase.set(WavePhase::Shop);
-    }
-}

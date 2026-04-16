@@ -14,11 +14,13 @@ mod run;
 mod rune;
 mod schedule;
 mod stats;
+mod transition;
 mod ui;
 mod wave;
 
 pub use faction::Faction;
 pub use game_state::GameState;
+pub use transition::{Transition, TransitionAction};
 
 fn disable_physics_debug(mut store: ResMut<GizmoConfigStore>) {
     store.config_mut::<PhysicsGizmos>().0.enabled = false;
@@ -41,6 +43,7 @@ use hit_flash::HitFlashPlugin;
 use loading::LoadingPlugin;
 use schedule::{GameSet, PostGameSet, ShopSet};
 use stats::StatsPlugin;
+use transition::TransitionPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
 use run::RunPlugin;
@@ -201,6 +204,7 @@ fn main() {
             HealthMaterialPlugin,
             HitFlashPlugin,
             TweeningPlugin,
+            TransitionPlugin,
             UiPlugin,
             WavePlugin,
         ))

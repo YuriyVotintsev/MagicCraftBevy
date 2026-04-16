@@ -1,18 +1,16 @@
 use bevy::prelude::*;
 
 use crate::balance::GameBalance;
-use crate::GameState;
+use crate::wave::WavePhase;
 
 use super::camera::CameraAngle;
 use super::floor::spawn_floor;
 use super::size::CurrentArenaSize;
-use super::walls::{spawn_walls, Wall};
+use super::walls::spawn_walls;
 
 pub fn register(app: &mut App) {
-    app.init_resource::<CurrentArenaSize>().add_systems(
-        OnEnter(GameState::MainMenu),
-        spawn_arena.run_if(not(any_with_component::<Wall>)),
-    );
+    app.init_resource::<CurrentArenaSize>()
+        .add_systems(OnEnter(WavePhase::Combat), spawn_arena);
 }
 
 fn spawn_arena(

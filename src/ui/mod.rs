@@ -8,13 +8,18 @@ mod shop_view;
 mod stat_line_builder;
 
 use bevy::prelude::*;
-use bevy::ui::UiScale;
+use bevy::ui::{UiScale, UiSystems};
 use bevy::window::{PrimaryWindow, WindowResized};
 
 use crate::arena::WINDOW_HEIGHT;
 use crate::game_state::GameState;
 use crate::rune::fill_shop_offer;
 use crate::wave::{CombatPhase, WavePhase};
+
+pub const PANEL_RADIUS: f32 = 20.0;
+pub fn panel_radius() -> BorderRadius {
+    BorderRadius::all(Val::Px(PANEL_RADIUS))
+}
 
 pub struct UiPlugin;
 
@@ -42,14 +47,28 @@ impl Plugin for UiPlugin {
                 (fill_shop_offer, shop_view::spawn_shop_screen).chain(),
             )
             .add_systems(
+                OnExit(WavePhase::Shop),
+                shop_view::restore_dragged_on_exit,
+            )
+            .add_systems(
                 Update,
                 (
                     shop_view::start_run_system,
                     shop_view::update_coins_text,
-                    shop_view::start_drag,
-                    shop_view::follow_cursor,
-                    shop_view::finish_drag,
+                    (
+                        shop_view::start_drag,
+                        shop_view::finish_drag,
+                        shop_view::reconcile_rune_entities,
+                        shop_view::sync_cell_lock_visuals,
+                    )
+                        .chain(),
                 )
+                    .run_if(in_state(WavePhase::Shop)),
+            )
+            .add_systems(
+                PostUpdate,
+                shop_view::follow_cursor
+                    .before(UiSystems::Layout)
                     .run_if(in_state(WavePhase::Shop)),
             )
             .add_systems(OnEnter(GameState::GameOver), game_over::spawn_game_over_screen)

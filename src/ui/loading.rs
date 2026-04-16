@@ -1,8 +1,7 @@
 use bevy::prelude::*;
 
 use crate::game_state::GameState;
-
-const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
+use crate::palette;
 
 pub(super) fn spawn_loading_screen(mut commands: Commands) {
     commands.spawn((
@@ -15,7 +14,7 @@ pub(super) fn spawn_loading_screen(mut commands: Commands) {
             justify_content: JustifyContent::Center,
             ..default()
         },
-        BackgroundColor(Color::srgb(0.1, 0.1, 0.15)),
+        BackgroundColor(palette::color("ui_screen_bg")),
         children![
             (
                 Node {
@@ -30,7 +29,7 @@ pub(super) fn spawn_loading_screen(mut commands: Commands) {
                             font_size: 48.0,
                             ..default()
                         },
-                        TextColor(TEXT_COLOR),
+                        TextColor(palette::color("ui_text")),
                     ),
                 ]
             )

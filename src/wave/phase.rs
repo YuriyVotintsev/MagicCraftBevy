@@ -16,6 +16,5 @@ pub enum CombatPhase {
 pub enum WavePhase {
     #[default]
     Combat,
-    ShopDelay,
     Shop,
 }

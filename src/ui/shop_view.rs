@@ -3,56 +3,42 @@ use bevy::prelude::*;
 use bevy::ui::UiScale;
 use bevy::window::PrimaryWindow;
 
+use crate::palette;
 use crate::run::PlayerMoney;
 use crate::run::RunState;
 use crate::rune::{
-    DragState, GridCellView, HexCoord, JokerSlotView, JokerSlots, RuneGrid, RuneSource,
-    RuneStub, RuneView, ShopOffer, ShopSlotView, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
+    can_place, Dragging, GridCellView, HexCoord, JokerSlotView, JokerSlots, RuneGrid, RuneSource,
+    RuneStub, RuneView, ShopOffer, ShopSlotView, StubKind, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
 };
+use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
 
-const BG_COLOR: Color = Color::srgb(0.03, 0.03, 0.08);
-const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-const GOLD_COLOR: Color = Color::srgb(1.0, 0.84, 0.0);
-const NORMAL_BUTTON: Color = Color::srgb(0.15, 0.15, 0.15);
-const HOVERED_BUTTON: Color = Color::srgb(0.25, 0.25, 0.25);
-const PRESSED_BUTTON: Color = Color::srgb(0.35, 0.75, 0.35);
+use super::panel_radius;
 
-const CELL_UNLOCKED_BG: Color = Color::srgba(0.15, 0.15, 0.22, 0.85);
-const CELL_UNLOCKED_BORDER: Color = Color::srgba(0.45, 0.45, 0.55, 0.9);
-const CELL_LOCKED_BG: Color = Color::srgba(0.08, 0.08, 0.10, 0.5);
-const CELL_LOCKED_BORDER: Color = Color::srgba(0.25, 0.25, 0.30, 0.5);
+const RUNE_BORDER_WIDTH: f32 = 2.0;
+const JOKER_BORDER_WIDTH: f32 = 10.0;
 
-const JOKER_BG: Color = Color::srgba(0.20, 0.10, 0.25, 0.75);
-const JOKER_BORDER: Color = Color::srgba(1.0, 0.78, 0.25, 0.85);
+const GRID_CENTER: Vec2 = Vec2::new(820.0, 540.0);
+const CELL_SIZE: f32 = 60.0;
+const CELL_DIAMETER: f32 = 96.0;
+const RUNE_DIAMETER: f32 = 72.0;
 
-const SHOP_SLOT_BG: Color = Color::srgba(0.10, 0.12, 0.18, 0.85);
-const SHOP_SLOT_BORDER: Color = Color::srgba(0.35, 0.40, 0.50, 0.9);
-const SHOP_PANEL_BG: Color = Color::srgba(0.06, 0.08, 0.12, 0.9);
-
-const RUNE_BORDER: Color = Color::srgba(0.0, 0.0, 0.0, 0.85);
-
-const GRID_CENTER: Vec2 = Vec2::new(860.0, 520.0);
-const CELL_SIZE: f32 = 40.0;
-const CELL_DIAMETER: f32 = 64.0;
-const RUNE_DIAMETER: f32 = 48.0;
-
-const SHOP_PANEL_X: f32 = 1650.0;
-const SHOP_PANEL_Y: f32 = 120.0;
-const SHOP_PANEL_W: f32 = 220.0;
-const SHOP_PANEL_H: f32 = 620.0;
-const SHOP_SLOT_Y0: f32 = 180.0;
+const SHOP_PANEL_X: f32 = 1620.0;
+const SHOP_PANEL_Y: f32 = 110.0;
+const SHOP_PANEL_W: f32 = 260.0;
+const SHOP_PANEL_H: f32 = 650.0;
+const SHOP_SLOT_Y0: f32 = 240.0;
 const SHOP_SLOT_STEP: f32 = 130.0;
 const SHOP_SLOT_X: f32 = SHOP_PANEL_X + SHOP_PANEL_W * 0.5;
 
-const JOKER_DIAMETER: f32 = 60.0;
+const JOKER_DIAMETER: f32 = 90.0;
 const JOKER_POSITIONS: [Vec2; JOKER_SLOTS] = [
-    Vec2::new(0.0, -270.0),
-    Vec2::new(234.0, -135.0),
-    Vec2::new(234.0, 135.0),
-    Vec2::new(0.0, 270.0),
-    Vec2::new(-234.0, 135.0),
-    Vec2::new(-234.0, -135.0),
+    Vec2::new(0.0, -405.0),
+    Vec2::new(351.0, -202.5),
+    Vec2::new(351.0, 202.5),
+    Vec2::new(0.0, 405.0),
+    Vec2::new(-351.0, 202.5),
+    Vec2::new(-351.0, -202.5),
 ];
 
 fn grid_cell_center(coord: HexCoord) -> Vec2 {
@@ -71,6 +57,7 @@ fn home_position(source: RuneSource) -> Vec2 {
     match source {
         RuneSource::Shop(idx) => shop_slot_center(idx),
         RuneSource::Grid(coord) => grid_cell_center(coord),
+        RuneSource::Joker(idx) => joker_slot_center(idx),
     }
 }
 
@@ -87,9 +74,6 @@ pub fn spawn_shop_screen(
     mut commands: Commands,
     run_state: Res<RunState>,
     money: Res<PlayerMoney>,
-    shop: Res<ShopOffer>,
-    grid: Res<RuneGrid>,
-    _jokers: Res<JokerSlots>,
 ) {
     let root = commands
         .spawn((
@@ -102,7 +86,7 @@ pub fn spawn_shop_screen(
                 height: Val::Percent(100.0),
                 ..default()
             },
-            BackgroundColor(BG_COLOR),
+            BackgroundColor(palette::color("ui_screen_bg")),
         ))
         .id();
 
@@ -113,7 +97,7 @@ pub fn spawn_shop_screen(
             font_size: 22.0,
             ..default()
         },
-        TextColor(TEXT_COLOR),
+        TextColor(palette::color("ui_text")),
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(40.0),
@@ -130,7 +114,7 @@ pub fn spawn_shop_screen(
             font_size: 20.0,
             ..default()
         },
-        TextColor(GOLD_COLOR),
+        TextColor(palette::color("ui_text_money")),
         Node {
             position_type: PositionType::Absolute,
             left: Val::Px(40.0),
@@ -151,16 +135,17 @@ pub fn spawn_shop_screen(
             height: Val::Px(60.0),
             justify_content: JustifyContent::Center,
             align_items: AlignItems::Center,
+            border_radius: panel_radius(),
             ..default()
         },
-        BackgroundColor(NORMAL_BUTTON),
+        BackgroundColor(palette::color("ui_button_normal")),
         children![(
             Text::new("Start Run"),
             TextFont {
                 font_size: 24.0,
                 ..default()
             },
-            TextColor(TEXT_COLOR),
+            TextColor(palette::color("ui_text")),
         )],
     ));
 
@@ -173,10 +158,11 @@ pub fn spawn_shop_screen(
             width: Val::Px(SHOP_PANEL_W),
             height: Val::Px(SHOP_PANEL_H),
             border: UiRect::all(Val::Px(2.0)),
+            border_radius: panel_radius(),
             ..default()
         },
-        BackgroundColor(SHOP_PANEL_BG),
-        BorderColor::all(SHOP_SLOT_BORDER),
+        BackgroundColor(palette::color("ui_panel_bg")),
+        BorderColor::all(palette::color("ui_shop_slot_edge")),
     ));
 
     commands.spawn((
@@ -186,30 +172,20 @@ pub fn spawn_shop_screen(
             font_size: 22.0,
             ..default()
         },
-        TextColor(TEXT_COLOR),
+        TextColor(palette::color("ui_text_title")),
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(SHOP_PANEL_X + 78.0),
-            top: Val::Px(SHOP_PANEL_Y + 16.0),
+            left: Val::Px(SHOP_PANEL_X + SHOP_PANEL_W * 0.5 - 30.0),
+            top: Val::Px(SHOP_PANEL_Y + 24.0),
             ..default()
         },
     ));
 
     for coord in HexCoord::all_within_radius(GRID_RADIUS) {
         let center = grid_cell_center(coord);
-        let unlocked = grid.is_unlocked(coord);
-        let (bg, border) = if unlocked {
-            (CELL_UNLOCKED_BG, CELL_UNLOCKED_BORDER)
-        } else {
-            (CELL_LOCKED_BG, CELL_LOCKED_BORDER)
-        };
         commands.spawn((
             ChildOf(root),
-            GridCellView {
-                coord,
-                center,
-                unlocked,
-            },
+            GridCellView { coord },
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(center.x - CELL_DIAMETER * 0.5),
@@ -220,8 +196,8 @@ pub fn spawn_shop_screen(
                 border_radius: BorderRadius::MAX,
                 ..default()
             },
-            BackgroundColor(bg),
-            BorderColor::all(border),
+            BackgroundColor(palette::color("ui_cell_locked_bg")),
+            BorderColor::all(palette::color("ui_cell_locked_edge")),
         ));
     }
 
@@ -229,7 +205,7 @@ pub fn spawn_shop_screen(
         let center = joker_slot_center(idx);
         commands.spawn((
             ChildOf(root),
-            JokerSlotView { index: idx, center },
+            JokerSlotView { index: idx },
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(center.x - JOKER_DIAMETER * 0.5),
@@ -240,8 +216,8 @@ pub fn spawn_shop_screen(
                 border_radius: BorderRadius::MAX,
                 ..default()
             },
-            BackgroundColor(JOKER_BG),
-            BorderColor::all(JOKER_BORDER),
+            BackgroundColor(palette::color("ui_joker_slot_bg")),
+            BorderColor::all(palette::color("ui_joker_slot_edge")),
         ));
     }
 
@@ -249,7 +225,7 @@ pub fn spawn_shop_screen(
         let center = shop_slot_center(idx);
         commands.spawn((
             ChildOf(root),
-            ShopSlotView { index: idx, center },
+            ShopSlotView { index: idx },
             Node {
                 position_type: PositionType::Absolute,
                 left: Val::Px(center.x - CELL_DIAMETER * 0.5),
@@ -260,18 +236,9 @@ pub fn spawn_shop_screen(
                 border_radius: BorderRadius::MAX,
                 ..default()
             },
-            BackgroundColor(SHOP_SLOT_BG),
-            BorderColor::all(SHOP_SLOT_BORDER),
+            BackgroundColor(palette::color("ui_shop_slot_bg")),
+            BorderColor::all(palette::color("ui_shop_slot_edge")),
         ));
-    }
-
-    for (idx, slot) in shop.runes.iter().enumerate() {
-        if let Some(stub) = slot {
-            spawn_rune_entity(&mut commands, root, *stub, RuneSource::Shop(idx));
-        }
-    }
-    for (coord, stub) in grid.cells.iter() {
-        spawn_rune_entity(&mut commands, root, *stub, RuneSource::Grid(*coord));
     }
 }
 
@@ -282,6 +249,10 @@ fn spawn_rune_entity(
     source: RuneSource,
 ) {
     let center = home_position(source);
+    let (border_width, border_color) = match stub.kind {
+        StubKind::Rune => (RUNE_BORDER_WIDTH, palette::color("ui_rune_border")),
+        StubKind::Joker => (JOKER_BORDER_WIDTH, palette::color("ui_joker_border")),
+    };
     commands.spawn((
         ChildOf(root),
         RuneView { source },
@@ -292,12 +263,12 @@ fn spawn_rune_entity(
             top: Val::Px(center.y - RUNE_DIAMETER * 0.5),
             width: Val::Px(RUNE_DIAMETER),
             height: Val::Px(RUNE_DIAMETER),
-            border: UiRect::all(Val::Px(2.0)),
+            border: UiRect::all(Val::Px(border_width)),
             border_radius: BorderRadius::MAX,
             ..default()
         },
         BackgroundColor(stub.color),
-        BorderColor::all(RUNE_BORDER),
+        BorderColor::all(border_color),
     ));
 }
 
@@ -306,16 +277,16 @@ pub fn start_run_system(
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<StartRunButton>),
     >,
-    mut next_phase: ResMut<NextState<WavePhase>>,
+    mut transition: ResMut<Transition>,
 ) {
     for (interaction, mut color) in &mut interaction_query {
         match interaction {
             Interaction::Pressed => {
-                *color = PRESSED_BUTTON.into();
-                next_phase.set(WavePhase::Combat);
+                *color = palette::color("ui_button_pressed").into();
+                transition.request(TransitionAction::Wave(WavePhase::Combat));
             }
-            Interaction::Hovered => *color = HOVERED_BUTTON.into(),
-            Interaction::None => *color = NORMAL_BUTTON.into(),
+            Interaction::Hovered => *color = palette::color("ui_button_hover").into(),
+            Interaction::None => *color = palette::color("ui_button_normal").into(),
         }
     }
 }
@@ -332,19 +303,86 @@ pub fn update_coins_text(
     }
 }
 
+pub fn sync_cell_lock_visuals(
+    grid: Res<RuneGrid>,
+    mut cells: Query<(&GridCellView, &mut BackgroundColor, &mut BorderColor)>,
+) {
+    for (cell, mut bg, mut border) in &mut cells {
+        let (bg_alias, border_alias) = if grid.is_unlocked(cell.coord) {
+            ("ui_cell_unlocked_bg", "ui_cell_unlocked_edge")
+        } else {
+            ("ui_cell_locked_bg", "ui_cell_locked_edge")
+        };
+        *bg = BackgroundColor(palette::color(bg_alias));
+        *border = BorderColor::all(palette::color(border_alias));
+    }
+}
+
+pub fn reconcile_rune_entities(
+    mut commands: Commands,
+    root: Query<Entity, With<ShopRoot>>,
+    shop: Res<ShopOffer>,
+    grid: Res<RuneGrid>,
+    jokers: Res<JokerSlots>,
+    existing: Query<(Entity, &RuneView), Without<Dragging>>,
+) {
+    let Ok(root_entity) = root.single() else {
+        return;
+    };
+
+    let mut by_source: std::collections::HashMap<RuneSource, Entity> =
+        std::collections::HashMap::new();
+    for (entity, view) in &existing {
+        if let Some(duplicate) = by_source.insert(view.source, entity) {
+            commands.entity(duplicate).despawn();
+        }
+    }
+
+    for (idx, slot) in shop.stubs.iter().enumerate() {
+        if let Some(stub) = slot {
+            let src = RuneSource::Shop(idx);
+            if by_source.remove(&src).is_none() {
+                spawn_rune_entity(&mut commands, root_entity, *stub, src);
+            }
+        }
+    }
+    for (coord, stub) in grid.cells.iter() {
+        let src = RuneSource::Grid(*coord);
+        if by_source.remove(&src).is_none() {
+            spawn_rune_entity(&mut commands, root_entity, *stub, src);
+        }
+    }
+    for (idx, slot) in jokers.stubs.iter().enumerate() {
+        if let Some(stub) = slot {
+            let src = RuneSource::Joker(idx);
+            if by_source.remove(&src).is_none() {
+                spawn_rune_entity(&mut commands, root_entity, *stub, src);
+            }
+        }
+    }
+
+    for (_, entity) in by_source {
+        commands.entity(entity).despawn();
+    }
+}
+
 fn cursor_ui_pos(window: &Window, ui_scale: f32) -> Option<Vec2> {
     let scale = if ui_scale > 0.0 { ui_scale } else { 1.0 };
     window.cursor_position().map(|c| c / scale)
 }
 
 pub fn start_drag(
+    mut commands: Commands,
     buttons: Res<ButtonInput<MouseButton>>,
     window: Query<&Window, With<PrimaryWindow>>,
     ui_scale: Res<UiScale>,
-    mut drag: ResMut<DragState>,
-    runes: Query<(Entity, &RuneView)>,
+    mut shop: ResMut<ShopOffer>,
+    mut grid: ResMut<RuneGrid>,
+    mut jokers: ResMut<JokerSlots>,
+    runes: Query<(Entity, &RuneView), Without<Dragging>>,
+    dragging: Query<(), With<Dragging>>,
 ) {
-    if !matches!(*drag, DragState::Idle) {
+    if !dragging.is_empty() {
         return;
     }
     if !buttons.just_pressed(MouseButton::Left) {
@@ -359,130 +397,198 @@ pub fn start_drag(
     let radius = RUNE_DIAMETER * 0.5;
     for (entity, view) in &runes {
         let home = home_position(view.source);
-        if home.distance(cursor) <= radius {
-            *drag = DragState::Dragging {
-                entity,
-                from: view.source,
-            };
-            return;
+        if home.distance(cursor) > radius {
+            continue;
         }
+        let Some(stub) = take_stub(view.source, &mut shop, &mut grid, &mut jokers) else {
+            return;
+        };
+        commands.entity(entity).insert(Dragging {
+            stub,
+            from: view.source,
+            grab_offset: cursor - home,
+        });
+        return;
     }
 }
 
 pub fn follow_cursor(
     window: Query<&Window, With<PrimaryWindow>>,
     ui_scale: Res<UiScale>,
-    drag: Res<DragState>,
-    mut runes: Query<(Entity, &RuneView, &mut Node)>,
+    mut runes: Query<(&RuneView, Option<&Dragging>, &mut Node)>,
 ) {
     let Ok(window) = window.single() else {
         return;
     };
     let cursor = cursor_ui_pos(window, ui_scale.0);
-    for (entity, view, mut node) in &mut runes {
-        let pos = if let DragState::Dragging { entity: e, .. } = *drag {
-            if e == entity {
-                cursor.unwrap_or_else(|| home_position(view.source))
-            } else {
-                home_position(view.source)
-            }
-        } else {
-            home_position(view.source)
+    for (view, dragging, mut node) in &mut runes {
+        let pos = match (dragging, cursor) {
+            (Some(drag), Some(c)) => c - drag.grab_offset,
+            _ => home_position(view.source),
         };
         node.left = Val::Px(pos.x - RUNE_DIAMETER * 0.5);
         node.top = Val::Px(pos.y - RUNE_DIAMETER * 0.5);
     }
 }
 
-fn find_drop_target(cursor: Vec2, grid: &RuneGrid) -> Option<RuneSource> {
+fn find_drop_target(
+    cursor: Vec2,
+    kind: StubKind,
+    grid: &RuneGrid,
+    cells: &Query<&GridCellView>,
+    shop_slots: &Query<&ShopSlotView>,
+    joker_slots: &Query<&JokerSlotView>,
+) -> Option<RuneSource> {
     let cell_r = CELL_DIAMETER * 0.5;
-    for coord in HexCoord::all_within_radius(GRID_RADIUS) {
-        if !grid.is_unlocked(coord) {
-            continue;
-        }
-        let center = grid_cell_center(coord);
-        if center.distance(cursor) <= cell_r {
-            return Some(RuneSource::Grid(coord));
+    let joker_r = JOKER_DIAMETER * 0.5;
+    if kind == StubKind::Rune {
+        for cell in cells {
+            if !grid.is_unlocked(cell.coord) {
+                continue;
+            }
+            if grid_cell_center(cell.coord).distance(cursor) <= cell_r {
+                return Some(RuneSource::Grid(cell.coord));
+            }
         }
     }
-    for idx in 0..SHOP_SLOTS {
-        let center = shop_slot_center(idx);
-        if center.distance(cursor) <= cell_r {
-            return Some(RuneSource::Shop(idx));
+    if kind == StubKind::Joker {
+        for slot in joker_slots {
+            if joker_slot_center(slot.index).distance(cursor) <= joker_r {
+                return Some(RuneSource::Joker(slot.index));
+            }
+        }
+    }
+    for slot in shop_slots {
+        if shop_slot_center(slot.index).distance(cursor) <= cell_r {
+            return Some(RuneSource::Shop(slot.index));
         }
     }
     None
 }
 
-fn take_stub(src: RuneSource, shop: &mut ShopOffer, grid: &mut RuneGrid) -> Option<RuneStub> {
+fn take_stub(
+    src: RuneSource,
+    shop: &mut ShopOffer,
+    grid: &mut RuneGrid,
+    jokers: &mut JokerSlots,
+) -> Option<RuneStub> {
     match src {
-        RuneSource::Shop(idx) => shop.runes[idx].take(),
+        RuneSource::Shop(idx) => shop.stubs[idx].take(),
         RuneSource::Grid(c) => grid.cells.remove(&c),
+        RuneSource::Joker(idx) => jokers.stubs[idx].take(),
     }
 }
 
-fn place_stub(src: RuneSource, stub: RuneStub, shop: &mut ShopOffer, grid: &mut RuneGrid) {
+fn place_stub(
+    src: RuneSource,
+    stub: RuneStub,
+    shop: &mut ShopOffer,
+    grid: &mut RuneGrid,
+    jokers: &mut JokerSlots,
+) {
     match src {
-        RuneSource::Shop(idx) => shop.runes[idx] = Some(stub),
+        RuneSource::Shop(idx) => shop.stubs[idx] = Some(stub),
         RuneSource::Grid(c) => {
             grid.cells.insert(c, stub);
         }
+        RuneSource::Joker(idx) => jokers.stubs[idx] = Some(stub),
+    }
+}
+
+fn peek_stub<'a>(
+    src: RuneSource,
+    shop: &'a ShopOffer,
+    grid: &'a RuneGrid,
+    jokers: &'a JokerSlots,
+) -> Option<&'a RuneStub> {
+    match src {
+        RuneSource::Shop(idx) => shop.stubs[idx].as_ref(),
+        RuneSource::Grid(c) => grid.cells.get(&c),
+        RuneSource::Joker(idx) => jokers.stubs[idx].as_ref(),
     }
 }
 
 pub fn finish_drag(
+    mut commands: Commands,
     buttons: Res<ButtonInput<MouseButton>>,
     window: Query<&Window, With<PrimaryWindow>>,
     ui_scale: Res<UiScale>,
-    mut drag: ResMut<DragState>,
     mut shop: ResMut<ShopOffer>,
     mut grid: ResMut<RuneGrid>,
-    mut runes: Query<(Entity, &mut RuneView)>,
+    mut jokers: ResMut<JokerSlots>,
+    mut views: Query<(Entity, &mut RuneView, Option<&Dragging>)>,
+    cells: Query<&GridCellView>,
+    shop_slots: Query<&ShopSlotView>,
+    joker_slots: Query<&JokerSlotView>,
 ) {
     if !buttons.just_released(MouseButton::Left) {
         return;
     }
-    let DragState::Dragging { entity, from } = *drag else {
+    let Some((dragged_entity, drag)) = views
+        .iter()
+        .find_map(|(e, _, d)| d.map(|dd| (e, *dd)))
+    else {
         return;
     };
-    *drag = DragState::Idle;
-
     let Ok(window) = window.single() else {
         return;
     };
-    let Some(cursor) = cursor_ui_pos(window, ui_scale.0) else {
-        return;
+    let cursor = cursor_ui_pos(window, ui_scale.0);
+    let target = cursor.map(|c| c - drag.grab_offset).and_then(|rune_center| {
+        find_drop_target(
+            rune_center,
+            drag.stub.kind,
+            &grid,
+            &cells,
+            &shop_slots,
+            &joker_slots,
+        )
+    });
+
+    let swap_ok = match target {
+        Some(t) if t != drag.from => peek_stub(t, &shop, &grid, &jokers)
+            .map(|d| can_place(d.kind, drag.from, &grid))
+            .unwrap_or(true),
+        _ => true,
     };
 
-    let Some(target) = find_drop_target(cursor, &grid) else {
-        return;
-    };
-    if target == from {
-        return;
-    }
-
-    let Some(dragged_stub) = take_stub(from, &mut shop, &mut grid) else {
-        return;
-    };
-    let displaced_stub = take_stub(target, &mut shop, &mut grid);
-
-    place_stub(target, dragged_stub, &mut shop, &mut grid);
-
-    if let Some(other_entity) = runes
-        .iter()
-        .find(|(e, v)| *e != entity && v.source == target)
-        .map(|(e, _)| e)
-    {
-        if let Ok((_, mut v)) = runes.get_mut(other_entity) {
-            v.source = from;
+    match target {
+        Some(t) if t != drag.from && swap_ok => {
+            let displaced = take_stub(t, &mut shop, &mut grid, &mut jokers);
+            place_stub(t, drag.stub, &mut shop, &mut grid, &mut jokers);
+            if let Some(stub) = displaced {
+                place_stub(drag.from, stub, &mut shop, &mut grid, &mut jokers);
+                let other = views
+                    .iter()
+                    .find(|(e, v, d)| *e != dragged_entity && v.source == t && d.is_none())
+                    .map(|(e, _, _)| e);
+                if let Some(other_entity) = other {
+                    if let Ok((_, mut v, _)) = views.get_mut(other_entity) {
+                        v.source = drag.from;
+                    }
+                }
+            }
+            if let Ok((_, mut v, _)) = views.get_mut(dragged_entity) {
+                v.source = t;
+            }
+        }
+        _ => {
+            place_stub(drag.from, drag.stub, &mut shop, &mut grid, &mut jokers);
         }
     }
 
-    if let Some(stub) = displaced_stub {
-        place_stub(from, stub, &mut shop, &mut grid);
-    }
+    commands.entity(dragged_entity).remove::<Dragging>();
+}
 
-    if let Ok((_, mut v)) = runes.get_mut(entity) {
-        v.source = target;
+pub fn restore_dragged_on_exit(
+    mut commands: Commands,
+    mut shop: ResMut<ShopOffer>,
+    mut grid: ResMut<RuneGrid>,
+    mut jokers: ResMut<JokerSlots>,
+    dragged: Query<(Entity, &Dragging)>,
+) {
+    for (entity, drag) in &dragged {
+        place_stub(drag.from, drag.stub, &mut shop, &mut grid, &mut jokers);
+        commands.entity(entity).remove::<Dragging>();
     }
 }

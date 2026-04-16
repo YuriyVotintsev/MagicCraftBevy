@@ -2,6 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::actors::GameLayer;
+use crate::wave::WavePhase;
 
 use super::size::CurrentArenaSize;
 
@@ -40,6 +41,7 @@ pub(super) fn spawn_walls(commands: &mut Commands, start_width: f32, start_heigh
             CollisionMargin(5.0),
             RigidBody::Static,
             wall_layers,
+            DespawnOnExit(WavePhase::Combat),
         ));
     }
 }

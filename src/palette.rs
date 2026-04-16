@@ -13,8 +13,19 @@ struct PaletteData {
 }
 
 impl PaletteData {
+    fn resolve<'a>(&'a self, name: &'a str) -> &'a str {
+        let mut current = name;
+        for _ in 0..16 {
+            match self.aliases.get(current) {
+                Some(next) => current = next.as_str(),
+                None => return current,
+            }
+        }
+        current
+    }
+
     fn lookup(&self, name: &str) -> Option<(f32, f32, f32)> {
-        let color_name = self.aliases.get(name).map(|s| s.as_str()).unwrap_or(name);
+        let color_name = self.resolve(name);
         self.colors.get(color_name).copied()
     }
 }
@@ -38,7 +49,7 @@ pub fn color(name: &str) -> Color {
 
 pub fn flash_lookup(name: &str) -> Option<(f32, f32, f32)> {
     PALETTE.get().and_then(|p| {
-        let base_name = p.aliases.get(name).map(|s| s.as_str()).unwrap_or(name);
+        let base_name = p.resolve(name);
         let flash_name = format!("{base_name}_flash");
         p.colors.get(&flash_name).copied()
     })

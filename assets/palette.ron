@@ -41,5 +41,44 @@
         "void":           "cream_darker",
         "enemy_injured":  "purple",
         "shadow":         "black",
+
+        // UI surfaces
+        "ui_screen_bg":       "cream",
+        "ui_panel_bg":        "dark_maroon",
+        "ui_overlay_bg":      "shadow",
+
+        // UI text
+        "ui_text":            "shadow",
+        "ui_text_subtle":     "void",
+        "ui_text_money":      "gold",
+        "ui_text_warning":    "coral",
+        "ui_text_positive":   "lime",
+        "ui_text_negative":   "coral",
+        "ui_text_disabled":   "void",
+        "ui_text_title":      "shadow",
+        "ui_text_gameover":   "coral",
+
+        // UI buttons
+        "ui_button_normal":   "border",
+        "ui_button_hover":    "void",
+        "ui_button_pressed":  "lime",
+
+        // UI slots / cells
+        "ui_cell_unlocked_bg":    "border",
+        "ui_cell_unlocked_edge":  "void",
+        "ui_cell_locked_bg":      "void",
+        "ui_cell_locked_edge":    "void",
+        "ui_shop_slot_bg":        "border",
+        "ui_shop_slot_edge":      "void",
+        "ui_joker_slot_bg":       "border",
+        "ui_joker_slot_edge":     "gold",
+
+        // UI rune/joker borders
+        "ui_rune_border":     "shadow",
+        "ui_joker_border":    "shadow",
+
+        // UI HUD
+        "ui_lifebar":         "lime",
+        "ui_lifebar_bg":      "void",
     },
 )

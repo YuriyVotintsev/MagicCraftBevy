@@ -1,10 +1,13 @@
 use bevy::prelude::*;
 
-use crate::run::PlayerMoney;
-use crate::actors::Player;
 use crate::actors::Health;
+use crate::actors::Player;
+use crate::palette;
+use crate::run::PlayerMoney;
 use crate::stats::{ComputedStats, Stat};
 use crate::GameState;
+
+use super::panel_radius;
 
 #[derive(Component)]
 pub struct HudRoot;
@@ -18,10 +21,6 @@ pub struct LifeText;
 #[derive(Component)]
 pub struct LifeBar;
 
-const TEXT_COLOR: Color = Color::srgb(0.9, 0.9, 0.9);
-const BAR_BG_COLOR: Color = Color::srgb(0.2, 0.2, 0.2);
-const LIFE_BAR_COLOR: Color = Color::srgb(0.3, 0.8, 0.3);
-
 pub fn spawn_hud(mut commands: Commands) {
     commands.spawn((
         Name::new("HudRoot"),
@@ -33,9 +32,10 @@ pub fn spawn_hud(mut commands: Commands) {
             top: Val::Px(20.0),
             flex_direction: FlexDirection::Column,
             padding: UiRect::all(Val::Px(10.0)),
+            border_radius: panel_radius(),
             ..default()
         },
-        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.5)),
+        BackgroundColor(palette::color_alpha("ui_overlay_bg", 0.5)),
         children![
             (
                 MoneyText,
@@ -44,7 +44,7 @@ pub fn spawn_hud(mut commands: Commands) {
                     font_size: 20.0,
                     ..default()
                 },
-                TextColor(Color::srgb(1.0, 0.84, 0.0)),
+                TextColor(palette::color("ui_text_money")),
                 Node {
                     margin: UiRect::bottom(Val::Px(5.0)),
                     ..default()
@@ -57,7 +57,7 @@ pub fn spawn_hud(mut commands: Commands) {
                     font_size: 18.0,
                     ..default()
                 },
-                TextColor(TEXT_COLOR),
+                TextColor(palette::color("ui_text")),
                 Node {
                     margin: UiRect::bottom(Val::Px(3.0)),
                     ..default()
@@ -69,7 +69,7 @@ pub fn spawn_hud(mut commands: Commands) {
                     height: Val::Px(16.0),
                     ..default()
                 },
-                BackgroundColor(BAR_BG_COLOR),
+                BackgroundColor(palette::color("ui_lifebar_bg")),
                 children![(
                     LifeBar,
                     Node {
@@ -77,7 +77,7 @@ pub fn spawn_hud(mut commands: Commands) {
                         height: Val::Percent(100.0),
                         ..default()
                     },
-                    BackgroundColor(LIFE_BAR_COLOR)
+                    BackgroundColor(palette::color("ui_lifebar"))
                 )]
             ),
         ],
