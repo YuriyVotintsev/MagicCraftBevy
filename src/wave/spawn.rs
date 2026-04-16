@@ -12,14 +12,6 @@ use super::state::{WaveEnemy, WaveState};
 use super::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
 use crate::Faction;
 
-const ALL_ENEMY_TYPES: &[MobKind] = &[
-    MobKind::SlimeSmall,
-    MobKind::Jumper,
-    MobKind::Tower,
-    MobKind::Ghost,
-    MobKind::Spinner,
-];
-
 #[derive(Resource)]
 pub struct EnemySpawnPool {
     pub enabled: Vec<(MobKind, bool)>,
@@ -28,7 +20,7 @@ pub struct EnemySpawnPool {
 impl Default for EnemySpawnPool {
     fn default() -> Self {
         Self {
-            enabled: ALL_ENEMY_TYPES.iter().map(|&k| (k, true)).collect(),
+            enabled: MobKind::iter().map(|k| (k, true)).collect(),
         }
     }
 }
@@ -140,13 +132,13 @@ fn spawn_enemies(
         ));
 
         if is_ghost {
-            use crate::actors::{GhostAlpha, GhostTransparency};
+            use crate::actors::{FadeBase, GhostTransparency};
             entity_commands.insert((
                 GhostTransparency {
                     visible_distance: mobs_balance.ghost.visible_distance,
                     invisible_distance: mobs_balance.ghost.invisible_distance,
                 },
-                GhostAlpha { value: 0.0 },
+                FadeBase(0.7),
             ));
         }
         wave_state.spawned_count += 1;

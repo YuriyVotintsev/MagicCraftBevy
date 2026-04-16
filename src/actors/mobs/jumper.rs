@@ -4,16 +4,15 @@ use rand::Rng;
 use serde::Deserialize;
 
 use super::super::components::{
-    Caster, Collider, DynamicBody, FindNearestEnemy, Health, JumpWalkAnimation, Lifetime,
-    OnCollisionDamage, OnCollisionParticles, OnDeathParticles, Projectile, SelfMoving, Shadow,
-    ColliderShape, Size, Shape, ShapeKind, Target,
+    Caster, Collider, ColliderShape, JumpWalkAnimation, Lifetime, OnCollisionDamage,
+    OnCollisionParticles, Projectile, SelfMoving, Shadow, Shape, ShapeKind, Size,
 };
 use crate::arena::CurrentArenaSize;
 use crate::faction::Faction;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{compute_stats, current_max_life, enemy_ability_shape_color, enemy_shape_color};
+use super::spawn::{enemy_ability_shape_color, enemy_shape_color, spawn_enemy_core, EnemyBody};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct JumperStats {
@@ -90,48 +89,33 @@ pub fn spawn_jumper(
     s: &JumperStats,
     calculators: &StatCalculators,
 ) -> Entity {
-    let (modifiers, dirty, computed) = compute_stats(
+    let id = spawn_enemy_core(
+        commands,
+        pos,
         calculators,
         &[
             (Stat::MovementSpeed, ModifierKind::Flat, s.speed),
             (Stat::MaxLife, ModifierKind::Flat, s.hp),
             (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
         ],
+        s.size,
+        EnemyBody::Dynamic { mass: s.mass },
+        "enemy_death_large",
     );
-    let hp = current_max_life(&computed);
-    let ground = crate::coord::ground_pos(pos);
 
-    let id = commands.spawn((
-        Transform::from_translation(ground),
-        Visibility::default(),
-        Faction::Enemy,
-        modifiers, dirty, computed,
-        Size { value: s.size },
-        Collider { shape: ColliderShape::Circle, sensor: false },
-        DynamicBody { mass: s.mass },
-        Health { current: hp },
-        FindNearestEnemy { size: 4000.0, center: Entity::PLACEHOLDER },
-        JumperAi {
-            idle_duration: s.idle_duration,
-            jump_duration: s.jump_duration,
-            land_duration: s.land_duration,
-            jump_distance: s.jump_distance,
-            projectile_count: s.projectile_count,
-            projectile_speed: s.projectile_speed,
-            projectile_size: s.projectile_size,
-            projectile_lifetime: s.projectile_lifetime,
-            spread_degrees: s.spread_degrees,
-        },
-    )).id();
-
-    commands.entity(id).insert((
-        Caster(id),
-        FindNearestEnemy { size: 4000.0, center: id },
-        OnDeathParticles { config: "enemy_death_large" },
-    ));
+    commands.entity(id).insert(JumperAi {
+        idle_duration: s.idle_duration,
+        jump_duration: s.jump_duration,
+        land_duration: s.land_duration,
+        jump_distance: s.jump_distance,
+        projectile_count: s.projectile_count,
+        projectile_speed: s.projectile_speed,
+        projectile_size: s.projectile_size,
+        projectile_lifetime: s.projectile_lifetime,
+        spread_degrees: s.spread_degrees,
+    });
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { opacity: 0.45 });
         p.spawn((
             Shape {
                 color: enemy_shape_color(), kind: ShapeKind::Circle,
@@ -162,14 +146,16 @@ fn jumper_ai_system(
     time: Res<Time>,
     stats_q: Query<&ComputedStats>,
     transforms: Query<&Transform>,
-    mut query: Query<(Entity, &JumperAi, &mut JumperAiState, Option<&Target>, &Faction), Without<crate::wave::RiseFromGround>>,
+    mut query: Query<(Entity, &JumperAi, &mut JumperAiState, &Faction), Without<crate::wave::RiseFromGround>>,
+    player: Option<Single<(), With<crate::actors::Player>>>,
 ) {
     let dt = time.delta_secs();
-    for (entity, ai, mut state, target, faction) in &mut query {
+    let player_alive = player.is_some();
+    for (entity, ai, mut state, faction) in &mut query {
         state.elapsed += dt;
         match state.phase {
             JumperPhase::Idle => {
-                if state.elapsed >= ai.idle_duration && target.is_some() {
+                if state.elapsed >= ai.idle_duration && player_alive {
                     state.phase = JumperPhase::Jump;
                     state.elapsed = 0.0;
                     state.ability_fired = false;

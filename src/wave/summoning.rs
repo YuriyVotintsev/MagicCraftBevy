@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::actors::{spawn_mob, MobKind, MobsBalance};
+use crate::actors::{spawn_mob, Fade, MobKind, MobsBalance};
 use crate::actors::Health;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::PlayerDying;
@@ -64,6 +64,11 @@ pub fn register(app: &mut App) {
                 .run_if(not(resource_exists::<PlayerDying>)),
         )
         .add_systems(
+            PostUpdate,
+            sync_circle_fade_to_emitter
+                .run_if(in_state(WavePhase::Combat)),
+        )
+        .add_systems(
             Last,
             (init_rise, animate_rise)
                 .chain()
@@ -75,6 +80,30 @@ pub fn register(app: &mut App) {
                 .in_set(GameSet::Cleanup)
                 .run_if(resource_exists::<PlayerDying>),
         );
+}
+
+fn sync_circle_fade_to_emitter(
+    circles: Query<(&Fade, &SummoningCircle)>,
+    mut emitter_query: Query<&mut ParticleEmitter>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+) {
+    for (fade, circle) in &circles {
+        let Some(emitter_entity) = circle.emitter else { continue };
+        let Ok(mut emitter) = emitter_query.get_mut(emitter_entity) else { continue };
+        let handle = emitter.material_override.get_or_insert_with(|| {
+            materials.add(StandardMaterial {
+                base_color: crate::palette::color("enemy"),
+                unlit: true,
+                alpha_mode: AlphaMode::Blend,
+                ..default()
+            })
+        });
+        if let Some(material) = materials.get_mut(handle) {
+            let mut color = material.base_color.to_srgba();
+            color.alpha = fade.alpha;
+            material.base_color = color.into();
+        }
+    }
 }
 
 fn setup_resources(

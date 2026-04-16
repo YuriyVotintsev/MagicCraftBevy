@@ -5,9 +5,7 @@ use bevy::prelude::*;
 use serde::Deserialize;
 
 use super::super::components::{
-    Caster, CircleShape, Collider, DynamicBody, FindNearestEnemy, GameLayer, Health,
-    OnDeathParticles, PendingDamage, SelfMoving, Shadow, ColliderShape, Size, Shape,
-    ShapeKind, Target,
+    CircleShape, GameLayer, PendingDamage, SelfMoving, Size, Shape, ShapeKind,
 };
 use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::faction::Faction;
@@ -16,7 +14,7 @@ use crate::particles;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{compute_stats, current_max_life, enemy_shape_color};
+use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody};
 
 const SPIKE_COUNT: usize = 6;
 const SPIKE_OFFSET: f32 = 0.55;
@@ -94,52 +92,40 @@ pub fn spawn_spinner(
     s: &SpinnerStats,
     calculators: &StatCalculators,
 ) -> Entity {
-    let (modifiers, dirty, computed) = compute_stats(
+    let id = spawn_enemy_core(
+        commands,
+        pos,
         calculators,
         &[
             (Stat::MaxLife, ModifierKind::Flat, s.hp),
             (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
         ],
+        s.size,
+        EnemyBody::Dynamic { mass: s.mass },
+        "enemy_death_large",
     );
-    let hp = current_max_life(&computed);
-    let ground = crate::coord::ground_pos(pos);
 
-    let id = commands.spawn_empty().id();
-    commands.entity(id).insert((
-        Transform::from_translation(ground),
-        Visibility::default(),
-        Faction::Enemy,
-        modifiers, dirty, computed,
-        Size { value: s.size },
-        Collider { shape: ColliderShape::Circle, sensor: false },
-        DynamicBody { mass: s.mass },
-        Health { current: hp },
-        FindNearestEnemy { size: 4000.0, center: id },
-        Caster(id),
-        OnDeathParticles { config: "enemy_death_large" },
-        Spinner {
-            idle_duration: s.idle_duration,
-            windup_duration: s.windup_duration,
-            charge_duration: s.charge_duration,
-            cooldown_duration: s.cooldown_duration,
-            charge_speed: s.charge_speed,
-            spike_length: s.spike_length,
-            phase: SpinnerPhase::Idle,
-            elapsed: 0.0,
-            spin_angle: 0.0,
-            spin_speed: 0.0,
-            spike_growth: 1.0,
-            squish: 1.0,
-            hit_player: false,
-            damage_cooldown: 0.0,
-            spike_entities: [Entity::PLACEHOLDER; SPIKE_COUNT],
-            trail_emitters: [None; SPIKE_COUNT],
-            pre_charge_layers: None,
-        },
-    ));
+    commands.entity(id).insert(Spinner {
+        idle_duration: s.idle_duration,
+        windup_duration: s.windup_duration,
+        charge_duration: s.charge_duration,
+        cooldown_duration: s.cooldown_duration,
+        charge_speed: s.charge_speed,
+        spike_length: s.spike_length,
+        phase: SpinnerPhase::Idle,
+        elapsed: 0.0,
+        spin_angle: 0.0,
+        spin_speed: 0.0,
+        spike_growth: 1.0,
+        squish: 1.0,
+        hit_player: false,
+        damage_cooldown: 0.0,
+        spike_entities: [Entity::PLACEHOLDER; SPIKE_COUNT],
+        trail_emitters: [None; SPIKE_COUNT],
+        pre_charge_layers: None,
+    });
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { opacity: 0.45 });
         p.spawn(Shape {
             color: enemy_shape_color(), kind: ShapeKind::Circle,
             position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
@@ -156,7 +142,6 @@ fn spinner_tick(
             Entity,
             &mut Spinner,
             &Transform,
-            Option<&Target>,
             &Faction,
             Option<&Size>,
             Option<&CollisionLayers>,
@@ -164,17 +149,18 @@ fn spinner_tick(
         Without<crate::wave::RiseFromGround>,
     >,
     stats_query: Query<&ComputedStats>,
-    target_transforms: Query<&Transform>,
     spatial_query: SpatialQuery,
     mut pending: MessageWriter<PendingDamage>,
+    player: Option<Single<&Transform, With<crate::actors::Player>>>,
 ) {
     let dt = time.delta_secs();
-    for (entity, mut spinner, transform, target, faction, size, current_layers) in &mut query {
+    let player_alive = player.is_some();
+    for (entity, mut spinner, transform, faction, size, current_layers) in &mut query {
         spinner.elapsed += dt;
 
         match spinner.phase {
             SpinnerPhase::Idle => {
-                if spinner.elapsed >= spinner.idle_duration && target.is_some() {
+                if spinner.elapsed >= spinner.idle_duration && player_alive {
                     spinner.phase = SpinnerPhase::Windup;
                     spinner.elapsed = 0.0;
                     spinner.damage_cooldown = 0.0;
@@ -214,10 +200,9 @@ fn spinner_tick(
                 }
 
                 if spinner.elapsed >= spinner.windup_duration {
-                    let target_entity = target.map(|t| t.0).unwrap_or(entity);
-                    let target_pos = target_transforms
-                        .get(target_entity)
-                        .map(|t| crate::coord::to_2d(t.translation))
+                    let target_pos = player
+                        .as_ref()
+                        .map(|p| crate::coord::to_2d(p.translation))
                         .unwrap_or_default();
                     let my_pos = crate::coord::to_2d(transform.translation);
                     let diff = target_pos - my_pos;

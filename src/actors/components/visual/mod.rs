@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 
 mod bobbing_animation;
+mod fade;
 mod fade_out;
 mod growing;
 mod jump_walk_animation;
@@ -11,6 +12,7 @@ mod shape;
 mod shoot_squish;
 
 pub use bobbing_animation::BobbingAnimation;
+pub use fade::{Fade, FadeBase, FadeCollisionToggle};
 pub use fade_out::FadeOut;
 pub use growing::Growing;
 pub use jump_walk_animation::{JumpWalkAnimation, JumpWalkAnimationState, SelfMoving};
@@ -26,6 +28,7 @@ impl Plugin for VisualPlugin {
     fn build(&self, app: &mut App) {
         shape::register_systems(app);
         shadow::register_systems(app);
+        fade::register_systems(app);
         bobbing_animation::register_systems(app);
         jump_walk_animation::register_systems(app);
         shoot_squish::register_systems(app);

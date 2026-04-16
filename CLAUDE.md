@@ -161,13 +161,15 @@ stop_particles(&mut commands, emitter);   // only for continuous emitters
 ## Common Development Tasks
 
 **Add a new mob:**
-1. Create `src/actors/mobs/newmob.rs` with a `NewMobStats` (serde `Deserialize`) struct, a spawn fn `spawn_newmob(commands, pos, stats, calculators) -> Entity`, behavior systems, and `register_systems(app)`.
-2. Add a `MobKind::NewMob` variant and update `id()`, `from_id()`, `size()`.
-3. Add the `new_mob` field to `MobsBalance` in `spawn.rs`; extend `spawn_mob` match.
-4. Add the corresponding block to `assets/mobs.ron`.
-5. Register in `MobsPlugin::build` via `newmob::register_systems(app)`.
+1. Create `src/actors/mobs/newmob.rs`:
+   - `NewMobStats` struct (`serde Deserialize`) with fields consumed by the mob's logic.
+   - `spawn_newmob(commands, pos, s, calculators) -> Entity` — delegates the common bundle to `spawn_enemy_core(...)` and inserts mob-specific AI components + `Shape` child with animation.
+   - Behavior systems (`Added<T>` init, per-frame update, etc.) and a `register_systems(app)` function.
+2. Add `MobKind::NewMob` variant (strum gives `iter`/`name`). Add `size()` arm and the `new_mob` field on `MobsBalance`; extend the `spawn_mob` match in `src/actors/mobs/spawn.rs`.
+3. Add the corresponding stats block to `assets/mobs.ron`.
+4. Register in `MobsPlugin::build` via `newmob::register_systems(app)`.
 
-*(This duplication is known debt — consider a registry refactor before adding a 6th mob.)*
+The common bundle (`Transform`, `Visibility`, `Faction::Enemy`, stats, `Collider`, `Health`, body, `Caster`, `FindNearestEnemy`, `OnDeathParticles`, `Shadow` child) is handled by `spawn_enemy_core`; mobs only contribute their AI components, `Shape` visual, and any extra children.
 
 **Add a new stat:**
 1. Add a variant to `Stat` (`src/stats/registry.rs`). `strum` handles `iter`/`COUNT`/`name`.

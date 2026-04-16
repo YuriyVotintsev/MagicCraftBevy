@@ -2,14 +2,23 @@ use bevy::asset::Asset;
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use serde::Deserialize;
+use strum::IntoEnumIterator;
 
+use crate::faction::Faction;
 use crate::palette;
 use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
 
-use super::super::components::ShapeColor;
+use super::super::components::{
+    Caster, Collider, ColliderShape, DynamicBody, Health, OnDeathParticles, Shadow, ShapeColor,
+    Size, StaticBody,
+};
 use super::{ghost, jumper, slime, spinner, tower};
 
-#[derive(Copy, Clone, Debug, Hash, Eq, PartialEq)]
+#[derive(
+    Copy, Clone, Debug, Hash, Eq, PartialEq,
+    strum::EnumIter, strum::IntoStaticStr,
+)]
+#[strum(serialize_all = "snake_case")]
 pub enum MobKind {
     Ghost,
     Tower,
@@ -19,26 +28,12 @@ pub enum MobKind {
 }
 
 impl MobKind {
-    #[allow(dead_code)]
-    pub fn from_id(s: &str) -> Option<Self> {
-        match s {
-            "ghost" => Some(MobKind::Ghost),
-            "tower" => Some(MobKind::Tower),
-            "slime_small" => Some(MobKind::SlimeSmall),
-            "spinner" => Some(MobKind::Spinner),
-            "jumper" => Some(MobKind::Jumper),
-            _ => None,
-        }
+    pub fn id(self) -> &'static str {
+        self.into()
     }
 
-    pub fn id(&self) -> &'static str {
-        match self {
-            MobKind::Ghost => "ghost",
-            MobKind::Tower => "tower",
-            MobKind::SlimeSmall => "slime_small",
-            MobKind::Spinner => "spinner",
-            MobKind::Jumper => "jumper",
-        }
+    pub fn iter() -> impl Iterator<Item = MobKind> {
+        <Self as IntoEnumIterator>::iter()
     }
 
     pub fn size(&self, mobs: &MobsBalance) -> f32 {
@@ -89,7 +84,54 @@ pub(super) fn enemy_ability_shape_color() -> ShapeColor {
     ShapeColor { r, g, b, a: 1.0, flash }
 }
 
-pub(super) fn compute_stats(
+pub(crate) enum EnemyBody {
+    Dynamic { mass: f32 },
+    Static,
+}
+
+pub(crate) fn spawn_enemy_core(
+    commands: &mut Commands,
+    pos: Vec2,
+    calculators: &StatCalculators,
+    base_stats: &[(Stat, ModifierKind, f32)],
+    size: f32,
+    body: EnemyBody,
+    death_particles: &'static str,
+) -> Entity {
+    let (modifiers, dirty, computed) = build_stats(calculators, base_stats);
+    let hp = computed.final_of(Stat::MaxLife);
+    let ground = crate::coord::ground_pos(pos);
+
+    let id = commands.spawn_empty().id();
+    commands.entity(id).insert((
+        Transform::from_translation(ground),
+        Visibility::default(),
+        Faction::Enemy,
+        modifiers, dirty, computed,
+        Size { value: size },
+        Collider { shape: ColliderShape::Circle, sensor: false },
+        Health { current: hp },
+        Caster(id),
+        OnDeathParticles { config: death_particles },
+    ));
+
+    match body {
+        EnemyBody::Dynamic { mass } => {
+            commands.entity(id).insert(DynamicBody { mass });
+        }
+        EnemyBody::Static => {
+            commands.entity(id).insert(StaticBody);
+        }
+    }
+
+    commands.entity(id).with_children(|p| {
+        p.spawn(Shadow { opacity: 0.45 });
+    });
+
+    id
+}
+
+fn build_stats(
     calculators: &StatCalculators,
     base_stats: &[(Stat, ModifierKind, f32)],
 ) -> (Modifiers, DirtyStats, ComputedStats) {
@@ -102,8 +144,4 @@ pub(super) fn compute_stats(
     dirty.mark_all(Stat::iter());
     calculators.recalculate(&modifiers, &mut computed, &mut dirty);
     (modifiers, dirty, computed)
-}
-
-pub(super) fn current_max_life(computed: &ComputedStats) -> f32 {
-    computed.final_of(Stat::MaxLife)
 }

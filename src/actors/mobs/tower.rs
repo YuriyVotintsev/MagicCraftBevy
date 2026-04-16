@@ -5,9 +5,8 @@ use serde::Deserialize;
 
 use crate::GameState;
 use super::super::components::{
-    Caster, CircleShape, Collider, FadeOut, FindNearestEnemy, Growing, Health, Lifetime,
-    OnDeathParticles, PendingDamage, Shadow, ColliderShape, ShootSquish, ShotFired, Size,
-    Shape, ShapeColor, ShapeKind, StaticBody, Target,
+    CircleShape, FadeOut, Growing, Lifetime, PendingDamage, Shadow, ShootSquish, ShotFired, Size,
+    Shape, ShapeColor, ShapeKind,
 };
 use crate::faction::Faction;
 use crate::palette;
@@ -15,7 +14,7 @@ use crate::particles;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{compute_stats, current_max_life, enemy_shape_color};
+use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct TowerStats {
@@ -116,28 +115,22 @@ pub fn spawn_tower(
     s: &TowerStats,
     calculators: &StatCalculators,
 ) -> Entity {
-    let (modifiers, dirty, computed) = compute_stats(
+    let id = spawn_enemy_core(
+        commands,
+        pos,
         calculators,
         &[
             (Stat::MaxLife, ModifierKind::Flat, s.hp),
             (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
         ],
+        s.size,
+        EnemyBody::Static,
+        "enemy_death_large",
     );
-    let hp = current_max_life(&computed);
-    let ground = crate::coord::ground_pos(pos);
 
-    let id = commands.spawn((
-        Transform::from_translation(ground),
-        Visibility::default(),
-        Faction::Enemy,
-        modifiers, dirty, computed,
-        Size { value: s.size },
-        Collider { shape: ColliderShape::Circle, sensor: false },
-        StaticBody,
-        Health { current: hp },
+    commands.entity(id).insert((
         TowerVisual {},
         ShootSquish { amplitude: 0.3, duration: 0.25 },
-        FindNearestEnemy { size: 4000.0, center: Entity::PLACEHOLDER },
         TowerShooter {
             cooldown: s.shot_cooldown,
             elapsed: 0.0,
@@ -150,16 +143,9 @@ pub fn spawn_tower(
             explosion_duration: s.explosion_duration,
             indicator_duration: s.indicator_duration,
         },
-    )).id();
-
-    commands.entity(id).insert((
-        Caster(id),
-        FindNearestEnemy { size: 4000.0, center: id },
-        OnDeathParticles { config: "enemy_death_large" },
     ));
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { opacity: 0.45 });
         p.spawn(Shape {
             color: enemy_shape_color(), kind: ShapeKind::Circle,
             position: Vec2::ZERO, elevation: 1.2, half_length: 0.5,
@@ -172,21 +158,19 @@ pub fn spawn_tower(
 fn tower_shooter_system(
     mut commands: Commands,
     time: Res<Time>,
-    transforms: Query<&Transform, Without<TowerShooter>>,
     stats_query: Query<&ComputedStats>,
-    mut query: Query<(Entity, &Transform, &mut TowerShooter, Option<&Target>, &Faction), Without<crate::wave::RiseFromGround>>,
+    mut query: Query<(Entity, &Transform, &mut TowerShooter, &Faction), Without<crate::wave::RiseFromGround>>,
+    player: Option<Single<&Transform, (With<crate::actors::Player>, Without<TowerShooter>)>>,
 ) {
-    for (caster, transform, mut shooter, target, faction) in &mut query {
+    let Some(player) = player else { return };
+    for (caster, transform, mut shooter, faction) in &mut query {
         shooter.elapsed += time.delta_secs();
         if shooter.elapsed < shooter.cooldown { continue }
-
-        let Some(target) = target else { continue };
-        let Ok(target_transform) = transforms.get(target.0) else { continue };
 
         shooter.elapsed = 0.0;
 
         let caster_pos = crate::coord::to_2d(transform.translation);
-        let target_pos = crate::coord::to_2d(target_transform.translation);
+        let target_pos = crate::coord::to_2d(player.translation);
         let caster_stats = stats_query.get(caster).ok();
 
         commands.entity(caster).insert(ShotFired);

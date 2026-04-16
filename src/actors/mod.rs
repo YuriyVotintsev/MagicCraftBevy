@@ -5,10 +5,10 @@ mod mobs;
 mod player;
 
 pub use components::{
-    death_system, CapsuleShape, Caster, CircleShape, DeathEvent, GameLayer, Health,
-    JumpWalkAnimationState, MovementLocked, Shadow, Shape, SkipCleanup,
+    death_system, CapsuleShape, Caster, CircleShape, DeathEvent, Fade, FadeBase, GameLayer,
+    Health, JumpWalkAnimationState, MovementLocked, Shadow, Shape, SkipCleanup,
 };
-pub use mobs::{spawn_mob, GhostAlpha, GhostTransparency, MobKind, MobsBalance};
+pub use mobs::{spawn_mob, GhostTransparency, MobKind, MobsBalance};
 pub use player::Player;
 
 pub struct ActorsPlugin;

@@ -7,8 +7,8 @@ mod player;
 mod visual;
 
 pub use combat::{
-    death_system, Caster, DeathEvent, FindNearestEnemy, Health, MeleeAttacker, OnCollisionDamage,
-    PendingDamage, Projectile, ShotFired, SkipCleanup, Target,
+    death_system, Caster, DeathEvent, Health, MeleeAttacker, OnCollisionDamage, PendingDamage,
+    Projectile, ShotFired, SkipCleanup,
 };
 pub use lifetime::Lifetime;
 pub use physics::{Collider, ColliderShape, DynamicBody, GameLayer, Size, StaticBody};
@@ -17,9 +17,9 @@ pub use player::{
     PlayerInput, TargetingMode,
 };
 pub use visual::{
-    BobbingAnimation, CapsuleShape, CircleShape, FadeOut, Growing, JumpWalkAnimation,
-    JumpWalkAnimationState, OnCollisionParticles, OnDeathParticles, SelfMoving, Shadow,
-    ShootSquish, Shape, ShapeColor, ShapeKind,
+    BobbingAnimation, CapsuleShape, CircleShape, Fade, FadeBase, FadeCollisionToggle, FadeOut,
+    Growing, JumpWalkAnimation, JumpWalkAnimationState, OnCollisionParticles, OnDeathParticles,
+    SelfMoving, Shadow, ShootSquish, Shape, ShapeColor, ShapeKind,
 };
 
 pub struct ComponentsPlugin;

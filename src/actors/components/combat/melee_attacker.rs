@@ -2,7 +2,8 @@ use bevy::prelude::*;
 
 use super::melee_strike::MeleeStrike;
 use super::shot_fired::ShotFired;
-use super::{Caster, Target};
+use super::Caster;
+use crate::actors::Player;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
@@ -32,19 +33,16 @@ pub fn register_systems(app: &mut App) {
 fn melee_attacker_system(
     mut commands: Commands,
     time: Res<Time>,
-    transforms: Query<&Transform, Without<MeleeAttacker>>,
     stats_query: Query<&ComputedStats>,
-    mut query: Query<(Entity, &Transform, &mut MeleeAttacker, Option<&Target>, &Faction), Without<crate::wave::RiseFromGround>>,
+    mut query: Query<(Entity, &Transform, &mut MeleeAttacker, &Faction), Without<crate::wave::RiseFromGround>>,
+    player: Option<Single<&Transform, (With<Player>, Without<MeleeAttacker>)>>,
 ) {
-    for (caster, transform, mut attacker, target, faction) in &mut query {
+    let Some(player) = player else { return };
+    for (caster, transform, mut attacker, faction) in &mut query {
         attacker.elapsed += time.delta_secs();
         if attacker.elapsed < attacker.cooldown { continue }
 
-        let Some(target) = target else { continue };
-        let target_entity = target.0;
-        let Ok(target_transform) = transforms.get(target_entity) else { continue };
-
-        if transform.translation.distance(target_transform.translation) > attacker.trigger_range {
+        if transform.translation.distance(player.translation) > attacker.trigger_range {
             continue;
         }
 
@@ -56,7 +54,6 @@ fn melee_attacker_system(
         commands.spawn((
             MeleeStrike { range: MELEE_STRIKE_RANGE, damage },
             Caster(caster),
-            Target(target_entity),
             *faction,
         ));
     }
