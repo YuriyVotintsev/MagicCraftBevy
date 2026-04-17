@@ -69,7 +69,7 @@ impl Default for ShopOffer {
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Clone)]
 pub struct RuneGrid {
     pub cells: HashMap<HexCoord, Rune>,
     pub unlocked: HashSet<HexCoord>,

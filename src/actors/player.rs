@@ -8,10 +8,36 @@ use super::components::{
     TargetingMode,
 };
 use crate::palette;
-use crate::rune::{write_pattern_contains, RuneGrid, WriteEffect};
+use crate::rune::{add_grid_modifiers, RuneGrid};
 use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
 use crate::wave::WavePhase;
 use crate::Faction;
+
+pub const PLAYER_BASE_STATS: &[(Stat, ModifierKind, f32)] = &[
+    (Stat::MaxLife, ModifierKind::Flat, 20.0),
+    (Stat::MovementSpeed, ModifierKind::Flat, 550.0),
+    (Stat::CritChance, ModifierKind::Flat, 0.05),
+    (Stat::CritMultiplier, ModifierKind::Flat, 1.5),
+    (Stat::AttackSpeed, ModifierKind::Flat, 1.0),
+    (Stat::PickupRadius, ModifierKind::Flat, 200.0),
+];
+
+pub fn compute_player_stats(
+    grid: &RuneGrid,
+    calculators: &StatCalculators,
+) -> (Modifiers, ComputedStats) {
+    let mut modifiers = Modifiers::new();
+    for &(stat, kind, value) in PLAYER_BASE_STATS {
+        modifiers.add(stat, kind, value);
+    }
+    add_grid_modifiers(grid, &mut modifiers);
+
+    let mut dirty = DirtyStats::default();
+    let mut computed = ComputedStats::default();
+    dirty.mark_all(Stat::iter());
+    calculators.recalculate(&modifiers, &mut computed, &mut dirty);
+    (modifiers, computed)
+}
 
 pub const FIREBALL_BASE_DAMAGE: f32 = 1.0;
 pub const FIREBALL_BASE_SPEED: f32 = 800.0;
@@ -47,40 +73,9 @@ pub fn spawn_player(
     calculators: Res<StatCalculators>,
     grid: Res<RuneGrid>,
 ) {
-    let base_stats: &[(Stat, ModifierKind, f32)] = &[
-        (Stat::MaxLife, ModifierKind::Flat, 20.0),
-        (Stat::MovementSpeed, ModifierKind::Flat, 550.0),
-        (Stat::CritChance, ModifierKind::Flat, 0.05),
-        (Stat::CritMultiplier, ModifierKind::Flat, 1.5),
-        (Stat::AttackSpeed, ModifierKind::Flat, 1.0),
-        (Stat::PickupRadius, ModifierKind::Flat, 200.0),
-    ];
-
-    let mut modifiers = Modifiers::new();
-    for &(stat, kind, value) in base_stats {
-        modifiers.add(stat, kind, value);
-    }
-    for (coord, rune) in grid.cells.iter() {
-        let Some(kind) = rune.kind else { continue };
-        let (stat, mod_kind, base_value) = kind.def().base_effect;
-
-        let mut factor = 1.0_f32;
-        for (src_coord, src_rune) in grid.cells.iter() {
-            if src_coord == coord { continue }
-            let Some(src_kind) = src_rune.kind else { continue };
-            let Some(write) = src_kind.def().write else { continue };
-            if !write_pattern_contains(&write, *src_coord, *coord) { continue }
-            match write.effect {
-                WriteEffect::More { factor: f } => factor *= f,
-            }
-        }
-
-        modifiers.add(stat, mod_kind, base_value * factor);
-    }
+    let (modifiers, computed) = compute_player_stats(&grid, &calculators);
     let mut dirty = DirtyStats::default();
-    let mut computed = ComputedStats::default();
     dirty.mark_all(Stat::iter());
-    calculators.recalculate(&modifiers, &mut computed, &mut dirty);
     let hp = computed.final_of(Stat::MaxLife);
 
     let entity = commands.spawn((

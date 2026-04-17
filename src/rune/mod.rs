@@ -1,3 +1,4 @@
+mod calc;
 mod content;
 mod cost;
 mod data;
@@ -6,6 +7,7 @@ mod shop_gen;
 
 use bevy::prelude::*;
 
+pub use calc::{add_grid_modifiers, incoming_factor};
 pub use content::{
     write_pattern_contains, write_pattern_coords, write_targets, Pattern, RuneKind, Tier, Write,
     WriteEffect,

@@ -6,6 +6,7 @@ mod main_menu;
 mod pause_menu;
 mod shop_view;
 mod stat_line_builder;
+mod stats_panel;
 
 use bevy::prelude::*;
 use bevy::ui::{UiScale, UiSystems};
@@ -32,6 +33,7 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Viewport>()
+            .init_resource::<stats_panel::StatsPanelState>()
             .add_systems(Startup, init_layout)
             .add_systems(Update, update_layout_on_resize)
             .add_systems(OnEnter(GameState::Loading), loading::spawn_loading_screen)
@@ -55,6 +57,7 @@ impl Plugin for UiPlugin {
                     shop_view::reset_reroll_cost,
                     fill_shop_offer,
                     shop_view::spawn_shop_screen,
+                    stats_panel::spawn_stats_panel,
                 )
                     .chain(),
             )
@@ -80,6 +83,8 @@ impl Plugin for UiPlugin {
                         shop_view::update_highlights,
                         shop_view::apply_highlights,
                         shop_view::update_tooltip,
+                        stats_panel::compute_state,
+                        stats_panel::render,
                     )
                         .chain(),
                 )

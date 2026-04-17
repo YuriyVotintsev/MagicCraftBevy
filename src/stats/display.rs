@@ -41,6 +41,7 @@ struct MultiStatEntry {
 pub struct StatDisplayRegistry {
     single_stat_formats: HashMap<StatKey, Vec<FormatSpan>>,
     multi_stat_formats: HashMap<Vec<StatKey>, MultiStatEntry>,
+    snapshot_formats: HashMap<Stat, Vec<FormatSpan>>,
 }
 
 const DISPLAY_RULES: &[(&[StatKey], &str)] = &[
@@ -67,6 +68,21 @@ const DISPLAY_RULES: &[(&[StatKey], &str)] = &[
     (&[(Stat::PickupRadius, ModifierKind::Increased)], "[{+0}%] pickup radius"),
     (&[(Stat::AttackSpeed, ModifierKind::Flat)], "[{+0}] attack speed"),
     (&[(Stat::AttackSpeed, ModifierKind::More)], "[{|0|}% more;{|0|}% less] attack speed"),
+];
+
+const SNAPSHOT_DISPLAY_RULES: &[(Stat, &str)] = &[
+    (Stat::MaxLife, "Max Life: [{0}]"),
+    (Stat::MaxMana, "Max Mana: [{0}]"),
+    (Stat::PhysicalDamage, "Physical Damage: [{0}]"),
+    (Stat::MovementSpeed, "Movement Speed: [{0}]"),
+    (Stat::ProjectileSpeed, "Projectile Speed: [{0}]"),
+    (Stat::ProjectileCount, "Projectiles: [{0}]"),
+    (Stat::CritChance, "Crit Chance: [{0}%]"),
+    (Stat::CritMultiplier, "Crit Multiplier: [{0}%]"),
+    (Stat::AttackSpeed, "Attack Speed: [{0}%]"),
+    (Stat::AreaOfEffect, "Area of Effect: [{0}]"),
+    (Stat::Duration, "Duration: [{0}]"),
+    (Stat::PickupRadius, "Pickup Radius: [{0}]"),
 ];
 
 fn parse_template_half(half: &str) -> Option<(usize, ValueTemplate)> {
@@ -191,10 +207,27 @@ impl StatDisplayRegistry {
             }
         }
 
+        let mut snapshot_formats: HashMap<Stat, Vec<FormatSpan>> = HashMap::new();
+        for (stat, format) in SNAPSHOT_DISPLAY_RULES {
+            snapshot_formats.insert(*stat, parse_format_string(format));
+        }
+        for stat in Stat::iter() {
+            if !snapshot_formats.contains_key(&stat) {
+                let title = to_title_case(stat.name());
+                let fallback_fmt = format!("{}: [{{0}}]", title);
+                snapshot_formats.insert(stat, parse_format_string(&fallback_fmt));
+            }
+        }
+
         Self {
             single_stat_formats,
             multi_stat_formats,
+            snapshot_formats,
         }
+    }
+
+    pub fn get_snapshot_format(&self, stat: Stat) -> Option<&[FormatSpan]> {
+        self.snapshot_formats.get(&stat).map(|v| v.as_slice())
     }
 
     pub fn get_format(&self, keys: &[StatKey]) -> Vec<Vec<FormatSpan>> {

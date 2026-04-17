@@ -9,7 +9,7 @@ pub use components::{
     Health, JumpWalkAnimationState, MovementLocked, Shadow, Shape, SkipCleanup,
 };
 pub use mobs::{spawn_mob, GhostTransparency, MobKind, MobsBalance};
-pub use player::Player;
+pub use player::{compute_player_stats, Player};
 
 pub struct ActorsPlugin;
 

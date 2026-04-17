@@ -37,6 +37,10 @@ pub enum StatRenderMode<'a> {
         effective: &'a [f32],
         raw: &'a [f32],
     },
+    Snapshot {
+        current: f32,
+        preview: Option<f32>,
+    },
 }
 
 pub struct DiffSide<'a> {
@@ -163,7 +167,64 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
         StatRenderMode::Effective { effective, raw } => {
             collect_effective_segments(spans, effective, raw)
         }
+        StatRenderMode::Snapshot { current, preview } => {
+            collect_snapshot_segments(spans, *current, *preview)
+        }
     }
+}
+
+fn collect_snapshot_segments(
+    spans: &[FormatSpan],
+    current: f32,
+    preview: Option<f32>,
+) -> Vec<Segment> {
+    let show_delta = preview
+        .map(|p| (p - current).abs() > 1e-3)
+        .unwrap_or(false);
+    let preview = preview.unwrap_or(current);
+
+    let mut segments = Vec::new();
+    for span in spans {
+        match span {
+            FormatSpan::Value {
+                is_percent,
+                lower_is_better,
+                template,
+                negative_template,
+                ..
+            } => {
+                let current_text =
+                    pick_and_format(current, template, negative_template, *is_percent);
+                segments.push(Segment {
+                    text: current_text,
+                    color: text_color(),
+                });
+                if show_delta {
+                    let preview_text =
+                        pick_and_format(preview, template, negative_template, *is_percent);
+                    let improved = (preview > current) != *lower_is_better;
+                    let color = if improved {
+                        positive_color()
+                    } else {
+                        negative_color()
+                    };
+                    segments.push(Segment {
+                        text: " → ".to_string(),
+                        color: text_color(),
+                    });
+                    segments.push(Segment {
+                        text: preview_text,
+                        color,
+                    });
+                }
+            }
+            FormatSpan::Label(text) => segments.push(Segment {
+                text: text.clone(),
+                color: text_color(),
+            }),
+        }
+    }
+    segments
 }
 
 fn collect_effective_segments(

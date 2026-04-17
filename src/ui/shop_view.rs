@@ -8,10 +8,10 @@ use crate::palette;
 use crate::run::PlayerMoney;
 use crate::run::RunState;
 use crate::rune::{
-    can_place, roll_shop_offer, write_pattern_contains, write_pattern_coords, write_targets,
-    Dragging, GridCellView, GridHighlights, HexCoord, IconAssets, JokerSlotView, JokerSlots,
-    Pattern, RerollState, Rune, RuneCosts, RuneGrid, RuneKind, RuneSource, RuneView, ShopOffer,
-    Tier, Write, WriteEffect, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
+    can_place, incoming_factor, roll_shop_offer, write_pattern_contains, write_pattern_coords,
+    write_targets, Dragging, GridCellView, GridHighlights, HexCoord, IconAssets, JokerSlotView,
+    JokerSlots, Pattern, RerollState, Rune, RuneCosts, RuneGrid, RuneKind, RuneSource, RuneView,
+    ShopOffer, Tier, Write, WriteEffect, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
 };
 use crate::stats::StatDisplayRegistry;
 use crate::transition::{Transition, TransitionAction};
@@ -40,7 +40,7 @@ const CELL_PATTERN_BORDER: f32 = 6.0;
 
 const TOOLTIP_W: f32 = 320.0;
 const TOOLTIP_PAD: f32 = 14.0;
-const TOOLTIP_LEFT: f32 = 40.0;
+const TOOLTIP_RIGHT: f32 = 40.0;
 const TOOLTIP_BOTTOM: f32 = 40.0;
 
 const SHADOW_OFFSET_X: f32 = 3.0;
@@ -625,7 +625,7 @@ pub fn reconcile_rune_entities(
     }
 }
 
-fn cursor_ui_pos(window: &Window, ui_scale: f32) -> Option<Vec2> {
+pub(super) fn cursor_ui_pos(window: &Window, ui_scale: f32) -> Option<Vec2> {
     let scale = if ui_scale > 0.0 { ui_scale } else { 1.0 };
     window.cursor_position().map(|c| c / scale)
 }
@@ -720,7 +720,7 @@ pub fn follow_cursor(
     }
 }
 
-fn find_drop_target(
+pub(super) fn find_drop_target(
     cursor: Vec2,
     is_joker: bool,
     viewport: &Viewport,
@@ -1190,20 +1190,6 @@ fn write_label(write: &Write) -> String {
     format!("{}: {}", pattern, effect)
 }
 
-fn compute_incoming_factor(target: HexCoord, grid: &RuneGrid) -> f32 {
-    let mut factor = 1.0_f32;
-    for (src_coord, src_rune) in grid.cells.iter() {
-        if *src_coord == target { continue }
-        let Some(src_kind) = src_rune.kind else { continue };
-        let Some(write) = src_kind.def().write else { continue };
-        if !write_pattern_contains(&write, *src_coord, target) { continue }
-        match write.effect {
-            WriteEffect::More { factor: f } => factor *= f,
-        }
-    }
-    factor
-}
-
 #[allow(clippy::too_many_arguments)]
 pub fn update_tooltip(
     mut commands: Commands,
@@ -1239,7 +1225,7 @@ pub fn update_tooltip(
             &joker_slots,
         );
         let factor = match target {
-            Some(RuneSource::Grid(c)) => compute_incoming_factor(c, &grid),
+            Some(RuneSource::Grid(c)) => incoming_factor(c, &grid),
             _ => 1.0,
         };
         result = Some((drag.rune, factor));
@@ -1257,7 +1243,7 @@ pub fn update_tooltip(
             let coord = HexCoord::from_pixel(cursor - grid_center(&viewport), CELL_SIDE);
             if coord.ring_radius() <= GRID_RADIUS {
                 if let Some(r) = grid.cells.get(&coord).copied() {
-                    let factor = compute_incoming_factor(coord, &grid);
+                    let factor = incoming_factor(coord, &grid);
                     result = Some((r, factor));
                 }
             }
@@ -1276,7 +1262,7 @@ pub fn update_tooltip(
             RuneTooltipRoot,
             Node {
                 position_type: PositionType::Absolute,
-                left: Val::Px(TOOLTIP_LEFT),
+                right: Val::Px(TOOLTIP_RIGHT),
                 bottom: Val::Px(TOOLTIP_BOTTOM),
                 width: Val::Px(TOOLTIP_W),
                 padding: UiRect::all(Val::Px(TOOLTIP_PAD)),
