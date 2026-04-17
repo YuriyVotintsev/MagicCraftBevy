@@ -28,9 +28,10 @@ const TARGET_RING_RADIUS: f32 = (RUNE_DIAMETER - RING_OUTER_INSET * 2.0) * 0.5;
 const SOURCE_RING_RADIUS: f32 = (RUNE_DIAMETER - RING_INNER_INSET * 2.0) * 0.5;
 
 const ARROW_LINE_THICKNESS: f32 = 5.0;
-const ARROW_HEAD_LENGTH: f32 = 20.0;
+const ARROW_HEAD_LENGTH: f32 = 15.0;
 const ARROW_HEAD_THICKNESS: f32 = 5.0;
-const ARROW_HEAD_ANGLE_DEG: f32 = 45.0;
+const ARROW_HEAD_ANGLE_DEG: f32 = 35.0;
+const ARROW_PARALLEL_OFFSET: f32 = 7.0;
 
 const SQRT_3: f32 = 1.732_050_8;
 const CELL_GAP: f32 = 5.0;
@@ -982,8 +983,13 @@ pub fn apply_highlights(
         let target_pos = grid_cell_center(&viewport, *target);
         let direction = (target_pos - center_pos).normalize_or_zero();
         if direction == Vec2::ZERO { continue }
-        let tail = center_pos + direction * TARGET_RING_RADIUS;
-        let head = target_pos - direction * RUNE_EDGE_RADIUS;
+        let offset = if highlights.write_sources.contains(target) {
+            Vec2::new(-direction.y, direction.x) * ARROW_PARALLEL_OFFSET
+        } else {
+            Vec2::ZERO
+        };
+        let tail = center_pos + direction * TARGET_RING_RADIUS + offset;
+        let head = target_pos - direction * RUNE_EDGE_RADIUS + offset;
         spawn_arrow(&mut commands, root_entity, tail, head,
             palette::color("ui_rune_write_target"));
     }
@@ -992,8 +998,13 @@ pub fn apply_highlights(
         let source_pos = grid_cell_center(&viewport, *source);
         let direction = (center_pos - source_pos).normalize_or_zero();
         if direction == Vec2::ZERO { continue }
-        let tail = source_pos + direction * SOURCE_RING_RADIUS;
-        let head = center_pos - direction * RUNE_EDGE_RADIUS;
+        let offset = if highlights.write_targets.contains(source) {
+            Vec2::new(-direction.y, direction.x) * ARROW_PARALLEL_OFFSET
+        } else {
+            Vec2::ZERO
+        };
+        let tail = source_pos + direction * SOURCE_RING_RADIUS + offset;
+        let head = center_pos - direction * RUNE_EDGE_RADIUS + offset;
         spawn_arrow(&mut commands, root_entity, tail, head,
             palette::color("ui_rune_write_source"));
     }
