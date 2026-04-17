@@ -1,5 +1,3 @@
-#![expect(dead_code, reason = "stat display registry — scaffolding for shop perk UI, not wired yet")]
-
 use std::collections::HashMap;
 
 use bevy::prelude::*;
@@ -67,6 +65,8 @@ const DISPLAY_RULES: &[(&[StatKey], &str)] = &[
     (&[(Stat::Duration, ModifierKind::Increased)], "[{+0}%] duration"),
     (&[(Stat::PickupRadius, ModifierKind::Flat)], "[{+0}] pickup radius"),
     (&[(Stat::PickupRadius, ModifierKind::Increased)], "[{+0}%] pickup radius"),
+    (&[(Stat::AttackSpeed, ModifierKind::Flat)], "[{+0}] attack speed"),
+    (&[(Stat::AttackSpeed, ModifierKind::More)], "[{|0|}% more;{|0|}% less] attack speed"),
 ];
 
 fn parse_template_half(half: &str) -> Option<(usize, ValueTemplate)> {

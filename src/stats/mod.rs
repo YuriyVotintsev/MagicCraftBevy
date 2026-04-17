@@ -9,7 +9,7 @@ mod systems;
 pub use calculators::StatCalculators;
 pub use computed_stats::ComputedStats;
 pub use dirty_stats::DirtyStats;
-pub use display::{FormatSpan, SignMode, ValueTemplate};
+pub use display::{FormatSpan, SignMode, StatDisplayRegistry, ValueTemplate};
 pub use modifiers::Modifiers;
 pub use registry::{ModifierKind, Stat};
 

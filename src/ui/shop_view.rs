@@ -10,12 +10,14 @@ use crate::run::RunState;
 use crate::rune::{
     can_place, roll_shop_offer, write_pattern_contains, write_pattern_coords, write_targets,
     Dragging, GridCellView, GridHighlights, HexCoord, IconAssets, JokerSlotView, JokerSlots,
-    RerollState, Rune, RuneCosts, RuneGrid, RuneSource, RuneView, ShopOffer, GRID_RADIUS,
-    JOKER_SLOTS, SHOP_SLOTS,
+    Pattern, RerollState, Rune, RuneCosts, RuneGrid, RuneKind, RuneSource, RuneView, ShopOffer,
+    Tier, Write, WriteEffect, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
 };
+use crate::stats::StatDisplayRegistry;
 use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
 
+use super::stat_line_builder::{StatLineBuilder, StatRenderMode};
 use super::{panel_radius, Viewport};
 
 const RUNE_ICON_INSET: f32 = 14.0;
@@ -35,6 +37,11 @@ const ARROW_HEAD_ANGLE_DEG: f32 = 35.0;
 const ARROW_PARALLEL_OFFSET: f32 = 7.0;
 
 const CELL_PATTERN_BORDER: f32 = 6.0;
+
+const TOOLTIP_W: f32 = 320.0;
+const TOOLTIP_PAD: f32 = 14.0;
+const TOOLTIP_LEFT: f32 = 40.0;
+const TOOLTIP_BOTTOM: f32 = 40.0;
 
 const SHADOW_OFFSET_X: f32 = 3.0;
 const SHADOW_OFFSET_Y: f32 = 3.0;
@@ -144,6 +151,9 @@ pub enum HighlightRing {
 
 #[derive(Component)]
 pub struct HighlightArrow;
+
+#[derive(Component)]
+pub struct RuneTooltipRoot;
 
 #[derive(Component)]
 pub struct HighlightShadow;
@@ -1146,6 +1156,181 @@ fn spawn_rotated_rect(
         BackgroundColor(color),
         UiTransform::from_rotation(Rot2::radians(angle)),
         GlobalZIndex(z),
+    ));
+}
+
+fn rune_name(kind: RuneKind) -> &'static str {
+    match kind {
+        RuneKind::Spike => "Spike",
+        RuneKind::HeartStone => "HeartStone",
+        RuneKind::Resonator => "Resonator",
+    }
+}
+
+fn tier_label(tier: Tier) -> &'static str {
+    match tier {
+        Tier::Common => "Common",
+        Tier::Rare => "Rare",
+    }
+}
+
+fn limit_label(limit: Option<u32>) -> String {
+    limit
+        .map(|n| format!("Max {}", n))
+        .unwrap_or_else(|| "\u{221e}".to_string())
+}
+
+fn write_label(write: &Write) -> String {
+    let pattern = match write.pattern {
+        Pattern::Adjacent => "Adjacent",
+    };
+    let effect = match write.effect {
+        WriteEffect::More { factor } => format!("+{:.0}% base effect", (factor - 1.0) * 100.0),
+    };
+    format!("{}: {}", pattern, effect)
+}
+
+fn compute_incoming_factor(target: HexCoord, grid: &RuneGrid) -> f32 {
+    let mut factor = 1.0_f32;
+    for (src_coord, src_rune) in grid.cells.iter() {
+        if *src_coord == target { continue }
+        let Some(src_kind) = src_rune.kind else { continue };
+        let Some(write) = src_kind.def().write else { continue };
+        if !write_pattern_contains(&write, *src_coord, target) { continue }
+        match write.effect {
+            WriteEffect::More { factor: f } => factor *= f,
+        }
+    }
+    factor
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn update_tooltip(
+    mut commands: Commands,
+    window_q: Query<&Window, With<PrimaryWindow>>,
+    ui_scale: Res<UiScale>,
+    viewport: Res<Viewport>,
+    grid: Res<RuneGrid>,
+    shop: Res<ShopOffer>,
+    registry: Res<StatDisplayRegistry>,
+    root: Query<Entity, With<ShopRoot>>,
+    dragging: Query<&Dragging>,
+    cells: Query<&GridCellView>,
+    joker_slots: Query<&JokerSlotView>,
+    existing: Query<Entity, With<RuneTooltipRoot>>,
+) {
+    for entity in &existing {
+        commands.entity(entity).despawn();
+    }
+
+    let Ok(window) = window_q.single() else { return };
+    let Some(cursor) = cursor_ui_pos(window, ui_scale.0) else { return };
+    let Ok(root_entity) = root.single() else { return };
+
+    let mut result: Option<(Rune, f32)> = None;
+    if let Some(drag) = dragging.iter().next() {
+        let rune_center = cursor - drag.grab_offset;
+        let target = find_drop_target(
+            rune_center,
+            drag.rune.is_joker(),
+            &viewport,
+            &grid,
+            &cells,
+            &joker_slots,
+        );
+        let factor = match target {
+            Some(RuneSource::Grid(c)) => compute_incoming_factor(c, &grid),
+            _ => 1.0,
+        };
+        result = Some((drag.rune, factor));
+    } else {
+        for idx in 0..SHOP_SLOTS {
+            let center = shop_slot_center(&viewport, idx);
+            if center.distance(cursor) <= CELL_DIAMETER * 0.5 {
+                if let Some(r) = shop.stubs[idx] {
+                    result = Some((r, 1.0));
+                    break;
+                }
+            }
+        }
+        if result.is_none() {
+            let coord = HexCoord::from_pixel(cursor - grid_center(&viewport), CELL_SIDE);
+            if coord.ring_radius() <= GRID_RADIUS {
+                if let Some(r) = grid.cells.get(&coord).copied() {
+                    let factor = compute_incoming_factor(coord, &grid);
+                    result = Some((r, factor));
+                }
+            }
+        }
+    }
+
+    let Some((rune, factor)) = result else { return };
+    let Some(kind) = rune.kind else { return };
+    let def = kind.def();
+    let (base_stat, base_kind, base_value) = def.base_effect;
+    let effective_value = base_value * factor;
+
+    let tooltip = commands
+        .spawn((
+            ChildOf(root_entity),
+            RuneTooltipRoot,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(TOOLTIP_LEFT),
+                bottom: Val::Px(TOOLTIP_BOTTOM),
+                width: Val::Px(TOOLTIP_W),
+                padding: UiRect::all(Val::Px(TOOLTIP_PAD)),
+                flex_direction: FlexDirection::Column,
+                row_gap: Val::Px(6.0),
+                border_radius: panel_radius(),
+                ..default()
+            },
+            BackgroundColor(palette::color("ui_panel_bg")),
+            GlobalZIndex(70),
+        ))
+        .id();
+
+    commands.spawn((
+        ChildOf(tooltip),
+        Text::new(rune_name(kind)),
+        TextFont { font_size: 22.0, ..default() },
+        TextColor(palette::color("ui_text")),
+    ));
+    commands.spawn((
+        ChildOf(tooltip),
+        Text::new(tier_label(def.tier)),
+        TextFont { font_size: 14.0, ..default() },
+        TextColor(palette::color("ui_text_subtle")),
+    ));
+
+    let formats = registry.get_format(&[(base_stat, base_kind)]);
+    if let Some(spans) = formats.first() {
+        let line = StatLineBuilder::spawn_line(
+            &mut commands,
+            spans,
+            StatRenderMode::Effective {
+                effective: &[effective_value],
+                raw: &[base_value],
+            },
+            16.0,
+        );
+        commands.entity(line).insert(ChildOf(tooltip));
+    }
+
+    if let Some(write) = def.write {
+        commands.spawn((
+            ChildOf(tooltip),
+            Text::new(write_label(&write)),
+            TextFont { font_size: 14.0, ..default() },
+            TextColor(palette::color("ui_text")),
+        ));
+    }
+
+    commands.spawn((
+        ChildOf(tooltip),
+        Text::new(limit_label(def.limit)),
+        TextFont { font_size: 14.0, ..default() },
+        TextColor(palette::color("ui_text_subtle")),
     ));
 }
 

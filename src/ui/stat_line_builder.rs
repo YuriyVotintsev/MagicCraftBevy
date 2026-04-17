@@ -1,4 +1,4 @@
-#![expect(dead_code, reason = "stat diff UI helpers — scaffolding for shop perk comparison, not wired yet")]
+#![expect(dead_code, reason = "stat diff UI helpers — scaffolding for shop perk comparison, partially wired")]
 
 use bevy::prelude::*;
 
@@ -17,11 +17,10 @@ pub fn negative_color() -> Color {
 pub fn gold_color() -> Color {
     palette::color("ui_text_money")
 }
-fn gray_color() -> Color {
+pub fn gray_color() -> Color {
     palette::color("ui_text_disabled")
 }
 
-#[allow(dead_code)]
 pub enum StatRenderMode<'a> {
     Fixed {
         values: &'a [f32],
@@ -33,6 +32,10 @@ pub enum StatRenderMode<'a> {
         old: Option<DiffSide<'a>>,
         new: Option<DiffSide<'a>>,
         rerolled: bool,
+    },
+    Effective {
+        effective: &'a [f32],
+        raw: &'a [f32],
     },
 }
 
@@ -157,7 +160,47 @@ fn collect_segments(spans: &[FormatSpan], mode: &StatRenderMode) -> Vec<Segment>
         StatRenderMode::Diff { old, new, rerolled } => {
             collect_diff_segments(spans, old, new, *rerolled)
         }
+        StatRenderMode::Effective { effective, raw } => {
+            collect_effective_segments(spans, effective, raw)
+        }
     }
+}
+
+fn collect_effective_segments(
+    spans: &[FormatSpan],
+    effective: &[f32],
+    raw: &[f32],
+) -> Vec<Segment> {
+    let mut segments = Vec::new();
+    for span in spans {
+        match span {
+            FormatSpan::Value {
+                index,
+                is_percent,
+                template,
+                negative_template,
+                ..
+            } => {
+                let eff = effective.get(*index).copied().unwrap_or(0.0);
+                let rw = raw.get(*index).copied().unwrap_or(0.0);
+                let differs = (eff - rw).abs() > 1e-4;
+                let eff_text = pick_and_format(eff, template, negative_template, *is_percent);
+                let eff_color = if differs { positive_color() } else { text_color() };
+                segments.push(Segment { text: eff_text, color: eff_color });
+                if differs {
+                    segments.push(Segment { text: " (".to_string(), color: gray_color() });
+                    let rw_text = pick_and_format(rw, template, negative_template, *is_percent);
+                    segments.push(Segment { text: rw_text, color: gray_color() });
+                    segments.push(Segment { text: ")".to_string(), color: gray_color() });
+                }
+            }
+            FormatSpan::Label(text) => segments.push(Segment {
+                text: text.clone(),
+                color: text_color(),
+            }),
+        }
+    }
+    segments
 }
 
 fn collect_diff_segments(
@@ -362,7 +405,6 @@ impl StatLineBuilder {
         builder.id()
     }
 
-    #[allow(dead_code)]
     pub fn format_to_string(spans: &[FormatSpan], values: &[f32]) -> String {
         let mut result = String::new();
         for span in spans {

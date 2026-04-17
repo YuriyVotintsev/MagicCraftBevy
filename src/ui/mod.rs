@@ -79,6 +79,7 @@ impl Plugin for UiPlugin {
                         shop_view::sync_cell_lock_visuals,
                         shop_view::update_highlights,
                         shop_view::apply_highlights,
+                        shop_view::update_tooltip,
                     )
                         .chain(),
                 )
