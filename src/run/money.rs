@@ -1,7 +1,14 @@
 use bevy::prelude::*;
 
+use crate::game_state::GameState;
+
 pub fn register(app: &mut App) {
-    app.init_resource::<PlayerMoney>();
+    app.init_resource::<PlayerMoney>()
+        .add_systems(OnEnter(GameState::Playing), reset_money);
+}
+
+fn reset_money(mut money: ResMut<PlayerMoney>) {
+    *money = PlayerMoney::default();
 }
 
 #[derive(Resource, Default)]

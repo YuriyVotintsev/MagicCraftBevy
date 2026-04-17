@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::game_state::GameState;
 use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
 
@@ -10,11 +11,12 @@ pub const WAVE_COMBAT_DURATION: f32 = 30.0;
 #[derive(Resource, Default)]
 pub struct RunState {
     pub elapsed: f32,
-    pub attempt: u32,
+    pub wave: u32,
 }
 
 pub fn register(app: &mut App) {
     app.init_resource::<RunState>()
+        .add_systems(OnEnter(GameState::Playing), reset_run)
         .add_systems(OnEnter(WavePhase::Combat), init_run)
         .add_systems(
             Update,
@@ -26,10 +28,14 @@ pub fn register(app: &mut App) {
         );
 }
 
+fn reset_run(mut run_state: ResMut<RunState>) {
+    *run_state = RunState::default();
+}
+
 fn init_run(mut run_state: ResMut<RunState>) {
     run_state.elapsed = 0.0;
-    run_state.attempt += 1;
-    info!("Starting run #{}", run_state.attempt);
+    run_state.wave += 1;
+    info!("Starting wave #{}", run_state.wave);
 }
 
 fn tick_run(time: Res<Time>, mut run_state: ResMut<RunState>) {

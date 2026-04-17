@@ -211,7 +211,7 @@ pub fn spawn_shop_screen(
 
     commands.spawn((
         ChildOf(root),
-        Text(format!("Run {}", run_state.attempt)),
+        Text(format!("Wave {}", run_state.wave)),
         TextFont {
             font_size: 22.0,
             ..default()
