@@ -69,6 +69,8 @@ impl Plugin for UiPlugin {
                         shop_view::finish_drag,
                         shop_view::reconcile_rune_entities,
                         shop_view::sync_cell_lock_visuals,
+                        shop_view::update_highlights,
+                        shop_view::apply_highlights,
                     )
                         .chain(),
                 )

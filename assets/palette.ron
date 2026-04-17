@@ -68,6 +68,8 @@
         "ui_cell_unlocked_edge":  "void",
         "ui_cell_locked_bg":      "void",
         "ui_cell_locked_edge":    "void",
+        "ui_rune_write_target":   "gold",
+        "ui_rune_write_source":   "cyan",
         "ui_shop_slot_bg":        "border",
         "ui_shop_slot_edge":      "void",
         "ui_joker_slot_bg":       "border",

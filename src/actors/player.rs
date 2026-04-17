@@ -8,7 +8,7 @@ use super::components::{
     TargetingMode,
 };
 use crate::palette;
-use crate::rune::RuneGrid;
+use crate::rune::{write_pattern_contains, RuneGrid, WriteEffect};
 use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
 use crate::wave::WavePhase;
 use crate::Faction;
@@ -52,6 +52,7 @@ pub fn spawn_player(
         (Stat::MovementSpeed, ModifierKind::Flat, 550.0),
         (Stat::CritChance, ModifierKind::Flat, 0.05),
         (Stat::CritMultiplier, ModifierKind::Flat, 1.5),
+        (Stat::AttackSpeed, ModifierKind::Flat, 1.0),
         (Stat::PickupRadius, ModifierKind::Flat, 200.0),
     ];
 
@@ -59,11 +60,22 @@ pub fn spawn_player(
     for &(stat, kind, value) in base_stats {
         modifiers.add(stat, kind, value);
     }
-    for rune in grid.cells.values() {
-        if let Some(rune_kind) = rune.kind {
-            let (stat, mod_kind, value) = rune_kind.def().base_effect;
-            modifiers.add(stat, mod_kind, value);
+    for (coord, rune) in grid.cells.iter() {
+        let Some(kind) = rune.kind else { continue };
+        let (stat, mod_kind, base_value) = kind.def().base_effect;
+
+        let mut factor = 1.0_f32;
+        for (src_coord, src_rune) in grid.cells.iter() {
+            if src_coord == coord { continue }
+            let Some(src_kind) = src_rune.kind else { continue };
+            let Some(write) = src_kind.def().write else { continue };
+            if !write_pattern_contains(&write, *src_coord, *coord) { continue }
+            match write.effect {
+                WriteEffect::More { factor: f } => factor *= f,
+            }
         }
+
+        modifiers.add(stat, mod_kind, base_value * factor);
     }
     let mut dirty = DirtyStats::default();
     let mut computed = ComputedStats::default();

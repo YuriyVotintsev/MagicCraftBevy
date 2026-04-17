@@ -9,6 +9,7 @@ use super::content::RuneKind;
 pub struct RuneCosts {
     pub spike: u32,
     pub heart_stone: u32,
+    pub resonator: u32,
 }
 
 impl RuneCosts {
@@ -16,6 +17,7 @@ impl RuneCosts {
         match kind {
             RuneKind::Spike => self.spike,
             RuneKind::HeartStone => self.heart_stone,
+            RuneKind::Resonator => self.resonator,
         }
     }
 }

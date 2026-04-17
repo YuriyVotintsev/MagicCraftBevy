@@ -7,8 +7,9 @@ use crate::palette;
 use crate::run::PlayerMoney;
 use crate::run::RunState;
 use crate::rune::{
-    can_place, Dragging, GridCellView, HexCoord, JokerSlotView, JokerSlots, Rune, RuneGrid,
-    RuneSource, RuneView, ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
+    can_place, write_pattern_contains, write_targets, Dragging, GridCellView, GridHighlights,
+    HexCoord, IconAssets, JokerSlotView, JokerSlots, Rune, RuneGrid, RuneSource, RuneView,
+    ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
 };
 use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
@@ -17,6 +18,8 @@ use super::{panel_radius, Viewport};
 
 const RUNE_BORDER_WIDTH: f32 = 2.0;
 const JOKER_BORDER_WIDTH: f32 = 4.0;
+const RUNE_ICON_INSET: f32 = 14.0;
+const RUNE_HIGHLIGHT_ALPHA: f32 = 0.45;
 
 const SQRT_3: f32 = 1.732_050_8;
 const CELL_GAP: f32 = 5.0;
@@ -97,6 +100,9 @@ fn home_position(viewport: &Viewport, source: RuneSource) -> Vec2 {
         RuneSource::Joker(idx) => joker_slot_center(viewport, idx),
     }
 }
+
+#[derive(Component)]
+pub struct HighlightOverlay;
 
 #[derive(Component)]
 pub struct ShopCoinsText;
@@ -272,6 +278,7 @@ fn spawn_rune_entity(
     viewport: &Viewport,
     rune: Rune,
     source: RuneSource,
+    icons: &IconAssets,
 ) {
     let center = home_position(viewport, source);
     let (border_width, border_color) = if rune.is_joker() {
@@ -279,22 +286,56 @@ fn spawn_rune_entity(
     } else {
         (RUNE_BORDER_WIDTH, palette::color("ui_rune_border"))
     };
+    let icon_handle = rune
+        .kind
+        .and_then(|k| icons.for_stat(k.def().base_effect.0).cloned());
+    let rune_entity = commands
+        .spawn((
+            ChildOf(root),
+            RuneView { source },
+            GlobalZIndex(60),
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(center.x - RUNE_DIAMETER * 0.5),
+                top: Val::Px(center.y - RUNE_DIAMETER * 0.5),
+                width: Val::Px(RUNE_DIAMETER),
+                height: Val::Px(RUNE_DIAMETER),
+                border: UiRect::all(Val::Px(border_width)),
+                border_radius: BorderRadius::MAX,
+                ..default()
+            },
+            BackgroundColor(rune.color),
+            BorderColor::all(border_color),
+        ))
+        .id();
+    if let Some(handle) = icon_handle {
+        commands.spawn((
+            ChildOf(rune_entity),
+            ImageNode::new(handle).with_color(Color::WHITE),
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(RUNE_ICON_INSET),
+                top: Val::Px(RUNE_ICON_INSET),
+                width: Val::Px(RUNE_DIAMETER - RUNE_ICON_INSET * 2.0),
+                height: Val::Px(RUNE_DIAMETER - RUNE_ICON_INSET * 2.0),
+                ..default()
+            },
+        ));
+    }
+    let inner = RUNE_DIAMETER - border_width * 2.0;
     commands.spawn((
-        ChildOf(root),
-        RuneView { source },
-        GlobalZIndex(60),
+        ChildOf(rune_entity),
+        HighlightOverlay,
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(center.x - RUNE_DIAMETER * 0.5),
-            top: Val::Px(center.y - RUNE_DIAMETER * 0.5),
-            width: Val::Px(RUNE_DIAMETER),
-            height: Val::Px(RUNE_DIAMETER),
-            border: UiRect::all(Val::Px(border_width)),
+            left: Val::Px(0.0),
+            top: Val::Px(0.0),
+            width: Val::Px(inner),
+            height: Val::Px(inner),
             border_radius: BorderRadius::MAX,
             ..default()
         },
-        BackgroundColor(rune.color),
-        BorderColor::all(border_color),
+        BackgroundColor(Color::NONE),
     ));
 }
 
@@ -368,6 +409,7 @@ pub fn reconcile_rune_entities(
     grid: Res<RuneGrid>,
     jokers: Res<JokerSlots>,
     viewport: Res<Viewport>,
+    icons: Res<IconAssets>,
     existing: Query<(Entity, &RuneView), Without<Dragging>>,
 ) {
     let Ok(root_entity) = root.single() else {
@@ -386,21 +428,21 @@ pub fn reconcile_rune_entities(
         if let Some(rune) = slot {
             let src = RuneSource::Shop(idx);
             if by_source.remove(&src).is_none() {
-                spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src);
+                spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src, &icons);
             }
         }
     }
     for (coord, rune) in grid.cells.iter() {
         let src = RuneSource::Grid(*coord);
         if by_source.remove(&src).is_none() {
-            spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src);
+            spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src, &icons);
         }
     }
     for (idx, slot) in jokers.stubs.iter().enumerate() {
         if let Some(rune) = slot {
             let src = RuneSource::Joker(idx);
             if by_source.remove(&src).is_none() {
-                spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src);
+                spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src, &icons);
             }
         }
     }
@@ -691,6 +733,95 @@ pub fn reposition_shop_ui(
         let pos = shop_price_label_pos(&viewport, label.index);
         node.left = Val::Px(pos.x);
         node.top = Val::Px(pos.y);
+    }
+}
+
+pub fn update_highlights(
+    window_q: Query<&Window, With<PrimaryWindow>>,
+    ui_scale: Res<UiScale>,
+    viewport: Res<Viewport>,
+    grid: Res<RuneGrid>,
+    dragging: Query<&Dragging>,
+    views: Query<&RuneView, Without<Dragging>>,
+    cells: Query<&GridCellView>,
+    joker_slots: Query<&JokerSlotView>,
+    mut highlights: ResMut<GridHighlights>,
+) {
+    highlights.write_targets.clear();
+    highlights.write_sources.clear();
+
+    let Ok(window) = window_q.single() else { return };
+    let Some(cursor) = cursor_ui_pos(window, ui_scale.0) else { return };
+
+    if let Some(drag) = dragging.iter().next() {
+        let Some(kind) = drag.rune.kind else { return };
+        let Some(write) = kind.def().write else { return };
+        let rune_center = cursor - drag.grab_offset;
+        let Some(target) = find_drop_target(
+            rune_center,
+            drag.rune.is_joker(),
+            &viewport,
+            &grid,
+            &cells,
+            &joker_slots,
+        ) else { return };
+        let RuneSource::Grid(c) = target else { return };
+        for t in write_targets(&write, c, &grid) {
+            highlights.write_targets.insert(t);
+        }
+        return;
+    }
+
+    let radius = RUNE_DIAMETER * 0.5;
+    let mut hovered: Option<HexCoord> = None;
+    for view in &views {
+        if let RuneSource::Grid(c) = view.source {
+            if grid_cell_center(&viewport, c).distance(cursor) <= radius {
+                hovered = Some(c);
+                break;
+            }
+        }
+    }
+    let Some(coord) = hovered else { return };
+    let Some(rune) = grid.cells.get(&coord) else { return };
+    let Some(kind) = rune.kind else { return };
+
+    if let Some(write) = kind.def().write {
+        for t in write_targets(&write, coord, &grid) {
+            highlights.write_targets.insert(t);
+        }
+    }
+
+    for (src_coord, src_rune) in grid.cells.iter() {
+        if *src_coord == coord { continue }
+        let Some(src_kind) = src_rune.kind else { continue };
+        let Some(write) = src_kind.def().write else { continue };
+        if write_pattern_contains(&write, *src_coord, coord) {
+            highlights.write_sources.insert(*src_coord);
+        }
+    }
+}
+
+pub fn apply_highlights(
+    highlights: Res<GridHighlights>,
+    runes: Query<&RuneView>,
+    mut overlays: Query<(&ChildOf, &mut BackgroundColor), With<HighlightOverlay>>,
+) {
+    for (child_of, mut bg) in &mut overlays {
+        let source = runes.get(child_of.0).map(|v| v.source).ok();
+        let color = match source {
+            Some(RuneSource::Grid(coord)) => {
+                if highlights.write_targets.contains(&coord) {
+                    palette::color("ui_rune_write_target").with_alpha(RUNE_HIGHLIGHT_ALPHA)
+                } else if highlights.write_sources.contains(&coord) {
+                    palette::color("ui_rune_write_source").with_alpha(RUNE_HIGHLIGHT_ALPHA)
+                } else {
+                    Color::NONE
+                }
+            }
+            _ => Color::NONE,
+        };
+        *bg = BackgroundColor(color);
     }
 }
 

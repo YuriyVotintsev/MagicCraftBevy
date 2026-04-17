@@ -17,6 +17,7 @@ pub enum Stat {
     ProjectileCount,
     CritChance,
     CritMultiplier,
+    AttackSpeed,
     AreaOfEffect,
     Duration,
     PickupRadius,

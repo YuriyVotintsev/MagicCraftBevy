@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use super::content::{RuneKind, Tier};
 use super::hex::HexCoord;
+use crate::stats::Stat;
 
 pub const GRID_RADIUS: i32 = 3;
 pub const SHOP_SLOTS: usize = 4;
@@ -100,6 +101,27 @@ impl Default for RuneGrid {
 #[derive(Resource, Default)]
 pub struct JokerSlots {
     pub stubs: [Option<Rune>; JOKER_SLOTS],
+}
+
+#[derive(Resource, Default)]
+pub struct GridHighlights {
+    pub write_targets: HashSet<HexCoord>,
+    pub write_sources: HashSet<HexCoord>,
+}
+
+#[derive(Resource)]
+pub struct IconAssets {
+    by_stat: HashMap<Stat, Handle<Image>>,
+}
+
+impl IconAssets {
+    pub fn new(by_stat: HashMap<Stat, Handle<Image>>) -> Self {
+        Self { by_stat }
+    }
+
+    pub fn for_stat(&self, stat: Stat) -> Option<&Handle<Image>> {
+        self.by_stat.get(&stat)
+    }
 }
 
 pub fn can_place(is_joker: bool, target: RuneSource, grid: &RuneGrid) -> bool {

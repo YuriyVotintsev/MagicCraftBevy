@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use super::super::super::player::{fire_fireball, FIREBALL_COOLDOWN};
 use crate::Faction;
 use crate::schedule::GameSet;
-use crate::stats::ComputedStats;
+use crate::stats::{ComputedStats, Stat};
 use crate::wave::WavePhase;
 
 #[derive(Debug, Clone, Copy)]
@@ -86,6 +86,10 @@ fn player_input_system(
 
         let caster_pos = crate::coord::to_2d(player_transform.translation);
         fire_fireball(&mut commands, player_entity, caster_pos, Faction::Player, direction, stats);
-        cooldowns.current = FIREBALL_COOLDOWN;
+        let attack_speed = stats
+            .map(|s| s.final_of(Stat::AttackSpeed))
+            .unwrap_or(1.0)
+            .max(0.01);
+        cooldowns.current = FIREBALL_COOLDOWN / attack_speed;
     }
 }

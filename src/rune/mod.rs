@@ -6,11 +6,11 @@ mod shop_gen;
 
 use bevy::prelude::*;
 
-pub use content::Tier;
+pub use content::{write_pattern_contains, write_targets, Tier, WriteEffect};
 pub use cost::RuneCosts;
 pub use data::{
-    can_place, Dragging, GridCellView, JokerSlotView, JokerSlots, Rune, RuneGrid, RuneSource,
-    RuneView, ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
+    can_place, Dragging, GridCellView, GridHighlights, IconAssets, JokerSlotView, JokerSlots,
+    Rune, RuneGrid, RuneSource, RuneView, ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
 };
 pub use hex::HexCoord;
 pub use shop_gen::fill_shop_offer;
@@ -25,6 +25,7 @@ impl Plugin for RunePlugin {
         app.init_resource::<ShopOffer>()
             .init_resource::<RuneGrid>()
             .init_resource::<JokerSlots>()
+            .init_resource::<GridHighlights>()
             .add_systems(OnEnter(GameState::Playing), reset_run_content)
             .add_systems(OnEnter(WavePhase::Combat), clear_shop_offer);
     }
