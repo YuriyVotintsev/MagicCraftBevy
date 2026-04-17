@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::actors::{spawn_mob, Fade, MobKind, MobsBalance};
 use crate::actors::Health;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
-use crate::run::PlayerDying;
+use crate::run::{CombatScoped, PlayerDying};
 use crate::schedule::GameSet;
 use crate::stats::StatCalculators;
 use super::phase::WavePhase;
@@ -172,7 +172,7 @@ fn animate_summoning(
                     );
                     commands.entity(mob).insert((
                         WaveEnemy,
-                        DespawnOnExit(WavePhase::Combat),
+                        CombatScoped,
                     ));
 
                     wave_state.summoning_count = wave_state.summoning_count.saturating_sub(1);

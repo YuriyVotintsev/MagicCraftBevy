@@ -8,6 +8,7 @@ use super::components::{
     TargetingMode,
 };
 use crate::palette;
+use crate::run::CombatScoped;
 use crate::rune::{add_grid_modifiers, RuneGrid};
 use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
 use crate::wave::WavePhase;
@@ -92,7 +93,7 @@ pub fn spawn_player(
         Health { current: hp },
         KeyboardMovement {},
         PlayerAbilityCooldowns::default(),
-        DespawnOnExit(WavePhase::Combat),
+        CombatScoped,
     )).id();
     commands.entity(entity).insert(PlayerInput {
         trigger: InputTrigger::MouseHold(MouseButtonKind::Left),
@@ -160,6 +161,7 @@ pub fn fire_fireball(
             LinearVelocity(crate::coord::ground_vel(velocity)),
             OnCollisionDamage { amount: damage },
             OnCollisionParticles { config: "hit_burst" },
+            CombatScoped,
         )).id();
 
         commands.entity(proj).with_children(|p| {

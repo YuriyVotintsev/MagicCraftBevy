@@ -4,6 +4,7 @@ use super::melee_strike::MeleeStrike;
 use super::shot_fired::ShotFired;
 use super::Caster;
 use crate::actors::Player;
+use crate::run::CombatScoped;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
@@ -59,6 +60,7 @@ fn melee_attacker_system(
             MeleeStrike { range: MELEE_STRIKE_RANGE, damage },
             Caster(caster),
             *faction,
+            CombatScoped,
         ));
     }
 }

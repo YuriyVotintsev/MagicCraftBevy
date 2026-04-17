@@ -9,6 +9,7 @@ use super::super::components::{
 };
 use crate::arena::CurrentArenaSize;
 use crate::faction::Faction;
+use crate::run::CombatScoped;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
@@ -231,6 +232,7 @@ fn fire_jumper_shot(
             LockedAxes::ROTATION_LOCKED.lock_translation_y(),
             LinearVelocity(crate::coord::ground_vel(velocity)),
             OnCollisionDamage { amount: damage },
+            CombatScoped,
         )).id();
 
         commands.entity(proj).with_children(|p| {

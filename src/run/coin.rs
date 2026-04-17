@@ -4,10 +4,11 @@ use crate::actors::{death_system, CircleShape, DeathEvent, Shadow};
 use crate::actors::Player;
 use crate::balance::GameBalance;
 use crate::palette;
+use super::combat_scope::CombatScoped;
 use super::money::PlayerMoney;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::stats::{ComputedStats, Stat};
-use crate::wave::{WaveEnemy, WavePhase};
+use crate::wave::WaveEnemy;
 use crate::GameState;
 
 const COIN_SIZE: f32 = 30.0;
@@ -60,7 +61,7 @@ fn spawn_coins(
                 Transform::from_translation(crate::coord::ground_pos(position))
                     .with_scale(Vec3::splat(COIN_SIZE)),
                 Visibility::default(),
-                DespawnOnExit(WavePhase::Combat),
+                CombatScoped,
             ))
             .with_children(|parent| {
                 parent.spawn(Shadow { opacity: 0.45 });

@@ -6,6 +6,8 @@ use bevy::reflect::TypePath;
 use rand::Rng;
 use serde::Deserialize;
 
+use crate::run::{CombatScoped, SkipDeathShrink};
+
 pub struct ParticlesPlugin;
 
 impl Plugin for ParticlesPlugin {
@@ -213,6 +215,8 @@ pub fn start_particles(commands: &mut Commands, config: &str, position: Vec2) ->
             },
             Transform::from_translation(spawn_pos),
             Visibility::Hidden,
+            CombatScoped,
+            SkipDeathShrink,
         ))
         .id()
 }
@@ -351,6 +355,8 @@ fn spawn_burst(
             MeshMaterial3d(material.clone()),
             Transform::from_translation(Vec3::new(spawn_pos.x, config.elevation + spawn_pos.y, spawn_pos.z))
                 .with_scale(Vec3::splat(start_scale)),
+            CombatScoped,
+            SkipDeathShrink,
         ));
     }
 }

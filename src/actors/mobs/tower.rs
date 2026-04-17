@@ -11,6 +11,7 @@ use super::super::components::{
 use crate::faction::Faction;
 use crate::palette;
 use crate::particles;
+use crate::run::CombatScoped;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
@@ -213,6 +214,7 @@ fn fire_tower_shot(
             shape_entity: None, spawned_indicator: false,
         },
         Size { value: shooter.projectile_size },
+        CombatScoped,
     )).id();
     commands.entity(proj).with_children(|p| {
         p.spawn(Shadow { opacity: 0.45 });
@@ -272,6 +274,7 @@ fn update_arc_tower_shot(
                 },
                 Growing { start_size: 0.0, end_size: arc.explosion_radius },
                 Lifetime { remaining: arc.indicator_duration },
+                CombatScoped,
             ));
         }
 
@@ -310,6 +313,7 @@ fn update_arc_tower_shot(
                 },
                 Lifetime { remaining: arc.explosion_duration },
                 FadeOut {},
+                CombatScoped,
             ));
 
             let shape = AvianCollider::sphere(arc.explosion_radius / 2.0);

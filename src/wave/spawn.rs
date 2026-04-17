@@ -5,7 +5,7 @@ use crate::actors::Health;
 use crate::actors::{MobKind, MobsBalance};
 use crate::arena::CurrentArenaSize;
 use crate::balance::GameBalance;
-use crate::run::{PlayerDying, RunState};
+use crate::run::{CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
 use super::phase::WavePhase;
 use super::state::{WaveEnemy, WaveState};
@@ -128,7 +128,7 @@ fn spawn_enemies(
                 .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2))
                 .with_scale(Vec3::ZERO),
             SummoningCircle::new(kind, circle_size),
-            DespawnOnExit(WavePhase::Combat),
+            CombatScoped,
         ));
 
         if is_ghost {
@@ -160,7 +160,7 @@ fn tag_wave_enemies(
     for entity in &query {
         let Ok(faction) = faction_query.get(entity) else { continue };
         if *faction == Faction::Enemy {
-            commands.entity(entity).insert(DespawnOnExit(WavePhase::Combat));
+            commands.entity(entity).insert(CombatScoped);
         }
     }
 }

@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::wave::WavePhase;
+use crate::run::{CombatScoped, SkipDeathShrink};
 
 use super::camera::CameraAngle;
 use super::size::CurrentArenaSize;
@@ -36,7 +36,8 @@ pub(super) fn spawn_floor(
             ..default()
         })),
         Transform::from_translation(Vec3::new(0.0, -0.01, 0.0)),
-        DespawnOnExit(WavePhase::Combat),
+        CombatScoped,
+        SkipDeathShrink,
     ));
 }
 
