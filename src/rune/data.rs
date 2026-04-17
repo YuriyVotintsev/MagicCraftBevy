@@ -34,6 +34,7 @@ pub enum RuneSource {
 #[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
 pub struct RuneView {
     pub source: RuneSource,
+    pub rune_id: u32,
 }
 
 #[derive(Component, Copy, Clone, Debug)]
@@ -104,7 +105,13 @@ pub struct JokerSlots {
 }
 
 #[derive(Resource, Default)]
+pub struct RerollState {
+    pub cost: u32,
+}
+
+#[derive(Resource, Default)]
 pub struct GridHighlights {
+    pub center: Option<HexCoord>,
     pub write_targets: HashSet<HexCoord>,
     pub write_sources: HashSet<HexCoord>,
 }

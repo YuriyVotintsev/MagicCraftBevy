@@ -3,23 +3,34 @@ use bevy::prelude::*;
 use bevy::ui::UiScale;
 use bevy::window::PrimaryWindow;
 
+use crate::balance::GameBalance;
 use crate::palette;
 use crate::run::PlayerMoney;
 use crate::run::RunState;
 use crate::rune::{
-    can_place, write_pattern_contains, write_targets, Dragging, GridCellView, GridHighlights,
-    HexCoord, IconAssets, JokerSlotView, JokerSlots, Rune, RuneGrid, RuneSource, RuneView,
-    ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
+    can_place, roll_shop_offer, write_pattern_contains, write_targets, Dragging, GridCellView,
+    GridHighlights, HexCoord, IconAssets, JokerSlotView, JokerSlots, RerollState, Rune, RuneCosts,
+    RuneGrid, RuneSource, RuneView, ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
 };
 use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
 
 use super::{panel_radius, Viewport};
 
-const RUNE_BORDER_WIDTH: f32 = 2.0;
-const JOKER_BORDER_WIDTH: f32 = 4.0;
 const RUNE_ICON_INSET: f32 = 14.0;
-const RUNE_HIGHLIGHT_ALPHA: f32 = 0.45;
+
+const RING_THICKNESS: f32 = 5.0;
+const RING_OUTER_INSET: f32 = -6.0;
+const RING_INNER_INSET: f32 = 2.0;
+
+const CENTER_EDGE_RADIUS: f32 = RUNE_DIAMETER * 0.5;
+const TARGET_RING_RADIUS: f32 = (RUNE_DIAMETER - RING_OUTER_INSET * 2.0) * 0.5;
+const SOURCE_RING_RADIUS: f32 = (RUNE_DIAMETER - RING_INNER_INSET * 2.0) * 0.5;
+
+const ARROW_LINE_THICKNESS: f32 = 3.0;
+const ARROW_HEAD_LENGTH: f32 = 14.0;
+const ARROW_HEAD_THICKNESS: f32 = 3.0;
+const ARROW_HEAD_ANGLE_DEG: f32 = 30.0;
 
 const SQRT_3: f32 = 1.732_050_8;
 const CELL_GAP: f32 = 5.0;
@@ -37,6 +48,10 @@ const START_RUN_BTN_W: f32 = 170.0;
 const START_RUN_BTN_H: f32 = 60.0;
 const START_RUN_BTN_RIGHT_MARGIN: f32 = 40.0;
 const START_RUN_BTN_TOP_MARGIN: f32 = 24.0;
+
+const REROLL_BTN_W: f32 = SHOP_COLUMN_W;
+const REROLL_BTN_H: f32 = 50.0;
+const REROLL_BTN_GAP: f32 = 20.0;
 
 const JOKER_SLOT_DIAMETER: f32 = CELL_DIAMETER;
 const JOKER_HEX_COORDS: [(i32, i32); JOKER_SLOTS] = [
@@ -64,6 +79,14 @@ fn start_run_btn_pos(viewport: &Viewport) -> Vec2 {
     Vec2::new(
         viewport.width - START_RUN_BTN_W - START_RUN_BTN_RIGHT_MARGIN,
         START_RUN_BTN_TOP_MARGIN,
+    )
+}
+
+fn reroll_btn_pos(viewport: &Viewport) -> Vec2 {
+    let last = shop_slot_center(viewport, SHOP_SLOTS - 1);
+    Vec2::new(
+        last.x - REROLL_BTN_W * 0.5,
+        last.y + CELL_DIAMETER * 0.5 + REROLL_BTN_GAP,
     )
 }
 
@@ -101,14 +124,26 @@ fn home_position(viewport: &Viewport, source: RuneSource) -> Vec2 {
     }
 }
 
+#[derive(Component, Copy, Clone)]
+pub enum HighlightRing {
+    Target,
+    Source,
+}
+
 #[derive(Component)]
-pub struct HighlightOverlay;
+pub struct HighlightArrow;
 
 #[derive(Component)]
 pub struct ShopCoinsText;
 
 #[derive(Component)]
 pub struct StartRunButton;
+
+#[derive(Component)]
+pub struct RerollButton;
+
+#[derive(Component)]
+pub struct RerollButtonLabel;
 
 #[derive(Component)]
 pub struct ShopRoot;
@@ -215,12 +250,10 @@ pub fn spawn_shop_screen(
                 top: Val::Px(center.y - CELL_DIAMETER * 0.5),
                 width: Val::Px(CELL_DIAMETER),
                 height: Val::Px(CELL_DIAMETER),
-                border: UiRect::all(Val::Px(2.0)),
                 border_radius: BorderRadius::MAX,
                 ..default()
             },
             BackgroundColor(palette::color("ui_cell_locked_bg")),
-            BorderColor::all(palette::color("ui_cell_locked_edge")),
         ));
     }
 
@@ -243,6 +276,31 @@ pub fn spawn_shop_screen(
             BorderColor::all(palette::color("ui_joker_slot_edge")),
         ));
     }
+
+    let reroll_pos = reroll_btn_pos(&viewport);
+    commands.spawn((
+        ChildOf(root),
+        Button,
+        RerollButton,
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(reroll_pos.x),
+            top: Val::Px(reroll_pos.y),
+            width: Val::Px(REROLL_BTN_W),
+            height: Val::Px(REROLL_BTN_H),
+            justify_content: JustifyContent::Center,
+            align_items: AlignItems::Center,
+            border_radius: panel_radius(),
+            ..default()
+        },
+        BackgroundColor(palette::color("ui_button_normal")),
+        children![(
+            RerollButtonLabel,
+            Text::new(""),
+            TextFont { font_size: 18.0, ..default() },
+            TextColor(palette::color("ui_text")),
+        )],
+    ));
 
     for idx in 0..SHOP_SLOTS {
         let pos = shop_price_label_pos(&viewport, idx);
@@ -281,18 +339,13 @@ fn spawn_rune_entity(
     icons: &IconAssets,
 ) {
     let center = home_position(viewport, source);
-    let (border_width, border_color) = if rune.is_joker() {
-        (JOKER_BORDER_WIDTH, palette::color("ui_joker_border"))
-    } else {
-        (RUNE_BORDER_WIDTH, palette::color("ui_rune_border"))
-    };
     let icon_handle = rune
         .kind
         .and_then(|k| icons.for_stat(k.def().base_effect.0).cloned());
     let rune_entity = commands
         .spawn((
             ChildOf(root),
-            RuneView { source },
+            RuneView { source, rune_id: rune.id },
             GlobalZIndex(60),
             Node {
                 position_type: PositionType::Absolute,
@@ -300,12 +353,10 @@ fn spawn_rune_entity(
                 top: Val::Px(center.y - RUNE_DIAMETER * 0.5),
                 width: Val::Px(RUNE_DIAMETER),
                 height: Val::Px(RUNE_DIAMETER),
-                border: UiRect::all(Val::Px(border_width)),
                 border_radius: BorderRadius::MAX,
                 ..default()
             },
             BackgroundColor(rune.color),
-            BorderColor::all(border_color),
         ))
         .id();
     if let Some(handle) = icon_handle {
@@ -322,21 +373,85 @@ fn spawn_rune_entity(
             },
         ));
     }
-    let inner = RUNE_DIAMETER - border_width * 2.0;
+    spawn_ring(commands, rune_entity, HighlightRing::Target, RING_OUTER_INSET);
+    spawn_ring(commands, rune_entity, HighlightRing::Source, RING_INNER_INSET);
+}
+
+fn spawn_ring(commands: &mut Commands, parent: Entity, kind: HighlightRing, inset: f32) {
+    let diameter = RUNE_DIAMETER - inset * 2.0;
     commands.spawn((
-        ChildOf(rune_entity),
-        HighlightOverlay,
+        ChildOf(parent),
+        kind,
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            top: Val::Px(0.0),
-            width: Val::Px(inner),
-            height: Val::Px(inner),
+            left: Val::Px(inset),
+            top: Val::Px(inset),
+            width: Val::Px(diameter),
+            height: Val::Px(diameter),
+            border: UiRect::all(Val::Px(RING_THICKNESS)),
             border_radius: BorderRadius::MAX,
             ..default()
         },
         BackgroundColor(Color::NONE),
+        BorderColor::all(Color::NONE),
     ));
+}
+
+pub fn reset_reroll_cost(balance: Res<GameBalance>, mut reroll: ResMut<RerollState>) {
+    reroll.cost = balance.runes.reroll_base_cost;
+}
+
+pub fn reroll_button_system(
+    interaction_query: Query<&Interaction, (Changed<Interaction>, With<RerollButton>)>,
+    mut money: ResMut<PlayerMoney>,
+    mut offer: ResMut<ShopOffer>,
+    grid: Res<RuneGrid>,
+    balance: Res<GameBalance>,
+    costs: Res<RuneCosts>,
+    mut reroll: ResMut<RerollState>,
+    dragging: Query<(), With<Dragging>>,
+) {
+    for interaction in &interaction_query {
+        if *interaction != Interaction::Pressed { continue }
+        if !dragging.is_empty() { continue }
+        if !money.can_afford(reroll.cost) { continue }
+        money.spend(reroll.cost);
+        roll_shop_offer(&mut offer, &grid, &balance, &costs);
+        reroll.cost = reroll.cost.saturating_add(balance.runes.reroll_cost_step);
+    }
+}
+
+pub fn reroll_button_visuals(
+    mut query: Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<RerollButton>)>,
+) {
+    for (interaction, mut color) in &mut query {
+        *color = match interaction {
+            Interaction::Pressed => palette::color("ui_button_pressed").into(),
+            Interaction::Hovered => palette::color("ui_button_hover").into(),
+            Interaction::None => palette::color("ui_button_normal").into(),
+        };
+    }
+}
+
+pub fn update_reroll_label(
+    reroll: Res<RerollState>,
+    money: Res<PlayerMoney>,
+    buttons: Query<&Children, With<RerollButton>>,
+    mut texts: Query<(&mut Text, &mut TextColor), With<RerollButtonLabel>>,
+) {
+    if !reroll.is_changed() && !money.is_changed() { return }
+    let affordable = money.can_afford(reroll.cost);
+    for children in &buttons {
+        for c in children.iter() {
+            let Ok((mut text, mut color)) = texts.get_mut(c) else { continue };
+            text.0 = format!("Reroll ({})", reroll.cost);
+            *color = TextColor(if affordable {
+                palette::color("ui_text")
+            } else {
+                palette::color("ui_text_disabled")
+            });
+        }
+    }
 }
 
 pub fn start_run_system(
@@ -389,16 +504,15 @@ pub fn update_shop_price_labels(
 
 pub fn sync_cell_lock_visuals(
     grid: Res<RuneGrid>,
-    mut cells: Query<(&GridCellView, &mut BackgroundColor, &mut BorderColor)>,
+    mut cells: Query<(&GridCellView, &mut BackgroundColor)>,
 ) {
-    for (cell, mut bg, mut border) in &mut cells {
-        let (bg_alias, border_alias) = if grid.is_unlocked(cell.coord) {
-            ("ui_cell_unlocked_bg", "ui_cell_unlocked_edge")
+    for (cell, mut bg) in &mut cells {
+        let bg_alias = if grid.is_unlocked(cell.coord) {
+            "ui_cell_unlocked_bg"
         } else {
-            ("ui_cell_locked_bg", "ui_cell_locked_edge")
+            "ui_cell_locked_bg"
         };
         *bg = BackgroundColor(palette::color(bg_alias));
-        *border = BorderColor::all(palette::color(border_alias));
     }
 }
 
@@ -416,38 +530,42 @@ pub fn reconcile_rune_entities(
         return;
     };
 
-    let mut by_source: std::collections::HashMap<RuneSource, Entity> =
+    let mut by_source: std::collections::HashMap<RuneSource, (Entity, u32)> =
         std::collections::HashMap::new();
     for (entity, view) in &existing {
-        if let Some(duplicate) = by_source.insert(view.source, entity) {
+        if let Some((duplicate, _)) = by_source.insert(view.source, (entity, view.rune_id)) {
             commands.entity(duplicate).despawn();
         }
     }
 
+    let mut reconcile_slot = |commands: &mut Commands, src: RuneSource, rune: Rune| {
+        match by_source.remove(&src) {
+            Some((entity, id)) if id == rune.id => {}
+            Some((entity, _)) => {
+                commands.entity(entity).despawn();
+                spawn_rune_entity(commands, root_entity, &viewport, rune, src, &icons);
+            }
+            None => {
+                spawn_rune_entity(commands, root_entity, &viewport, rune, src, &icons);
+            }
+        }
+    };
+
     for (idx, slot) in shop.stubs.iter().enumerate() {
         if let Some(rune) = slot {
-            let src = RuneSource::Shop(idx);
-            if by_source.remove(&src).is_none() {
-                spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src, &icons);
-            }
+            reconcile_slot(&mut commands, RuneSource::Shop(idx), *rune);
         }
     }
     for (coord, rune) in grid.cells.iter() {
-        let src = RuneSource::Grid(*coord);
-        if by_source.remove(&src).is_none() {
-            spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src, &icons);
-        }
+        reconcile_slot(&mut commands, RuneSource::Grid(*coord), *rune);
     }
     for (idx, slot) in jokers.stubs.iter().enumerate() {
         if let Some(rune) = slot {
-            let src = RuneSource::Joker(idx);
-            if by_source.remove(&src).is_none() {
-                spawn_rune_entity(&mut commands, root_entity, &viewport, *rune, src, &icons);
-            }
+            reconcile_slot(&mut commands, RuneSource::Joker(idx), *rune);
         }
     }
 
-    for (_, entity) in by_source {
+    for (_, (entity, _)) in by_source {
         commands.entity(entity).despawn();
     }
 }
@@ -709,6 +827,7 @@ pub fn reposition_shop_ui(
         Query<(&JokerSlotView, &mut Node)>,
         Query<&mut Node, With<StartRunButton>>,
         Query<(&ShopPriceLabel, &mut Node)>,
+        Query<&mut Node, With<RerollButton>>,
     )>,
 ) {
     if !viewport.is_changed() {
@@ -734,6 +853,11 @@ pub fn reposition_shop_ui(
         node.left = Val::Px(pos.x);
         node.top = Val::Px(pos.y);
     }
+    for mut node in &mut sets.p4() {
+        let pos = reroll_btn_pos(&viewport);
+        node.left = Val::Px(pos.x);
+        node.top = Val::Px(pos.y);
+    }
 }
 
 pub fn update_highlights(
@@ -747,6 +871,7 @@ pub fn update_highlights(
     joker_slots: Query<&JokerSlotView>,
     mut highlights: ResMut<GridHighlights>,
 ) {
+    highlights.center = None;
     highlights.write_targets.clear();
     highlights.write_sources.clear();
 
@@ -766,6 +891,7 @@ pub fn update_highlights(
             &joker_slots,
         ) else { return };
         let RuneSource::Grid(c) = target else { return };
+        highlights.center = Some(c);
         for t in write_targets(&write, c, &grid) {
             highlights.write_targets.insert(t);
         }
@@ -785,6 +911,7 @@ pub fn update_highlights(
     let Some(coord) = hovered else { return };
     let Some(rune) = grid.cells.get(&coord) else { return };
     let Some(kind) = rune.kind else { return };
+    highlights.center = Some(coord);
 
     if let Some(write) = kind.def().write {
         for t in write_targets(&write, coord, &grid) {
@@ -803,26 +930,109 @@ pub fn update_highlights(
 }
 
 pub fn apply_highlights(
+    mut commands: Commands,
+    viewport: Res<Viewport>,
     highlights: Res<GridHighlights>,
+    root: Query<Entity, With<ShopRoot>>,
     runes: Query<&RuneView>,
-    mut overlays: Query<(&ChildOf, &mut BackgroundColor), With<HighlightOverlay>>,
+    mut rings: Query<(&ChildOf, &HighlightRing, &mut BorderColor)>,
+    arrows: Query<Entity, With<HighlightArrow>>,
 ) {
-    for (child_of, mut bg) in &mut overlays {
+    for (child_of, kind, mut border) in &mut rings {
         let source = runes.get(child_of.0).map(|v| v.source).ok();
-        let color = match source {
-            Some(RuneSource::Grid(coord)) => {
-                if highlights.write_targets.contains(&coord) {
-                    palette::color("ui_rune_write_target").with_alpha(RUNE_HIGHLIGHT_ALPHA)
-                } else if highlights.write_sources.contains(&coord) {
-                    palette::color("ui_rune_write_source").with_alpha(RUNE_HIGHLIGHT_ALPHA)
-                } else {
-                    Color::NONE
-                }
-            }
-            _ => Color::NONE,
+        let coord = match source {
+            Some(RuneSource::Grid(c)) => Some(c),
+            _ => None,
         };
-        *bg = BackgroundColor(color);
+        let matches = match (kind, coord) {
+            (HighlightRing::Target, Some(c)) => highlights.write_targets.contains(&c),
+            (HighlightRing::Source, Some(c)) => highlights.write_sources.contains(&c),
+            _ => false,
+        };
+        let color = if matches {
+            match kind {
+                HighlightRing::Target => palette::color("ui_rune_write_target"),
+                HighlightRing::Source => palette::color("ui_rune_write_source"),
+            }
+        } else {
+            Color::NONE
+        };
+        *border = BorderColor::all(color);
     }
+
+    for entity in &arrows {
+        commands.entity(entity).despawn();
+    }
+
+    let Ok(root_entity) = root.single() else { return };
+    let Some(center_coord) = highlights.center else { return };
+    let center_pos = grid_cell_center(&viewport, center_coord);
+
+    for target in &highlights.write_targets {
+        let target_pos = grid_cell_center(&viewport, *target);
+        let direction = (target_pos - center_pos).normalize_or_zero();
+        if direction == Vec2::ZERO { continue }
+        let tail = center_pos + direction * CENTER_EDGE_RADIUS;
+        let head = target_pos - direction * TARGET_RING_RADIUS;
+        spawn_arrow(&mut commands, root_entity, tail, head,
+            palette::color("ui_rune_write_target"));
+    }
+
+    for source in &highlights.write_sources {
+        let source_pos = grid_cell_center(&viewport, *source);
+        let direction = (center_pos - source_pos).normalize_or_zero();
+        if direction == Vec2::ZERO { continue }
+        let tail = source_pos + direction * SOURCE_RING_RADIUS;
+        let head = center_pos - direction * CENTER_EDGE_RADIUS;
+        spawn_arrow(&mut commands, root_entity, tail, head,
+            palette::color("ui_rune_write_source"));
+    }
+}
+
+fn spawn_arrow(commands: &mut Commands, root: Entity, tail: Vec2, head: Vec2, color: Color) {
+    let delta = head - tail;
+    let length = delta.length();
+    if length < 1.0 { return }
+
+    spawn_rotated_rect(commands, root, tail, head, ARROW_LINE_THICKNESS, color);
+
+    let base_angle = delta.y.atan2(delta.x);
+    let half = ARROW_HEAD_ANGLE_DEG.to_radians();
+    for side_angle in [base_angle + std::f32::consts::PI - half, base_angle + std::f32::consts::PI + half] {
+        let side_dir = Vec2::new(side_angle.cos(), side_angle.sin());
+        let end = head + side_dir * ARROW_HEAD_LENGTH;
+        spawn_rotated_rect(commands, root, head, end, ARROW_HEAD_THICKNESS, color);
+    }
+}
+
+fn spawn_rotated_rect(
+    commands: &mut Commands,
+    root: Entity,
+    a: Vec2,
+    b: Vec2,
+    thickness: f32,
+    color: Color,
+) {
+    let delta = b - a;
+    let length = delta.length();
+    if length < 0.1 { return }
+    let mid = (a + b) * 0.5;
+    let angle = delta.y.atan2(delta.x);
+    commands.spawn((
+        ChildOf(root),
+        HighlightArrow,
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(mid.x - length * 0.5),
+            top: Val::Px(mid.y - thickness * 0.5),
+            width: Val::Px(length),
+            height: Val::Px(thickness),
+            ..default()
+        },
+        BackgroundColor(color),
+        UiTransform::from_rotation(Rot2::radians(angle)),
+        GlobalZIndex(55),
+    ));
 }
 
 pub fn restore_dragged_on_exit(

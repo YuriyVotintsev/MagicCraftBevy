@@ -37,6 +37,8 @@ pub struct RunBalance {
 pub struct RuneBalance {
     pub joker_probability: f32,
     pub tier_weights: TierWeights,
+    pub reroll_base_cost: u32,
+    pub reroll_cost_step: u32,
 }
 
 #[derive(Clone, Deserialize)]

@@ -51,7 +51,12 @@ impl Plugin for UiPlugin {
             )
             .add_systems(
                 OnEnter(WavePhase::Shop),
-                (fill_shop_offer, shop_view::spawn_shop_screen).chain(),
+                (
+                    shop_view::reset_reroll_cost,
+                    fill_shop_offer,
+                    shop_view::spawn_shop_screen,
+                )
+                    .chain(),
             )
             .add_systems(
                 OnExit(WavePhase::Shop),
@@ -61,6 +66,9 @@ impl Plugin for UiPlugin {
                 Update,
                 (
                     shop_view::start_run_system,
+                    shop_view::reroll_button_system,
+                    shop_view::reroll_button_visuals,
+                    shop_view::update_reroll_label,
                     shop_view::update_coins_text,
                     shop_view::update_shop_price_labels,
                     shop_view::reposition_shop_ui,

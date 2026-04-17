@@ -111,20 +111,20 @@ fn roll_joker(rng: &mut impl Rng, balance: &GameBalance) -> Option<Rune> {
     })
 }
 
-pub fn fill_shop_offer(
-    mut offer: ResMut<ShopOffer>,
-    grid: Res<RuneGrid>,
-    balance: Res<GameBalance>,
-    costs: Res<RuneCosts>,
+pub fn roll_shop_offer(
+    offer: &mut ShopOffer,
+    grid: &RuneGrid,
+    balance: &GameBalance,
+    costs: &RuneCosts,
 ) {
     let mut rng = rand::rng();
     offer.stubs = [None; super::data::SHOP_SLOTS];
     for i in 0..offer.stubs.len() {
         let as_joker = rng.random::<f32>() < balance.runes.joker_probability;
         let new_rune = if as_joker {
-            roll_joker(&mut rng, &balance)
+            roll_joker(&mut rng, balance)
         } else {
-            roll_rune(&mut rng, &balance, &costs, &grid, &offer)
+            roll_rune(&mut rng, balance, costs, grid, offer)
         };
         offer.stubs[i] = new_rune;
     }
@@ -139,4 +139,13 @@ pub fn fill_shop_offer(
         }
     }
     offer.next_id = next_id;
+}
+
+pub fn fill_shop_offer(
+    mut offer: ResMut<ShopOffer>,
+    grid: Res<RuneGrid>,
+    balance: Res<GameBalance>,
+    costs: Res<RuneCosts>,
+) {
+    roll_shop_offer(&mut offer, &grid, &balance, &costs);
 }

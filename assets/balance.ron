@@ -19,5 +19,7 @@
             common: 60,
             rare: 30,
         ),
+        reroll_base_cost: 2,
+        reroll_cost_step: 2,
     ),
 )
