@@ -670,20 +670,15 @@ fn find_drop_target(
     is_joker: bool,
     viewport: &Viewport,
     grid: &RuneGrid,
-    cells: &Query<&GridCellView>,
+    _cells: &Query<&GridCellView>,
     joker_slots: &Query<&JokerSlotView>,
 ) -> Option<RuneSource> {
-    let cell_r = CELL_DIAMETER * 0.5;
     let joker_r = JOKER_SLOT_DIAMETER * 0.5;
     if !is_joker {
-        for cell in cells {
-            if !grid.is_unlocked(cell.coord) {
-                continue;
-            }
-            if grid_cell_center(viewport, cell.coord).distance(cursor) <= cell_r {
-                return Some(RuneSource::Grid(cell.coord));
-            }
-        }
+        let coord = HexCoord::from_pixel(cursor - grid_center(viewport), CELL_SIDE);
+        if coord.ring_radius() > GRID_RADIUS { return None }
+        if !grid.is_unlocked(coord) { return None }
+        return Some(RuneSource::Grid(coord));
     } else {
         for slot in joker_slots {
             if joker_slot_center(viewport, slot.index).distance(cursor) <= joker_r {
@@ -910,16 +905,16 @@ pub fn update_highlights(
         return;
     }
 
-    let radius = RUNE_DIAMETER * 0.5;
-    let mut hovered: Option<(Entity, HexCoord)> = None;
-    for (entity, view) in &views {
-        if let RuneSource::Grid(c) = view.source {
-            if grid_cell_center(&viewport, c).distance(cursor) <= radius {
-                hovered = Some((entity, c));
-                break;
-            }
-        }
-    }
+    let hover_coord = {
+        let c = HexCoord::from_pixel(cursor - grid_center(&viewport), CELL_SIDE);
+        if c.ring_radius() <= GRID_RADIUS { Some(c) } else { None }
+    };
+    let hovered = hover_coord.and_then(|hc| {
+        views.iter().find_map(|(e, v)| match v.source {
+            RuneSource::Grid(c) if c == hc => Some((e, c)),
+            _ => None,
+        })
+    });
     let Some((entity, coord)) = hovered else { return };
     let Some(rune) = grid.cells.get(&coord) else { return };
     let Some(kind) = rune.kind else { return };
