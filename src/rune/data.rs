@@ -111,7 +111,8 @@ pub struct RerollState {
 
 #[derive(Resource, Default)]
 pub struct GridHighlights {
-    pub center: Option<HexCoord>,
+    pub center_entity: Option<Entity>,
+    pub center_pos: Option<Vec2>,
     pub write_targets: HashSet<HexCoord>,
     pub write_sources: HashSet<HexCoord>,
 }

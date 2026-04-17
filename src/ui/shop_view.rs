@@ -19,18 +19,18 @@ use super::{panel_radius, Viewport};
 
 const RUNE_ICON_INSET: f32 = 14.0;
 
-const RING_THICKNESS: f32 = 5.0;
-const RING_OUTER_INSET: f32 = -6.0;
-const RING_INNER_INSET: f32 = 2.0;
+const RING_THICKNESS: f32 = 7.0;
+const RING_OUTER_INSET: f32 = 20.0;
+const RING_INNER_INSET: f32 = 30.0;
 
-const CENTER_EDGE_RADIUS: f32 = RUNE_DIAMETER * 0.5;
+const RUNE_EDGE_RADIUS: f32 = RUNE_DIAMETER * 0.5;
 const TARGET_RING_RADIUS: f32 = (RUNE_DIAMETER - RING_OUTER_INSET * 2.0) * 0.5;
 const SOURCE_RING_RADIUS: f32 = (RUNE_DIAMETER - RING_INNER_INSET * 2.0) * 0.5;
 
-const ARROW_LINE_THICKNESS: f32 = 3.0;
-const ARROW_HEAD_LENGTH: f32 = 14.0;
-const ARROW_HEAD_THICKNESS: f32 = 3.0;
-const ARROW_HEAD_ANGLE_DEG: f32 = 30.0;
+const ARROW_LINE_THICKNESS: f32 = 5.0;
+const ARROW_HEAD_LENGTH: f32 = 20.0;
+const ARROW_HEAD_THICKNESS: f32 = 5.0;
+const ARROW_HEAD_ANGLE_DEG: f32 = 45.0;
 
 const SQRT_3: f32 = 1.732_050_8;
 const CELL_GAP: f32 = 5.0;
@@ -540,7 +540,7 @@ pub fn reconcile_rune_entities(
 
     let mut reconcile_slot = |commands: &mut Commands, src: RuneSource, rune: Rune| {
         match by_source.remove(&src) {
-            Some((entity, id)) if id == rune.id => {}
+            Some((_, id)) if id == rune.id => {}
             Some((entity, _)) => {
                 commands.entity(entity).despawn();
                 spawn_rune_entity(commands, root_entity, &viewport, rune, src, &icons);
@@ -865,22 +865,21 @@ pub fn update_highlights(
     ui_scale: Res<UiScale>,
     viewport: Res<Viewport>,
     grid: Res<RuneGrid>,
-    dragging: Query<&Dragging>,
-    views: Query<&RuneView, Without<Dragging>>,
+    dragging: Query<(Entity, &Dragging)>,
+    views: Query<(Entity, &RuneView), Without<Dragging>>,
     cells: Query<&GridCellView>,
     joker_slots: Query<&JokerSlotView>,
     mut highlights: ResMut<GridHighlights>,
 ) {
-    highlights.center = None;
+    highlights.center_entity = None;
+    highlights.center_pos = None;
     highlights.write_targets.clear();
     highlights.write_sources.clear();
 
     let Ok(window) = window_q.single() else { return };
     let Some(cursor) = cursor_ui_pos(window, ui_scale.0) else { return };
 
-    if let Some(drag) = dragging.iter().next() {
-        let Some(kind) = drag.rune.kind else { return };
-        let Some(write) = kind.def().write else { return };
+    if let Some((drag_entity, drag)) = dragging.iter().next() {
         let rune_center = cursor - drag.grab_offset;
         let Some(target) = find_drop_target(
             rune_center,
@@ -891,27 +890,41 @@ pub fn update_highlights(
             &joker_slots,
         ) else { return };
         let RuneSource::Grid(c) = target else { return };
-        highlights.center = Some(c);
-        for t in write_targets(&write, c, &grid) {
-            highlights.write_targets.insert(t);
+        highlights.center_entity = Some(drag_entity);
+        highlights.center_pos = Some(rune_center);
+
+        if let Some(write) = drag.rune.kind.and_then(|k| k.def().write) {
+            for t in write_targets(&write, c, &grid) {
+                highlights.write_targets.insert(t);
+            }
+        }
+
+        for (src_coord, src_rune) in grid.cells.iter() {
+            if *src_coord == c { continue }
+            let Some(src_kind) = src_rune.kind else { continue };
+            let Some(write) = src_kind.def().write else { continue };
+            if write_pattern_contains(&write, *src_coord, c) {
+                highlights.write_sources.insert(*src_coord);
+            }
         }
         return;
     }
 
     let radius = RUNE_DIAMETER * 0.5;
-    let mut hovered: Option<HexCoord> = None;
-    for view in &views {
+    let mut hovered: Option<(Entity, HexCoord)> = None;
+    for (entity, view) in &views {
         if let RuneSource::Grid(c) = view.source {
             if grid_cell_center(&viewport, c).distance(cursor) <= radius {
-                hovered = Some(c);
+                hovered = Some((entity, c));
                 break;
             }
         }
     }
-    let Some(coord) = hovered else { return };
+    let Some((entity, coord)) = hovered else { return };
     let Some(rune) = grid.cells.get(&coord) else { return };
     let Some(kind) = rune.kind else { return };
-    highlights.center = Some(coord);
+    highlights.center_entity = Some(entity);
+    highlights.center_pos = Some(grid_cell_center(&viewport, coord));
 
     if let Some(write) = kind.def().write {
         for t in write_targets(&write, coord, &grid) {
@@ -939,15 +952,18 @@ pub fn apply_highlights(
     arrows: Query<Entity, With<HighlightArrow>>,
 ) {
     for (child_of, kind, mut border) in &mut rings {
-        let source = runes.get(child_of.0).map(|v| v.source).ok();
-        let coord = match source {
-            Some(RuneSource::Grid(c)) => Some(c),
+        let coord = match runes.get(child_of.0).map(|v| v.source) {
+            Ok(RuneSource::Grid(c)) => Some(c),
             _ => None,
         };
-        let matches = match (kind, coord) {
-            (HighlightRing::Target, Some(c)) => highlights.write_targets.contains(&c),
-            (HighlightRing::Source, Some(c)) => highlights.write_sources.contains(&c),
-            _ => false,
+        let matches = match kind {
+            HighlightRing::Target => {
+                highlights.center_entity == Some(child_of.0)
+                    && !highlights.write_targets.is_empty()
+            }
+            HighlightRing::Source => coord
+                .map(|c| highlights.write_sources.contains(&c))
+                .unwrap_or(false),
         };
         let color = if matches {
             match kind {
@@ -965,15 +981,14 @@ pub fn apply_highlights(
     }
 
     let Ok(root_entity) = root.single() else { return };
-    let Some(center_coord) = highlights.center else { return };
-    let center_pos = grid_cell_center(&viewport, center_coord);
+    let Some(center_pos) = highlights.center_pos else { return };
 
     for target in &highlights.write_targets {
         let target_pos = grid_cell_center(&viewport, *target);
         let direction = (target_pos - center_pos).normalize_or_zero();
         if direction == Vec2::ZERO { continue }
-        let tail = center_pos + direction * CENTER_EDGE_RADIUS;
-        let head = target_pos - direction * TARGET_RING_RADIUS;
+        let tail = center_pos + direction * TARGET_RING_RADIUS;
+        let head = target_pos - direction * RUNE_EDGE_RADIUS;
         spawn_arrow(&mut commands, root_entity, tail, head,
             palette::color("ui_rune_write_target"));
     }
@@ -983,7 +998,7 @@ pub fn apply_highlights(
         let direction = (center_pos - source_pos).normalize_or_zero();
         if direction == Vec2::ZERO { continue }
         let tail = source_pos + direction * SOURCE_RING_RADIUS;
-        let head = center_pos - direction * CENTER_EDGE_RADIUS;
+        let head = center_pos - direction * RUNE_EDGE_RADIUS;
         spawn_arrow(&mut commands, root_entity, tail, head,
             palette::color("ui_rune_write_source"));
     }
@@ -996,11 +1011,12 @@ fn spawn_arrow(commands: &mut Commands, root: Entity, tail: Vec2, head: Vec2, co
 
     spawn_rotated_rect(commands, root, tail, head, ARROW_LINE_THICKNESS, color);
 
+    let head_length = ARROW_HEAD_LENGTH.min(length * 0.5);
     let base_angle = delta.y.atan2(delta.x);
     let half = ARROW_HEAD_ANGLE_DEG.to_radians();
     for side_angle in [base_angle + std::f32::consts::PI - half, base_angle + std::f32::consts::PI + half] {
         let side_dir = Vec2::new(side_angle.cos(), side_angle.sin());
-        let end = head + side_dir * ARROW_HEAD_LENGTH;
+        let end = head + side_dir * head_length;
         spawn_rotated_rect(commands, root, head, end, ARROW_HEAD_THICKNESS, color);
     }
 }
@@ -1031,7 +1047,7 @@ fn spawn_rotated_rect(
         },
         BackgroundColor(color),
         UiTransform::from_rotation(Rot2::radians(angle)),
-        GlobalZIndex(55),
+        GlobalZIndex(65),
     ));
 }
 
