@@ -99,3 +99,9 @@ pub fn write_targets(write: &Write, center: HexCoord, grid: &RuneGrid) -> Vec<He
             .collect(),
     }
 }
+
+pub fn write_pattern_coords(write: &Write, center: HexCoord) -> Vec<HexCoord> {
+    match write.pattern {
+        Pattern::Adjacent => center.neighbors().into_iter().collect(),
+    }
+}

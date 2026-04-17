@@ -8,9 +8,10 @@ use crate::palette;
 use crate::run::PlayerMoney;
 use crate::run::RunState;
 use crate::rune::{
-    can_place, roll_shop_offer, write_pattern_contains, write_targets, Dragging, GridCellView,
-    GridHighlights, HexCoord, IconAssets, JokerSlotView, JokerSlots, RerollState, Rune, RuneCosts,
-    RuneGrid, RuneSource, RuneView, ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
+    can_place, roll_shop_offer, write_pattern_contains, write_pattern_coords, write_targets,
+    Dragging, GridCellView, GridHighlights, HexCoord, IconAssets, JokerSlotView, JokerSlots,
+    RerollState, Rune, RuneCosts, RuneGrid, RuneSource, RuneView, ShopOffer, GRID_RADIUS,
+    JOKER_SLOTS, SHOP_SLOTS,
 };
 use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
@@ -32,6 +33,16 @@ const ARROW_HEAD_LENGTH: f32 = 15.0;
 const ARROW_HEAD_THICKNESS: f32 = 5.0;
 const ARROW_HEAD_ANGLE_DEG: f32 = 35.0;
 const ARROW_PARALLEL_OFFSET: f32 = 7.0;
+
+const CELL_PATTERN_BORDER: f32 = 6.0;
+
+const SHADOW_OFFSET_X: f32 = 3.0;
+const SHADOW_OFFSET_Y: f32 = 3.0;
+const SHADOW_ALPHA: f32 = 0.5;
+
+fn shadow_color() -> Color {
+    Color::BLACK.with_alpha(SHADOW_ALPHA)
+}
 
 const SQRT_3: f32 = 1.732_050_8;
 const CELL_GAP: f32 = 5.0;
@@ -133,6 +144,14 @@ pub enum HighlightRing {
 
 #[derive(Component)]
 pub struct HighlightArrow;
+
+#[derive(Component)]
+pub struct HighlightShadow;
+
+#[derive(Component)]
+pub struct CellPatternShadow {
+    pub coord: HexCoord,
+}
 
 #[derive(Component)]
 pub struct ShopCoinsText;
@@ -244,6 +263,22 @@ pub fn spawn_shop_screen(
         let center = grid_cell_center(&viewport, coord);
         commands.spawn((
             ChildOf(root),
+            CellPatternShadow { coord },
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(center.x - CELL_DIAMETER * 0.5 + SHADOW_OFFSET_X),
+                top: Val::Px(center.y - CELL_DIAMETER * 0.5 + SHADOW_OFFSET_Y),
+                width: Val::Px(CELL_DIAMETER),
+                height: Val::Px(CELL_DIAMETER),
+                border: UiRect::all(Val::Px(CELL_PATTERN_BORDER)),
+                border_radius: BorderRadius::MAX,
+                ..default()
+            },
+            BackgroundColor(Color::NONE),
+            BorderColor::all(Color::NONE),
+        ));
+        commands.spawn((
+            ChildOf(root),
             GridCellView { coord },
             Node {
                 position_type: PositionType::Absolute,
@@ -251,10 +286,12 @@ pub fn spawn_shop_screen(
                 top: Val::Px(center.y - CELL_DIAMETER * 0.5),
                 width: Val::Px(CELL_DIAMETER),
                 height: Val::Px(CELL_DIAMETER),
+                border: UiRect::all(Val::Px(CELL_PATTERN_BORDER)),
                 border_radius: BorderRadius::MAX,
                 ..default()
             },
             BackgroundColor(palette::color("ui_cell_locked_bg")),
+            BorderColor::all(Color::NONE),
         ));
     }
 
@@ -374,28 +411,35 @@ fn spawn_rune_entity(
             },
         ));
     }
-    spawn_ring(commands, rune_entity, HighlightRing::Target, RING_OUTER_INSET);
-    spawn_ring(commands, rune_entity, HighlightRing::Source, RING_INNER_INSET);
+    spawn_ring_pair(commands, rune_entity, HighlightRing::Target, RING_OUTER_INSET);
+    spawn_ring_pair(commands, rune_entity, HighlightRing::Source, RING_INNER_INSET);
 }
 
-fn spawn_ring(commands: &mut Commands, parent: Entity, kind: HighlightRing, inset: f32) {
+fn spawn_ring_pair(commands: &mut Commands, parent: Entity, kind: HighlightRing, inset: f32) {
     let diameter = RUNE_DIAMETER - inset * 2.0;
-    commands.spawn((
-        ChildOf(parent),
-        kind,
-        Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px(inset),
-            top: Val::Px(inset),
-            width: Val::Px(diameter),
-            height: Val::Px(diameter),
-            border: UiRect::all(Val::Px(RING_THICKNESS)),
-            border_radius: BorderRadius::MAX,
-            ..default()
-        },
-        BackgroundColor(Color::NONE),
-        BorderColor::all(Color::NONE),
-    ));
+    let mut spawn_one = |left: f32, top: f32, shadow: bool| {
+        let mut e = commands.spawn((
+            ChildOf(parent),
+            kind,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(left),
+                top: Val::Px(top),
+                width: Val::Px(diameter),
+                height: Val::Px(diameter),
+                border: UiRect::all(Val::Px(RING_THICKNESS)),
+                border_radius: BorderRadius::MAX,
+                ..default()
+            },
+            BackgroundColor(Color::NONE),
+            BorderColor::all(Color::NONE),
+        ));
+        if shadow {
+            e.insert(HighlightShadow);
+        }
+    };
+    spawn_one(inset + SHADOW_OFFSET_X, inset + SHADOW_OFFSET_Y, true);
+    spawn_one(inset, inset, false);
 }
 
 pub fn reset_reroll_cost(balance: Res<GameBalance>, mut reroll: ResMut<RerollState>) {
@@ -824,6 +868,7 @@ pub fn reposition_shop_ui(
         Query<&mut Node, With<StartRunButton>>,
         Query<(&ShopPriceLabel, &mut Node)>,
         Query<&mut Node, With<RerollButton>>,
+        Query<(&CellPatternShadow, &mut Node)>,
     )>,
 ) {
     if !viewport.is_changed() {
@@ -854,6 +899,11 @@ pub fn reposition_shop_ui(
         node.left = Val::Px(pos.x);
         node.top = Val::Px(pos.y);
     }
+    for (shadow, mut node) in &mut sets.p5() {
+        let center = grid_cell_center(&viewport, shadow.coord);
+        node.left = Val::Px(center.x - CELL_DIAMETER * 0.5 + SHADOW_OFFSET_X);
+        node.top = Val::Px(center.y - CELL_DIAMETER * 0.5 + SHADOW_OFFSET_Y);
+    }
 }
 
 pub fn update_highlights(
@@ -871,6 +921,7 @@ pub fn update_highlights(
     highlights.center_pos = None;
     highlights.write_targets.clear();
     highlights.write_sources.clear();
+    highlights.pattern_cells.clear();
 
     let Ok(window) = window_q.single() else { return };
     let Some(cursor) = cursor_ui_pos(window, ui_scale.0) else { return };
@@ -892,6 +943,9 @@ pub fn update_highlights(
         if let Some(write) = drag.rune.kind.and_then(|k| k.def().write) {
             for t in write_targets(&write, c, &grid) {
                 highlights.write_targets.insert(t);
+            }
+            for p in write_pattern_coords(&write, c) {
+                highlights.pattern_cells.insert(p);
             }
         }
 
@@ -926,6 +980,9 @@ pub fn update_highlights(
         for t in write_targets(&write, coord, &grid) {
             highlights.write_targets.insert(t);
         }
+        for p in write_pattern_coords(&write, coord) {
+            highlights.pattern_cells.insert(p);
+        }
     }
 
     for (src_coord, src_rune) in grid.cells.iter() {
@@ -944,10 +1001,30 @@ pub fn apply_highlights(
     highlights: Res<GridHighlights>,
     root: Query<Entity, With<ShopRoot>>,
     runes: Query<&RuneView>,
-    mut rings: Query<(&ChildOf, &HighlightRing, &mut BorderColor)>,
+    mut rings: Query<(&ChildOf, &HighlightRing, Option<&HighlightShadow>, &mut BorderColor), (Without<GridCellView>, Without<CellPatternShadow>)>,
+    mut cell_borders: Query<(&GridCellView, &mut BorderColor), (Without<HighlightRing>, Without<CellPatternShadow>)>,
+    mut cell_shadows: Query<(&CellPatternShadow, &mut BorderColor), (Without<HighlightRing>, Without<GridCellView>)>,
     arrows: Query<Entity, With<HighlightArrow>>,
 ) {
-    for (child_of, kind, mut border) in &mut rings {
+    let pattern_color = palette::color("ui_rune_write_target");
+    for (cell, mut border) in &mut cell_borders {
+        let color = if highlights.pattern_cells.contains(&cell.coord) {
+            pattern_color
+        } else {
+            Color::NONE
+        };
+        *border = BorderColor::all(color);
+    }
+    for (shadow, mut border) in &mut cell_shadows {
+        let color = if highlights.pattern_cells.contains(&shadow.coord) {
+            shadow_color()
+        } else {
+            Color::NONE
+        };
+        *border = BorderColor::all(color);
+    }
+
+    for (child_of, kind, shadow, mut border) in &mut rings {
         let coord = match runes.get(child_of.0).map(|v| v.source) {
             Ok(RuneSource::Grid(c)) => Some(c),
             _ => None,
@@ -962,9 +1039,13 @@ pub fn apply_highlights(
                 .unwrap_or(false),
         };
         let color = if matches {
-            match kind {
-                HighlightRing::Target => palette::color("ui_rune_write_target"),
-                HighlightRing::Source => palette::color("ui_rune_write_source"),
+            if shadow.is_some() {
+                shadow_color()
+            } else {
+                match kind {
+                    HighlightRing::Target => palette::color("ui_rune_write_target"),
+                    HighlightRing::Source => palette::color("ui_rune_write_source"),
+                }
             }
         } else {
             Color::NONE
@@ -1015,15 +1096,25 @@ fn spawn_arrow(commands: &mut Commands, root: Entity, tail: Vec2, head: Vec2, co
     let length = delta.length();
     if length < 1.0 { return }
 
-    spawn_rotated_rect(commands, root, tail, head, ARROW_LINE_THICKNESS, color);
-
     let head_length = ARROW_HEAD_LENGTH.min(length * 0.5);
     let base_angle = delta.y.atan2(delta.x);
     let half = ARROW_HEAD_ANGLE_DEG.to_radians();
+    let shadow_off = Vec2::new(SHADOW_OFFSET_X, SHADOW_OFFSET_Y);
+    let sc = shadow_color();
+
+    // shadows first (rendered below real)
+    spawn_rotated_rect(commands, root, tail + shadow_off, head + shadow_off, ARROW_LINE_THICKNESS, sc, 64);
     for side_angle in [base_angle + std::f32::consts::PI - half, base_angle + std::f32::consts::PI + half] {
         let side_dir = Vec2::new(side_angle.cos(), side_angle.sin());
         let end = head + side_dir * head_length;
-        spawn_rotated_rect(commands, root, head, end, ARROW_HEAD_THICKNESS, color);
+        spawn_rotated_rect(commands, root, head + shadow_off, end + shadow_off, ARROW_HEAD_THICKNESS, sc, 64);
+    }
+
+    spawn_rotated_rect(commands, root, tail, head, ARROW_LINE_THICKNESS, color, 65);
+    for side_angle in [base_angle + std::f32::consts::PI - half, base_angle + std::f32::consts::PI + half] {
+        let side_dir = Vec2::new(side_angle.cos(), side_angle.sin());
+        let end = head + side_dir * head_length;
+        spawn_rotated_rect(commands, root, head, end, ARROW_HEAD_THICKNESS, color, 65);
     }
 }
 
@@ -1034,6 +1125,7 @@ fn spawn_rotated_rect(
     b: Vec2,
     thickness: f32,
     color: Color,
+    z: i32,
 ) {
     let delta = b - a;
     let length = delta.length();
@@ -1053,7 +1145,7 @@ fn spawn_rotated_rect(
         },
         BackgroundColor(color),
         UiTransform::from_rotation(Rot2::radians(angle)),
-        GlobalZIndex(65),
+        GlobalZIndex(z),
     ));
 }
 

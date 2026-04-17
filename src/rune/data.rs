@@ -115,6 +115,7 @@ pub struct GridHighlights {
     pub center_pos: Option<Vec2>,
     pub write_targets: HashSet<HexCoord>,
     pub write_sources: HashSet<HexCoord>,
+    pub pattern_cells: HashSet<HexCoord>,
 }
 
 #[derive(Resource)]

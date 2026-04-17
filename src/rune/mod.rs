@@ -6,7 +6,9 @@ mod shop_gen;
 
 use bevy::prelude::*;
 
-pub use content::{write_pattern_contains, write_targets, Tier, WriteEffect};
+pub use content::{
+    write_pattern_contains, write_pattern_coords, write_targets, Tier, WriteEffect,
+};
 pub use cost::RuneCosts;
 pub use data::{
     can_place, Dragging, GridCellView, GridHighlights, IconAssets, JokerSlotView, JokerSlots,
