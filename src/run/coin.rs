@@ -64,7 +64,7 @@ fn spawn_coins(
                 CombatScoped,
             ))
             .with_children(|parent| {
-                parent.spawn(Shadow { opacity: 0.45 });
+                parent.spawn(Shadow);
                 parent.spawn((
                     CircleShape {
                         color: palette::color("coin"),

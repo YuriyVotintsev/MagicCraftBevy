@@ -17,9 +17,9 @@ pub use player::{
     PlayerInput, TargetingMode,
 };
 pub use visual::{
-    BobbingAnimation, CapsuleShape, CircleShape, Fade, FadeBase, FadeCollisionToggle, FadeOut,
+    BobbingAnimation, CapsuleShape, CircleShape, Fade, FadeCollisionToggle,
     Growing, JumpWalkAnimation, JumpWalkAnimationState, OnCollisionParticles, OnDeathParticles,
-    SelfMoving, Shadow, ShootSquish, Shape, ShapeColor, ShapeKind,
+    ScaleOut, SelfMoving, Shadow, ShootSquish, Shape, ShapeColor, ShapeKind,
 };
 
 pub struct ComponentsPlugin;

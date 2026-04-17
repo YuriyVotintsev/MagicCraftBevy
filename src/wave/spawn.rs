@@ -5,6 +5,7 @@ use crate::actors::Health;
 use crate::actors::{MobKind, MobsBalance};
 use crate::arena::CurrentArenaSize;
 use crate::balance::GameBalance;
+use crate::dissolve_material::DissolveMaterial;
 use crate::run::{CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
 use super::phase::WavePhase;
@@ -62,7 +63,7 @@ fn spawn_enemies(
     balance: Res<GameBalance>,
     circle_mesh: Res<SummoningCircleMesh>,
     circle_material: Res<SummoningCircleMaterial>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<DissolveMaterial>>,
     spawn_pool: Res<EnemySpawnPool>,
     arena_size: Res<CurrentArenaSize>,
 ) {
@@ -132,14 +133,11 @@ fn spawn_enemies(
         ));
 
         if is_ghost {
-            use crate::actors::{FadeBase, GhostTransparency};
-            entity_commands.insert((
-                GhostTransparency {
-                    visible_distance: mobs_balance.ghost.visible_distance,
-                    invisible_distance: mobs_balance.ghost.invisible_distance,
-                },
-                FadeBase(0.7),
-            ));
+            use crate::actors::GhostTransparency;
+            entity_commands.insert(GhostTransparency {
+                visible_distance: mobs_balance.ghost.visible_distance,
+                invisible_distance: mobs_balance.ghost.invisible_distance,
+            });
         }
         wave_state.spawned_count += 1;
         wave_state.summoning_count += 1;

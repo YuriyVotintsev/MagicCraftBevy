@@ -1,11 +1,10 @@
 use bevy::prelude::*;
 
+use crate::dissolve_material::DissolveMaterial;
 use crate::palette;
 
-#[derive(Component)]
-pub struct Shadow {
-    pub opacity: f32,
-}
+#[derive(Component, Default)]
+pub struct Shadow;
 
 #[derive(Resource)]
 struct ShadowMeshHandle(Handle<Mesh>);
@@ -22,19 +21,14 @@ fn setup_shadow_mesh(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 fn init_shadow(
     mut commands: Commands,
-    query: Query<(Entity, &Shadow), Added<Shadow>>,
+    query: Query<Entity, Added<Shadow>>,
     shadow_mesh: Option<Res<ShadowMeshHandle>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<DissolveMaterial>>,
 ) {
     let Some(shadow_mesh) = shadow_mesh else { return };
 
-    for (entity, shadow) in &query {
-        let material = materials.add(StandardMaterial {
-            base_color: palette::color_alpha("shadow", shadow.opacity),
-            unlit: true,
-            alpha_mode: AlphaMode::Blend,
-            ..default()
-        });
+    for entity in &query {
+        let material = materials.add(DissolveMaterial::new(palette::color("cream_dark")));
         commands.entity(entity).insert((
             Mesh3d(shadow_mesh.0.clone()),
             MeshMaterial3d(material),

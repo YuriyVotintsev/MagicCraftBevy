@@ -2,6 +2,7 @@ mod actors;
 mod balance;
 mod composite_scale;
 mod arena;
+mod dissolve_material;
 mod faction;
 mod game_state;
 mod health_material;
@@ -38,6 +39,7 @@ use bevy::prelude::*;
 
 use actors::ActorsPlugin;
 use arena::ArenaPlugin;
+use dissolve_material::DissolveMaterialPlugin;
 use health_material::HealthMaterialPlugin;
 use hit_flash::HitFlashPlugin;
 use loading::LoadingPlugin;
@@ -189,6 +191,7 @@ fn main() {
             ActorsPlugin,
             RunPlugin,
             RunePlugin,
+            DissolveMaterialPlugin,
             HealthMaterialPlugin,
             HitFlashPlugin,
             TweeningPlugin,

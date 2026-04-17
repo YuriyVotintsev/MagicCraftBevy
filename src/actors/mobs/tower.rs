@@ -5,7 +5,7 @@ use serde::Deserialize;
 
 use crate::GameState;
 use super::super::components::{
-    CircleShape, FadeOut, Growing, Lifetime, PendingDamage, Shadow, ShootSquish, ShotFired, Size,
+    CircleShape, Growing, Lifetime, PendingDamage, ScaleOut, Shadow, ShootSquish, ShotFired, Size,
     Shape, ShapeColor, ShapeKind,
 };
 use crate::faction::Faction;
@@ -217,7 +217,7 @@ fn fire_tower_shot(
         CombatScoped,
     )).id();
     commands.entity(proj).with_children(|p| {
-        p.spawn(Shadow { opacity: 0.45 });
+        p.spawn(Shadow);
         p.spawn(Shape {
             color: {
                 let (r, g, b) = palette::lookup("enemy_ability").unwrap_or((1.0, 0.5, 0.5));
@@ -232,6 +232,11 @@ fn fire_tower_shot(
 fn enemy_ability_color_alpha(alpha: f32) -> ShapeColor {
     let (r, g, b) = palette::lookup("enemy_ability").unwrap_or((1.0, 0.5, 0.5));
     ShapeColor { r, g, b, a: alpha, flash: None }
+}
+
+fn coral_light_color() -> ShapeColor {
+    let (r, g, b) = palette::lookup("coral_light").unwrap_or((1.0, 0.7, 0.6));
+    ShapeColor { r, g, b, a: 1.0, flash: None }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -308,11 +313,11 @@ fn update_arc_tower_shot(
                 Visibility::default(),
                 Size { value: arc.explosion_radius },
                 Shape {
-                    color: enemy_ability_color_alpha(0.4), kind: ShapeKind::Disc,
+                    color: coral_light_color(), kind: ShapeKind::Disc,
                     position: Vec2::ZERO, elevation: 0.02, half_length: 0.5,
                 },
                 Lifetime { remaining: arc.explosion_duration },
-                FadeOut {},
+                ScaleOut {},
                 CombatScoped,
             ));
 

@@ -1,18 +1,12 @@
 #import bevy_pbr::forward_io::VertexOutput
 #import bevy_pbr::mesh_view_bindings::globals
 
-struct HealthMaterialData {
-    base_color: vec4<f32>,
-    damage_color: vec4<f32>,
-    hp_fraction: f32,
-    uv_top: f32,
-    uv_bottom: f32,
+struct DissolveData {
+    color: vec4<f32>,
     alpha: f32,
 };
 
-@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material: HealthMaterialData;
-
-const EDGE_SOFTNESS: f32 = 0.02;
+@group(#{MATERIAL_BIND_GROUP}) @binding(0) var<uniform> material: DissolveData;
 
 fn bayer8(px: vec2<f32>) -> f32 {
     var pattern = array<f32, 64>(
@@ -32,31 +26,18 @@ fn bayer8(px: vec2<f32>) -> f32 {
 
 @fragment
 fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
+    if (material.alpha >= 1.0) {
+        return material.color;
+    }
     if (material.alpha <= 0.0) {
         discard;
     }
-    if (material.alpha < 1.0) {
-        let px = vec2<f32>(
-            floor(in.position.x + globals.time * 1.5),
-            floor(in.position.y + globals.time * 1.05),
-        );
-        if (bayer8(px) >= material.alpha) {
-            discard;
-        }
+    let px = vec2<f32>(
+        floor(in.position.x + globals.time * 1.5),
+        floor(in.position.y + globals.time * 1.05),
+    );
+    if (bayer8(px) >= material.alpha) {
+        discard;
     }
-
-    if (material.hp_fraction >= 1.0) {
-        return vec4(material.base_color.rgb, material.base_color.a);
-    }
-
-    let uv_min = min(material.uv_top, material.uv_bottom);
-    let uv_max = max(material.uv_top, material.uv_bottom);
-    let raw = clamp(in.uv.y, uv_min, uv_max);
-    let normalized = (raw - material.uv_top) / (material.uv_bottom - material.uv_top);
-
-    let damage_level = 1.0 - material.hp_fraction;
-    let blend = 1.0 - smoothstep(damage_level - EDGE_SOFTNESS, damage_level + EDGE_SOFTNESS, normalized);
-
-    let color = mix(material.base_color.rgb, material.damage_color.rgb, blend);
-    return vec4(color, material.base_color.a);
+    return material.color;
 }

@@ -30,7 +30,7 @@ impl Material for HealthMaterial {
 
     fn alpha_mode(&self) -> AlphaMode {
         if self.data.alpha < 1.0 {
-            AlphaMode::Blend
+            AlphaMode::Mask(0.5)
         } else {
             AlphaMode::Opaque
         }

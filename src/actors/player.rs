@@ -101,7 +101,7 @@ pub fn spawn_player(
     });
 
     commands.entity(entity).with_children(|p| {
-        p.spawn(Shadow { opacity: 0.45 });
+        p.spawn(Shadow);
         p.spawn((
             Shape {
                 color: player_shape_color(), kind: ShapeKind::Circle,
@@ -165,7 +165,7 @@ pub fn fire_fireball(
         )).id();
 
         commands.entity(proj).with_children(|p| {
-            p.spawn(Shadow { opacity: 0.45 });
+            p.spawn(Shadow);
             p.spawn(Shape {
                 color: player_ability_shape_color(), kind: ShapeKind::Circle,
                 position: Vec2::ZERO, elevation: 2.0, half_length: 0.5,

@@ -2,19 +2,19 @@ use bevy::prelude::*;
 
 mod bobbing_animation;
 mod fade;
-mod fade_out;
 mod growing;
 mod jump_walk_animation;
 mod on_collision_particles;
 mod on_death_particles;
+mod scale_out;
 mod shadow;
 mod shape;
 mod shoot_squish;
 
 pub use bobbing_animation::BobbingAnimation;
-pub use fade::{Fade, FadeBase, FadeCollisionToggle};
-pub use fade_out::FadeOut;
+pub use fade::{Fade, FadeCollisionToggle};
 pub use growing::Growing;
+pub use scale_out::ScaleOut;
 pub use jump_walk_animation::{JumpWalkAnimation, JumpWalkAnimationState, SelfMoving};
 pub use on_collision_particles::OnCollisionParticles;
 pub use on_death_particles::OnDeathParticles;
@@ -32,7 +32,7 @@ impl Plugin for VisualPlugin {
         bobbing_animation::register_systems(app);
         jump_walk_animation::register_systems(app);
         shoot_squish::register_systems(app);
-        fade_out::register_systems(app);
+        scale_out::register_systems(app);
         growing::register_systems(app);
         on_death_particles::register_systems(app);
         on_collision_particles::register_systems(app);

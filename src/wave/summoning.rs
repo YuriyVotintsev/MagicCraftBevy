@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::actors::{spawn_mob, Fade, MobKind, MobsBalance};
 use crate::actors::Health;
+use crate::dissolve_material::DissolveMaterial;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::{CombatScoped, PlayerDying};
 use crate::schedule::GameSet;
@@ -52,7 +53,7 @@ pub struct RiseFromGround {
 pub struct SummoningCircleMesh(pub Handle<Mesh>);
 
 #[derive(Resource)]
-pub struct SummoningCircleMaterial(pub Handle<StandardMaterial>);
+pub struct SummoningCircleMaterial(pub Handle<DissolveMaterial>);
 
 pub fn register(app: &mut App) {
     app.add_systems(Startup, setup_resources)
@@ -85,23 +86,16 @@ pub fn register(app: &mut App) {
 fn sync_circle_fade_to_emitter(
     circles: Query<(&Fade, &SummoningCircle)>,
     mut emitter_query: Query<&mut ParticleEmitter>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<DissolveMaterial>>,
 ) {
     for (fade, circle) in &circles {
         let Some(emitter_entity) = circle.emitter else { continue };
         let Ok(mut emitter) = emitter_query.get_mut(emitter_entity) else { continue };
         let handle = emitter.material_override.get_or_insert_with(|| {
-            materials.add(StandardMaterial {
-                base_color: crate::palette::color("enemy"),
-                unlit: true,
-                alpha_mode: AlphaMode::Blend,
-                ..default()
-            })
+            materials.add(DissolveMaterial::new(crate::palette::color("enemy")))
         });
         if let Some(material) = materials.get_mut(handle) {
-            let mut color = material.base_color.to_srgba();
-            color.alpha = fade.alpha;
-            material.base_color = color.into();
+            material.data.alpha = fade.alpha;
         }
     }
 }
@@ -109,18 +103,13 @@ fn sync_circle_fade_to_emitter(
 fn setup_resources(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<DissolveMaterial>>,
 ) {
     commands.insert_resource(SummoningCircleMesh(
         meshes.add(Annulus::new(0.35, 0.5)),
     ));
     commands.insert_resource(SummoningCircleMaterial(
-        materials.add(StandardMaterial {
-            base_color: crate::palette::color_alpha("enemy", 0.7),
-            unlit: true,
-            alpha_mode: AlphaMode::Blend,
-            ..default()
-        }),
+        materials.add(DissolveMaterial::new(crate::palette::color("coral_light"))),
     ));
 }
 

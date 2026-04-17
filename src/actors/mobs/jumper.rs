@@ -236,7 +236,7 @@ fn fire_jumper_shot(
         )).id();
 
         commands.entity(proj).with_children(|p| {
-            p.spawn(Shadow { opacity: 0.45 });
+            p.spawn(Shadow);
             p.spawn(Shape {
                 color: enemy_ability_shape_color(), kind: ShapeKind::Circle,
                 position: Vec2::ZERO, elevation: 0.7, half_length: 0.5,

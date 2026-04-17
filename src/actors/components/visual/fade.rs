@@ -2,6 +2,7 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::{CapsuleShape, CircleShape, Shadow};
+use crate::dissolve_material::DissolveMaterial;
 use crate::health_material::{HealthMaterial, HealthMaterialLink};
 
 #[derive(Component)]
@@ -19,13 +20,6 @@ impl Default for Fade {
 pub struct FadeCollisionToggle;
 
 #[derive(Component)]
-pub struct FadeBase(pub f32);
-
-impl Default for FadeBase {
-    fn default() -> Self { Self(1.0) }
-}
-
-#[derive(Component)]
 struct StoredCollisionLayers(CollisionLayers);
 
 pub fn register_systems(app: &mut App) {
@@ -36,28 +30,19 @@ pub fn register_systems(app: &mut App) {
 }
 
 fn apply_fade_to_self(
-    query: Query<(&Fade, &MeshMaterial3d<StandardMaterial>, Option<&FadeBase>)>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    query: Query<(&Fade, &MeshMaterial3d<DissolveMaterial>)>,
+    mut materials: ResMut<Assets<DissolveMaterial>>,
 ) {
-    for (fade, mat_handle, base) in &query {
+    for (fade, mat_handle) in &query {
         if let Some(material) = materials.get_mut(&mat_handle.0) {
-            let base_alpha = base.map(|b| b.0).unwrap_or(1.0);
-            let out_alpha = base_alpha * fade.alpha;
-            let mut color = material.base_color.to_srgba();
-            color.alpha = out_alpha;
-            material.base_color = color.into();
-            material.alpha_mode = if out_alpha < 1.0 {
-                AlphaMode::Blend
-            } else {
-                AlphaMode::Opaque
-            };
+            material.data.alpha = fade.alpha;
         }
     }
 }
 
 fn apply_fade_to_children(
     parents: Query<(&Fade, &Children, Option<&HealthMaterialLink>)>,
-    shadow_query: Query<(&Shadow, &MeshMaterial3d<StandardMaterial>)>,
+    shadow_query: Query<(&Shadow, &MeshMaterial3d<DissolveMaterial>)>,
     shape_query: Query<
         &MeshMaterial3d<StandardMaterial>,
         Or<(With<CircleShape>, With<CapsuleShape>)>,
@@ -67,15 +52,14 @@ fn apply_fade_to_children(
         Or<(With<CircleShape>, With<CapsuleShape>)>,
     >,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut dissolve_materials: ResMut<Assets<DissolveMaterial>>,
     mut health_materials: ResMut<Assets<HealthMaterial>>,
 ) {
     for (fade, children, health_link) in &parents {
         for child in children.iter() {
-            if let Ok((shadow, mat_handle)) = shadow_query.get(child) {
-                if let Some(material) = materials.get_mut(&mat_handle.0) {
-                    let mut color = material.base_color.to_srgba();
-                    color.alpha = shadow.opacity * fade.alpha;
-                    material.base_color = color.into();
+            if let Ok((_shadow, mat_handle)) = shadow_query.get(child) {
+                if let Some(material) = dissolve_materials.get_mut(&mat_handle.0) {
+                    material.data.alpha = fade.alpha;
                 }
                 continue;
             }

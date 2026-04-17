@@ -125,7 +125,7 @@ pub(crate) fn spawn_enemy_core(
     }
 
     commands.entity(id).with_children(|p| {
-        p.spawn(Shadow { opacity: 0.45 });
+        p.spawn(Shadow);
     });
 
     id

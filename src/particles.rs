@@ -6,6 +6,7 @@ use bevy::reflect::TypePath;
 use rand::Rng;
 use serde::Deserialize;
 
+use crate::dissolve_material::DissolveMaterial;
 use crate::run::{CombatScoped, SkipDeathShrink};
 
 pub struct ParticlesPlugin;
@@ -149,7 +150,7 @@ impl ParticleRegistry {
 #[derive(Resource, Default)]
 pub struct ParticleMaterialCache {
     mesh: Option<Handle<Mesh>>,
-    materials: HashMap<String, Handle<StandardMaterial>>,
+    materials: HashMap<String, Handle<DissolveMaterial>>,
 }
 
 impl ParticleMaterialCache {
@@ -162,16 +163,12 @@ impl ParticleMaterialCache {
     fn get_material(
         &mut self,
         color_name: &str,
-        materials: &mut Assets<StandardMaterial>,
-    ) -> Handle<StandardMaterial> {
+        materials: &mut Assets<DissolveMaterial>,
+    ) -> Handle<DissolveMaterial> {
         self.materials
             .entry(color_name.to_string())
             .or_insert_with(|| {
-                materials.add(StandardMaterial {
-                    base_color: crate::palette::color(color_name),
-                    unlit: true,
-                    ..default()
-                })
+                materials.add(DissolveMaterial::new(crate::palette::color(color_name)))
             })
             .clone()
     }
@@ -194,7 +191,7 @@ pub struct ParticleEmitter {
     pub stopped: bool,
     pub drain_timer: f32,
     pub shape_override: Option<SpawnShape>,
-    pub material_override: Option<Handle<StandardMaterial>>,
+    pub material_override: Option<Handle<DissolveMaterial>>,
 }
 
 #[derive(Component)]
@@ -250,7 +247,7 @@ fn emit_particles(
     registry: Res<ParticleRegistry>,
     mut cache: ResMut<ParticleMaterialCache>,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut materials: ResMut<Assets<DissolveMaterial>>,
 ) {
     let dt = time.delta_secs();
 
@@ -311,7 +308,7 @@ fn spawn_burst(
     transform: &Transform,
     cache: &mut ParticleMaterialCache,
     meshes: &mut Assets<Mesh>,
-    materials: &mut Assets<StandardMaterial>,
+    materials: &mut Assets<DissolveMaterial>,
     count: u32,
 ) {
     let mesh = cache.get_mesh(meshes);
