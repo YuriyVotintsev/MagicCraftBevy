@@ -16,6 +16,7 @@ use crate::Faction;
 pub const PLAYER_BASE_STATS: &[(Stat, ModifierKind, f32)] = &[
     (Stat::MaxLife, ModifierKind::Flat, 20.0),
     (Stat::MovementSpeed, ModifierKind::Flat, 550.0),
+    (Stat::PhysicalDamage, ModifierKind::Flat, 1.0),
     (Stat::CritChance, ModifierKind::Flat, 0.05),
     (Stat::CritMultiplier, ModifierKind::Flat, 1.5),
     (Stat::AttackSpeed, ModifierKind::Flat, 1.0),
@@ -39,7 +40,7 @@ pub fn compute_player_stats(
     (modifiers, computed)
 }
 
-pub const FIREBALL_BASE_DAMAGE: f32 = 1.0;
+pub const FIREBALL_DAMAGE_PCT: f32 = 1.0;
 pub const FIREBALL_BASE_SPEED: f32 = 800.0;
 pub const FIREBALL_COOLDOWN: f32 = 0.5;
 pub const FIREBALL_SIZE: f32 = 60.0;
@@ -110,8 +111,8 @@ pub fn spawn_player(
     });
 }
 
-fn calc_physical_damage(stats: Option<&ComputedStats>, base: f32) -> f32 {
-    stats.map(|s| s.apply(Stat::PhysicalDamage, base)).unwrap_or(base)
+fn calc_physical_damage(stats: Option<&ComputedStats>, pct: f32) -> f32 {
+    stats.map(|s| s.final_of(Stat::PhysicalDamage) * pct).unwrap_or(0.0)
 }
 
 fn calc_projectile_speed(stats: Option<&ComputedStats>, base: f32) -> f32 {
@@ -136,7 +137,7 @@ pub fn fire_fireball(
 ) {
     let count = projectile_count(caster_stats, 1).max(1);
     let speed = calc_projectile_speed(caster_stats, FIREBALL_BASE_SPEED);
-    let damage = calc_physical_damage(caster_stats, FIREBALL_BASE_DAMAGE);
+    let damage = calc_physical_damage(caster_stats, FIREBALL_DAMAGE_PCT);
     let base_dir = direction.normalize_or_zero();
     let perpendicular = Vec2::new(-base_dir.y, base_dir.x);
 

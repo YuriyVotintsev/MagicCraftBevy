@@ -66,6 +66,7 @@ pub struct ArcTowerShot {
 
 const TOWER_CYLINDER_RADIUS: f32 = 0.2;
 const TOWER_CYLINDER_HEIGHT: f32 = 0.6;
+const TOWER_SHOT_DAMAGE_PCT: f32 = 1.0;
 
 #[derive(Component)]
 pub struct TowerVisual {}
@@ -187,7 +188,9 @@ fn fire_tower_shot(
     shooter: &TowerShooter,
     caster_stats: Option<&ComputedStats>,
 ) {
-    let damage = caster_stats.map(|s| s.apply(Stat::PhysicalDamage, 0.0)).unwrap_or(0.0);
+    let damage = caster_stats
+        .map(|s| s.final_of(Stat::PhysicalDamage) * TOWER_SHOT_DAMAGE_PCT)
+        .unwrap_or(0.0);
     if shooter.spread > 0.0 {
         let mut rng = rand::rng();
         let angle = rng.random_range(0.0..std::f32::consts::TAU);

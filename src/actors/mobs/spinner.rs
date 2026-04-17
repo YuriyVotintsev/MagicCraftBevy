@@ -27,6 +27,7 @@ const SPIKE_GROWTH_MAX: f32 = 3.0;
 const SQUISH_MIN: f32 = 0.5;
 const CONTACT_RADIUS: f32 = 150.0;
 const HIT_RADIUS: f32 = 150.0;
+const SPIN_HIT_DAMAGE_PCT: f32 = 1.0;
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct SpinnerStats {
@@ -278,7 +279,7 @@ fn apply_area_damage(
     let entity_radius = size.map_or(0.0, |s| s.value / 2.0);
     let damage = stats_query
         .get(entity)
-        .map(|s| s.apply(Stat::PhysicalDamage, 0.0))
+        .map(|s| s.final_of(Stat::PhysicalDamage) * SPIN_HIT_DAMAGE_PCT)
         .unwrap_or(10.0);
 
     let filter = SpatialQueryFilter::from_mask(GameLayer::Player);

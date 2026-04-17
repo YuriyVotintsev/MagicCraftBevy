@@ -9,6 +9,7 @@ use crate::stats::{ComputedStats, Stat};
 use crate::Faction;
 
 pub const MELEE_STRIKE_RANGE: f32 = 300.0;
+const MELEE_STRIKE_DAMAGE_PCT: f32 = 1.0;
 
 #[derive(Component)]
 pub struct MeleeAttacker {
@@ -48,7 +49,10 @@ fn melee_attacker_system(
 
         attacker.elapsed = 0.0;
 
-        let damage = stats_query.get(caster).map(|s| s.apply(Stat::PhysicalDamage, 0.0)).unwrap_or(0.0);
+        let damage = stats_query
+            .get(caster)
+            .map(|s| s.final_of(Stat::PhysicalDamage) * MELEE_STRIKE_DAMAGE_PCT)
+            .unwrap_or(0.0);
 
         commands.entity(caster).insert(ShotFired);
         commands.spawn((

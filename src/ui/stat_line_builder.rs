@@ -53,23 +53,32 @@ struct Segment {
     color: Color,
 }
 
+fn format_number(value: f32) -> String {
+    let mut s = format!("{:.2}", value);
+    if s.contains('.') {
+        while s.ends_with('0') {
+            s.pop();
+        }
+        if s.ends_with('.') {
+            s.pop();
+        }
+    }
+    s
+}
+
 fn format_value(value: f32, template: &ValueTemplate, is_percent: bool) -> String {
-    let display_value = if is_percent {
-        (value * 100.0).round() as i32
-    } else {
-        value.round() as i32
-    };
+    let display = if is_percent { value * 100.0 } else { value };
 
     let formatted = match template.sign_mode {
-        SignMode::Default => format!("{}", display_value),
+        SignMode::Default => format_number(display),
         SignMode::ShowSign => {
-            if display_value >= 0 {
-                format!("+{}", display_value)
+            if display >= 0.0 {
+                format!("+{}", format_number(display))
             } else {
-                format!("{}", display_value)
+                format_number(display)
             }
         }
-        SignMode::Absolute => format!("{}", display_value.abs()),
+        SignMode::Absolute => format_number(display.abs()),
     };
 
     format!("{}{}{}", template.prefix, formatted, template.suffix)
@@ -209,7 +218,7 @@ fn collect_snapshot_segments(
                         negative_color()
                     };
                     segments.push(Segment {
-                        text: " → ".to_string(),
+                        text: " -> ".to_string(),
                         color: text_color(),
                     });
                     segments.push(Segment {

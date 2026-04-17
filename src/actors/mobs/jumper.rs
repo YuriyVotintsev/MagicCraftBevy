@@ -14,6 +14,8 @@ use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
 use super::spawn::{enemy_ability_shape_color, enemy_shape_color, spawn_enemy_core, EnemyBody};
 
+const JUMPER_SHOT_DAMAGE_PCT: f32 = 1.0;
+
 #[derive(Clone, Deserialize, Debug)]
 pub struct JumperStats {
     pub hp: f32,
@@ -201,7 +203,9 @@ fn fire_jumper_shot(
     ai: &JumperAi,
     caster_stats: Option<&ComputedStats>,
 ) {
-    let damage = caster_stats.map(|s| s.apply(Stat::PhysicalDamage, 0.0)).unwrap_or(0.0);
+    let damage = caster_stats
+        .map(|s| s.final_of(Stat::PhysicalDamage) * JUMPER_SHOT_DAMAGE_PCT)
+        .unwrap_or(0.0);
     let count = ai.projectile_count as usize;
     let base_dir = Vec2::X;
     let spread_rad = ai.spread_degrees.to_radians();
