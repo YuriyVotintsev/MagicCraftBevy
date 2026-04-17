@@ -1,5 +1,5 @@
 #import bevy_pbr::forward_io::VertexOutput
-#import bevy_pbr::mesh_view_bindings::globals
+#import bevy_pbr::mesh_view_bindings::{globals, view}
 
 struct DissolveData {
     color: vec4<f32>,
@@ -19,8 +19,8 @@ fn bayer8(px: vec2<f32>) -> f32 {
         15.0/64.0, 47.0/64.0,  7.0/64.0, 39.0/64.0, 13.0/64.0, 45.0/64.0,  5.0/64.0, 37.0/64.0,
         63.0/64.0, 31.0/64.0, 55.0/64.0, 23.0/64.0, 61.0/64.0, 29.0/64.0, 53.0/64.0, 21.0/64.0,
     );
-    let ix = u32(px.x) & 7u;
-    let iy = u32(px.y) & 7u;
+    let ix = u32(px.x - 8.0 * floor(px.x / 8.0));
+    let iy = u32(px.y - 8.0 * floor(px.y / 8.0));
     return pattern[iy * 8u + ix];
 }
 
@@ -32,9 +32,13 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     if (material.alpha <= 0.0) {
         discard;
     }
+    let cam_right = view.world_from_view[0].xyz;
+    let cam_up = view.world_from_view[1].xyz;
+    let u = dot(in.world_position.xyz, cam_right);
+    let v = dot(in.world_position.xyz, cam_up);
     let px = vec2<f32>(
-        floor(in.position.x + globals.time * 1.5),
-        floor(in.position.y + globals.time * 1.05),
+        floor((u + globals.time * 1.5) / 3.0),
+        floor((v + globals.time * 1.05) / 3.0),
     );
     if (bayer8(px) >= material.alpha) {
         discard;
