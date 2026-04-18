@@ -7,7 +7,7 @@ use crate::run::PlayerMoney;
 use crate::stats::{ComputedStats, Stat};
 use crate::GameState;
 
-use super::panel_radius;
+use super::widgets::panel_node;
 
 #[derive(Component)]
 pub struct HudRoot;
@@ -26,16 +26,17 @@ pub fn spawn_hud(mut commands: Commands) {
         Name::new("HudRoot"),
         HudRoot,
         DespawnOnExit(GameState::Playing),
-        Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px(20.0),
-            top: Val::Px(20.0),
-            flex_direction: FlexDirection::Column,
-            padding: UiRect::all(Val::Px(10.0)),
-            border_radius: panel_radius(),
-            ..default()
-        },
-        BackgroundColor(palette::color_alpha("ui_overlay_bg", 0.5)),
+        panel_node(
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(20.0),
+                top: Val::Px(20.0),
+                flex_direction: FlexDirection::Column,
+                padding: UiRect::all(Val::Px(10.0)),
+                ..default()
+            },
+            None,
+        ),
         children![
             (
                 MoneyText,

@@ -66,6 +66,7 @@
 
         // Background
         "cream":        (0.969, 0.949, 0.890),   // #F7F2E3
+        "cream_panel":  (0.930, 0.910, 0.850),   // #EDE8D9
         "cream_dark":   (0.75, 0.73, 0.68),
         "cream_darker": (0.55, 0.53, 0.48),
         "black":        (0.0, 0.0, 0.0),
@@ -84,7 +85,9 @@
 
         // UI surfaces
         "ui_screen_bg":       "cream",
-        "ui_panel_bg":        "maroon",
+        "ui_panel_bg":        "cream_panel",
+        "ui_panel_border":    "brown",
+        "ui_panel_shadow":    "cream_dark",
         "ui_overlay_bg":      "shadow",
 
         // UI text

@@ -4,7 +4,7 @@ use crate::game_state::GameState;
 use crate::palette;
 use crate::transition::{Transition, TransitionAction};
 
-use super::panel_radius;
+use super::widgets::{button_node, panel_node};
 
 #[derive(Component)]
 pub(super) enum MenuButton {
@@ -14,8 +14,6 @@ pub(super) enum MenuButton {
 
 pub(super) fn spawn_main_menu(mut commands: Commands) {
     let text = palette::color("ui_text");
-    let panel = palette::color("ui_panel_bg");
-    let button = palette::color("ui_button_normal");
     commands.spawn((
         Name::new("MainMenuRoot"),
         DespawnOnExit(GameState::MainMenu),
@@ -29,14 +27,15 @@ pub(super) fn spawn_main_menu(mut commands: Commands) {
         BackgroundColor(palette::color("ui_screen_bg")),
         children![
             (
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    align_items: AlignItems::Center,
-                    padding: UiRect::all(Val::Px(40.0)),
-                    border_radius: panel_radius(),
-                    ..default()
-                },
-                BackgroundColor(panel),
+                panel_node(
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        padding: UiRect::all(Val::Px(40.0)),
+                        ..default()
+                    },
+                    None,
+                ),
                 children![
                     (
                         Text::new("Magic Craft"),
@@ -51,10 +50,8 @@ pub(super) fn spawn_main_menu(mut commands: Commands) {
                         }
                     ),
                     (
-                        Button,
                         MenuButton::Play,
-                        button_node(),
-                        BackgroundColor(button),
+                        button_node(menu_button_node(), None),
                         children![(
                             Text::new("Play"),
                             TextFont {
@@ -65,10 +62,8 @@ pub(super) fn spawn_main_menu(mut commands: Commands) {
                         )]
                     ),
                     (
-                        Button,
                         MenuButton::Exit,
-                        button_node(),
-                        BackgroundColor(button),
+                        button_node(menu_button_node(), None),
                         children![(
                             Text::new("Exit"),
                             TextFont {
@@ -84,14 +79,13 @@ pub(super) fn spawn_main_menu(mut commands: Commands) {
     ));
 }
 
-fn button_node() -> Node {
+fn menu_button_node() -> Node {
     Node {
         width: Val::Px(250.0),
         height: Val::Px(65.0),
         margin: UiRect::all(Val::Px(10.0)),
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
-        border_radius: panel_radius(),
         ..default()
     }
 }

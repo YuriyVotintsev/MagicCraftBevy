@@ -4,7 +4,7 @@ use crate::game_state::GameState;
 use crate::palette;
 use crate::wave::CombatPhase;
 
-use super::panel_radius;
+use super::widgets::{button_node, panel_node};
 
 #[derive(Component)]
 pub(super) enum PauseButton {
@@ -14,7 +14,6 @@ pub(super) enum PauseButton {
 
 pub(super) fn spawn_pause_menu(mut commands: Commands) {
     let text = palette::color("ui_text");
-    let button = palette::color("ui_button_normal");
     commands.spawn((
         Name::new("PauseMenuRoot"),
         DespawnOnExit(CombatPhase::Paused),
@@ -30,14 +29,15 @@ pub(super) fn spawn_pause_menu(mut commands: Commands) {
         BackgroundColor(palette::color_alpha("ui_overlay_bg", 0.6)),
         children![
             (
-                Node {
-                    flex_direction: FlexDirection::Column,
-                    align_items: AlignItems::Center,
-                    padding: UiRect::all(Val::Px(40.0)),
-                    border_radius: panel_radius(),
-                    ..default()
-                },
-                BackgroundColor(palette::color("ui_panel_bg")),
+                panel_node(
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        padding: UiRect::all(Val::Px(40.0)),
+                        ..default()
+                    },
+                    None,
+                ),
                 children![
                     (
                         Text::new("Paused"),
@@ -52,10 +52,8 @@ pub(super) fn spawn_pause_menu(mut commands: Commands) {
                         }
                     ),
                     (
-                        Button,
                         PauseButton::Continue,
-                        button_node(),
-                        BackgroundColor(button),
+                        button_node(menu_button_node(), None),
                         children![(
                             Text::new("Continue"),
                             TextFont {
@@ -66,10 +64,8 @@ pub(super) fn spawn_pause_menu(mut commands: Commands) {
                         )]
                     ),
                     (
-                        Button,
                         PauseButton::EndRun,
-                        button_node(),
-                        BackgroundColor(button),
+                        button_node(menu_button_node(), None),
                         children![(
                             Text::new("End Run"),
                             TextFont {
@@ -85,14 +81,13 @@ pub(super) fn spawn_pause_menu(mut commands: Commands) {
     ));
 }
 
-fn button_node() -> Node {
+fn menu_button_node() -> Node {
     Node {
         width: Val::Px(250.0),
         height: Val::Px(65.0),
         margin: UiRect::all(Val::Px(10.0)),
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
-        border_radius: panel_radius(),
         ..default()
     }
 }

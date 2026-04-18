@@ -7,6 +7,7 @@ mod pause_menu;
 mod shop_view;
 mod stat_line_builder;
 mod stats_panel;
+mod widgets;
 
 use bevy::prelude::*;
 use bevy::ui::{UiScale, UiSystems};
@@ -16,11 +17,6 @@ use crate::arena::WINDOW_HEIGHT;
 use crate::game_state::GameState;
 use crate::rune::fill_shop_offer;
 use crate::wave::{CombatPhase, WavePhase};
-
-pub const PANEL_RADIUS: f32 = 20.0;
-pub fn panel_radius() -> BorderRadius {
-    BorderRadius::all(Val::Px(PANEL_RADIUS))
-}
 
 #[derive(Resource, Default, Debug, Clone, Copy)]
 pub struct Viewport {

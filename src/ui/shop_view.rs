@@ -18,7 +18,8 @@ use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
 
 use super::stat_line_builder::{StatLineBuilder, StatRenderMode};
-use super::{panel_radius, Viewport};
+use super::widgets::{button_node, panel_node};
+use super::Viewport;
 
 const RUNE_ICON_INSET: f32 = 14.0;
 
@@ -245,20 +246,20 @@ pub fn spawn_shop_screen(
     let btn_pos = start_run_btn_pos(&viewport);
     commands.spawn((
         ChildOf(root),
-        Button,
         StartRunButton,
-        Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px(btn_pos.x),
-            top: Val::Px(btn_pos.y),
-            width: Val::Px(START_RUN_BTN_W),
-            height: Val::Px(START_RUN_BTN_H),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            border_radius: panel_radius(),
-            ..default()
-        },
-        BackgroundColor(palette::color("ui_button_normal")),
+        button_node(
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(btn_pos.x),
+                top: Val::Px(btn_pos.y),
+                width: Val::Px(START_RUN_BTN_W),
+                height: Val::Px(START_RUN_BTN_H),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            None,
+        ),
         children![(
             Text::new("Start Run"),
             TextFont {
@@ -328,20 +329,20 @@ pub fn spawn_shop_screen(
     let reroll_pos = reroll_btn_pos(&viewport);
     commands.spawn((
         ChildOf(root),
-        Button,
         RerollButton,
-        Node {
-            position_type: PositionType::Absolute,
-            left: Val::Px(reroll_pos.x),
-            top: Val::Px(reroll_pos.y),
-            width: Val::Px(REROLL_BTN_W),
-            height: Val::Px(REROLL_BTN_H),
-            justify_content: JustifyContent::Center,
-            align_items: AlignItems::Center,
-            border_radius: panel_radius(),
-            ..default()
-        },
-        BackgroundColor(palette::color("ui_button_normal")),
+        button_node(
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Px(reroll_pos.x),
+                top: Val::Px(reroll_pos.y),
+                width: Val::Px(REROLL_BTN_W),
+                height: Val::Px(REROLL_BTN_H),
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            None,
+        ),
         children![(
             RerollButtonLabel,
             Text::new(""),
@@ -1260,18 +1261,19 @@ pub fn update_tooltip(
         .spawn((
             ChildOf(root_entity),
             RuneTooltipRoot,
-            Node {
-                position_type: PositionType::Absolute,
-                right: Val::Px(TOOLTIP_RIGHT),
-                bottom: Val::Px(TOOLTIP_BOTTOM),
-                width: Val::Px(TOOLTIP_W),
-                padding: UiRect::all(Val::Px(TOOLTIP_PAD)),
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(6.0),
-                border_radius: panel_radius(),
-                ..default()
-            },
-            BackgroundColor(palette::color("ui_panel_bg")),
+            panel_node(
+                Node {
+                    position_type: PositionType::Absolute,
+                    right: Val::Px(TOOLTIP_RIGHT),
+                    bottom: Val::Px(TOOLTIP_BOTTOM),
+                    width: Val::Px(TOOLTIP_W),
+                    padding: UiRect::all(Val::Px(TOOLTIP_PAD)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(6.0),
+                    ..default()
+                },
+                None,
+            ),
             GlobalZIndex(70),
         ))
         .id();

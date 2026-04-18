@@ -11,7 +11,7 @@ use crate::transition::{Transition, TransitionAction};
 use crate::wave::EnemySpawnPool;
 use crate::wave::{CombatPhase, WavePhase};
 
-use super::panel_radius;
+use super::widgets::{button_node, panel_node};
 
 const SLIDER_MIN: f32 = 1.0;
 const SLIDER_MAX: f32 = 89.0;
@@ -79,15 +79,15 @@ pub(super) fn toggle_dev_menu(
 fn cheat_button(label: &str, color: Color, marker: impl Component) -> impl Bundle {
     (
         marker,
-        Button,
-        Node {
-            margin: UiRect::top(Val::Px(10.0)),
-            padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
-            justify_content: JustifyContent::Center,
-            border_radius: panel_radius(),
-            ..default()
-        },
-        BackgroundColor(palette::color("ui_button_normal")),
+        button_node(
+            Node {
+                margin: UiRect::top(Val::Px(10.0)),
+                padding: UiRect::axes(Val::Px(16.0), Val::Px(10.0)),
+                justify_content: JustifyContent::Center,
+                ..default()
+            },
+            None,
+        ),
         children![
             (
                 Text::new(label),
@@ -112,15 +112,15 @@ fn enemy_toggle_row(index: usize, name: &str, enabled: bool) -> impl Bundle {
 
     (
         EnemyToggleButton(index),
-        Button,
-        Node {
-            padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
-            margin: UiRect::top(Val::Px(4.0)),
-            justify_content: JustifyContent::FlexStart,
-            border_radius: panel_radius(),
-            ..default()
-        },
-        BackgroundColor(palette::color("ui_button_normal")),
+        button_node(
+            Node {
+                padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
+                margin: UiRect::top(Val::Px(4.0)),
+                justify_content: JustifyContent::FlexStart,
+                ..default()
+            },
+            None,
+        ),
         children![
             (
                 EnemyToggleText(index),
@@ -227,7 +227,6 @@ pub(super) fn spawn_dev_menu(
             width: Val::Percent(100.0),
             height: Val::Px(24.0),
             overflow: Overflow::clip(),
-            border_radius: panel_radius(),
             ..default()
         },
         BackgroundColor(palette::color("ui_button_normal")),
@@ -238,7 +237,7 @@ pub(super) fn spawn_dev_menu(
     let damage_btn = commands.spawn(cheat_button("Phys Damage +100", palette::color("ui_text_negative"), CheatDamageButton)).id();
     let win_wave_btn = commands.spawn(cheat_button("Win Wave", palette::color("ui_text"), CheatWinWaveButton)).id();
 
-    let panel = commands.spawn((
+    let panel = commands.spawn(panel_node(
         Node {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Stretch,
@@ -246,10 +245,9 @@ pub(super) fn spawn_dev_menu(
             width: Val::Px(500.0),
             max_height: Val::Percent(90.0),
             overflow: Overflow::scroll_y(),
-            border_radius: panel_radius(),
             ..default()
         },
-        BackgroundColor(palette::color("ui_panel_bg")),
+        None,
     )).add_children(&[
         title, angle_row, slider, money_btn, health_btn, damage_btn, win_wave_btn, enemy_container,
     ]).id();

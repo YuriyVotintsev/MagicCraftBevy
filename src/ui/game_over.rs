@@ -4,7 +4,7 @@ use crate::game_state::GameState;
 use crate::palette;
 use crate::transition::{Transition, TransitionAction};
 
-use super::panel_radius;
+use super::widgets::button_node;
 
 #[derive(Component)]
 pub enum GameOverButton {
@@ -14,7 +14,6 @@ pub enum GameOverButton {
 
 pub fn spawn_game_over_screen(mut commands: Commands) {
     let text = palette::color("ui_text");
-    let button = palette::color("ui_button_normal");
     commands.spawn((
         Name::new("GameOverRoot"),
         DespawnOnExit(GameState::GameOver),
@@ -39,10 +38,8 @@ pub fn spawn_game_over_screen(mut commands: Commands) {
                 },
             ),
             (
-                Button,
                 GameOverButton::NewRun,
-                button_node(),
-                BackgroundColor(button),
+                button_node(menu_button_node(), None),
                 children![(
                     Text::new("New Run"),
                     TextFont { font_size: 32.0, ..default() },
@@ -50,10 +47,8 @@ pub fn spawn_game_over_screen(mut commands: Commands) {
                 )],
             ),
             (
-                Button,
                 GameOverButton::MainMenu,
-                button_node(),
-                BackgroundColor(button),
+                button_node(menu_button_node(), None),
                 children![(
                     Text::new("Main Menu"),
                     TextFont { font_size: 32.0, ..default() },
@@ -64,14 +59,13 @@ pub fn spawn_game_over_screen(mut commands: Commands) {
     ));
 }
 
-fn button_node() -> Node {
+fn menu_button_node() -> Node {
     Node {
         width: Val::Px(250.0),
         height: Val::Px(65.0),
         margin: UiRect::all(Val::Px(10.0)),
         justify_content: JustifyContent::Center,
         align_items: AlignItems::Center,
-        border_radius: panel_radius(),
         ..default()
     }
 }

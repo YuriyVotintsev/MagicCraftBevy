@@ -9,7 +9,8 @@ use crate::stats::{ComputedStats, Stat, StatCalculators, StatDisplayRegistry};
 
 use super::shop_view::{cursor_ui_pos, find_drop_target, ShopRoot};
 use super::stat_line_builder::{StatLineBuilder, StatRenderMode};
-use super::{panel_radius, Viewport};
+use super::widgets::panel_node;
+use super::Viewport;
 
 const PANEL_LEFT: f32 = 40.0;
 const PANEL_WIDTH: f32 = 320.0;
@@ -65,15 +66,16 @@ pub fn spawn_stats_panel(
         .spawn((
             ChildOf(anchor),
             StatsPanelRoot,
-            Node {
-                width: Val::Px(PANEL_WIDTH),
-                padding: UiRect::all(Val::Px(PANEL_PADDING)),
-                flex_direction: FlexDirection::Column,
-                row_gap: Val::Px(6.0),
-                border_radius: panel_radius(),
-                ..default()
-            },
-            BackgroundColor(palette::color("ui_panel_bg")),
+            panel_node(
+                Node {
+                    width: Val::Px(PANEL_WIDTH),
+                    padding: UiRect::all(Val::Px(PANEL_PADDING)),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(6.0),
+                    ..default()
+                },
+                None,
+            ),
         ))
         .id();
 
