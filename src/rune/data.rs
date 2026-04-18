@@ -3,7 +3,6 @@ use std::collections::{HashMap, HashSet};
 
 use super::content::{RuneKind, Tier};
 use super::hex::HexCoord;
-use crate::stats::Stat;
 
 pub const GRID_RADIUS: i32 = 3;
 pub const SHOP_SLOTS: usize = 4;
@@ -43,15 +42,13 @@ pub struct GridCellView {
 }
 
 #[derive(Component, Copy, Clone, Debug)]
-pub struct JokerSlotView {
-    pub index: usize,
-}
+pub struct JokerSlotView;
 
 #[derive(Component, Copy, Clone, Debug)]
 pub struct Dragging {
     pub rune: Rune,
     pub from: RuneSource,
-    pub grab_offset: Vec2,
+    pub grab_offset: Vec3,
 }
 
 #[derive(Resource)]
@@ -77,11 +74,7 @@ pub struct RuneGrid {
 
 impl RuneGrid {
     pub fn new_with_initial_unlocked() -> Self {
-        let mut unlocked = HashSet::new();
-        unlocked.insert(HexCoord::CENTER);
-        for n in HexCoord::CENTER.neighbors() {
-            unlocked.insert(n);
-        }
+        let unlocked = HexCoord::all_within_radius(2).into_iter().collect();
         Self {
             cells: HashMap::new(),
             unlocked,
@@ -112,25 +105,10 @@ pub struct RerollState {
 #[derive(Resource, Default)]
 pub struct GridHighlights {
     pub center_entity: Option<Entity>,
-    pub center_pos: Option<Vec2>,
+    pub center_pos: Option<Vec3>,
     pub write_targets: HashSet<HexCoord>,
     pub write_sources: HashSet<HexCoord>,
     pub pattern_cells: HashSet<HexCoord>,
-}
-
-#[derive(Resource)]
-pub struct IconAssets {
-    by_stat: HashMap<Stat, Handle<Image>>,
-}
-
-impl IconAssets {
-    pub fn new(by_stat: HashMap<Stat, Handle<Image>>) -> Self {
-        Self { by_stat }
-    }
-
-    pub fn for_stat(&self, stat: Stat) -> Option<&Handle<Image>> {
-        self.by_stat.get(&stat)
-    }
 }
 
 pub fn can_place(is_joker: bool, target: RuneSource, grid: &RuneGrid) -> bool {

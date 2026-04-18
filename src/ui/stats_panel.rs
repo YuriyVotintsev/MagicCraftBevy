@@ -1,18 +1,19 @@
 use bevy::prelude::*;
-use bevy::ui::UiScale;
 use bevy::window::PrimaryWindow;
 
 use crate::actors::compute_player_stats;
+use crate::coord;
 use crate::palette;
-use crate::rune::{Dragging, GridCellView, JokerSlotView, RuneGrid, RuneSource};
+use crate::rune::{
+    find_drop_target_world, Dragging, RuneGrid, RuneSource,
+};
 use crate::stats::{ComputedStats, Stat, StatCalculators, StatDisplayRegistry};
 
-use super::shop_view::{cursor_ui_pos, find_drop_target, ShopRoot};
 use super::stat_line_builder::{StatLineBuilder, StatRenderMode};
 use super::widgets::panel_node;
-use super::Viewport;
 
 const PANEL_LEFT: f32 = 40.0;
+const PANEL_TOP: f32 = 100.0;
 const PANEL_WIDTH: f32 = 320.0;
 const PANEL_PADDING: f32 = 14.0;
 const ROW_FONT: f32 = 16.0;
@@ -25,9 +26,6 @@ pub struct StatsPanelState {
 }
 
 #[derive(Component)]
-pub struct StatsPanelAnchor;
-
-#[derive(Component)]
 pub struct StatsPanelRoot;
 
 #[derive(Component)]
@@ -36,38 +34,17 @@ pub struct StatsPanelList;
 #[derive(Component)]
 pub struct StatRow;
 
-pub fn spawn_stats_panel(
-    mut commands: Commands,
-    root: Query<Entity, With<ShopRoot>>,
-) {
-    let Ok(root_entity) = root.single() else {
-        return;
-    };
-
-    let anchor = commands
-        .spawn((
-            ChildOf(root_entity),
-            StatsPanelAnchor,
-            Node {
-                position_type: PositionType::Absolute,
-                left: Val::Px(PANEL_LEFT),
-                top: Val::Px(0.0),
-                bottom: Val::Px(0.0),
-                flex_direction: FlexDirection::Column,
-                justify_content: JustifyContent::Center,
-                align_items: AlignItems::FlexStart,
-                ..default()
-            },
-            GlobalZIndex(55),
-        ))
-        .id();
-
+pub fn spawn_stats_panel(mut commands: Commands) {
     let panel = commands
         .spawn((
-            ChildOf(anchor),
             StatsPanelRoot,
+            DespawnOnExit(crate::wave::WavePhase::Shop),
+            GlobalZIndex(50),
             panel_node(
                 Node {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(PANEL_LEFT),
+                    top: Val::Px(PANEL_TOP),
                     width: Val::Px(PANEL_WIDTH),
                     padding: UiRect::all(Val::Px(PANEL_PADDING)),
                     flex_direction: FlexDirection::Column,
@@ -82,10 +59,7 @@ pub fn spawn_stats_panel(
     commands.spawn((
         ChildOf(panel),
         Text::new("Stats"),
-        TextFont {
-            font_size: HEADER_FONT,
-            ..default()
-        },
+        TextFont { font_size: HEADER_FONT, ..default() },
         TextColor(palette::color("ui_text")),
     ));
 
@@ -105,12 +79,9 @@ pub fn compute_state(
     mut state: ResMut<StatsPanelState>,
     grid: Res<RuneGrid>,
     calculators: Res<StatCalculators>,
-    viewport: Res<Viewport>,
     window_q: Query<&Window, With<PrimaryWindow>>,
-    ui_scale: Res<UiScale>,
+    camera_q: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
     dragging: Query<&Dragging>,
-    cells: Query<&GridCellView>,
-    joker_slots: Query<&JokerSlotView>,
 ) {
     let drag = dragging.iter().next().copied();
 
@@ -126,16 +97,10 @@ pub fn compute_state(
 
     let Some(d) = drag else { return };
     let Ok(window) = window_q.single() else { return };
-    let Some(cursor) = cursor_ui_pos(window, ui_scale.0) else { return };
-    let rune_center = cursor - d.grab_offset;
-    let Some(target) = find_drop_target(
-        rune_center,
-        d.rune.is_joker(),
-        &viewport,
-        &grid,
-        &cells,
-        &joker_slots,
-    ) else {
+    let Ok((camera, transform)) = camera_q.single() else { return };
+    let Some(cursor) = coord::cursor_ground_pos(window, camera, transform) else { return };
+    let center = Vec3::new(cursor.x + d.grab_offset.x, 0.0, cursor.z + d.grab_offset.z);
+    let Some(target) = find_drop_target_world(center, d.rune.is_joker(), &grid) else {
         return;
     };
     if target == d.from {
@@ -159,9 +124,7 @@ pub fn compute_state(
                 preview_grid.cells.insert(fc, b);
             }
         }
-        RuneSource::Joker(_) => {
-            // Jokers don't contribute to stats; drop removes grid rune if source was grid.
-        }
+        RuneSource::Joker(_) => {}
         RuneSource::Shop(_) => return,
     }
 

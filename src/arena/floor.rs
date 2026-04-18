@@ -60,6 +60,10 @@ fn update_floor_mesh(
     }
 }
 
+pub(super) fn shop_floor_mesh(width: f32, height: f32, radius: f32, z_stretch: f32) -> Mesh {
+    rounded_floor_mesh(width, height, radius, z_stretch)
+}
+
 fn rounded_floor_mesh(width: f32, height: f32, radius: f32, z_stretch: f32) -> Mesh {
     use bevy::mesh::{Indices, PrimitiveTopology};
 

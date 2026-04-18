@@ -141,11 +141,3 @@ pub fn roll_shop_offer(
     offer.next_id = next_id;
 }
 
-pub fn fill_shop_offer(
-    mut offer: ResMut<ShopOffer>,
-    grid: Res<RuneGrid>,
-    balance: Res<GameBalance>,
-    costs: Res<RuneCosts>,
-) {
-    roll_shop_offer(&mut offer, &grid, &balance, &costs);
-}

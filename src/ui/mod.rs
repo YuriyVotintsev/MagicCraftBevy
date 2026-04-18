@@ -4,18 +4,17 @@ mod hud;
 mod loading;
 mod main_menu;
 mod pause_menu;
-mod shop_view;
+mod shop_hud;
 mod stat_line_builder;
 mod stats_panel;
 mod widgets;
 
 use bevy::prelude::*;
-use bevy::ui::{UiScale, UiSystems};
+use bevy::ui::UiScale;
 use bevy::window::{PrimaryWindow, WindowResized};
 
 use crate::arena::WINDOW_HEIGHT;
 use crate::game_state::GameState;
-use crate::rune::fill_shop_offer;
 use crate::wave::{CombatPhase, WavePhase};
 
 #[derive(Resource, Default, Debug, Clone, Copy)]
@@ -29,6 +28,7 @@ pub struct UiPlugin;
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
         widgets::register(app);
+        shop_hud::register(app);
         app.init_resource::<Viewport>()
             .init_resource::<stats_panel::StatsPanelState>()
             .add_systems(Startup, init_layout)
@@ -50,46 +50,12 @@ impl Plugin for UiPlugin {
             )
             .add_systems(
                 OnEnter(WavePhase::Shop),
-                (
-                    shop_view::reset_reroll_cost,
-                    fill_shop_offer,
-                    shop_view::spawn_shop_screen,
-                    stats_panel::spawn_stats_panel,
-                )
-                    .chain(),
-            )
-            .add_systems(
-                OnExit(WavePhase::Shop),
-                shop_view::restore_dragged_on_exit,
+                stats_panel::spawn_stats_panel,
             )
             .add_systems(
                 Update,
-                (
-                    shop_view::start_run_system,
-                    shop_view::reroll_button_system,
-                    shop_view::update_reroll_label,
-                    shop_view::update_coins_text,
-                    shop_view::update_shop_price_labels,
-                    shop_view::reposition_shop_ui,
-                    (
-                        shop_view::start_drag,
-                        shop_view::finish_drag,
-                        shop_view::reconcile_rune_entities,
-                        shop_view::sync_cell_lock_visuals,
-                        shop_view::update_highlights,
-                        shop_view::apply_highlights,
-                        shop_view::update_tooltip,
-                        stats_panel::compute_state,
-                        stats_panel::render,
-                    )
-                        .chain(),
-                )
-                    .run_if(in_state(WavePhase::Shop)),
-            )
-            .add_systems(
-                PostUpdate,
-                shop_view::follow_cursor
-                    .before(UiSystems::Layout)
+                (stats_panel::compute_state, stats_panel::render)
+                    .chain()
                     .run_if(in_state(WavePhase::Shop)),
             )
             .add_systems(OnEnter(GameState::GameOver), game_over::spawn_game_over_screen)
