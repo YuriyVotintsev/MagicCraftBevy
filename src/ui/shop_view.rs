@@ -477,18 +477,6 @@ pub fn reroll_button_system(
     }
 }
 
-pub fn reroll_button_visuals(
-    mut query: Query<(&Interaction, &mut BackgroundColor), (Changed<Interaction>, With<RerollButton>)>,
-) {
-    for (interaction, mut color) in &mut query {
-        *color = match interaction {
-            Interaction::Pressed => palette::color("ui_button_pressed").into(),
-            Interaction::Hovered => palette::color("ui_button_hover").into(),
-            Interaction::None => palette::color("ui_button_normal").into(),
-        };
-    }
-}
-
 pub fn update_reroll_label(
     reroll: Res<RerollState>,
     money: Res<PlayerMoney>,
@@ -511,21 +499,12 @@ pub fn update_reroll_label(
 }
 
 pub fn start_run_system(
-    mut interaction_query: Query<
-        (&Interaction, &mut BackgroundColor),
-        (Changed<Interaction>, With<StartRunButton>),
-    >,
+    interaction_query: Query<&Interaction, (Changed<Interaction>, With<StartRunButton>)>,
     mut transition: ResMut<Transition>,
 ) {
-    for (interaction, mut color) in &mut interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                *color = palette::color("ui_button_pressed").into();
-                transition.request(TransitionAction::Wave(WavePhase::Combat));
-            }
-            Interaction::Hovered => *color = palette::color("ui_button_hover").into(),
-            Interaction::None => *color = palette::color("ui_button_normal").into(),
-        }
+    for interaction in &interaction_query {
+        if *interaction != Interaction::Pressed { continue }
+        transition.request(TransitionAction::Wave(WavePhase::Combat));
     }
 }
 

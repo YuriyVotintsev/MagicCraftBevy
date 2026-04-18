@@ -102,8 +102,8 @@
         "ui_text_gameover":   "coral",
 
         // UI buttons
-        "ui_button_normal":   "border",
-        "ui_button_hover":    "void",
+        "ui_button_normal":   "cream_panel",
+        "ui_button_hover":    "border",
         "ui_button_pressed":  "lime",
 
         // UI slots / cells

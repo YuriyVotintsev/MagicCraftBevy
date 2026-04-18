@@ -114,31 +114,22 @@ pub(super) fn toggle_pause_system(
 }
 
 pub(super) fn pause_button_system(
-    mut interaction_query: Query<
-        (&Interaction, &PauseButton, &mut BackgroundColor),
-        Changed<Interaction>,
-    >,
+    interaction_query: Query<(&Interaction, &PauseButton), Changed<Interaction>>,
     mut next_phase: ResMut<NextState<CombatPhase>>,
     mut next_game_state: ResMut<NextState<GameState>>,
     mut virtual_time: ResMut<Time<Virtual>>,
 ) {
-    for (interaction, button, mut color) in &mut interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                *color = palette::color("ui_button_pressed").into();
-                match button {
-                    PauseButton::Continue => {
-                        virtual_time.unpause();
-                        next_phase.set(CombatPhase::Running);
-                    }
-                    PauseButton::EndRun => {
-                        virtual_time.unpause();
-                        next_game_state.set(GameState::MainMenu);
-                    }
-                }
+    for (interaction, button) in &interaction_query {
+        if *interaction != Interaction::Pressed { continue }
+        match button {
+            PauseButton::Continue => {
+                virtual_time.unpause();
+                next_phase.set(CombatPhase::Running);
             }
-            Interaction::Hovered => *color = palette::color("ui_button_hover").into(),
-            Interaction::None => *color = palette::color("ui_button_normal").into(),
+            PauseButton::EndRun => {
+                virtual_time.unpause();
+                next_game_state.set(GameState::MainMenu);
+            }
         }
     }
 }

@@ -4,7 +4,7 @@ use crate::palette;
 
 pub const PANEL_RADIUS: f32 = 20.0;
 pub const PANEL_BORDER_WIDTH: f32 = 3.0;
-pub const PANEL_SHADOW_OFFSET: f32 = 6.0;
+pub const PANEL_SHADOW_OFFSET: f32 = 4.0;
 
 pub fn panel_node(mut node: Node, border: Option<Color>) -> impl Bundle {
     node.border = UiRect::all(Val::Px(PANEL_BORDER_WIDTH));

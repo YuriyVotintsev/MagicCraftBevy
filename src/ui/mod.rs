@@ -28,6 +28,7 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
+        widgets::register(app);
         app.init_resource::<Viewport>()
             .init_resource::<stats_panel::StatsPanelState>()
             .add_systems(Startup, init_layout)
@@ -66,7 +67,6 @@ impl Plugin for UiPlugin {
                 (
                     shop_view::start_run_system,
                     shop_view::reroll_button_system,
-                    shop_view::reroll_button_visuals,
                     shop_view::update_reroll_label,
                     shop_view::update_coins_text,
                     shop_view::update_shop_price_labels,

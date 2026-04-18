@@ -91,28 +91,19 @@ fn menu_button_node() -> Node {
 }
 
 pub(super) fn menu_button_system(
-    mut interaction_query: Query<
-        (&Interaction, &MenuButton, &mut BackgroundColor),
-        Changed<Interaction>,
-    >,
+    interaction_query: Query<(&Interaction, &MenuButton), Changed<Interaction>>,
     mut transition: ResMut<Transition>,
     mut exit: MessageWriter<AppExit>,
 ) {
-    for (interaction, button, mut color) in &mut interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                *color = palette::color("ui_button_pressed").into();
-                match button {
-                    MenuButton::Play => {
-                        transition.request(TransitionAction::Game(GameState::Playing));
-                    }
-                    MenuButton::Exit => {
-                        exit.write(AppExit::Success);
-                    }
-                }
+    for (interaction, button) in &interaction_query {
+        if *interaction != Interaction::Pressed { continue }
+        match button {
+            MenuButton::Play => {
+                transition.request(TransitionAction::Game(GameState::Playing));
             }
-            Interaction::Hovered => *color = palette::color("ui_button_hover").into(),
-            Interaction::None => *color = palette::color("ui_button_normal").into(),
+            MenuButton::Exit => {
+                exit.write(AppExit::Success);
+            }
         }
     }
 }

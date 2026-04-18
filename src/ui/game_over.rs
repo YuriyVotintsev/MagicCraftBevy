@@ -71,24 +71,15 @@ fn menu_button_node() -> Node {
 }
 
 pub fn game_over_button_system(
-    mut interaction_query: Query<
-        (&Interaction, &GameOverButton, &mut BackgroundColor),
-        Changed<Interaction>,
-    >,
+    interaction_query: Query<(&Interaction, &GameOverButton), Changed<Interaction>>,
     mut transition: ResMut<Transition>,
 ) {
-    for (interaction, button, mut color) in &mut interaction_query {
-        match interaction {
-            Interaction::Pressed => {
-                *color = palette::color("ui_button_pressed").into();
-                let target = match button {
-                    GameOverButton::NewRun => GameState::Playing,
-                    GameOverButton::MainMenu => GameState::MainMenu,
-                };
-                transition.request(TransitionAction::Game(target));
-            }
-            Interaction::Hovered => *color = palette::color("ui_button_hover").into(),
-            Interaction::None => *color = palette::color("ui_button_normal").into(),
-        }
+    for (interaction, button) in &interaction_query {
+        if *interaction != Interaction::Pressed { continue }
+        let target = match button {
+            GameOverButton::NewRun => GameState::Playing,
+            GameOverButton::MainMenu => GameState::MainMenu,
+        };
+        transition.request(TransitionAction::Game(target));
     }
 }
