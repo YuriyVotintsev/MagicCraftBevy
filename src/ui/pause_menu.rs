@@ -4,7 +4,7 @@ use crate::game_state::GameState;
 use crate::palette;
 use crate::wave::CombatPhase;
 
-use super::widgets::{button_node, panel_node};
+use super::widgets::{button_node, panel_node, ReleasedButtons};
 
 #[derive(Component)]
 pub(super) enum PauseButton {
@@ -114,22 +114,19 @@ pub(super) fn toggle_pause_system(
 }
 
 pub(super) fn pause_button_system(
-    interaction_query: Query<(&Interaction, &PauseButton), Changed<Interaction>>,
+    buttons: ReleasedButtons<PauseButton>,
     mut next_phase: ResMut<NextState<CombatPhase>>,
     mut next_game_state: ResMut<NextState<GameState>>,
     mut virtual_time: ResMut<Time<Virtual>>,
 ) {
-    for (interaction, button) in &interaction_query {
-        if *interaction != Interaction::Pressed { continue }
-        match button {
-            PauseButton::Continue => {
-                virtual_time.unpause();
-                next_phase.set(CombatPhase::Running);
-            }
-            PauseButton::EndRun => {
-                virtual_time.unpause();
-                next_game_state.set(GameState::MainMenu);
-            }
+    buttons.for_each(|button| match button {
+        PauseButton::Continue => {
+            virtual_time.unpause();
+            next_phase.set(CombatPhase::Running);
         }
-    }
+        PauseButton::EndRun => {
+            virtual_time.unpause();
+            next_game_state.set(GameState::MainMenu);
+        }
+    });
 }

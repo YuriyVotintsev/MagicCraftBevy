@@ -4,7 +4,7 @@ use crate::game_state::GameState;
 use crate::palette;
 use crate::transition::{Transition, TransitionAction};
 
-use super::widgets::{button_node, panel_node};
+use super::widgets::{button_node, panel_node, ReleasedButtons};
 
 #[derive(Component)]
 pub(super) enum MenuButton {
@@ -91,19 +91,16 @@ fn menu_button_node() -> Node {
 }
 
 pub(super) fn menu_button_system(
-    interaction_query: Query<(&Interaction, &MenuButton), Changed<Interaction>>,
+    buttons: ReleasedButtons<MenuButton>,
     mut transition: ResMut<Transition>,
     mut exit: MessageWriter<AppExit>,
 ) {
-    for (interaction, button) in &interaction_query {
-        if *interaction != Interaction::Pressed { continue }
-        match button {
-            MenuButton::Play => {
-                transition.request(TransitionAction::Game(GameState::Playing));
-            }
-            MenuButton::Exit => {
-                exit.write(AppExit::Success);
-            }
+    buttons.for_each(|button| match button {
+        MenuButton::Play => {
+            transition.request(TransitionAction::Game(GameState::Playing));
         }
-    }
+        MenuButton::Exit => {
+            exit.write(AppExit::Success);
+        }
+    });
 }

@@ -4,7 +4,7 @@ use crate::game_state::GameState;
 use crate::palette;
 use crate::transition::{Transition, TransitionAction};
 
-use super::widgets::button_node;
+use super::widgets::{button_node, ReleasedButtons};
 
 #[derive(Component)]
 pub enum GameOverButton {
@@ -71,15 +71,14 @@ fn menu_button_node() -> Node {
 }
 
 pub fn game_over_button_system(
-    interaction_query: Query<(&Interaction, &GameOverButton), Changed<Interaction>>,
+    buttons: ReleasedButtons<GameOverButton>,
     mut transition: ResMut<Transition>,
 ) {
-    for (interaction, button) in &interaction_query {
-        if *interaction != Interaction::Pressed { continue }
+    buttons.for_each(|button| {
         let target = match button {
             GameOverButton::NewRun => GameState::Playing,
             GameOverButton::MainMenu => GameState::MainMenu,
         };
         transition.request(TransitionAction::Game(target));
-    }
+    });
 }

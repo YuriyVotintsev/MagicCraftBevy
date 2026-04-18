@@ -11,7 +11,7 @@ use crate::transition::{Transition, TransitionAction};
 use crate::wave::EnemySpawnPool;
 use crate::wave::{CombatPhase, WavePhase};
 
-use super::widgets::{button_node, panel_node};
+use super::widgets::{button_node, panel_node, ReleasedButtons};
 
 const SLIDER_MIN: f32 = 1.0;
 const SLIDER_MAX: f32 = 89.0;
@@ -269,107 +269,93 @@ pub(super) fn spawn_dev_menu(
 }
 
 pub(super) fn cheat_money(
-    query: Query<&Interaction, (Changed<Interaction>, With<CheatMoneyButton>)>,
+    buttons: ReleasedButtons<CheatMoneyButton>,
     mut money: ResMut<PlayerMoney>,
 ) {
-    for interaction in &query {
-        if *interaction == Interaction::Pressed {
-            money.earn(1000);
-        }
-    }
+    buttons.for_each(|_| {
+        money.earn(1000);
+    });
 }
 
 pub(super) fn cheat_health(
-    query: Query<&Interaction, (Changed<Interaction>, With<CheatHealthButton>)>,
+    buttons: ReleasedButtons<CheatHealthButton>,
     mut player_query: Query<(&mut Modifiers, &mut DirtyStats, &mut Health), With<Player>>,
 ) {
-    for interaction in &query {
-        if *interaction == Interaction::Pressed {
-            for (mut modifiers, mut dirty, mut health) in &mut player_query {
-                modifiers.add(Stat::MaxLife, ModifierKind::Flat, 100.0);
-                dirty.mark(Stat::MaxLife);
-                health.current += 100.0;
-            }
+    buttons.for_each(|_| {
+        for (mut modifiers, mut dirty, mut health) in &mut player_query {
+            modifiers.add(Stat::MaxLife, ModifierKind::Flat, 100.0);
+            dirty.mark(Stat::MaxLife);
+            health.current += 100.0;
         }
-    }
+    });
 }
 
 pub(super) fn cheat_damage(
-    query: Query<&Interaction, (Changed<Interaction>, With<CheatDamageButton>)>,
+    buttons: ReleasedButtons<CheatDamageButton>,
     mut player_query: Query<(&mut Modifiers, &mut DirtyStats), With<Player>>,
 ) {
-    for interaction in &query {
-        if *interaction == Interaction::Pressed {
-            for (mut modifiers, mut dirty) in &mut player_query {
-                modifiers.add(Stat::PhysicalDamage, ModifierKind::Flat, 100.0);
-                dirty.mark(Stat::PhysicalDamage);
-            }
+    buttons.for_each(|_| {
+        for (mut modifiers, mut dirty) in &mut player_query {
+            modifiers.add(Stat::PhysicalDamage, ModifierKind::Flat, 100.0);
+            dirty.mark(Stat::PhysicalDamage);
         }
-    }
+    });
 }
 
 pub(super) fn cheat_win_wave(
-    query: Query<&Interaction, (Changed<Interaction>, With<CheatWinWaveButton>)>,
+    buttons: ReleasedButtons<CheatWinWaveButton>,
     mut next_combat: ResMut<NextState<CombatPhase>>,
     mut transition: ResMut<Transition>,
     mut virtual_time: ResMut<Time<Virtual>>,
 ) {
-    for interaction in &query {
-        if *interaction == Interaction::Pressed {
-            virtual_time.unpause();
-            next_combat.set(CombatPhase::Running);
-            transition.request(TransitionAction::Wave(WavePhase::Shop));
-        }
-    }
+    buttons.for_each(|_| {
+        virtual_time.unpause();
+        next_combat.set(CombatPhase::Running);
+        transition.request(TransitionAction::Wave(WavePhase::Shop));
+    });
 }
 
 pub(super) fn toggle_enemy_type(
-    query: Query<(&Interaction, &EnemyToggleButton), Changed<Interaction>>,
+    buttons: ReleasedButtons<EnemyToggleButton>,
     mut spawn_pool: ResMut<EnemySpawnPool>,
     mut text_query: Query<(&EnemyToggleText, &mut Text, &mut TextColor)>,
 ) {
-    for (interaction, toggle) in &query {
-        if *interaction == Interaction::Pressed {
-            if let Some((kind, enabled)) = spawn_pool.enabled.get_mut(toggle.0) {
-                *enabled = !*enabled;
-                let new_enabled = *enabled;
-                let name = kind.id();
-                update_toggle_text(&mut text_query, toggle.0, name, new_enabled);
-            }
+    buttons.for_each(|toggle| {
+        if let Some((kind, enabled)) = spawn_pool.enabled.get_mut(toggle.0) {
+            *enabled = !*enabled;
+            let new_enabled = *enabled;
+            let name = kind.id();
+            update_toggle_text(&mut text_query, toggle.0, name, new_enabled);
         }
-    }
+    });
 }
 
 pub(super) fn enable_all_enemies(
-    query: Query<&Interaction, (Changed<Interaction>, With<EnableAllEnemiesButton>)>,
+    buttons: ReleasedButtons<EnableAllEnemiesButton>,
     mut spawn_pool: ResMut<EnemySpawnPool>,
     mut text_query: Query<(&EnemyToggleText, &mut Text, &mut TextColor)>,
 ) {
-    for interaction in &query {
-        if *interaction == Interaction::Pressed {
-            for i in 0..spawn_pool.enabled.len() {
-                spawn_pool.enabled[i].1 = true;
-                let name = spawn_pool.enabled[i].0.id();
-                update_toggle_text(&mut text_query, i, name, true);
-            }
+    buttons.for_each(|_| {
+        for i in 0..spawn_pool.enabled.len() {
+            spawn_pool.enabled[i].1 = true;
+            let name = spawn_pool.enabled[i].0.id();
+            update_toggle_text(&mut text_query, i, name, true);
         }
-    }
+    });
 }
 
 pub(super) fn disable_all_enemies(
-    query: Query<&Interaction, (Changed<Interaction>, With<DisableAllEnemiesButton>)>,
+    buttons: ReleasedButtons<DisableAllEnemiesButton>,
     mut spawn_pool: ResMut<EnemySpawnPool>,
     mut text_query: Query<(&EnemyToggleText, &mut Text, &mut TextColor)>,
 ) {
-    for interaction in &query {
-        if *interaction == Interaction::Pressed {
-            for i in 0..spawn_pool.enabled.len() {
-                spawn_pool.enabled[i].1 = false;
-                let name = spawn_pool.enabled[i].0.id();
-                update_toggle_text(&mut text_query, i, name, false);
-            }
+    buttons.for_each(|_| {
+        for i in 0..spawn_pool.enabled.len() {
+            spawn_pool.enabled[i].1 = false;
+            let name = spawn_pool.enabled[i].0.id();
+            update_toggle_text(&mut text_query, i, name, false);
         }
-    }
+    });
 }
 
 fn update_toggle_text(

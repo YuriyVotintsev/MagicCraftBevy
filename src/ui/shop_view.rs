@@ -18,7 +18,7 @@ use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
 
 use super::stat_line_builder::{StatLineBuilder, StatRenderMode};
-use super::widgets::{button_node, panel_node};
+use super::widgets::{button_node, panel_node, ReleasedButtons};
 use super::Viewport;
 
 const RUNE_ICON_INSET: f32 = 14.0;
@@ -458,7 +458,7 @@ pub fn reset_reroll_cost(balance: Res<GameBalance>, mut reroll: ResMut<RerollSta
 }
 
 pub fn reroll_button_system(
-    interaction_query: Query<&Interaction, (Changed<Interaction>, With<RerollButton>)>,
+    buttons: ReleasedButtons<RerollButton>,
     mut money: ResMut<PlayerMoney>,
     mut offer: ResMut<ShopOffer>,
     grid: Res<RuneGrid>,
@@ -467,14 +467,13 @@ pub fn reroll_button_system(
     mut reroll: ResMut<RerollState>,
     dragging: Query<(), With<Dragging>>,
 ) {
-    for interaction in &interaction_query {
-        if *interaction != Interaction::Pressed { continue }
-        if !dragging.is_empty() { continue }
-        if !money.can_afford(reroll.cost) { continue }
+    buttons.for_each(|_| {
+        if !dragging.is_empty() { return }
+        if !money.can_afford(reroll.cost) { return }
         money.spend(reroll.cost);
         roll_shop_offer(&mut offer, &grid, &balance, &costs);
         reroll.cost = reroll.cost.saturating_add(balance.runes.reroll_cost_step);
-    }
+    });
 }
 
 pub fn update_reroll_label(
@@ -499,13 +498,12 @@ pub fn update_reroll_label(
 }
 
 pub fn start_run_system(
-    interaction_query: Query<&Interaction, (Changed<Interaction>, With<StartRunButton>)>,
+    buttons: ReleasedButtons<StartRunButton>,
     mut transition: ResMut<Transition>,
 ) {
-    for interaction in &interaction_query {
-        if *interaction != Interaction::Pressed { continue }
+    buttons.for_each(|_| {
         transition.request(TransitionAction::Wave(WavePhase::Combat));
-    }
+    });
 }
 
 pub fn update_coins_text(
