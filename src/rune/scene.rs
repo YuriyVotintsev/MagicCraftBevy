@@ -38,8 +38,12 @@ const SHOP_BALL_X: f32 = 640.0;
 const SHOP_BALL_Z_GAP: f32 = 140.0;
 const PRICE_LABEL_Y_OFFSET: f32 = BALL_RADIUS + 28.0;
 
+const ARROW_THICKNESS: f32 = 6.0;
+const ARROW_END_INSET: f32 = BALL_RADIUS + 6.0;
+
 const GROUND_Y: f32 = 0.02;
 const HIGHLIGHT_Y: f32 = 0.04;
+const ARROW_Y: f32 = 0.05;
 
 const JOKER_HEX_COORDS: [(i32, i32); JOKER_SLOTS] = [
     (4, -2),
@@ -58,6 +62,7 @@ struct SceneMeshes {
     highlight_ring: Handle<Mesh>,
     pattern_ring: Handle<Mesh>,
     shadow: Handle<Mesh>,
+    arrow_shaft: Handle<Mesh>,
 }
 
 #[derive(Resource, Default)]
@@ -125,6 +130,7 @@ fn setup_scene_assets(
         highlight_ring: meshes.add(Annulus::new(HIGHLIGHT_RING_INNER, HIGHLIGHT_RING_OUTER)),
         pattern_ring: meshes.add(Annulus::new(PATTERN_RING_INNER, PATTERN_RING_OUTER)),
         shadow: meshes.add(Circle::new(BALL_RADIUS * 0.95)),
+        arrow_shaft: meshes.add(Cuboid::new(1.0, 0.001, 1.0)),
     });
     let shadow_mat = StandardMaterial {
         base_color: Color::srgba(0.0, 0.0, 0.0, 0.35),
@@ -138,7 +144,7 @@ fn setup_scene_assets(
         joker: materials.add(unlit_material(palette::color("ui_joker_slot_edge"))),
         write_target: materials.add(unlit_material(palette::color("ui_rune_write_target"))),
         write_source: materials.add(unlit_material(palette::color("ui_rune_write_source"))),
-        pattern: materials.add(unlit_material(palette::color("ui_rune_write_target"))),
+        pattern: materials.add(unlit_material(palette::color("gold_light"))),
         shadow: materials.add(shadow_mat),
     });
     commands.insert_resource(BallMaterials::default());
@@ -769,6 +775,52 @@ fn apply_highlights(
             DespawnOnExit(WavePhase::Shop),
         ));
     }
+
+    let Some(center) = highlights.center_pos else { return };
+    for target in highlights.write_targets.iter() {
+        let target_pos = cell_world_pos(*target);
+        spawn_arrow(&mut commands, &meshes, &ground.write_target, center, target_pos);
+    }
+    for source in highlights.write_sources.iter() {
+        let source_pos = cell_world_pos(*source);
+        spawn_arrow(&mut commands, &meshes, &ground.write_source, source_pos, center);
+    }
+}
+
+fn spawn_arrow(
+    commands: &mut Commands,
+    meshes: &SceneMeshes,
+    material: &Handle<StandardMaterial>,
+    tail: Vec3,
+    head: Vec3,
+) {
+    let dx = head.x - tail.x;
+    let dz = head.z - tail.z;
+    let total_len = (dx * dx + dz * dz).sqrt();
+    let usable = total_len - ARROW_END_INSET * 2.0;
+    if usable <= 0.0 {
+        return;
+    }
+    let nx = dx / total_len;
+    let nz = dz / total_len;
+    let start_x = tail.x + nx * ARROW_END_INSET;
+    let start_z = tail.z + nz * ARROW_END_INSET;
+    let end_x = head.x - nx * ARROW_END_INSET;
+    let end_z = head.z - nz * ARROW_END_INSET;
+    let mid_x = (start_x + end_x) * 0.5;
+    let mid_z = (start_z + end_z) * 0.5;
+    let angle = -dz.atan2(dx);
+
+    commands.spawn((
+        Name::new("HighlightArrow"),
+        HighlightDecal,
+        Mesh3d(meshes.arrow_shaft.clone()),
+        MeshMaterial3d(material.clone()),
+        Transform::from_translation(Vec3::new(mid_x, ARROW_Y, mid_z))
+            .with_rotation(Quat::from_rotation_y(angle))
+            .with_scale(Vec3::new(usable, 1.0, ARROW_THICKNESS)),
+        DespawnOnExit(WavePhase::Shop),
+    ));
 }
 
 fn restore_dragged_on_exit(
