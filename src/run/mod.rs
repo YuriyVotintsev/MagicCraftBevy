@@ -8,7 +8,7 @@ mod money;
 
 pub use combat_scope::{CombatScoped, SkipDeathShrink};
 pub use death::PlayerDying;
-pub use lifecycle::RunState;
+pub use lifecycle::{init_run, RunState};
 pub use money::PlayerMoney;
 
 pub struct RunPlugin;

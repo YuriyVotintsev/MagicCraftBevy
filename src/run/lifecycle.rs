@@ -32,7 +32,7 @@ fn reset_run(mut run_state: ResMut<RunState>) {
     *run_state = RunState::default();
 }
 
-fn init_run(mut run_state: ResMut<RunState>) {
+pub fn init_run(mut run_state: ResMut<RunState>) {
     run_state.elapsed = 0.0;
     run_state.wave += 1;
     info!("Starting wave #{}", run_state.wave);

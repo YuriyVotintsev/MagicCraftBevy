@@ -35,8 +35,12 @@ impl EnemySpawnPool {
 pub fn register(app: &mut App) {
     app.init_resource::<EnemySpawnPool>()
         .add_systems(
+            OnEnter(WavePhase::Combat),
+            apply_wave_config.after(crate::run::init_run),
+        )
+        .add_systems(
             Update,
-            (apply_wave_config, spawn_enemies, tag_wave_enemies)
+            (spawn_enemies, tag_wave_enemies)
                 .chain()
                 .in_set(GameSet::Spawning)
                 .run_if(in_state(WavePhase::Combat))
@@ -49,13 +53,7 @@ fn apply_wave_config(
     mut wave_state: ResMut<WaveState>,
     mut pool: ResMut<EnemySpawnPool>,
     waves: Res<WavesConfig>,
-    mut last_applied: Local<Option<u32>>,
 ) {
-    if *last_applied == Some(run_state.wave) {
-        return;
-    }
-    *last_applied = Some(run_state.wave);
-
     let def = waves.for_wave(run_state.wave);
     wave_state.max_concurrent = def.max_concurrent;
 
