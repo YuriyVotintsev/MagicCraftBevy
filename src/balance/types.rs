@@ -107,8 +107,7 @@ impl RuneCosts {
 #[derive(Debug, Clone, Resource)]
 pub struct Globals {
     pub safe_spawn_radius: f32,
-    pub arena_width: f32,
-    pub arena_height: f32,
+    pub arena_radius: f32,
     pub coins_per_kill: u32,
     pub coin_attraction_duration: f32,
     pub rune_joker_probability: f32,

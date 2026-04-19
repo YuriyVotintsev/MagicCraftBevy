@@ -124,7 +124,6 @@ pub fn compute_state(
                 preview_grid.cells.insert(fc, b);
             }
         }
-        RuneSource::Joker(_) => {}
         RuneSource::Shop(_) => return,
     }
 

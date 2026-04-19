@@ -250,8 +250,8 @@ fn init_random_jump(
     arena_size: Res<CurrentArenaSize>,
 ) {
     let margin = 120.0;
-    let hw = arena_size.half_w() - margin;
-    let hh = arena_size.half_h() - margin;
+    let inner_radius = (arena_size.radius - margin).max(0.0);
+    let inner_radius_sq = inner_radius * inner_radius;
     let mut rng = rand::rng();
 
     for (entity, jump, transform) in &query {
@@ -264,7 +264,7 @@ fn init_random_jump(
                 let angle = rng.random_range(0.0..std::f32::consts::TAU);
                 let candidate = Vec2::new(angle.cos(), angle.sin());
                 let landing = current + candidate * distance;
-                if landing.x.abs() <= hw && landing.y.abs() <= hh {
+                if landing.length_squared() <= inner_radius_sq {
                     dir = candidate;
                     break;
                 }

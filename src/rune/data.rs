@@ -4,9 +4,22 @@ use std::collections::{HashMap, HashSet};
 use super::content::{RuneKind, Tier};
 use super::hex::HexCoord;
 
-pub const GRID_RADIUS: i32 = 3;
+pub const GRID_RADIUS: i32 = 2;
 pub const SHOP_SLOTS: usize = 4;
-pub const JOKER_SLOTS: usize = 6;
+pub const JOKER_SLOT_COUNT: usize = 6;
+
+pub const JOKER_COORDS: [HexCoord; JOKER_SLOT_COUNT] = [
+    HexCoord { q: 2, r: 0 },
+    HexCoord { q: 2, r: -2 },
+    HexCoord { q: 0, r: -2 },
+    HexCoord { q: -2, r: 0 },
+    HexCoord { q: -2, r: 2 },
+    HexCoord { q: 0, r: 2 },
+];
+
+pub fn is_joker_slot(c: HexCoord) -> bool {
+    JOKER_COORDS.iter().any(|j| j.q == c.q && j.r == c.r)
+}
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Rune {
@@ -27,7 +40,6 @@ impl Rune {
 pub enum RuneSource {
     Shop(usize),
     Grid(HexCoord),
-    Joker(usize),
 }
 
 #[derive(Component, Copy, Clone, Debug, PartialEq, Eq)]
@@ -40,9 +52,6 @@ pub struct RuneView {
 pub struct GridCellView {
     pub coord: HexCoord,
 }
-
-#[derive(Component, Copy, Clone, Debug)]
-pub struct JokerSlotView;
 
 #[derive(Component, Copy, Clone, Debug)]
 pub struct Dragging {
@@ -93,11 +102,6 @@ impl Default for RuneGrid {
 }
 
 #[derive(Resource, Default)]
-pub struct JokerSlots {
-    pub stubs: [Option<Rune>; JOKER_SLOTS],
-}
-
-#[derive(Resource, Default)]
 pub struct RerollState {
     pub cost: u32,
 }
@@ -112,11 +116,16 @@ pub struct GridHighlights {
 }
 
 pub fn can_place(is_joker: bool, target: RuneSource, grid: &RuneGrid) -> bool {
-    match (is_joker, target) {
-        (false, RuneSource::Grid(c)) => grid.is_unlocked(c),
-        (false, RuneSource::Shop(_)) => true,
-        (true, RuneSource::Joker(_)) => true,
-        (true, RuneSource::Shop(_)) => true,
-        _ => false,
+    match target {
+        RuneSource::Shop(_) => true,
+        RuneSource::Grid(c) => {
+            if !grid.is_unlocked(c) {
+                return false;
+            }
+            if is_joker && !is_joker_slot(c) {
+                return false;
+            }
+            true
+        }
     }
 }

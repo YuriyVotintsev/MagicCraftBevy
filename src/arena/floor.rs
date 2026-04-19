@@ -2,13 +2,10 @@ use bevy::prelude::*;
 
 use crate::run::{CombatScoped, SkipDeathShrink};
 
-use super::camera::CameraAngle;
 use super::size::CurrentArenaSize;
 
 #[derive(Component)]
-pub(super) struct FloorParams {
-    pub radius: f32,
-}
+pub(super) struct FloorParams;
 
 pub fn register(app: &mut App) {
     app.add_systems(Update, update_floor_mesh);
@@ -18,18 +15,12 @@ pub(super) fn spawn_floor(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
     materials: &mut ResMut<Assets<StandardMaterial>>,
-    width: f32,
-    height: f32,
-    camera_angle_degrees: f32,
+    radius: f32,
 ) {
-    let floor_radius = 40.0;
-    let elevation = (90.0 - camera_angle_degrees).to_radians();
-    let z_stretch = 1.0 / elevation.sin();
-
     commands.spawn((
         Name::new("ArenaFloor"),
-        FloorParams { radius: floor_radius },
-        Mesh3d(meshes.add(rounded_floor_mesh(width, height, floor_radius, z_stretch))),
+        FloorParams,
+        Mesh3d(meshes.add(disc_mesh(radius, 96))),
         MeshMaterial3d(materials.add(StandardMaterial {
             base_color: crate::palette::color("background"),
             unlit: true,
@@ -42,67 +33,41 @@ pub(super) fn spawn_floor(
 }
 
 fn update_floor_mesh(
-    camera_angle: Res<CameraAngle>,
     arena_size: Option<Res<CurrentArenaSize>>,
-    query: Query<(&FloorParams, &Mesh3d)>,
+    query: Query<&Mesh3d, With<FloorParams>>,
     mut meshes: ResMut<Assets<Mesh>>,
 ) {
     let Some(arena_size) = arena_size else { return };
-    if !camera_angle.is_changed() && !arena_size.is_changed() {
+    if !arena_size.is_changed() {
         return;
     }
-    let elevation = (90.0 - camera_angle.degrees).to_radians();
-    let z_stretch = 1.0 / elevation.sin();
-    for (params, mesh_handle) in &query {
+    for mesh_handle in &query {
         if let Some(mesh) = meshes.get_mut(&mesh_handle.0) {
-            *mesh = rounded_floor_mesh(arena_size.width, arena_size.height, params.radius, z_stretch);
+            *mesh = disc_mesh(arena_size.radius, 96);
         }
     }
 }
 
-pub(super) fn shop_floor_mesh(width: f32, height: f32, radius: f32, z_stretch: f32) -> Mesh {
-    rounded_floor_mesh(width, height, radius, z_stretch)
-}
-
-fn rounded_floor_mesh(width: f32, height: f32, radius: f32, z_stretch: f32) -> Mesh {
+pub(super) fn disc_mesh(radius: f32, segments: u32) -> Mesh {
     use bevy::mesh::{Indices, PrimitiveTopology};
 
-    let hw = width / 2.0;
-    let hh = height / 2.0;
-    let r = radius.min(hw).min(hh);
-    let rz = r * z_stretch;
-    let segments = 8u32;
-
-    let corner_centers = [
-        [hw - r, -(hh - rz)],
-        [hw - r, hh - rz],
-        [-(hw - r), hh - rz],
-        [-(hw - r), -(hh - rz)],
-    ];
-
-    let mut outline = Vec::new();
-    for (i, center) in corner_centers.iter().enumerate() {
-        let start = -std::f32::consts::FRAC_PI_2 + i as f32 * std::f32::consts::FRAC_PI_2;
-        for j in 0..segments {
-            let angle = start + std::f32::consts::FRAC_PI_2 * j as f32 / segments as f32;
-            outline.push([center[0] + r * angle.cos(), center[1] + rz * angle.sin()]);
-        }
-    }
-
-    let n = outline.len() as u32;
-    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(1 + outline.len());
-    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(1 + outline.len());
-    let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(1 + outline.len());
-    let mut indices: Vec<u32> = Vec::new();
+    let n = segments.max(3);
+    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(1 + n as usize);
+    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(1 + n as usize);
+    let mut uvs: Vec<[f32; 2]> = Vec::with_capacity(1 + n as usize);
+    let mut indices: Vec<u32> = Vec::with_capacity(n as usize * 3);
 
     positions.push([0.0, 0.0, 0.0]);
     normals.push([0.0, 1.0, 0.0]);
     uvs.push([0.5, 0.5]);
 
-    for p in &outline {
-        positions.push([p[0], 0.0, p[1]]);
+    for i in 0..n {
+        let angle = std::f32::consts::TAU * i as f32 / n as f32;
+        let x = radius * angle.cos();
+        let z = radius * angle.sin();
+        positions.push([x, 0.0, z]);
         normals.push([0.0, 1.0, 0.0]);
-        uvs.push([0.5 + p[0] / width, 0.5 + p[1] / height]);
+        uvs.push([0.5 + 0.5 * angle.cos(), 0.5 + 0.5 * angle.sin()]);
     }
 
     for i in 0..n {

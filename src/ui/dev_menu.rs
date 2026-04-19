@@ -3,7 +3,7 @@ use bevy::ui::UiGlobalTransform;
 
 use crate::actors::Health;
 use crate::actors::Player;
-use crate::arena::CameraAngle;
+use crate::arena::{CameraAngle, CameraZoom};
 use crate::palette;
 use crate::run::PlayerMoney;
 use crate::stats::{DirtyStats, ModifierKind, Modifiers, Stat};
@@ -13,17 +13,28 @@ use crate::wave::{CombatPhase, WavePhase};
 
 use super::widgets::{button_node, panel_node, ReleasedButtons};
 
-const SLIDER_MIN: f32 = 1.0;
-const SLIDER_MAX: f32 = 89.0;
+const ANGLE_MIN: f32 = 1.0;
+const ANGLE_MAX: f32 = 89.0;
+const ZOOM_MIN: f32 = 500.0;
+const ZOOM_MAX: f32 = 2500.0;
 
 #[derive(Component)]
 pub(super) struct CameraAngleSlider;
 
 #[derive(Component)]
-pub(super) struct SliderFill;
+pub(super) struct AngleFill;
 
 #[derive(Component)]
-pub(super) struct SliderValueText;
+pub(super) struct AngleValueText;
+
+#[derive(Component)]
+pub(super) struct CameraZoomSlider;
+
+#[derive(Component)]
+pub(super) struct ZoomFill;
+
+#[derive(Component)]
+pub(super) struct ZoomValueText;
 
 #[derive(Component)]
 pub(super) struct CheatMoneyButton;
@@ -108,13 +119,14 @@ pub(super) fn react_to_shop_dev_menu(
     open: Res<ShopDevMenuOpen>,
     existing: Query<Entity, With<ShopDevMenuRoot>>,
     camera_angle: Res<CameraAngle>,
+    camera_zoom: Res<CameraZoom>,
     spawn_pool: Res<EnemySpawnPool>,
 ) {
     if !open.is_changed() {
         return;
     }
     if open.0 {
-        spawn_shop_dev_menu(&mut commands, &camera_angle, &spawn_pool);
+        spawn_shop_dev_menu(&mut commands, &camera_angle, &camera_zoom, &spawn_pool);
     } else {
         for e in &existing {
             commands.entity(e).despawn();
@@ -129,9 +141,10 @@ pub(super) fn reset_shop_dev_menu(mut open: ResMut<ShopDevMenuOpen>) {
 fn spawn_shop_dev_menu(
     commands: &mut Commands,
     camera_angle: &CameraAngle,
+    camera_zoom: &CameraZoom,
     spawn_pool: &EnemySpawnPool,
 ) {
-    let panel = build_dev_menu_panel(commands, camera_angle, spawn_pool);
+    let panel = build_dev_menu_panel(commands, camera_angle, camera_zoom, spawn_pool, false);
     commands
         .spawn((
             Name::new("ShopDevMenuRoot"),
@@ -210,9 +223,10 @@ fn enemy_toggle_row(index: usize, name: &str, enabled: bool) -> impl Bundle {
 pub(super) fn spawn_dev_menu(
     mut commands: Commands,
     camera_angle: Res<CameraAngle>,
+    camera_zoom: Res<CameraZoom>,
     spawn_pool: Res<EnemySpawnPool>,
 ) {
-    let panel = build_dev_menu_panel(&mut commands, &camera_angle, &spawn_pool);
+    let panel = build_dev_menu_panel(&mut commands, &camera_angle, &camera_zoom, &spawn_pool, true);
     commands
         .spawn((
             Name::new("DevMenuRoot"),
@@ -234,9 +248,12 @@ pub(super) fn spawn_dev_menu(
 fn build_dev_menu_panel(
     commands: &mut Commands,
     camera_angle: &CameraAngle,
+    camera_zoom: &CameraZoom,
     spawn_pool: &EnemySpawnPool,
+    include_win_wave: bool,
 ) -> Entity {
-    let t = (camera_angle.degrees - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN);
+    let angle_t = (camera_angle.degrees - ANGLE_MIN) / (ANGLE_MAX - ANGLE_MIN);
+    let zoom_t = (camera_zoom.height - ZOOM_MIN) / (ZOOM_MAX - ZOOM_MIN);
 
     let mut enemy_rows: Vec<Entity> = Vec::new();
     for (i, (kind, enabled)) in spawn_pool.enabled.iter().enumerate() {
@@ -296,7 +313,7 @@ fn build_dev_menu_panel(
         TextColor(palette::color("ui_text_subtle")),
     )).id();
     let angle_value = commands.spawn((
-        SliderValueText,
+        AngleValueText,
         Text::new(format!("{:.0}\u{00b0}", camera_angle.degrees)),
         TextFont { font_size: 20.0, ..default() },
         TextColor(palette::color("ui_text")),
@@ -310,16 +327,16 @@ fn build_dev_menu_panel(
         },
     )).add_children(&[angle_label, angle_value]).id();
 
-    let slider_fill = commands.spawn((
-        SliderFill,
+    let angle_fill = commands.spawn((
+        AngleFill,
         Node {
-            width: Val::Percent(t * 100.0),
+            width: Val::Percent(angle_t * 100.0),
             height: Val::Percent(100.0),
             ..default()
         },
         BackgroundColor(palette::color("ui_button_pressed")),
     )).id();
-    let slider = commands.spawn((
+    let angle_slider = commands.spawn((
         CameraAngleSlider,
         Button,
         Node {
@@ -329,12 +346,68 @@ fn build_dev_menu_panel(
             ..default()
         },
         BackgroundColor(palette::color("ui_button_normal")),
-    )).add_child(slider_fill).id();
+    )).add_child(angle_fill).id();
+
+    let zoom_label = commands.spawn((
+        Text::new("Camera View"),
+        TextFont { font_size: 20.0, ..default() },
+        TextColor(palette::color("ui_text_subtle")),
+    )).id();
+    let zoom_value = commands.spawn((
+        ZoomValueText,
+        Text::new(format!("{:.0}", camera_zoom.height)),
+        TextFont { font_size: 20.0, ..default() },
+        TextColor(palette::color("ui_text")),
+    )).id();
+    let zoom_row = commands.spawn((
+        Node {
+            flex_direction: FlexDirection::Row,
+            justify_content: JustifyContent::SpaceBetween,
+            margin: UiRect::new(Val::Px(0.0), Val::Px(0.0), Val::Px(12.0), Val::Px(8.0)),
+            ..default()
+        },
+    )).add_children(&[zoom_label, zoom_value]).id();
+
+    let zoom_fill = commands.spawn((
+        ZoomFill,
+        Node {
+            width: Val::Percent(zoom_t * 100.0),
+            height: Val::Percent(100.0),
+            ..default()
+        },
+        BackgroundColor(palette::color("ui_button_pressed")),
+    )).id();
+    let zoom_slider = commands.spawn((
+        CameraZoomSlider,
+        Button,
+        Node {
+            width: Val::Percent(100.0),
+            height: Val::Px(24.0),
+            overflow: Overflow::clip(),
+            ..default()
+        },
+        BackgroundColor(palette::color("ui_button_normal")),
+    )).add_child(zoom_fill).id();
 
     let money_btn = commands.spawn(cheat_button("Money +1000", palette::color("ui_text_money"), CheatMoneyButton)).id();
     let health_btn = commands.spawn(cheat_button("Health +100", palette::color("ui_text_positive"), CheatHealthButton)).id();
     let damage_btn = commands.spawn(cheat_button("Phys Damage +100", palette::color("ui_text_negative"), CheatDamageButton)).id();
-    let win_wave_btn = commands.spawn(cheat_button("Win Wave", palette::color("ui_text"), CheatWinWaveButton)).id();
+
+    let mut children = vec![
+        title,
+        angle_row,
+        angle_slider,
+        zoom_row,
+        zoom_slider,
+        money_btn,
+        health_btn,
+        damage_btn,
+    ];
+    if include_win_wave {
+        let win_wave_btn = commands.spawn(cheat_button("Win Wave", palette::color("ui_text"), CheatWinWaveButton)).id();
+        children.push(win_wave_btn);
+    }
+    children.push(enemy_container);
 
     commands.spawn(panel_node(
         Node {
@@ -347,9 +420,7 @@ fn build_dev_menu_panel(
             ..default()
         },
         None,
-    )).add_children(&[
-        title, angle_row, slider, money_btn, health_btn, damage_btn, win_wave_btn, enemy_container,
-    ]).id()
+    )).add_children(&children).id()
 }
 
 pub(super) fn cheat_money(
@@ -465,36 +536,69 @@ fn update_toggle_text(
     }
 }
 
-pub(super) fn slider_interaction(
+fn slider_drag_t(
+    interaction: &Interaction,
+    ui_transform: &UiGlobalTransform,
+    computed: &ComputedNode,
+    window: &Window,
+    mouse: &ButtonInput<MouseButton>,
+) -> Option<f32> {
+    let active = *interaction == Interaction::Pressed
+        || (*interaction == Interaction::Hovered && mouse.pressed(MouseButton::Left));
+    if !active {
+        return None;
+    }
+    let cursor_pos = window.cursor_position()?;
+    let inverse = ui_transform.try_inverse()?;
+    let local = inverse.transform_point2(cursor_pos * window.scale_factor());
+    let node_size = computed.size();
+    Some(((local.x / node_size.x) + 0.5).clamp(0.0, 1.0))
+}
+
+pub(super) fn camera_angle_slider_interaction(
     track_query: Query<(&Interaction, &UiGlobalTransform, &ComputedNode), With<CameraAngleSlider>>,
-    mut fill_query: Query<&mut Node, With<SliderFill>>,
-    mut text_query: Query<&mut Text, With<SliderValueText>>,
+    mut fill_query: Query<&mut Node, With<AngleFill>>,
+    mut text_query: Query<&mut Text, With<AngleValueText>>,
     windows: Query<&Window>,
     mouse: Res<ButtonInput<MouseButton>>,
     mut camera_angle: ResMut<CameraAngle>,
 ) {
+    let Ok(window) = windows.single() else { return };
     for (interaction, ui_transform, computed) in &track_query {
-        let active = *interaction == Interaction::Pressed
-            || (*interaction == Interaction::Hovered && mouse.pressed(MouseButton::Left));
-        if !active {
+        let Some(t) = slider_drag_t(interaction, ui_transform, computed, window, &mouse) else {
             continue;
-        }
-        let Ok(window) = windows.single() else { continue };
-        let Some(cursor_pos) = window.cursor_position() else { continue };
-
-        let Some(inverse) = ui_transform.try_inverse() else { continue };
-        let local = inverse.transform_point2(cursor_pos * window.scale_factor());
-        let node_size = computed.size();
-        let t = ((local.x / node_size.x) + 0.5).clamp(0.0, 1.0);
-        let value = SLIDER_MIN + t * (SLIDER_MAX - SLIDER_MIN);
-
+        };
+        let value = ANGLE_MIN + t * (ANGLE_MAX - ANGLE_MIN);
         camera_angle.degrees = value;
-
         for mut node in &mut fill_query {
             node.width = Val::Percent(t * 100.0);
         }
         for mut text in &mut text_query {
             *text = Text::new(format!("{:.0}\u{00b0}", value));
+        }
+    }
+}
+
+pub(super) fn camera_zoom_slider_interaction(
+    track_query: Query<(&Interaction, &UiGlobalTransform, &ComputedNode), With<CameraZoomSlider>>,
+    mut fill_query: Query<&mut Node, With<ZoomFill>>,
+    mut text_query: Query<&mut Text, With<ZoomValueText>>,
+    windows: Query<&Window>,
+    mouse: Res<ButtonInput<MouseButton>>,
+    mut camera_zoom: ResMut<CameraZoom>,
+) {
+    let Ok(window) = windows.single() else { return };
+    for (interaction, ui_transform, computed) in &track_query {
+        let Some(t) = slider_drag_t(interaction, ui_transform, computed, window, &mouse) else {
+            continue;
+        };
+        let value = ZOOM_MIN + t * (ZOOM_MAX - ZOOM_MIN);
+        camera_zoom.height = value;
+        for mut node in &mut fill_query {
+            node.width = Val::Percent(t * 100.0);
+        }
+        for mut text in &mut text_query {
+            *text = Text::new(format!("{:.0}", value));
         }
     }
 }

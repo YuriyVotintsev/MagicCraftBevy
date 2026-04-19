@@ -8,7 +8,7 @@ mod spawn;
 mod walls;
 mod window;
 
-pub use camera::CameraAngle;
+pub use camera::{CameraAngle, CameraZoom};
 pub use size::CurrentArenaSize;
 pub use walls::Wall;
 pub use window::{WINDOW_HEIGHT, WINDOW_WIDTH};

@@ -248,8 +248,7 @@ pub fn parse_globals(range: &Range<Data>) -> Result<Globals, BalanceError> {
 
     Ok(Globals {
         safe_spawn_radius: get_f32("safe_spawn_radius")?,
-        arena_width: get_f32("arena_width")?,
-        arena_height: get_f32("arena_height")?,
+        arena_radius: get_f32("arena_radius")?,
         coins_per_kill: get_u32("coins_per_kill")?,
         coin_attraction_duration: get_f32("coin_attraction_duration")?,
         rune_joker_probability: get_f32("rune_joker_probability")?,
@@ -424,8 +423,7 @@ mod tests {
 
         // Globals: all required keys present and positive.
         assert!(bal.globals.safe_spawn_radius > 0.0);
-        assert!(bal.globals.arena_width > 0.0);
-        assert!(bal.globals.arena_height > 0.0);
+        assert!(bal.globals.arena_radius > 0.0);
         assert!(bal.globals.rune_tier_weight_total() > 0);
 
         // Rune costs: non-zero for all rune kinds.

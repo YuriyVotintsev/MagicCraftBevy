@@ -89,22 +89,20 @@ fn spawn_enemies(
 
     let safe_radius_sq = globals.safe_spawn_radius * globals.safe_spawn_radius;
     let margin = 30.0;
-    let hw = arena_size.half_w() - margin;
-    let hh = arena_size.half_h() - margin;
+    let inner_radius = (arena_size.radius - margin).max(0.0);
     let mut rng = rand::rng();
 
     for _ in 0..deficit {
         let (x, y) = {
             let mut attempts = 0;
             loop {
-                let x = rng.random_range(-hw..hw);
-                let y = rng.random_range(-hh..hh);
+                let r = inner_radius * rng.random_range(0.0_f32..1.0).sqrt();
+                let theta = rng.random_range(0.0..std::f32::consts::TAU);
+                let x = r * theta.cos();
+                let y = r * theta.sin();
                 let pos = Vec2::new(x, y);
                 attempts += 1;
-                if attempts > 100
-                    || (is_inside_arena(pos, margin, &arena_size)
-                        && pos.distance_squared(player_pos) > safe_radius_sq)
-                {
+                if attempts > 100 || pos.distance_squared(player_pos) > safe_radius_sq {
                     break (x, y);
                 }
             }
@@ -152,12 +150,6 @@ fn spawn_enemies(
         wave_state.spawned_count += 1;
         wave_state.summoning_count += 1;
     }
-}
-
-fn is_inside_arena(pos: Vec2, margin: f32, arena: &CurrentArenaSize) -> bool {
-    let hw = arena.half_w() - margin;
-    let hh = arena.half_h() - margin;
-    pos.x.abs() <= hw && pos.y.abs() <= hh
 }
 
 fn tag_wave_enemies(

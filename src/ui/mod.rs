@@ -87,7 +87,8 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 (
-                    dev_menu::slider_interaction,
+                    dev_menu::camera_angle_slider_interaction,
+                    dev_menu::camera_zoom_slider_interaction,
                     dev_menu::cheat_money,
                     dev_menu::cheat_health,
                     dev_menu::cheat_damage,

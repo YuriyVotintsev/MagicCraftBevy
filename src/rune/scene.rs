@@ -14,8 +14,8 @@ use crate::wave::WavePhase;
 
 use super::content::{write_pattern_contains, write_pattern_coords, write_targets};
 use super::data::{
-    can_place, Dragging, GridCellView, GridHighlights, JokerSlotView, JokerSlots, Rune,
-    RuneGrid, RuneSource, RuneView, ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
+    can_place, is_joker_slot, Dragging, GridCellView, GridHighlights, Rune, RuneGrid,
+    RuneSource, RuneView, ShopOffer, GRID_RADIUS, JOKER_COORDS, SHOP_SLOTS,
 };
 use super::hex::HexCoord;
 use super::shop_gen::roll_shop_offer;
@@ -34,7 +34,7 @@ const HIGHLIGHT_TORUS_OUTER: f32 = BALL_RADIUS + 14.0;
 const PATTERN_RING_INNER: f32 = CELL_RING_OUTER + 2.0;
 const PATTERN_RING_OUTER: f32 = CELL_RING_OUTER + 10.0;
 pub const SHOP_BALL_X: f32 = 900.0;
-pub const SHOP_BALL_Z_GAP: f32 = 420.0;
+pub const SHOP_BALL_RING_RADIUS: f32 = 150.0;
 const PRICE_LABEL_Y_OFFSET: f32 = BALL_RADIUS + 28.0;
 
 const PARTICLE_RADIUS: f32 = 2.5;
@@ -46,15 +46,6 @@ const PARTICLE_JITTER_VERTICAL: f32 = 14.0;
 
 const GROUND_Y: f32 = 0.02;
 const HIGHLIGHT_Y: f32 = 0.04;
-
-const JOKER_HEX_COORDS: [(i32, i32); JOKER_SLOTS] = [
-    (4, -2),
-    (2, -4),
-    (-2, -2),
-    (-4, 2),
-    (-2, 4),
-    (2, 2),
-];
 
 #[derive(Resource)]
 struct SceneMeshes {
@@ -207,13 +198,12 @@ fn spawn_shop_scene(mut commands: Commands, meshes: Res<SceneMeshes>, ground: Re
         ));
     }
 
-    for idx in 0..JOKER_SLOTS {
+    for coord in JOKER_COORDS {
         commands.spawn((
             Name::new("JokerSlot"),
-            JokerSlotView,
             Mesh3d(meshes.joker_ring.clone()),
             MeshMaterial3d(ground.joker.clone()),
-            cell_transform(joker_world_pos(idx), GROUND_Y),
+            cell_transform(cell_world_pos(coord), GROUND_Y),
             DespawnOnExit(WavePhase::Shop),
         ));
     }
@@ -230,8 +220,12 @@ pub fn cell_world_pos(coord: HexCoord) -> Vec3 {
 
 pub fn shop_world_pos(idx: usize) -> Vec3 {
     let total = SHOP_SLOTS as f32;
-    let z = (idx as f32 - (total - 1.0) * 0.5) * SHOP_BALL_Z_GAP;
-    Vec3::new(SHOP_BALL_X, 0.0, z)
+    let angle = -std::f32::consts::FRAC_PI_2 + idx as f32 * std::f32::consts::TAU / total;
+    Vec3::new(
+        SHOP_BALL_X + SHOP_BALL_RING_RADIUS * angle.cos(),
+        0.0,
+        SHOP_BALL_RING_RADIUS * angle.sin(),
+    )
 }
 
 pub fn shop_grid_half_extent() -> Vec2 {
@@ -244,24 +238,13 @@ pub fn shop_grid_half_extent() -> Vec2 {
         max_x = max_x.max(p.x.abs() + hex_half_w);
         max_y = max_y.max(p.y.abs() + hex_half_h);
     }
-    for (q, r) in JOKER_HEX_COORDS {
-        let p = HexCoord::new(q, r).to_pixel(CELL_SIDE_WORLD);
-        max_x = max_x.max(p.x.abs() + hex_half_w);
-        max_y = max_y.max(p.y.abs() + hex_half_h);
-    }
     Vec2::new(max_x, max_y)
-}
-
-pub fn joker_world_pos(idx: usize) -> Vec3 {
-    let (q, r) = JOKER_HEX_COORDS[idx];
-    cell_world_pos(HexCoord::new(q, r))
 }
 
 pub fn home_world_pos(source: RuneSource) -> Vec3 {
     match source {
         RuneSource::Shop(idx) => shop_world_pos(idx),
         RuneSource::Grid(coord) => cell_world_pos(coord),
-        RuneSource::Joker(idx) => joker_world_pos(idx),
     }
 }
 
@@ -341,7 +324,6 @@ fn reconcile_rune_entities(
     mut commands: Commands,
     shop: Res<ShopOffer>,
     grid: Res<RuneGrid>,
-    jokers: Res<JokerSlots>,
     meshes: Res<SceneMeshes>,
     ground: Res<GroundMaterials>,
     mut cache: ResMut<BallMaterials>,
@@ -392,17 +374,6 @@ fn reconcile_rune_entities(
             RuneSource::Grid(*coord),
             *rune,
         );
-    }
-    for (idx, slot) in jokers.stubs.iter().enumerate() {
-        if let Some(rune) = slot {
-            reconcile(
-                &mut commands,
-                &mut cache,
-                &mut materials,
-                RuneSource::Joker(idx),
-                *rune,
-            );
-        }
     }
 
     for (_, (entity, _)) in by_source {
@@ -456,25 +427,17 @@ pub fn find_drop_target_world(
     grid: &RuneGrid,
 ) -> Option<RuneSource> {
     let cursor_2d = coord::to_2d(cursor_world);
-    if !is_joker {
-        let coord = HexCoord::from_pixel(cursor_2d, CELL_SIDE_WORLD);
-        if coord.ring_radius() > GRID_RADIUS {
-            return None;
-        }
-        if !grid.is_unlocked(coord) {
-            return None;
-        }
-        return Some(RuneSource::Grid(coord));
+    let coord = HexCoord::from_pixel(cursor_2d, CELL_SIDE_WORLD);
+    if coord.ring_radius() > GRID_RADIUS {
+        return None;
     }
-    for idx in 0..JOKER_SLOTS {
-        let pos = joker_world_pos(idx);
-        if (Vec2::new(pos.x, pos.z) - Vec2::new(cursor_world.x, cursor_world.z)).length()
-            <= JOKER_RING_OUTER
-        {
-            return Some(RuneSource::Joker(idx));
-        }
+    if !grid.is_unlocked(coord) {
+        return None;
     }
-    None
+    if is_joker && !is_joker_slot(coord) {
+        return None;
+    }
+    Some(RuneSource::Grid(coord))
 }
 
 fn start_drag(
@@ -485,7 +448,6 @@ fn start_drag(
     money: Res<PlayerMoney>,
     mut shop: ResMut<ShopOffer>,
     mut grid: ResMut<RuneGrid>,
-    mut jokers: ResMut<JokerSlots>,
     runes: Query<(Entity, &RuneView), Without<Dragging>>,
     dragging: Query<(), With<Dragging>>,
 ) {
@@ -513,14 +475,14 @@ fn start_drag(
             continue;
         }
         if let RuneSource::Shop(_) = view.source {
-            let cost = peek_rune(view.source, &shop, &grid, &jokers)
+            let cost = peek_rune(view.source, &shop, &grid)
                 .map(|r| r.cost)
                 .unwrap_or(0);
             if !money.can_afford(cost) {
                 return;
             }
         }
-        let Some(rune) = take_rune(view.source, &mut shop, &mut grid, &mut jokers) else {
+        let Some(rune) = take_rune(view.source, &mut shop, &mut grid) else {
             return;
         };
         let grab_offset = Vec3::new(home.x - ground.x, 0.0, home.z - ground.z);
@@ -570,12 +532,10 @@ fn take_rune(
     src: RuneSource,
     shop: &mut ShopOffer,
     grid: &mut RuneGrid,
-    jokers: &mut JokerSlots,
 ) -> Option<Rune> {
     match src {
         RuneSource::Shop(idx) => shop.stubs[idx].take(),
         RuneSource::Grid(c) => grid.cells.remove(&c),
-        RuneSource::Joker(idx) => jokers.stubs[idx].take(),
     }
 }
 
@@ -584,14 +544,12 @@ fn place_rune(
     rune: Rune,
     shop: &mut ShopOffer,
     grid: &mut RuneGrid,
-    jokers: &mut JokerSlots,
 ) {
     match src {
         RuneSource::Shop(idx) => shop.stubs[idx] = Some(rune),
         RuneSource::Grid(c) => {
             grid.cells.insert(c, rune);
         }
-        RuneSource::Joker(idx) => jokers.stubs[idx] = Some(rune),
     }
 }
 
@@ -599,12 +557,10 @@ fn peek_rune<'a>(
     src: RuneSource,
     shop: &'a ShopOffer,
     grid: &'a RuneGrid,
-    jokers: &'a JokerSlots,
 ) -> Option<&'a Rune> {
     match src {
         RuneSource::Shop(idx) => shop.stubs[idx].as_ref(),
         RuneSource::Grid(c) => grid.cells.get(&c),
-        RuneSource::Joker(idx) => jokers.stubs[idx].as_ref(),
     }
 }
 
@@ -617,7 +573,6 @@ fn finish_drag(
     mut money: ResMut<PlayerMoney>,
     mut shop: ResMut<ShopOffer>,
     mut grid: ResMut<RuneGrid>,
-    mut jokers: ResMut<JokerSlots>,
     mut views: Query<(Entity, &mut RuneView, Option<&Dragging>)>,
 ) {
     if !buttons.just_released(MouseButton::Left) {
@@ -638,7 +593,7 @@ fn finish_drag(
     let from_shop = matches!(drag.from, RuneSource::Shop(_));
     let placement_ok = match target {
         Some(t) if t != drag.from => {
-            let displaced = peek_rune(t, &shop, &grid, &jokers);
+            let displaced = peek_rune(t, &shop, &grid);
             if from_shop && displaced.is_some() {
                 false
             } else {
@@ -655,10 +610,10 @@ fn finish_drag(
             if from_shop {
                 money.spend(drag.rune.cost);
             }
-            let displaced = take_rune(t, &mut shop, &mut grid, &mut jokers);
-            place_rune(t, drag.rune, &mut shop, &mut grid, &mut jokers);
+            let displaced = take_rune(t, &mut shop, &mut grid);
+            place_rune(t, drag.rune, &mut shop, &mut grid);
             if let Some(rune) = displaced {
-                place_rune(drag.from, rune, &mut shop, &mut grid, &mut jokers);
+                place_rune(drag.from, rune, &mut shop, &mut grid);
                 let other = views
                     .iter()
                     .find(|(e, v, d)| *e != dragged_entity && v.source == t && d.is_none())
@@ -674,7 +629,7 @@ fn finish_drag(
             }
         }
         _ => {
-            place_rune(drag.from, drag.rune, &mut shop, &mut grid, &mut jokers);
+            place_rune(drag.from, drag.rune, &mut shop, &mut grid);
         }
     }
 
@@ -932,11 +887,10 @@ fn restore_dragged_on_exit(
     mut commands: Commands,
     mut shop: ResMut<ShopOffer>,
     mut grid: ResMut<RuneGrid>,
-    mut jokers: ResMut<JokerSlots>,
     dragged: Query<(Entity, &Dragging)>,
 ) {
     for (entity, drag) in &dragged {
-        place_rune(drag.from, drag.rune, &mut shop, &mut grid, &mut jokers);
+        place_rune(drag.from, drag.rune, &mut shop, &mut grid);
         commands.entity(entity).remove::<Dragging>();
     }
 }

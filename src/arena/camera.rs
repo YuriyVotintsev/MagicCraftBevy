@@ -18,14 +18,27 @@ impl Default for CameraAngle {
     }
 }
 
+#[derive(Resource)]
+pub struct CameraZoom {
+    pub height: f32,
+}
+
+impl Default for CameraZoom {
+    fn default() -> Self {
+        Self { height: 1080.0 }
+    }
+}
+
 pub fn register(app: &mut App) {
     app.init_resource::<CameraAngle>()
+        .init_resource::<CameraZoom>()
         .add_systems(Startup, setup_camera)
         .add_systems(
             PostUpdate,
             (
                 camera_follow.run_if(in_state(WavePhase::Combat)),
                 camera_park_shop.run_if(in_state(WavePhase::Shop)),
+                update_zoom_live,
             )
                 .run_if(in_state(GameState::Playing)),
         );
@@ -36,7 +49,7 @@ pub(super) fn camera_offset(angle_degrees: f32) -> Vec3 {
     Vec3::new(0.0, CAM_DISTANCE * elevation.sin(), CAM_DISTANCE * elevation.cos())
 }
 
-fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
+fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>, zoom: Res<CameraZoom>) {
     commands.insert_resource(ClearColor(crate::palette::color("void")));
     let offset = camera_offset(camera_angle.degrees);
     commands.spawn((
@@ -45,7 +58,7 @@ fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
         Tonemapping::None,
         Projection::Orthographic(OrthographicProjection {
             scaling_mode: ScalingMode::FixedVertical {
-                viewport_height: 1080.0,
+                viewport_height: zoom.height,
             },
             far: 5000.0,
             ..OrthographicProjection::default_3d()
@@ -53,6 +66,27 @@ fn setup_camera(mut commands: Commands, camera_angle: Res<CameraAngle>) {
         Transform::from_translation(offset)
             .looking_at(Vec3::ZERO, Vec3::Y),
     ));
+}
+
+fn update_zoom_live(
+    camera_query: Query<&mut Projection, With<Camera3d>>,
+    zoom: Res<CameraZoom>,
+) {
+    if !zoom.is_changed() {
+        return;
+    }
+    set_viewport_height(camera_query, zoom.height);
+}
+
+fn set_viewport_height(mut camera_query: Query<&mut Projection, With<Camera3d>>, height: f32) {
+    let Ok(mut projection) = camera_query.single_mut() else {
+        return;
+    };
+    if let Projection::Orthographic(ortho) = projection.as_mut() {
+        ortho.scaling_mode = ScalingMode::FixedVertical {
+            viewport_height: height,
+        };
+    }
 }
 
 fn camera_follow(

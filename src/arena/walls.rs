@@ -4,78 +4,37 @@ use bevy::prelude::*;
 use crate::actors::GameLayer;
 use crate::run::{CombatScoped, SkipDeathShrink};
 
-use super::size::CurrentArenaSize;
-
 pub(super) const WALL_HEIGHT: f32 = 200.0;
 pub(super) const WALL_THICKNESS: f32 = 20.0;
+const WALL_SEGMENTS: u32 = 64;
 
 #[derive(Component)]
 pub struct Wall;
 
-#[derive(Component)]
-pub(super) enum WallSide { North, South, West, East }
+pub fn register(_app: &mut App) {}
 
-pub fn register(app: &mut App) {
-    app.add_systems(Update, update_walls);
-}
-
-pub(super) fn spawn_walls(commands: &mut Commands, start_width: f32, start_height: f32) {
-    let start_hw = start_width / 2.0;
-    let start_hh = start_height / 2.0;
+pub(super) fn spawn_walls(commands: &mut Commands, radius: f32) {
     let wall_layers = CollisionLayers::new(GameLayer::Wall, LayerMask::ALL);
+    let n = WALL_SEGMENTS;
+    let segment_angle = std::f32::consts::TAU / n as f32;
+    let chord = 2.0 * radius * (segment_angle * 0.5).sin();
+    let segment_len = chord + WALL_THICKNESS;
 
-    let walls = [
-        ("NorthWall", WallSide::North, Vec3::new(0.0, WALL_HEIGHT / 2.0, -start_hh), Vec3::new(start_hw * 2.0 + WALL_THICKNESS, WALL_HEIGHT, WALL_THICKNESS)),
-        ("SouthWall", WallSide::South, Vec3::new(0.0, WALL_HEIGHT / 2.0, start_hh), Vec3::new(start_hw * 2.0 + WALL_THICKNESS, WALL_HEIGHT, WALL_THICKNESS)),
-        ("WestWall", WallSide::West, Vec3::new(-start_hw, WALL_HEIGHT / 2.0, 0.0), Vec3::new(WALL_THICKNESS, WALL_HEIGHT, start_hh * 2.0 + WALL_THICKNESS)),
-        ("EastWall", WallSide::East, Vec3::new(start_hw, WALL_HEIGHT / 2.0, 0.0), Vec3::new(WALL_THICKNESS, WALL_HEIGHT, start_hh * 2.0 + WALL_THICKNESS)),
-    ];
-
-    for (name, side, pos, size) in walls {
+    for i in 0..n {
+        let angle = segment_angle * i as f32;
+        let x = radius * angle.cos();
+        let z = radius * angle.sin();
         commands.spawn((
-            Name::new(name),
+            Name::new("WallSegment"),
             Wall,
-            side,
-            Transform::from_translation(pos),
-            Collider::cuboid(size.x, size.y, size.z),
+            Transform::from_translation(Vec3::new(x, WALL_HEIGHT / 2.0, z))
+                .with_rotation(Quat::from_rotation_y(std::f32::consts::FRAC_PI_2 - angle)),
+            Collider::cuboid(segment_len, WALL_HEIGHT, WALL_THICKNESS),
             CollisionMargin(5.0),
             RigidBody::Static,
             wall_layers,
             CombatScoped,
             SkipDeathShrink,
         ));
-    }
-}
-
-fn update_walls(
-    arena_size: Option<Res<CurrentArenaSize>>,
-    mut query: Query<(&WallSide, &mut Transform, &mut Collider)>,
-) {
-    let Some(arena_size) = arena_size else { return };
-    if !arena_size.is_changed() {
-        return;
-    }
-    let half_w = arena_size.half_w();
-    let half_h = arena_size.half_h();
-
-    for (side, mut transform, mut collider) in &mut query {
-        match side {
-            WallSide::North => {
-                transform.translation.z = -half_h;
-                *collider = Collider::cuboid(half_w * 2.0 + WALL_THICKNESS, WALL_HEIGHT, WALL_THICKNESS);
-            }
-            WallSide::South => {
-                transform.translation.z = half_h;
-                *collider = Collider::cuboid(half_w * 2.0 + WALL_THICKNESS, WALL_HEIGHT, WALL_THICKNESS);
-            }
-            WallSide::West => {
-                transform.translation.x = -half_w;
-                *collider = Collider::cuboid(WALL_THICKNESS, WALL_HEIGHT, half_h * 2.0 + WALL_THICKNESS);
-            }
-            WallSide::East => {
-                transform.translation.x = half_w;
-                *collider = Collider::cuboid(WALL_THICKNESS, WALL_HEIGHT, half_h * 2.0 + WALL_THICKNESS);
-            }
-        }
     }
 }
