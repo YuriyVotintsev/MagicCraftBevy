@@ -1,7 +1,7 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use serde::Deserialize;
 
+use crate::balance::MobCommonStats;
 use super::super::components::{
     JumpWalkAnimation, MeleeAttacker, SelfMoving, Shape, ShapeKind,
 };
@@ -12,17 +12,9 @@ use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers
 
 const LUNGE_DEFAULT_DURATION: f32 = 0.6;
 
-#[derive(Clone, Deserialize, Debug)]
-pub struct SlimeSmallStats {
-    pub hp: f32,
-    pub damage: f32,
-    pub speed: f32,
-    pub size: f32,
-    pub mass: f32,
-    pub melee_range: f32,
-    pub melee_cooldown: f32,
-    pub lunge_duration: f32,
-}
+const SLIME_MELEE_RANGE: f32 = 100.0;
+const SLIME_MELEE_COOLDOWN: f32 = 0.5;
+const SLIME_LUNGE_DURATION: f32 = 0.5;
 
 #[derive(Component)]
 pub struct LungeMovement {
@@ -62,28 +54,30 @@ pub fn register_systems(app: &mut App) {
 pub fn spawn_slime_small(
     commands: &mut Commands,
     pos: Vec2,
-    s: &SlimeSmallStats,
+    s: &MobCommonStats,
     calculators: &StatCalculators,
     wave_mods: WaveModifiers,
 ) -> Entity {
+    let speed = s.speed.unwrap_or(0.0);
+    let mass = s.mass.unwrap_or(1.0);
     let id = spawn_enemy_core(
         commands,
         pos,
         calculators,
         &[
-            (Stat::MovementSpeed, ModifierKind::Flat, s.speed),
+            (Stat::MovementSpeed, ModifierKind::Flat, speed),
             (Stat::MaxLife, ModifierKind::Flat, s.hp),
             (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
         ],
         s.size,
-        EnemyBody::Dynamic { mass: s.mass },
+        EnemyBody::Dynamic { mass },
         "enemy_death",
         wave_mods,
     );
 
     commands.entity(id).insert((
-        LungeMovement { speed: None, duration: Some(s.lunge_duration), pause_duration: 0.4, distance: None },
-        MeleeAttacker::new(s.melee_cooldown, s.melee_range),
+        LungeMovement { speed: None, duration: Some(SLIME_LUNGE_DURATION), pause_duration: 0.4, distance: None },
+        MeleeAttacker::new(SLIME_MELEE_COOLDOWN, SLIME_MELEE_RANGE),
     ));
 
     commands.entity(id).with_children(|p| {

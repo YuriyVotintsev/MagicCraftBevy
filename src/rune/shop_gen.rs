@@ -1,10 +1,9 @@
 use bevy::prelude::*;
 use rand::Rng;
 
-use crate::balance::GameBalance;
+use crate::balance::{Globals, RuneCosts};
 
 use super::content::{RuneKind, Tier};
-use super::cost::RuneCosts;
 use super::data::{Rune, RuneGrid, ShopOffer};
 
 const JOKER_HUE_MIN: f32 = 35.0;
@@ -19,14 +18,14 @@ fn joker_cost_for_tier(tier: Tier) -> u32 {
     }
 }
 
-fn random_tier(rng: &mut impl Rng, balance: &GameBalance) -> Option<Tier> {
-    let total = balance.runes.tier_weights.total();
+fn random_tier(rng: &mut impl Rng, globals: &Globals) -> Option<Tier> {
+    let total = globals.rune_tier_weight_total();
     if total == 0 {
         return None;
     }
     let mut pick = rng.random_range(0..total);
     for tier in Tier::ALL.iter().copied() {
-        let w = balance.runes.tier_weights.for_tier(tier);
+        let w = globals.rune_tier_weight(tier);
         if pick < w {
             return Some(tier);
         }
@@ -75,13 +74,13 @@ fn pick_rune_for_tier(
 
 fn roll_rune(
     rng: &mut impl Rng,
-    balance: &GameBalance,
+    globals: &Globals,
     costs: &RuneCosts,
     grid: &RuneGrid,
     offer: &ShopOffer,
 ) -> Option<Rune> {
     for _ in 0..TIER_ROLL_ATTEMPTS {
-        let Some(tier) = random_tier(rng, balance) else {
+        let Some(tier) = random_tier(rng, globals) else {
             return None;
         };
         if let Some(kind) = pick_rune_for_tier(rng, tier, grid, offer) {
@@ -99,8 +98,8 @@ fn roll_rune(
     None
 }
 
-fn roll_joker(rng: &mut impl Rng, balance: &GameBalance) -> Option<Rune> {
-    let tier = random_tier(rng, balance)?;
+fn roll_joker(rng: &mut impl Rng, globals: &Globals) -> Option<Rune> {
+    let tier = random_tier(rng, globals)?;
     let hue = rng.random_range(JOKER_HUE_MIN..JOKER_HUE_MAX);
     Some(Rune {
         id: 0,
@@ -114,17 +113,17 @@ fn roll_joker(rng: &mut impl Rng, balance: &GameBalance) -> Option<Rune> {
 pub fn roll_shop_offer(
     offer: &mut ShopOffer,
     grid: &RuneGrid,
-    balance: &GameBalance,
+    globals: &Globals,
     costs: &RuneCosts,
 ) {
     let mut rng = rand::rng();
     offer.stubs = [None; super::data::SHOP_SLOTS];
     for i in 0..offer.stubs.len() {
-        let as_joker = rng.random::<f32>() < balance.runes.joker_probability;
+        let as_joker = rng.random::<f32>() < globals.rune_joker_probability;
         let new_rune = if as_joker {
-            roll_joker(&mut rng, balance)
+            roll_joker(&mut rng, globals)
         } else {
-            roll_rune(&mut rng, balance, costs, grid, offer)
+            roll_rune(&mut rng, globals, costs, grid, offer)
         };
         offer.stubs[i] = new_rune;
     }

@@ -39,6 +39,7 @@ use bevy::prelude::*;
 
 use actors::ActorsPlugin;
 use arena::ArenaPlugin;
+use balance::BalancePlugin;
 use dissolve_material::DissolveMaterialPlugin;
 use health_material::HealthMaterialPlugin;
 use hit_flash::HitFlashPlugin;
@@ -185,6 +186,7 @@ fn main() {
         .add_systems(Startup, disable_physics_debug)
         .add_systems(Update, toggle_physics_debug)
         .add_plugins((
+            BalancePlugin,
             LoadingPlugin,
             ArenaPlugin,
             StatsPlugin,

@@ -1,9 +1,9 @@
 use avian3d::prelude::{Collider as AvianCollider, *};
 use bevy::prelude::*;
 use rand::Rng;
-use serde::Deserialize;
 
 use crate::GameState;
+use crate::balance::MobCommonStats;
 use super::super::components::{
     CircleShape, Growing, Lifetime, PendingDamage, ScaleOut, Shadow, ShootSquish, ShotFired, Size,
     Shape, ShapeColor, ShapeKind,
@@ -17,21 +17,15 @@ use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
 use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers};
 
-#[derive(Clone, Deserialize, Debug)]
-pub struct TowerStats {
-    pub hp: f32,
-    pub damage: f32,
-    pub size: f32,
-    pub shot_cooldown: f32,
-    pub flight_duration: f32,
-    pub arc_height: f32,
-    pub start_elevation: f32,
-    pub spread: f32,
-    pub projectile_size: f32,
-    pub explosion_radius: f32,
-    pub explosion_duration: f32,
-    pub indicator_duration: f32,
-}
+const TOWER_SHOT_COOLDOWN: f32 = 2.5;
+const TOWER_FLIGHT_DURATION: f32 = 0.8;
+const TOWER_ARC_HEIGHT: f32 = 8.0;
+const TOWER_START_ELEVATION: f32 = 1.6;
+const TOWER_SPREAD: f32 = 450.0;
+const TOWER_PROJECTILE_SIZE: f32 = 60.0;
+const TOWER_EXPLOSION_RADIUS: f32 = 400.0;
+const TOWER_EXPLOSION_DURATION: f32 = 0.5;
+const TOWER_INDICATOR_DURATION: f32 = 0.8;
 
 #[derive(Component)]
 pub struct TowerShooter {
@@ -114,7 +108,7 @@ fn init_tower_visual(
 pub fn spawn_tower(
     commands: &mut Commands,
     pos: Vec2,
-    s: &TowerStats,
+    s: &MobCommonStats,
     calculators: &StatCalculators,
     wave_mods: WaveModifiers,
 ) -> Entity {
@@ -136,16 +130,16 @@ pub fn spawn_tower(
         TowerVisual {},
         ShootSquish { amplitude: 0.3, duration: 0.25 },
         TowerShooter {
-            cooldown: s.shot_cooldown,
+            cooldown: TOWER_SHOT_COOLDOWN,
             elapsed: 0.0,
-            flight_duration: s.flight_duration,
-            arc_height: s.arc_height,
-            start_elevation: s.start_elevation,
-            spread: s.spread,
-            projectile_size: s.projectile_size,
-            explosion_radius: s.explosion_radius,
-            explosion_duration: s.explosion_duration,
-            indicator_duration: s.indicator_duration,
+            flight_duration: TOWER_FLIGHT_DURATION,
+            arc_height: TOWER_ARC_HEIGHT,
+            start_elevation: TOWER_START_ELEVATION,
+            spread: TOWER_SPREAD,
+            projectile_size: TOWER_PROJECTILE_SIZE,
+            explosion_radius: TOWER_EXPLOSION_RADIUS,
+            explosion_duration: TOWER_EXPLOSION_DURATION,
+            indicator_duration: TOWER_INDICATOR_DURATION,
         },
     ));
 

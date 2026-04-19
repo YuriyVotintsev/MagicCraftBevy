@@ -1,6 +1,5 @@
 mod calc;
 mod content;
-mod cost;
 mod data;
 mod hex;
 mod scene;
@@ -9,8 +8,7 @@ mod shop_gen;
 use bevy::prelude::*;
 
 pub use calc::add_grid_modifiers;
-pub use content::Tier;
-pub use cost::RuneCosts;
+pub use content::{RuneKind, Tier};
 pub use data::{
     Dragging, GridHighlights, JokerSlots, RerollState, RuneGrid, RuneSource, ShopOffer,
     SHOP_SLOTS,

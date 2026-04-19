@@ -6,11 +6,7 @@ use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use serde::Deserialize;
 
-use crate::actors::MobsBalance;
-use crate::balance::GameBalance;
 use crate::particles::ParticleConfigRaw;
-use crate::rune::RuneCosts;
-use crate::wave::WavesConfig;
 
 pub trait RonAsset: Asset + for<'de> Deserialize<'de> {
     const EXTENSION: &'static str;
@@ -47,22 +43,6 @@ impl<A: RonAsset> AssetLoader for RonAssetLoader<A> {
     }
 }
 
-impl RonAsset for GameBalance {
-    const EXTENSION: &'static str = "balance.ron";
-}
-
-impl RonAsset for MobsBalance {
-    const EXTENSION: &'static str = "mobs.ron";
-}
-
 impl RonAsset for ParticleConfigRaw {
     const EXTENSION: &'static str = "particle.ron";
-}
-
-impl RonAsset for RuneCosts {
-    const EXTENSION: &'static str = "runes.ron";
-}
-
-impl RonAsset for WavesConfig {
-    const EXTENSION: &'static str = "waves.ron";
 }

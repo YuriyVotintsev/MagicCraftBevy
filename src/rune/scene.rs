@@ -5,7 +5,7 @@ use bevy::input::ButtonInput;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
-use crate::balance::GameBalance;
+use crate::balance::{Globals, RuneCosts};
 use crate::coord;
 use crate::palette;
 use crate::run::PlayerMoney;
@@ -13,7 +13,6 @@ use crate::schedule::ShopSet;
 use crate::wave::WavePhase;
 
 use super::content::{write_pattern_contains, write_pattern_coords, write_targets};
-use super::cost::RuneCosts;
 use super::data::{
     can_place, Dragging, GridCellView, GridHighlights, JokerSlotView, JokerSlots, Rune,
     RuneGrid, RuneSource, RuneView, ShopOffer, GRID_RADIUS, JOKER_SLOTS, SHOP_SLOTS,
@@ -178,22 +177,22 @@ fn unlit_material(color: Color) -> StandardMaterial {
 }
 
 fn reset_reroll_cost(
-    balance: Res<GameBalance>,
+    globals: Res<Globals>,
     mut reroll: ResMut<super::data::RerollState>,
 ) {
-    reroll.cost = balance.runes.reroll_base_cost;
+    reroll.cost = globals.rune_reroll_base_cost;
 }
 
 fn fill_shop_offer_system(
     mut offer: ResMut<ShopOffer>,
     grid: Res<RuneGrid>,
-    balance: Res<GameBalance>,
+    globals: Res<Globals>,
     costs: Res<RuneCosts>,
 ) {
     if offer.stubs.iter().any(|s| s.is_some()) {
         return;
     }
-    roll_shop_offer(&mut offer, &grid, &balance, &costs);
+    roll_shop_offer(&mut offer, &grid, &globals, &costs);
 }
 
 fn spawn_shop_scene(mut commands: Commands, meshes: Res<SceneMeshes>, ground: Res<GroundMaterials>) {

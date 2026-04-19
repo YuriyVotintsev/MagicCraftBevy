@@ -2,13 +2,12 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::actors::Health;
-use crate::actors::{MobKind, MobsBalance};
+use crate::actors::MobKind;
 use crate::arena::CurrentArenaSize;
-use crate::balance::GameBalance;
+use crate::balance::{Globals, MobsBalance, WavesConfig};
 use crate::dissolve_material::DissolveMaterial;
 use crate::run::{CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
-use super::config::WavesConfig;
 use super::phase::WavePhase;
 use super::state::{WaveEnemy, WaveState};
 use super::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
@@ -72,7 +71,7 @@ fn spawn_enemies(
     mut wave_state: ResMut<WaveState>,
     player_query: Query<&Transform, With<crate::actors::Player>>,
     mobs_balance: Res<MobsBalance>,
-    balance: Res<GameBalance>,
+    globals: Res<Globals>,
     circle_mesh: Res<SummoningCircleMesh>,
     circle_material: Res<SummoningCircleMaterial>,
     mut materials: ResMut<Assets<DissolveMaterial>>,
@@ -90,7 +89,7 @@ fn spawn_enemies(
         .map(|t| crate::coord::to_2d(t.translation))
         .unwrap_or(Vec2::ZERO);
 
-    let safe_radius_sq = balance.wave.safe_spawn_radius * balance.wave.safe_spawn_radius;
+    let safe_radius_sq = globals.safe_spawn_radius * globals.safe_spawn_radius;
     let margin = 30.0;
     let hw = arena_size.half_w() - margin;
     let hh = arena_size.half_h() - margin;
@@ -146,9 +145,10 @@ fn spawn_enemies(
 
         if is_ghost {
             use crate::actors::GhostTransparency;
+            use crate::actors::mobs::ghost::{GHOST_INVISIBLE_DISTANCE, GHOST_VISIBLE_DISTANCE};
             entity_commands.insert(GhostTransparency {
-                visible_distance: mobs_balance.ghost.visible_distance,
-                invisible_distance: mobs_balance.ghost.invisible_distance,
+                visible_distance: GHOST_VISIBLE_DISTANCE,
+                invisible_distance: GHOST_INVISIBLE_DISTANCE,
             });
         }
         wave_state.spawned_count += 1;

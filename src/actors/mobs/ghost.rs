@@ -1,8 +1,8 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use serde::Deserialize;
 
 use crate::GameState;
+use crate::balance::MobCommonStats;
 use super::super::components::{
     BobbingAnimation, Fade, FadeCollisionToggle, MeleeAttacker, SelfMoving, Shape, ShapeKind,
 };
@@ -12,18 +12,10 @@ use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
 use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers};
 
-#[derive(Clone, Deserialize, Debug)]
-pub struct GhostStats {
-    pub hp: f32,
-    pub damage: f32,
-    pub speed: f32,
-    pub size: f32,
-    pub mass: f32,
-    pub melee_range: f32,
-    pub melee_cooldown: f32,
-    pub visible_distance: f32,
-    pub invisible_distance: f32,
-}
+const GHOST_MELEE_RANGE: f32 = 80.0;
+const GHOST_MELEE_COOLDOWN: f32 = 1.0;
+pub const GHOST_VISIBLE_DISTANCE: f32 = 150.0;
+pub const GHOST_INVISIBLE_DISTANCE: f32 = 400.0;
 
 #[derive(Component)]
 pub struct GhostTransparency {
@@ -54,29 +46,34 @@ pub fn register_systems(app: &mut App) {
 pub fn spawn_ghost(
     commands: &mut Commands,
     pos: Vec2,
-    s: &GhostStats,
+    s: &MobCommonStats,
     calculators: &StatCalculators,
     wave_mods: WaveModifiers,
 ) -> Entity {
+    let speed = s.speed.unwrap_or(0.0);
+    let mass = s.mass.unwrap_or(1.0);
     let id = spawn_enemy_core(
         commands,
         pos,
         calculators,
         &[
-            (Stat::MovementSpeed, ModifierKind::Flat, s.speed),
+            (Stat::MovementSpeed, ModifierKind::Flat, speed),
             (Stat::MaxLife, ModifierKind::Flat, s.hp),
             (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
         ],
         s.size,
-        EnemyBody::Dynamic { mass: s.mass },
+        EnemyBody::Dynamic { mass },
         "enemy_death",
         wave_mods,
     );
 
     commands.entity(id).insert((
-        GhostTransparency { visible_distance: s.visible_distance, invisible_distance: s.invisible_distance },
+        GhostTransparency {
+            visible_distance: GHOST_VISIBLE_DISTANCE,
+            invisible_distance: GHOST_INVISIBLE_DISTANCE,
+        },
         MoveToward {},
-        MeleeAttacker::new(s.melee_cooldown, s.melee_range),
+        MeleeAttacker::new(GHOST_MELEE_COOLDOWN, GHOST_MELEE_RANGE),
     ));
 
     commands.entity(id).with_children(|p| {

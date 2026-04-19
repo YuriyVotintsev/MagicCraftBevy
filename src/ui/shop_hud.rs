@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
-use crate::balance::GameBalance;
+use crate::balance::{Globals, RuneCosts};
 use crate::palette;
 use crate::run::{PlayerMoney, RunState};
 use crate::rune::{
-    roll_shop_offer, Dragging, RerollState, RuneCosts, RuneGrid, ShopOffer,
+    roll_shop_offer, Dragging, RerollState, RuneGrid, ShopOffer,
 };
 use crate::transition::{Transition, TransitionAction};
 use crate::wave::WavePhase;
@@ -167,7 +167,7 @@ fn reroll_button_system(
     mut money: ResMut<PlayerMoney>,
     mut offer: ResMut<ShopOffer>,
     grid: Res<RuneGrid>,
-    balance: Res<GameBalance>,
+    globals: Res<Globals>,
     costs: Res<RuneCosts>,
     mut reroll: ResMut<RerollState>,
     dragging: Query<(), With<Dragging>>,
@@ -180,8 +180,8 @@ fn reroll_button_system(
             return;
         }
         money.spend(reroll.cost);
-        roll_shop_offer(&mut offer, &grid, &balance, &costs);
-        reroll.cost = reroll.cost.saturating_add(balance.runes.reroll_cost_step);
+        roll_shop_offer(&mut offer, &grid, &globals, &costs);
+        reroll.cost = reroll.cost.saturating_add(globals.rune_reroll_cost_step);
     });
 }
 

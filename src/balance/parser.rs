@@ -1,0 +1,452 @@
+use std::collections::HashMap;
+
+use calamine::{Data, Range};
+
+use crate::actors::MobKind;
+use crate::rune::RuneKind;
+
+use super::types::{
+    Balance, Globals, MobCommonStats, MobsBalance, RuneCosts, WaveDef, WavesConfig,
+};
+
+pub type BalanceError = String;
+
+pub fn parse_balance(
+    mobs: &Range<Data>,
+    waves: &Range<Data>,
+    runes: &Range<Data>,
+    globals: &Range<Data>,
+) -> Result<Balance, BalanceError> {
+    let mobs = parse_mobs(mobs).map_err(|e| format!("sheet Mobs: {e}"))?;
+    let waves = parse_waves(waves).map_err(|e| format!("sheet Waves: {e}"))?;
+    let rune_costs = parse_runes(runes).map_err(|e| format!("sheet Runes: {e}"))?;
+    let globals = parse_globals(globals).map_err(|e| format!("sheet Globals: {e}"))?;
+    Ok(Balance { mobs, waves, rune_costs, globals })
+}
+
+pub fn parse_mobs(range: &Range<Data>) -> Result<MobsBalance, BalanceError> {
+    let headers = parse_headers(range)?;
+    let c_id = required_col(&headers, "id")?;
+    let c_hp = required_col(&headers, "hp")?;
+    let c_damage = required_col(&headers, "damage")?;
+    let c_speed = headers.get("speed").copied();
+    let c_size = required_col(&headers, "size")?;
+    let c_mass = headers.get("mass").copied();
+
+    let mut map: HashMap<MobKind, MobCommonStats> = HashMap::new();
+    for (row_idx, row) in data_rows(range) {
+        let id = cell_str(row.get(c_id))
+            .ok_or_else(|| format!("row {row_idx}: empty id"))?;
+        let kind = parse_mob_id(&id)
+            .map_err(|e| format!("row {row_idx}: {e}"))?;
+        if map.contains_key(&kind) {
+            return Err(format!("row {row_idx}: duplicate mob id {id}"));
+        }
+
+        let hp = cell_f32(row.get(c_hp))
+            .map_err(|e| format!("row {row_idx} hp: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: hp required"))?;
+        let damage = cell_f32(row.get(c_damage))
+            .map_err(|e| format!("row {row_idx} damage: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: damage required"))?;
+        let size = cell_f32(row.get(c_size))
+            .map_err(|e| format!("row {row_idx} size: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: size required"))?;
+        let speed = match c_speed {
+            Some(c) => cell_f32(row.get(c)).map_err(|e| format!("row {row_idx} speed: {e}"))?,
+            None => None,
+        };
+        let mass = match c_mass {
+            Some(c) => cell_f32(row.get(c)).map_err(|e| format!("row {row_idx} mass: {e}"))?,
+            None => None,
+        };
+
+        map.insert(kind, MobCommonStats { hp, damage, speed, size, mass });
+    }
+
+    for kind in MobKind::iter() {
+        if !map.contains_key(&kind) {
+            return Err(format!("mob {} missing", kind.id()));
+        }
+    }
+
+    Ok(MobsBalance {
+        ghost: map.remove(&MobKind::Ghost).unwrap(),
+        tower: map.remove(&MobKind::Tower).unwrap(),
+        slime_small: map.remove(&MobKind::SlimeSmall).unwrap(),
+        jumper: map.remove(&MobKind::Jumper).unwrap(),
+        spinner: map.remove(&MobKind::Spinner).unwrap(),
+    })
+}
+
+pub fn parse_waves(range: &Range<Data>) -> Result<WavesConfig, BalanceError> {
+    let headers = parse_headers(range)?;
+    let c_wave = required_col(&headers, "wave")?;
+    let c_unlocks = required_col(&headers, "unlocks")?;
+    let c_variety = required_col(&headers, "enemy_variety")?;
+    let c_concurrent = required_col(&headers, "max_concurrent")?;
+    let c_hp = required_col(&headers, "hp_multiplier")?;
+    let c_dmg = required_col(&headers, "damage_multiplier")?;
+
+    let mut rows: Vec<(u32, WaveDef, Option<MobKind>)> = Vec::new();
+    for (row_idx, row) in data_rows(range) {
+        let wave = cell_u32(row.get(c_wave))
+            .map_err(|e| format!("row {row_idx} wave: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: wave required"))?;
+
+        let unlocks = match cell_str(row.get(c_unlocks)) {
+            Some(s) => Some(
+                parse_mob_id(&s)
+                    .map_err(|e| format!("row {row_idx} unlocks: {e}"))?,
+            ),
+            None => None,
+        };
+
+        let variety = cell_u32(row.get(c_variety))
+            .map_err(|e| format!("row {row_idx} enemy_variety: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: enemy_variety required"))?;
+        let concurrent = cell_u32(row.get(c_concurrent))
+            .map_err(|e| format!("row {row_idx} max_concurrent: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: max_concurrent required"))?;
+        let hp_m = cell_f32(row.get(c_hp))
+            .map_err(|e| format!("row {row_idx} hp_multiplier: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: hp_multiplier required"))?;
+        let dmg_m = cell_f32(row.get(c_dmg))
+            .map_err(|e| format!("row {row_idx} damage_multiplier: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: damage_multiplier required"))?;
+
+        if variety == 0 {
+            return Err(format!("wave {wave}: enemy_variety must be > 0"));
+        }
+        if concurrent == 0 {
+            return Err(format!("wave {wave}: max_concurrent must be > 0"));
+        }
+        if hp_m <= 0.0 {
+            return Err(format!("wave {wave}: hp_multiplier must be > 0"));
+        }
+        if dmg_m <= 0.0 {
+            return Err(format!("wave {wave}: damage_multiplier must be > 0"));
+        }
+
+        rows.push((
+            wave,
+            WaveDef {
+                enemy_variety: variety,
+                max_concurrent: concurrent,
+                hp_multiplier: hp_m,
+                damage_multiplier: dmg_m,
+            },
+            unlocks,
+        ));
+    }
+
+    if rows.is_empty() {
+        return Err("no waves".into());
+    }
+    rows.sort_by_key(|(w, _, _)| *w);
+    for (i, (w, _, _)) in rows.iter().enumerate() {
+        let expected = (i as u32) + 1;
+        if *w != expected {
+            return Err(format!(
+                "wave numbers must be continuous starting at 1; got {w} at position {expected}"
+            ));
+        }
+    }
+
+    let mut mob_unlocks: HashMap<MobKind, u32> = HashMap::new();
+    for (w, _, unlock) in &rows {
+        if let Some(kind) = unlock {
+            if mob_unlocks.contains_key(kind) {
+                return Err(format!("mob {} unlocked more than once", kind.id()));
+            }
+            mob_unlocks.insert(*kind, *w);
+        }
+    }
+
+    for (w, def, _) in &rows {
+        let unlocked_count = mob_unlocks.values().filter(|u| **u <= *w).count() as u32;
+        if def.enemy_variety > unlocked_count {
+            bevy::log::warn!(
+                "wave {w}: enemy_variety {} > {} mobs unlocked so far",
+                def.enemy_variety,
+                unlocked_count
+            );
+        }
+    }
+
+    let waves = rows.into_iter().map(|(_, d, _)| d).collect();
+    Ok(WavesConfig { mob_unlocks, waves })
+}
+
+pub fn parse_runes(range: &Range<Data>) -> Result<RuneCosts, BalanceError> {
+    let headers = parse_headers(range)?;
+    let c_id = required_col(&headers, "id")?;
+    let c_cost = required_col(&headers, "cost")?;
+
+    let mut map: HashMap<RuneKind, u32> = HashMap::new();
+    for (row_idx, row) in data_rows(range) {
+        let id = cell_str(row.get(c_id))
+            .ok_or_else(|| format!("row {row_idx}: empty id"))?;
+        let kind = parse_rune_id(&id)
+            .map_err(|e| format!("row {row_idx}: {e}"))?;
+        if map.contains_key(&kind) {
+            return Err(format!("row {row_idx}: duplicate rune id {id}"));
+        }
+        let cost = cell_u32(row.get(c_cost))
+            .map_err(|e| format!("row {row_idx} cost: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: cost required"))?;
+        map.insert(kind, cost);
+    }
+
+    for kind in RuneKind::ALL {
+        if !map.contains_key(kind) {
+            return Err(format!("rune {} missing", rune_id_str(*kind)));
+        }
+    }
+
+    Ok(RuneCosts {
+        spike: map[&RuneKind::Spike],
+        heart_stone: map[&RuneKind::HeartStone],
+        resonator: map[&RuneKind::Resonator],
+    })
+}
+
+pub fn parse_globals(range: &Range<Data>) -> Result<Globals, BalanceError> {
+    let headers = parse_headers(range)?;
+    let c_key = required_col(&headers, "key")?;
+    let c_value = required_col(&headers, "value")?;
+
+    let mut map: HashMap<String, String> = HashMap::new();
+    for (row_idx, row) in data_rows(range) {
+        let key = cell_str(row.get(c_key))
+            .ok_or_else(|| format!("row {row_idx}: empty key"))?;
+        let value = cell_str(row.get(c_value))
+            .ok_or_else(|| format!("row {row_idx}: value required for key {key}"))?;
+        if map.insert(key.clone(), value).is_some() {
+            return Err(format!("duplicate key {key}"));
+        }
+    }
+
+    let get_f32 = |k: &str| -> Result<f32, BalanceError> {
+        map.get(k)
+            .ok_or_else(|| format!("missing key {k}"))?
+            .parse::<f32>()
+            .map_err(|_| format!("key {k}: not a float"))
+    };
+    let get_u32 = |k: &str| -> Result<u32, BalanceError> {
+        map.get(k)
+            .ok_or_else(|| format!("missing key {k}"))?
+            .parse::<u32>()
+            .map_err(|_| format!("key {k}: not an unsigned int"))
+    };
+
+    Ok(Globals {
+        safe_spawn_radius: get_f32("safe_spawn_radius")?,
+        arena_width: get_f32("arena_width")?,
+        arena_height: get_f32("arena_height")?,
+        coins_per_kill: get_u32("coins_per_kill")?,
+        coin_attraction_duration: get_f32("coin_attraction_duration")?,
+        rune_joker_probability: get_f32("rune_joker_probability")?,
+        rune_tier_weight_common: get_u32("rune_tier_weight_common")?,
+        rune_tier_weight_rare: get_u32("rune_tier_weight_rare")?,
+        rune_reroll_base_cost: get_u32("rune_reroll_base_cost")?,
+        rune_reroll_cost_step: get_u32("rune_reroll_cost_step")?,
+    })
+}
+
+fn parse_headers(range: &Range<Data>) -> Result<HashMap<String, usize>, BalanceError> {
+    let mut header_row = range.rows();
+    let first = header_row.next().ok_or("empty sheet")?;
+    let mut out: HashMap<String, usize> = HashMap::new();
+    for (idx, cell) in first.iter().enumerate() {
+        let Some(name) = cell_str(Some(cell)) else { continue };
+        if name.starts_with('_') {
+            continue;
+        }
+        if out.insert(name.clone(), idx).is_some() {
+            return Err(format!("duplicate header {name}"));
+        }
+    }
+    Ok(out)
+}
+
+fn required_col(headers: &HashMap<String, usize>, name: &str) -> Result<usize, BalanceError> {
+    headers
+        .get(name)
+        .copied()
+        .ok_or_else(|| format!("missing header {name}"))
+}
+
+fn data_rows<'a>(
+    range: &'a Range<Data>,
+) -> impl Iterator<Item = (usize, &'a [Data])> + 'a {
+    range
+        .rows()
+        .enumerate()
+        .skip(1)
+        .filter(|(_, row)| row.iter().any(|c| !matches!(c, Data::Empty)))
+        .map(|(i, r)| (i + 1, r))
+}
+
+fn cell_str(cell: Option<&Data>) -> Option<String> {
+    match cell {
+        Some(Data::String(s)) => {
+            let t = s.trim();
+            if t.is_empty() { None } else { Some(t.to_string()) }
+        }
+        Some(Data::Int(i)) => Some(i.to_string()),
+        Some(Data::Float(f)) => Some(f.to_string()),
+        Some(Data::Bool(b)) => Some(b.to_string()),
+        _ => None,
+    }
+}
+
+fn cell_f32(cell: Option<&Data>) -> Result<Option<f32>, BalanceError> {
+    match cell {
+        None | Some(Data::Empty) => Ok(None),
+        Some(Data::Float(f)) => Ok(Some(*f as f32)),
+        Some(Data::Int(i)) => Ok(Some(*i as f32)),
+        Some(Data::String(s)) => {
+            let t = s.trim();
+            if t.is_empty() {
+                Ok(None)
+            } else {
+                t.parse::<f32>()
+                    .map(Some)
+                    .map_err(|_| format!("not a number: {s:?}"))
+            }
+        }
+        Some(other) => Err(format!("unexpected cell {other:?}")),
+    }
+}
+
+fn cell_u32(cell: Option<&Data>) -> Result<Option<u32>, BalanceError> {
+    match cell {
+        None | Some(Data::Empty) => Ok(None),
+        Some(Data::Int(i)) => {
+            if *i < 0 {
+                Err(format!("negative int {i}"))
+            } else {
+                Ok(Some(*i as u32))
+            }
+        }
+        Some(Data::Float(f)) => {
+            if *f < 0.0 || f.fract() != 0.0 {
+                Err(format!("not a non-negative integer: {f}"))
+            } else {
+                Ok(Some(*f as u32))
+            }
+        }
+        Some(Data::String(s)) => {
+            let t = s.trim();
+            if t.is_empty() {
+                Ok(None)
+            } else {
+                t.parse::<u32>()
+                    .map(Some)
+                    .map_err(|_| format!("not a u32: {s:?}"))
+            }
+        }
+        Some(other) => Err(format!("unexpected cell {other:?}")),
+    }
+}
+
+fn parse_mob_id(s: &str) -> Result<MobKind, BalanceError> {
+    MobKind::iter()
+        .find(|k| k.id() == s)
+        .ok_or_else(|| format!("unknown mob id: {s}"))
+}
+
+fn parse_rune_id(s: &str) -> Result<RuneKind, BalanceError> {
+    match s {
+        "spike" => Ok(RuneKind::Spike),
+        "heart_stone" => Ok(RuneKind::HeartStone),
+        "resonator" => Ok(RuneKind::Resonator),
+        other => Err(format!("unknown rune id: {other}")),
+    }
+}
+
+fn rune_id_str(kind: RuneKind) -> &'static str {
+    match kind {
+        RuneKind::Spike => "spike",
+        RuneKind::HeartStone => "heart_stone",
+        RuneKind::Resonator => "resonator",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use calamine::{open_workbook, Reader, Xlsx};
+
+    fn load_real_workbook() -> (
+        calamine::Range<Data>,
+        calamine::Range<Data>,
+        calamine::Range<Data>,
+        calamine::Range<Data>,
+    ) {
+        let path = "assets/balance.xlsx";
+        let mut wb: Xlsx<_> = open_workbook(path).expect("open xlsx");
+        (
+            wb.worksheet_range("Mobs").expect("Mobs sheet"),
+            wb.worksheet_range("Waves").expect("Waves sheet"),
+            wb.worksheet_range("Runes").expect("Runes sheet"),
+            wb.worksheet_range("Globals").expect("Globals sheet"),
+        )
+    }
+
+    #[test]
+    fn happy_path_parses_real_xlsx() {
+        let (mobs, waves, runes, globals) = load_real_workbook();
+        let bal = parse_balance(&mobs, &waves, &runes, &globals).expect("parse ok");
+
+        assert_eq!(bal.mobs.ghost.hp, 5.0);
+        assert_eq!(bal.mobs.ghost.speed, Some(120.0));
+        assert_eq!(bal.mobs.tower.speed, None);
+        assert_eq!(bal.mobs.tower.mass, None);
+        assert_eq!(bal.mobs.spinner.speed, None);
+        assert_eq!(bal.mobs.jumper.mass, Some(10.0));
+
+        assert_eq!(bal.waves.waves.len(), 25);
+        assert_eq!(bal.waves.waves[0].enemy_variety, 1);
+        assert_eq!(bal.waves.waves[0].max_concurrent, 5);
+        assert_eq!(
+            bal.waves.mob_unlocks.get(&crate::actors::MobKind::SlimeSmall),
+            Some(&1)
+        );
+        assert_eq!(
+            bal.waves.mob_unlocks.get(&crate::actors::MobKind::Spinner),
+            Some(&13)
+        );
+
+        assert_eq!(bal.rune_costs.spike, 3);
+        assert_eq!(bal.rune_costs.heart_stone, 8);
+        assert_eq!(bal.rune_costs.resonator, 10);
+
+        assert_eq!(bal.globals.safe_spawn_radius, 200.0);
+        assert_eq!(bal.globals.arena_width, 1200.0);
+        assert_eq!(bal.globals.rune_tier_weight_common, 60);
+        assert_eq!(bal.globals.rune_reroll_cost_step, 2);
+    }
+
+    #[test]
+    fn cell_f32_empty_is_none() {
+        assert_eq!(cell_f32(None).unwrap(), None);
+        assert_eq!(cell_f32(Some(&Data::Empty)).unwrap(), None);
+        assert_eq!(cell_f32(Some(&Data::Float(1.5))).unwrap(), Some(1.5));
+        assert_eq!(cell_f32(Some(&Data::Int(3))).unwrap(), Some(3.0));
+    }
+
+    #[test]
+    fn parse_mob_id_unknown_errors() {
+        assert!(parse_mob_id("ghost").is_ok());
+        assert!(parse_mob_id("no_such_mob").is_err());
+    }
+
+    #[test]
+    fn parse_rune_id_unknown_errors() {
+        assert!(parse_rune_id("spike").is_ok());
+        assert!(parse_rune_id("no_such_rune").is_err());
+    }
+}
+

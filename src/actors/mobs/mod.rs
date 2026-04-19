@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-mod ghost;
+pub mod ghost;
 mod jumper;
 mod slime;
 mod spawn;
@@ -8,7 +8,7 @@ mod spinner;
 mod tower;
 
 pub use ghost::GhostTransparency;
-pub use spawn::{spawn_mob, MobKind, MobsBalance, WaveModifiers};
+pub use spawn::{spawn_mob, MobKind, WaveModifiers};
 
 pub struct MobsPlugin;
 

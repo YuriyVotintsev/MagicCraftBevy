@@ -2,27 +2,15 @@ use bevy::asset::{LoadState, LoadedFolder};
 use bevy::prelude::*;
 
 use crate::GameState;
-use crate::actors::MobsBalance;
-use crate::balance::GameBalance;
 use crate::particles::{ParticleConfigRaw, ParticleRegistry};
-use crate::rune::RuneCosts;
-use crate::wave::WavesConfig;
 
 #[derive(Resource, Default)]
 pub struct LoadingState {
-    pub balance_handle: Option<Handle<GameBalance>>,
-    pub mobs_balance_handle: Option<Handle<MobsBalance>>,
-    pub rune_costs_handle: Option<Handle<RuneCosts>>,
-    pub waves_handle: Option<Handle<WavesConfig>>,
     pub particles_folder: Option<Handle<LoadedFolder>>,
 }
 
 pub fn start_loading(mut loading_state: ResMut<LoadingState>, asset_server: Res<AssetServer>) {
     info!("Starting asset loading...");
-    loading_state.balance_handle = Some(asset_server.load("balance.ron"));
-    loading_state.mobs_balance_handle = Some(asset_server.load("mobs.ron"));
-    loading_state.rune_costs_handle = Some(asset_server.load("runes.ron"));
-    loading_state.waves_handle = Some(asset_server.load("waves.ron"));
     loading_state.particles_folder = Some(asset_server.load_folder("particles"));
 }
 
@@ -30,20 +18,13 @@ pub fn check_loaded(
     mut commands: Commands,
     loading_state: Res<LoadingState>,
     asset_server: Res<AssetServer>,
-    balance_assets: Res<Assets<GameBalance>>,
-    mobs_balance_assets: Res<Assets<MobsBalance>>,
-    rune_costs_assets: Res<Assets<RuneCosts>>,
-    waves_assets: Res<Assets<WavesConfig>>,
     particle_assets: Res<Assets<ParticleConfigRaw>>,
     folders: Res<Assets<LoadedFolder>>,
     mut next_game_state: ResMut<NextState<GameState>>,
 ) {
-    let ready = poll_asset(loading_state.balance_handle.as_ref(), &asset_server, &balance_assets, &mut commands, "balance")
-        && poll_asset(loading_state.mobs_balance_handle.as_ref(), &asset_server, &mobs_balance_assets, &mut commands, "mobs balance")
-        && poll_asset(loading_state.rune_costs_handle.as_ref(), &asset_server, &rune_costs_assets, &mut commands, "rune costs")
-        && poll_asset(loading_state.waves_handle.as_ref(), &asset_server, &waves_assets, &mut commands, "waves config")
-        && poll_folder(loading_state.particles_folder.as_ref(), &asset_server);
-    if !ready { return }
+    if !poll_folder(loading_state.particles_folder.as_ref(), &asset_server) {
+        return;
+    }
 
     let Some(folder_handle) = &loading_state.particles_folder else { return };
     resolve_particles(&mut commands, &asset_server, &particle_assets, &folders, folder_handle);
@@ -56,27 +37,6 @@ pub fn check_loaded(
     }
     info!("Loading complete, transitioning to MainMenu");
     next_game_state.set(GameState::MainMenu);
-}
-
-fn poll_asset<A: Asset + Resource + Clone>(
-    handle: Option<&Handle<A>>,
-    server: &AssetServer,
-    assets: &Assets<A>,
-    commands: &mut Commands,
-    label: &str,
-) -> bool {
-    let Some(handle) = handle else { return false };
-    match server.get_load_state(handle.id()) {
-        Some(LoadState::Loaded) => {}
-        Some(LoadState::Failed(err)) => {
-            error!("Failed to load {}: {:?}", label, err);
-            return false;
-        }
-        _ => return false,
-    }
-    let Some(asset) = assets.get(handle.id()) else { return false };
-    commands.insert_resource(asset.clone());
-    true
 }
 
 fn poll_folder(handle: Option<&Handle<LoadedFolder>>, server: &AssetServer) -> bool {

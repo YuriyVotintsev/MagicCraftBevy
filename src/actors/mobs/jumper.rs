@@ -1,8 +1,8 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 use rand::Rng;
-use serde::Deserialize;
 
+use crate::balance::MobCommonStats;
 use super::super::components::{
     Caster, Collider, ColliderShape, JumpWalkAnimation, Lifetime, OnCollisionDamage,
     OnCollisionParticles, Projectile, SelfMoving, Shadow, Shape, ShapeKind, Size,
@@ -17,23 +17,15 @@ use super::spawn::{enemy_ability_shape_color, enemy_shape_color, spawn_enemy_cor
 
 const JUMPER_SHOT_DAMAGE_PCT: f32 = 1.0;
 
-#[derive(Clone, Deserialize, Debug)]
-pub struct JumperStats {
-    pub hp: f32,
-    pub damage: f32,
-    pub speed: f32,
-    pub size: f32,
-    pub mass: f32,
-    pub idle_duration: f32,
-    pub jump_duration: f32,
-    pub land_duration: f32,
-    pub jump_distance: f32,
-    pub projectile_count: u32,
-    pub projectile_speed: f32,
-    pub projectile_size: f32,
-    pub projectile_lifetime: f32,
-    pub spread_degrees: f32,
-}
+const JUMPER_IDLE_DURATION: f32 = 3.0;
+const JUMPER_JUMP_DURATION: f32 = 0.5;
+const JUMPER_LAND_DURATION: f32 = 0.5;
+const JUMPER_JUMP_DISTANCE: f32 = 350.0;
+const JUMPER_PROJECTILE_COUNT: u32 = 4;
+const JUMPER_PROJECTILE_SPEED: f32 = 400.0;
+const JUMPER_PROJECTILE_SIZE: f32 = 60.0;
+const JUMPER_PROJECTILE_LIFETIME: f32 = 3.0;
+const JUMPER_SPREAD_DEGREES: f32 = 45.0;
 
 #[derive(Component)]
 pub struct JumperAi {
@@ -89,35 +81,37 @@ pub fn register_systems(app: &mut App) {
 pub fn spawn_jumper(
     commands: &mut Commands,
     pos: Vec2,
-    s: &JumperStats,
+    s: &MobCommonStats,
     calculators: &StatCalculators,
     wave_mods: WaveModifiers,
 ) -> Entity {
+    let speed = s.speed.unwrap_or(0.0);
+    let mass = s.mass.unwrap_or(1.0);
     let id = spawn_enemy_core(
         commands,
         pos,
         calculators,
         &[
-            (Stat::MovementSpeed, ModifierKind::Flat, s.speed),
+            (Stat::MovementSpeed, ModifierKind::Flat, speed),
             (Stat::MaxLife, ModifierKind::Flat, s.hp),
             (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
         ],
         s.size,
-        EnemyBody::Dynamic { mass: s.mass },
+        EnemyBody::Dynamic { mass },
         "enemy_death_large",
         wave_mods,
     );
 
     commands.entity(id).insert(JumperAi {
-        idle_duration: s.idle_duration,
-        jump_duration: s.jump_duration,
-        land_duration: s.land_duration,
-        jump_distance: s.jump_distance,
-        projectile_count: s.projectile_count,
-        projectile_speed: s.projectile_speed,
-        projectile_size: s.projectile_size,
-        projectile_lifetime: s.projectile_lifetime,
-        spread_degrees: s.spread_degrees,
+        idle_duration: JUMPER_IDLE_DURATION,
+        jump_duration: JUMPER_JUMP_DURATION,
+        land_duration: JUMPER_LAND_DURATION,
+        jump_distance: JUMPER_JUMP_DISTANCE,
+        projectile_count: JUMPER_PROJECTILE_COUNT,
+        projectile_speed: JUMPER_PROJECTILE_SPEED,
+        projectile_size: JUMPER_PROJECTILE_SIZE,
+        projectile_lifetime: JUMPER_PROJECTILE_LIFETIME,
+        spread_degrees: JUMPER_SPREAD_DEGREES,
     });
 
     commands.entity(id).with_children(|p| {

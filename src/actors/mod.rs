@@ -1,14 +1,14 @@
 use bevy::prelude::*;
 
 mod components;
-mod mobs;
+pub mod mobs;
 mod player;
 
 pub use components::{
     death_system, CapsuleShape, CircleShape, DeathEvent, Fade, GameLayer,
     Health, JumpWalkAnimationState, MovementLocked, Shadow, Shape, SkipCleanup,
 };
-pub use mobs::{spawn_mob, GhostTransparency, MobKind, MobsBalance, WaveModifiers};
+pub use mobs::{spawn_mob, GhostTransparency, MobKind, WaveModifiers};
 pub use player::{compute_player_stats, Player};
 
 pub struct ActorsPlugin;

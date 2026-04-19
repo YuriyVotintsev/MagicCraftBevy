@@ -43,3 +43,6 @@ review_artifacts.md
 # Test scenarios (one-off, not tracked)
 tests/scenarios/
 assets/scenarios/
+
+# LibreOffice / Excel lock files
+.~lock.*#

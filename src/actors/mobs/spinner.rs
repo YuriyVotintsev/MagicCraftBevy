@@ -2,8 +2,8 @@ use std::f32::consts::{FRAC_PI_2, TAU};
 
 use avian3d::prelude::*;
 use bevy::prelude::*;
-use serde::Deserialize;
 
+use crate::balance::MobCommonStats;
 use super::super::components::{
     CircleShape, GameLayer, PendingDamage, SelfMoving, Size, Shape, ShapeKind,
 };
@@ -29,19 +29,12 @@ const CONTACT_RADIUS: f32 = 150.0;
 const HIT_RADIUS: f32 = 150.0;
 const SPIN_HIT_DAMAGE_PCT: f32 = 1.0;
 
-#[derive(Clone, Deserialize, Debug)]
-pub struct SpinnerStats {
-    pub hp: f32,
-    pub damage: f32,
-    pub size: f32,
-    pub mass: f32,
-    pub spike_length: f32,
-    pub idle_duration: f32,
-    pub windup_duration: f32,
-    pub charge_duration: f32,
-    pub cooldown_duration: f32,
-    pub charge_speed: f32,
-}
+const SPINNER_SPIKE_LENGTH: f32 = 1.0;
+const SPINNER_IDLE_DURATION: f32 = 0.5;
+const SPINNER_WINDUP_DURATION: f32 = 3.0;
+const SPINNER_CHARGE_DURATION: f32 = 1.0;
+const SPINNER_COOLDOWN_DURATION: f32 = 0.5;
+const SPINNER_CHARGE_SPEED: f32 = 1200.0;
 
 #[derive(Clone, Copy, PartialEq)]
 enum SpinnerPhase {
@@ -90,10 +83,11 @@ fn register_scale_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: 
 pub fn spawn_spinner(
     commands: &mut Commands,
     pos: Vec2,
-    s: &SpinnerStats,
+    s: &MobCommonStats,
     calculators: &StatCalculators,
     wave_mods: WaveModifiers,
 ) -> Entity {
+    let mass = s.mass.unwrap_or(1.0);
     let id = spawn_enemy_core(
         commands,
         pos,
@@ -103,18 +97,18 @@ pub fn spawn_spinner(
             (Stat::PhysicalDamage, ModifierKind::Flat, s.damage),
         ],
         s.size,
-        EnemyBody::Dynamic { mass: s.mass },
+        EnemyBody::Dynamic { mass },
         "enemy_death_large",
         wave_mods,
     );
 
     commands.entity(id).insert(Spinner {
-        idle_duration: s.idle_duration,
-        windup_duration: s.windup_duration,
-        charge_duration: s.charge_duration,
-        cooldown_duration: s.cooldown_duration,
-        charge_speed: s.charge_speed,
-        spike_length: s.spike_length,
+        idle_duration: SPINNER_IDLE_DURATION,
+        windup_duration: SPINNER_WINDUP_DURATION,
+        charge_duration: SPINNER_CHARGE_DURATION,
+        cooldown_duration: SPINNER_COOLDOWN_DURATION,
+        charge_speed: SPINNER_CHARGE_SPEED,
+        spike_length: SPINNER_SPIKE_LENGTH,
         phase: SpinnerPhase::Idle,
         elapsed: 0.0,
         spin_angle: 0.0,

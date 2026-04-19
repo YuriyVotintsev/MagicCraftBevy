@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
-use crate::actors::{spawn_mob, Fade, MobKind, MobsBalance, WaveModifiers};
+use crate::actors::{spawn_mob, Fade, MobKind, WaveModifiers};
 use crate::actors::Health;
+use crate::balance::{MobsBalance, WavesConfig};
 use crate::dissolve_material::DissolveMaterial;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::{CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
 use crate::stats::StatCalculators;
-use super::config::WavesConfig;
 use super::phase::WavePhase;
 use super::state::{WaveEnemy, WaveState};
 use crate::Faction;

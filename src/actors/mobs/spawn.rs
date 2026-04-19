@@ -1,9 +1,7 @@
-use bevy::asset::Asset;
 use bevy::prelude::*;
-use bevy::reflect::TypePath;
-use serde::Deserialize;
 use strum::IntoEnumIterator;
 
+use crate::balance::MobsBalance;
 use crate::faction::Faction;
 use crate::palette;
 use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
@@ -17,10 +15,8 @@ use super::{ghost, jumper, slime, spinner, tower};
 #[derive(
     Copy, Clone, Debug, Hash, Eq, PartialEq,
     strum::EnumIter, strum::IntoStaticStr,
-    Deserialize,
 )]
 #[strum(serialize_all = "snake_case")]
-#[serde(rename_all = "snake_case")]
 pub enum MobKind {
     Ghost,
     Tower,
@@ -59,15 +55,6 @@ impl MobKind {
             MobKind::Jumper => mobs.jumper.size,
         }
     }
-}
-
-#[derive(Asset, Resource, TypePath, Clone, Deserialize, Debug)]
-pub struct MobsBalance {
-    pub ghost: ghost::GhostStats,
-    pub tower: tower::TowerStats,
-    pub slime_small: slime::SlimeSmallStats,
-    pub jumper: jumper::JumperStats,
-    pub spinner: spinner::SpinnerStats,
 }
 
 pub fn spawn_mob(
