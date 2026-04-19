@@ -30,11 +30,10 @@ const HIT_RADIUS: f32 = 150.0;
 const SPIN_HIT_DAMAGE_PCT: f32 = 1.0;
 
 const SPINNER_SPIKE_LENGTH: f32 = 1.0;
-const SPINNER_IDLE_DURATION: f32 = 0.5;
-const SPINNER_WINDUP_DURATION: f32 = 3.0;
-const SPINNER_CHARGE_DURATION: f32 = 1.0;
-const SPINNER_COOLDOWN_DURATION: f32 = 0.5;
-const SPINNER_CHARGE_SPEED: f32 = 1200.0;
+const SPINNER_IDLE_WEIGHT: f32 = 10.0;
+const SPINNER_WINDUP_WEIGHT: f32 = 60.0;
+const SPINNER_CHARGE_WEIGHT: f32 = 20.0;
+const SPINNER_COOLDOWN_WEIGHT: f32 = 10.0;
 
 #[derive(Clone, Copy, PartialEq)]
 enum SpinnerPhase {
@@ -88,6 +87,13 @@ pub fn spawn_spinner(
     wave_mods: WaveModifiers,
 ) -> Entity {
     let mass = s.mass.unwrap_or(1.0);
+    let charge_speed = s.speed.unwrap_or(1200.0);
+    let attack_speed = s.attack_speed.unwrap_or(5.0);
+    let total_weight = SPINNER_IDLE_WEIGHT
+        + SPINNER_WINDUP_WEIGHT
+        + SPINNER_CHARGE_WEIGHT
+        + SPINNER_COOLDOWN_WEIGHT;
+    let phase = |w: f32| attack_speed * w / total_weight;
     let id = spawn_enemy_core(
         commands,
         pos,
@@ -103,11 +109,11 @@ pub fn spawn_spinner(
     );
 
     commands.entity(id).insert(Spinner {
-        idle_duration: SPINNER_IDLE_DURATION,
-        windup_duration: SPINNER_WINDUP_DURATION,
-        charge_duration: SPINNER_CHARGE_DURATION,
-        cooldown_duration: SPINNER_COOLDOWN_DURATION,
-        charge_speed: SPINNER_CHARGE_SPEED,
+        idle_duration: phase(SPINNER_IDLE_WEIGHT),
+        windup_duration: phase(SPINNER_WINDUP_WEIGHT),
+        charge_duration: phase(SPINNER_CHARGE_WEIGHT),
+        cooldown_duration: phase(SPINNER_COOLDOWN_WEIGHT),
+        charge_speed,
         spike_length: SPINNER_SPIKE_LENGTH,
         phase: SpinnerPhase::Idle,
         elapsed: 0.0,

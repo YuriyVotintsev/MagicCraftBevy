@@ -14,6 +14,7 @@ pub struct MobCommonStats {
     pub speed: Option<f32>,
     pub size: f32,
     pub mass: Option<f32>,
+    pub attack_speed: Option<f32>,
 }
 
 #[derive(Debug, Clone, Resource)]

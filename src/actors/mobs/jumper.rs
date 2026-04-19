@@ -17,10 +17,9 @@ use super::spawn::{enemy_ability_shape_color, enemy_shape_color, spawn_enemy_cor
 
 const JUMPER_SHOT_DAMAGE_PCT: f32 = 1.0;
 
-const JUMPER_IDLE_DURATION: f32 = 3.0;
-const JUMPER_JUMP_DURATION: f32 = 0.5;
-const JUMPER_LAND_DURATION: f32 = 0.5;
-const JUMPER_JUMP_DISTANCE: f32 = 350.0;
+const JUMPER_IDLE_WEIGHT: f32 = 75.0;
+const JUMPER_JUMP_WEIGHT: f32 = 12.5;
+const JUMPER_LAND_WEIGHT: f32 = 12.5;
 const JUMPER_PROJECTILE_COUNT: u32 = 4;
 const JUMPER_PROJECTILE_SPEED: f32 = 400.0;
 const JUMPER_PROJECTILE_SIZE: f32 = 60.0;
@@ -32,7 +31,7 @@ pub struct JumperAi {
     pub idle_duration: f32,
     pub jump_duration: f32,
     pub land_duration: f32,
-    pub jump_distance: f32,
+    pub jump_speed: f32,
     pub projectile_count: u32,
     pub projectile_speed: f32,
     pub projectile_size: f32,
@@ -56,7 +55,7 @@ pub struct JumperAiState {
 
 #[derive(Component)]
 pub struct RandomJump {
-    pub distance: f32,
+    pub speed: f32,
     pub duration: f32,
 }
 
@@ -87,6 +86,9 @@ pub fn spawn_jumper(
 ) -> Entity {
     let speed = s.speed.unwrap_or(0.0);
     let mass = s.mass.unwrap_or(1.0);
+    let attack_speed = s.attack_speed.unwrap_or(4.0);
+    let total_weight = JUMPER_IDLE_WEIGHT + JUMPER_JUMP_WEIGHT + JUMPER_LAND_WEIGHT;
+    let phase = |w: f32| attack_speed * w / total_weight;
     let id = spawn_enemy_core(
         commands,
         pos,
@@ -103,10 +105,10 @@ pub fn spawn_jumper(
     );
 
     commands.entity(id).insert(JumperAi {
-        idle_duration: JUMPER_IDLE_DURATION,
-        jump_duration: JUMPER_JUMP_DURATION,
-        land_duration: JUMPER_LAND_DURATION,
-        jump_distance: JUMPER_JUMP_DISTANCE,
+        idle_duration: phase(JUMPER_IDLE_WEIGHT),
+        jump_duration: phase(JUMPER_JUMP_WEIGHT),
+        land_duration: phase(JUMPER_LAND_WEIGHT),
+        jump_speed: speed,
         projectile_count: JUMPER_PROJECTILE_COUNT,
         projectile_speed: JUMPER_PROJECTILE_SPEED,
         projectile_size: JUMPER_PROJECTILE_SIZE,
@@ -159,7 +161,7 @@ fn jumper_ai_system(
                     state.elapsed = 0.0;
                     state.ability_fired = false;
                     commands.entity(entity).insert(RandomJump {
-                        distance: ai.jump_distance,
+                        speed: ai.jump_speed,
                         duration: ai.jump_duration,
                     });
                 }
@@ -254,13 +256,14 @@ fn init_random_jump(
 
     for (entity, jump, transform) in &query {
         let current = crate::coord::to_2d(transform.translation);
+        let distance = jump.speed * jump.duration;
 
         let direction = {
             let mut dir = Vec2::ZERO;
             for _ in 0..32 {
                 let angle = rng.random_range(0.0..std::f32::consts::TAU);
                 let candidate = Vec2::new(angle.cos(), angle.sin());
-                let landing = current + candidate * jump.distance;
+                let landing = current + candidate * distance;
                 if landing.x.abs() <= hw && landing.y.abs() <= hh {
                     dir = candidate;
                     break;
@@ -273,18 +276,12 @@ fn init_random_jump(
             }
         };
 
-        let speed = if jump.duration > 0.0 {
-            jump.distance / jump.duration
-        } else {
-            0.0
-        };
-
         commands.entity(entity).insert((
             RandomJumpState {
                 elapsed: 0.0,
                 duration: jump.duration,
             },
-            LinearVelocity(crate::coord::ground_vel(direction * speed)),
+            LinearVelocity(crate::coord::ground_vel(direction * jump.speed)),
             SelfMoving,
         ));
     }

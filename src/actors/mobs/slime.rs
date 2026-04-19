@@ -12,7 +12,6 @@ use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers
 
 const LUNGE_DEFAULT_DURATION: f32 = 0.6;
 
-const SLIME_MELEE_COOLDOWN: f32 = 0.5;
 const SLIME_LUNGE_DURATION: f32 = 0.5;
 
 #[derive(Component)]
@@ -76,7 +75,7 @@ pub fn spawn_slime_small(
 
     commands.entity(id).insert((
         LungeMovement { speed: None, duration: Some(SLIME_LUNGE_DURATION), pause_duration: 0.4, distance: None },
-        MeleeAttacker::new(SLIME_MELEE_COOLDOWN),
+        MeleeAttacker::new(s.attack_speed.unwrap_or(0.5)),
     ));
 
     commands.entity(id).with_children(|p| {

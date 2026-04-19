@@ -17,7 +17,6 @@ use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
 use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers};
 
-const TOWER_SHOT_COOLDOWN: f32 = 2.5;
 const TOWER_FLIGHT_DURATION: f32 = 0.8;
 const TOWER_ARC_HEIGHT: f32 = 8.0;
 const TOWER_START_ELEVATION: f32 = 1.6;
@@ -130,7 +129,7 @@ pub fn spawn_tower(
         TowerVisual {},
         ShootSquish { amplitude: 0.3, duration: 0.25 },
         TowerShooter {
-            cooldown: TOWER_SHOT_COOLDOWN,
+            cooldown: s.attack_speed.unwrap_or(2.5),
             elapsed: 0.0,
             flight_duration: TOWER_FLIGHT_DURATION,
             arc_height: TOWER_ARC_HEIGHT,
