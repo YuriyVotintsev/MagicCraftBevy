@@ -12,7 +12,6 @@ use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
 use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers};
 
-const GHOST_MELEE_RANGE: f32 = 80.0;
 const GHOST_MELEE_COOLDOWN: f32 = 1.0;
 pub const GHOST_VISIBLE_DISTANCE: f32 = 150.0;
 pub const GHOST_INVISIBLE_DISTANCE: f32 = 400.0;
@@ -73,7 +72,7 @@ pub fn spawn_ghost(
             invisible_distance: GHOST_INVISIBLE_DISTANCE,
         },
         MoveToward {},
-        MeleeAttacker::new(GHOST_MELEE_COOLDOWN, GHOST_MELEE_RANGE),
+        MeleeAttacker::new(GHOST_MELEE_COOLDOWN),
     ));
 
     commands.entity(id).with_children(|p| {

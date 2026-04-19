@@ -1,3 +1,4 @@
+use avian3d::prelude::CollidingEntities;
 use bevy::prelude::*;
 use strum::IntoEnumIterator;
 
@@ -116,6 +117,7 @@ pub(crate) fn spawn_enemy_core(
         modifiers, dirty, computed,
         Size { value: size },
         Collider { shape: ColliderShape::Circle, sensor: false },
+        CollidingEntities::default(),
         Health { current: hp },
         Caster(id),
         OnDeathParticles { config: death_particles },

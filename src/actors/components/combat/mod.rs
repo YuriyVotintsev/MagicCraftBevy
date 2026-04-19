@@ -7,7 +7,6 @@ mod damage_payload;
 mod death;
 mod health;
 mod melee_attacker;
-mod melee_strike;
 mod on_collision_damage;
 mod projectile;
 mod shot_fired;
@@ -27,7 +26,6 @@ impl Plugin for CombatPlugin {
     fn build(&self, app: &mut App) {
         projectile::register_systems(app);
         damage_payload::register_systems(app);
-        melee_strike::register_systems(app);
         melee_attacker::register_systems(app);
         shot_fired::register_systems(app);
         on_collision_damage::register_systems(app);
