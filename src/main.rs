@@ -13,6 +13,7 @@ pub mod palette;
 mod particles;
 mod run;
 mod rune;
+mod rune_ball_material;
 mod schedule;
 mod stats;
 mod transition;
@@ -42,6 +43,7 @@ use arena::ArenaPlugin;
 use balance::BalancePlugin;
 use dissolve_material::DissolveMaterialPlugin;
 use health_material::HealthMaterialPlugin;
+use rune_ball_material::RuneBallMaterialPlugin;
 use hit_flash::HitFlashPlugin;
 use loading::LoadingPlugin;
 use schedule::{GameSet, PostGameSet, ShopSet};
@@ -195,6 +197,7 @@ fn main() {
             RunePlugin,
             DissolveMaterialPlugin,
             HealthMaterialPlugin,
+            RuneBallMaterialPlugin,
             HitFlashPlugin,
             TweeningPlugin,
             TransitionPlugin,

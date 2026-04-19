@@ -5,14 +5,16 @@ use bevy::input::ButtonInput;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 
+use crate::arena::CameraAngle;
 use crate::balance::{Globals, RuneCosts};
 use crate::coord;
 use crate::palette;
 use crate::run::PlayerMoney;
+use crate::rune_ball_material::{RuneBallMaterial, RuneBallMaterialData};
 use crate::schedule::ShopSet;
 use crate::wave::WavePhase;
 
-use super::content::{write_pattern_contains, write_pattern_coords, write_targets};
+use super::content::{write_pattern_contains, write_pattern_coords, write_targets, RuneKind};
 use super::data::{
     can_place, is_joker_slot, Dragging, GridCellView, GridHighlights, Rune, RuneGrid,
     RuneSource, RuneView, ShopOffer, GRID_RADIUS, JOKER_COORDS, SHOP_SLOTS,
@@ -24,6 +26,7 @@ pub const CELL_SIDE_WORLD: f32 = 100.0;
 pub const BALL_RADIUS: f32 = 60.0;
 pub const BALL_ELEVATION: f32 = BALL_RADIUS;
 pub const DRAG_LIFT: f32 = BALL_RADIUS * 1.0;
+const ICON_HALF_ANGLE_DEG: f32 = 35.0;
 
 const CELL_RING_INNER: f32 = 65.0;
 const CELL_RING_OUTER: f32 = 70.0;
@@ -56,6 +59,23 @@ struct SceneMeshes {
     pattern_ring: Handle<Mesh>,
     shadow: Handle<Mesh>,
     particle: Handle<Mesh>,
+}
+
+#[derive(Resource)]
+struct IconImages {
+    spike: Handle<Image>,
+    heart_stone: Handle<Image>,
+    resonator: Handle<Image>,
+}
+
+impl IconImages {
+    fn for_kind(&self, kind: RuneKind) -> Handle<Image> {
+        match kind {
+            RuneKind::Spike => self.spike.clone(),
+            RuneKind::HeartStone => self.heart_stone.clone(),
+            RuneKind::Resonator => self.resonator.clone(),
+        }
+    }
 }
 
 #[derive(Resource, Default)]
@@ -124,6 +144,10 @@ pub fn register_systems(app: &mut App) {
             (follow_cursor, sync_ball_shadows)
                 .chain()
                 .run_if(in_state(WavePhase::Shop)),
+        )
+        .add_systems(
+            Update,
+            refresh_rune_icon_dir.run_if(in_state(WavePhase::Shop)),
         );
 }
 
@@ -131,6 +155,7 @@ fn setup_scene_assets(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     commands.insert_resource(SceneMeshes {
         ball: meshes.add(Sphere::new(BALL_RADIUS)),
@@ -140,6 +165,11 @@ fn setup_scene_assets(
         pattern_ring: meshes.add(Annulus::new(PATTERN_RING_INNER, PATTERN_RING_OUTER)),
         shadow: meshes.add(Circle::new(BALL_RADIUS * 0.95)),
         particle: meshes.add(Sphere::new(PARTICLE_RADIUS)),
+    });
+    commands.insert_resource(IconImages {
+        spike: asset_server.load("images/Icons/Damage.png"),
+        heart_stone: asset_server.load("images/Icons/Life.png"),
+        resonator: asset_server.load("images/Icons/AttackSpeed.png"),
     });
     let shadow_mat = StandardMaterial {
         base_color: Color::srgba(0.0, 0.0, 0.0, 0.35),
@@ -165,6 +195,17 @@ fn unlit_material(color: Color) -> StandardMaterial {
         unlit: true,
         ..default()
     }
+}
+
+fn icon_dir_for_angle(angle_degrees: f32) -> Vec4 {
+    let elevation = (90.0 - angle_degrees).to_radians();
+    Vec3::new(0.0, elevation.sin(), elevation.cos())
+        .normalize()
+        .extend(0.0)
+}
+
+fn icon_radius() -> f32 {
+    ICON_HALF_ANGLE_DEG.to_radians().sin()
 }
 
 fn reset_reroll_cost(
@@ -270,6 +311,7 @@ fn color_key(color: Color) -> u32 {
     (r << 24) | (g << 16) | (b << 8) | a
 }
 
+#[allow(clippy::too_many_arguments)]
 fn spawn_rune_entity(
     commands: &mut Commands,
     rune: Rune,
@@ -278,17 +320,34 @@ fn spawn_rune_entity(
     cache: &mut BallMaterials,
     materials: &mut Assets<StandardMaterial>,
     ground_shadow: &Handle<StandardMaterial>,
+    icons: &IconImages,
+    rune_ball_materials: &mut Assets<RuneBallMaterial>,
+    icon_dir: Vec4,
 ) {
     let pos = home_world_pos(source);
-    let material = ball_material(rune, cache, materials);
     let mut entity = commands.spawn((
         Name::new("RuneBall"),
         RuneView { source, rune_id: rune.id },
         Mesh3d(meshes.ball.clone()),
-        MeshMaterial3d(material),
         Transform::from_translation(Vec3::new(pos.x, BALL_ELEVATION, pos.z)),
         DespawnOnExit(WavePhase::Shop),
     ));
+    match rune.kind {
+        Some(kind) => {
+            let handle = rune_ball_materials.add(RuneBallMaterial {
+                data: RuneBallMaterialData {
+                    base_color: rune.color.to_linear(),
+                    icon_dir,
+                    icon_radius: icon_radius(),
+                },
+                icon: icons.for_kind(kind),
+            });
+            entity.insert(MeshMaterial3d(handle));
+        }
+        None => {
+            entity.insert(MeshMaterial3d(ball_material(rune, cache, materials)));
+        }
+    }
     entity.with_children(|p| {
         p.spawn((
             Name::new("BallShadow"),
@@ -326,8 +385,11 @@ fn reconcile_rune_entities(
     grid: Res<RuneGrid>,
     meshes: Res<SceneMeshes>,
     ground: Res<GroundMaterials>,
+    icons: Res<IconImages>,
+    camera_angle: Res<CameraAngle>,
     mut cache: ResMut<BallMaterials>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut rune_ball_materials: ResMut<Assets<RuneBallMaterial>>,
     existing: Query<(Entity, &RuneView), Without<Dragging>>,
 ) {
     let mut by_source: HashMap<RuneSource, (Entity, u32)> = HashMap::new();
@@ -338,19 +400,27 @@ fn reconcile_rune_entities(
     }
 
     let shadow_handle = ground.shadow.clone();
+    let icon_dir = icon_dir_for_angle(camera_angle.degrees);
     let mut reconcile = |commands: &mut Commands,
                          cache: &mut BallMaterials,
                          materials: &mut Assets<StandardMaterial>,
+                         rune_ball_materials: &mut Assets<RuneBallMaterial>,
                          src: RuneSource,
                          rune: Rune| {
         match by_source.remove(&src) {
             Some((_, id)) if id == rune.id => {}
             Some((entity, _)) => {
                 commands.entity(entity).despawn();
-                spawn_rune_entity(commands, rune, src, &meshes, cache, materials, &shadow_handle);
+                spawn_rune_entity(
+                    commands, rune, src, &meshes, cache, materials, &shadow_handle, &icons,
+                    rune_ball_materials, icon_dir,
+                );
             }
             None => {
-                spawn_rune_entity(commands, rune, src, &meshes, cache, materials, &shadow_handle);
+                spawn_rune_entity(
+                    commands, rune, src, &meshes, cache, materials, &shadow_handle, &icons,
+                    rune_ball_materials, icon_dir,
+                );
             }
         }
     };
@@ -361,6 +431,7 @@ fn reconcile_rune_entities(
                 &mut commands,
                 &mut cache,
                 &mut materials,
+                &mut rune_ball_materials,
                 RuneSource::Shop(idx),
                 *rune,
             );
@@ -371,6 +442,7 @@ fn reconcile_rune_entities(
             &mut commands,
             &mut cache,
             &mut materials,
+            &mut rune_ball_materials,
             RuneSource::Grid(*coord),
             *rune,
         );
@@ -892,5 +964,21 @@ fn restore_dragged_on_exit(
     for (entity, drag) in &dragged {
         place_rune(drag.from, drag.rune, &mut shop, &mut grid);
         commands.entity(entity).remove::<Dragging>();
+    }
+}
+
+fn refresh_rune_icon_dir(
+    camera_angle: Res<CameraAngle>,
+    mut materials: ResMut<Assets<RuneBallMaterial>>,
+    handles: Query<&MeshMaterial3d<RuneBallMaterial>>,
+) {
+    if !camera_angle.is_changed() {
+        return;
+    }
+    let icon_dir = icon_dir_for_angle(camera_angle.degrees);
+    for handle in &handles {
+        if let Some(mat) = materials.get_mut(&handle.0) {
+            mat.data.icon_dir = icon_dir;
+        }
     }
 }
