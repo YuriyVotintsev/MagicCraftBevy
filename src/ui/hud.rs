@@ -3,7 +3,7 @@ use bevy::prelude::*;
 use crate::actors::Health;
 use crate::actors::Player;
 use crate::palette;
-use crate::run::PlayerMoney;
+use crate::run::{PlayerMoney, RunState};
 use crate::stats::{ComputedStats, Stat};
 use crate::GameState;
 
@@ -11,6 +11,9 @@ use super::widgets::panel_node;
 
 #[derive(Component)]
 pub struct HudRoot;
+
+#[derive(Component)]
+pub struct WaveText;
 
 #[derive(Component)]
 pub struct MoneyText;
@@ -21,7 +24,7 @@ pub struct LifeText;
 #[derive(Component)]
 pub struct LifeBar;
 
-pub fn spawn_hud(mut commands: Commands) {
+pub fn spawn_hud(mut commands: Commands, run_state: Res<RunState>) {
     commands.spawn((
         Name::new("HudRoot"),
         HudRoot,
@@ -38,6 +41,19 @@ pub fn spawn_hud(mut commands: Commands) {
             None,
         ),
         children![
+            (
+                WaveText,
+                Text::new(format!("Wave {}", run_state.wave)),
+                TextFont {
+                    font_size: 22.0,
+                    ..default()
+                },
+                TextColor(palette::color("ui_text")),
+                Node {
+                    margin: UiRect::bottom(Val::Px(6.0)),
+                    ..default()
+                }
+            ),
             (
                 MoneyText,
                 Text::new("Coins: 0"),
@@ -87,11 +103,17 @@ pub fn spawn_hud(mut commands: Commands) {
 
 pub fn update_hud(
     money: Res<PlayerMoney>,
+    run_state: Res<RunState>,
     player_query: Query<(&Health, &ComputedStats), With<Player>>,
-    mut money_text: Query<&mut Text, (With<MoneyText>, Without<LifeText>)>,
-    mut life_text: Query<&mut Text, (With<LifeText>, Without<MoneyText>)>,
+    mut wave_text: Query<&mut Text, (With<WaveText>, Without<MoneyText>, Without<LifeText>)>,
+    mut money_text: Query<&mut Text, (With<MoneyText>, Without<LifeText>, Without<WaveText>)>,
+    mut life_text: Query<&mut Text, (With<LifeText>, Without<MoneyText>, Without<WaveText>)>,
     mut life_bar: Query<&mut Node, With<LifeBar>>,
 ) {
+    if let Ok(mut text) = wave_text.single_mut() {
+        **text = format!("Wave {}", run_state.wave);
+    }
+
     if let Ok(mut text) = money_text.single_mut() {
         **text = format!("Coins: {}", money.get());
     }

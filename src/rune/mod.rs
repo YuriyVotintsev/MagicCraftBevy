@@ -13,7 +13,9 @@ pub use data::{
     Dragging, GridHighlights, JokerSlots, RerollState, RuneGrid, RuneSource, ShopOffer,
     SHOP_SLOTS,
 };
-pub use scene::find_drop_target_world;
+pub use scene::{
+    find_drop_target_world, shop_grid_half_extent, BALL_RADIUS, SHOP_BALL_X, SHOP_BALL_Z_GAP,
+};
 pub use shop_gen::roll_shop_offer;
 
 use crate::game_state::GameState;

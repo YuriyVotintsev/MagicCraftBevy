@@ -33,8 +33,8 @@ const HIGHLIGHT_TORUS_INNER: f32 = BALL_RADIUS - 2.0;
 const HIGHLIGHT_TORUS_OUTER: f32 = BALL_RADIUS + 14.0;
 const PATTERN_RING_INNER: f32 = CELL_RING_OUTER + 2.0;
 const PATTERN_RING_OUTER: f32 = CELL_RING_OUTER + 10.0;
-const SHOP_BALL_X: f32 = 900.0;
-const SHOP_BALL_Z_GAP: f32 = 420.0;
+pub const SHOP_BALL_X: f32 = 900.0;
+pub const SHOP_BALL_Z_GAP: f32 = 420.0;
 const PRICE_LABEL_Y_OFFSET: f32 = BALL_RADIUS + 28.0;
 
 const PARTICLE_RADIUS: f32 = 2.5;
@@ -232,6 +232,24 @@ pub fn shop_world_pos(idx: usize) -> Vec3 {
     let total = SHOP_SLOTS as f32;
     let z = (idx as f32 - (total - 1.0) * 0.5) * SHOP_BALL_Z_GAP;
     Vec3::new(SHOP_BALL_X, 0.0, z)
+}
+
+pub fn shop_grid_half_extent() -> Vec2 {
+    let hex_half_w = 3.0f32.sqrt() * 0.5 * CELL_SIDE_WORLD;
+    let hex_half_h = CELL_SIDE_WORLD;
+    let mut max_x = 0.0f32;
+    let mut max_y = 0.0f32;
+    for coord in HexCoord::all_within_radius(GRID_RADIUS) {
+        let p = coord.to_pixel(CELL_SIDE_WORLD);
+        max_x = max_x.max(p.x.abs() + hex_half_w);
+        max_y = max_y.max(p.y.abs() + hex_half_h);
+    }
+    for (q, r) in JOKER_HEX_COORDS {
+        let p = HexCoord::new(q, r).to_pixel(CELL_SIDE_WORLD);
+        max_x = max_x.max(p.x.abs() + hex_half_w);
+        max_y = max_y.max(p.y.abs() + hex_half_h);
+    }
+    Vec2::new(max_x, max_y)
 }
 
 pub fn joker_world_pos(idx: usize) -> Vec3 {

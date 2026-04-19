@@ -45,8 +45,7 @@ impl Plugin for UiPlugin {
             )
             .add_systems(
                 Update,
-                hud::update_hud
-                    .run_if(in_state(WavePhase::Combat)),
+                hud::update_hud.run_if(in_state(GameState::Playing)),
             )
             .add_systems(
                 OnEnter(WavePhase::Shop),
