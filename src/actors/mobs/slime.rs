@@ -8,7 +8,7 @@ use super::super::components::{
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody};
+use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers};
 
 const LUNGE_DEFAULT_DURATION: f32 = 0.6;
 
@@ -64,6 +64,7 @@ pub fn spawn_slime_small(
     pos: Vec2,
     s: &SlimeSmallStats,
     calculators: &StatCalculators,
+    wave_mods: WaveModifiers,
 ) -> Entity {
     let id = spawn_enemy_core(
         commands,
@@ -77,6 +78,7 @@ pub fn spawn_slime_small(
         s.size,
         EnemyBody::Dynamic { mass: s.mass },
         "enemy_death",
+        wave_mods,
     );
 
     commands.entity(id).insert((

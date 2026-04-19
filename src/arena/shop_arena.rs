@@ -5,8 +5,8 @@ use crate::wave::WavePhase;
 use super::camera::CameraAngle;
 use super::floor::shop_floor_mesh;
 
-pub const SHOP_ARENA_WIDTH: f32 = 1800.0;
-pub const SHOP_ARENA_HEIGHT: f32 = 1500.0;
+pub const SHOP_ARENA_WIDTH: f32 = 2200.0;
+pub const SHOP_ARENA_HEIGHT: f32 = 1600.0;
 
 pub fn register(app: &mut App) {
     app.add_systems(OnEnter(WavePhase::Shop), spawn_shop_arena);

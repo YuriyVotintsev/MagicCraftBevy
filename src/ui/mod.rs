@@ -72,10 +72,18 @@ impl Plugin for UiPlugin {
                 Update,
                 pause_menu::pause_button_system.run_if(in_state(CombatPhase::Paused)),
             )
+            .init_resource::<dev_menu::ShopDevMenuOpen>()
             .add_systems(OnEnter(CombatPhase::DevMenu), dev_menu::spawn_dev_menu)
+            .add_systems(OnExit(WavePhase::Shop), dev_menu::reset_shop_dev_menu)
             .add_systems(
                 Update,
                 dev_menu::toggle_dev_menu.run_if(in_state(WavePhase::Combat)),
+            )
+            .add_systems(
+                Update,
+                (dev_menu::toggle_shop_dev_menu, dev_menu::react_to_shop_dev_menu)
+                    .chain()
+                    .run_if(in_state(WavePhase::Shop)),
             )
             .add_systems(
                 Update,
@@ -89,7 +97,7 @@ impl Plugin for UiPlugin {
                     dev_menu::enable_all_enemies,
                     dev_menu::disable_all_enemies,
                 )
-                    .run_if(in_state(CombatPhase::DevMenu)),
+                    .run_if(dev_menu::dev_menu_active),
             );
     }
 }

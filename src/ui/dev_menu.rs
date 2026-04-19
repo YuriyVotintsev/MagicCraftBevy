@@ -49,6 +49,22 @@ pub(super) struct DisableAllEnemiesButton;
 #[derive(Component)]
 pub(super) struct EnemyToggleText(pub usize);
 
+#[derive(Resource, Default)]
+pub(super) struct ShopDevMenuOpen(pub bool);
+
+#[derive(Component)]
+pub(super) struct ShopDevMenuRoot;
+
+pub(super) fn dev_menu_active(
+    combat: Option<Res<State<CombatPhase>>>,
+    shop: Res<ShopDevMenuOpen>,
+) -> bool {
+    let combat_open = combat
+        .map(|s| *s.get() == CombatPhase::DevMenu)
+        .unwrap_or(false);
+    combat_open || shop.0
+}
+
 pub(super) fn toggle_dev_menu(
     key: Res<ButtonInput<KeyCode>>,
     combat_phase: Res<State<CombatPhase>>,
@@ -74,6 +90,65 @@ pub(super) fn toggle_dev_menu(
         virtual_time.unpause();
         next_phase.set(CombatPhase::Running);
     }
+}
+
+pub(super) fn toggle_shop_dev_menu(
+    key: Res<ButtonInput<KeyCode>>,
+    mut open: ResMut<ShopDevMenuOpen>,
+) {
+    if key.just_pressed(KeyCode::Backquote) {
+        open.0 = !open.0;
+    } else if key.just_pressed(KeyCode::Escape) && open.0 {
+        open.0 = false;
+    }
+}
+
+pub(super) fn react_to_shop_dev_menu(
+    mut commands: Commands,
+    open: Res<ShopDevMenuOpen>,
+    existing: Query<Entity, With<ShopDevMenuRoot>>,
+    camera_angle: Res<CameraAngle>,
+    spawn_pool: Res<EnemySpawnPool>,
+) {
+    if !open.is_changed() {
+        return;
+    }
+    if open.0 {
+        spawn_shop_dev_menu(&mut commands, &camera_angle, &spawn_pool);
+    } else {
+        for e in &existing {
+            commands.entity(e).despawn();
+        }
+    }
+}
+
+pub(super) fn reset_shop_dev_menu(mut open: ResMut<ShopDevMenuOpen>) {
+    open.0 = false;
+}
+
+fn spawn_shop_dev_menu(
+    commands: &mut Commands,
+    camera_angle: &CameraAngle,
+    spawn_pool: &EnemySpawnPool,
+) {
+    let panel = build_dev_menu_panel(commands, camera_angle, spawn_pool);
+    commands
+        .spawn((
+            Name::new("ShopDevMenuRoot"),
+            ShopDevMenuRoot,
+            DespawnOnExit(WavePhase::Shop),
+            GlobalZIndex(100),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                position_type: PositionType::Absolute,
+                ..default()
+            },
+            BackgroundColor(palette::color_alpha("ui_overlay_bg", 0.6)),
+        ))
+        .add_child(panel);
 }
 
 fn cheat_button(label: &str, color: Color, marker: impl Component) -> impl Bundle {
@@ -137,6 +212,30 @@ pub(super) fn spawn_dev_menu(
     camera_angle: Res<CameraAngle>,
     spawn_pool: Res<EnemySpawnPool>,
 ) {
+    let panel = build_dev_menu_panel(&mut commands, &camera_angle, &spawn_pool);
+    commands
+        .spawn((
+            Name::new("DevMenuRoot"),
+            DespawnOnExit(CombatPhase::DevMenu),
+            GlobalZIndex(100),
+            Node {
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                align_items: AlignItems::Center,
+                justify_content: JustifyContent::Center,
+                position_type: PositionType::Absolute,
+                ..default()
+            },
+            BackgroundColor(palette::color_alpha("ui_overlay_bg", 0.6)),
+        ))
+        .add_child(panel);
+}
+
+fn build_dev_menu_panel(
+    commands: &mut Commands,
+    camera_angle: &CameraAngle,
+    spawn_pool: &EnemySpawnPool,
+) -> Entity {
     let t = (camera_angle.degrees - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN);
 
     let mut enemy_rows: Vec<Entity> = Vec::new();
@@ -237,7 +336,7 @@ pub(super) fn spawn_dev_menu(
     let damage_btn = commands.spawn(cheat_button("Phys Damage +100", palette::color("ui_text_negative"), CheatDamageButton)).id();
     let win_wave_btn = commands.spawn(cheat_button("Win Wave", palette::color("ui_text"), CheatWinWaveButton)).id();
 
-    let panel = commands.spawn(panel_node(
+    commands.spawn(panel_node(
         Node {
             flex_direction: FlexDirection::Column,
             align_items: AlignItems::Stretch,
@@ -250,22 +349,7 @@ pub(super) fn spawn_dev_menu(
         None,
     )).add_children(&[
         title, angle_row, slider, money_btn, health_btn, damage_btn, win_wave_btn, enemy_container,
-    ]).id();
-
-    commands.spawn((
-        Name::new("DevMenuRoot"),
-        DespawnOnExit(CombatPhase::DevMenu),
-        GlobalZIndex(100),
-        Node {
-            width: Val::Percent(100.0),
-            height: Val::Percent(100.0),
-            align_items: AlignItems::Center,
-            justify_content: JustifyContent::Center,
-            position_type: PositionType::Absolute,
-            ..default()
-        },
-        BackgroundColor(palette::color_alpha("ui_overlay_bg", 0.6)),
-    )).add_child(panel);
+    ]).id()
 }
 
 pub(super) fn cheat_money(

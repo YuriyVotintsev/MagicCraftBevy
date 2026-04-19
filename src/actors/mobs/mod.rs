@@ -8,7 +8,7 @@ mod spinner;
 mod tower;
 
 pub use ghost::GhostTransparency;
-pub use spawn::{spawn_mob, MobKind, MobsBalance};
+pub use spawn::{spawn_mob, MobKind, MobsBalance, WaveModifiers};
 
 pub struct MobsPlugin;
 

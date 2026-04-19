@@ -15,9 +15,6 @@ pub struct GameBalance {
 
 #[derive(Clone, Deserialize)]
 pub struct WaveBalance {
-    pub start_enemies: u32,
-    pub max_enemies: u32,
-    pub ramp_duration_secs: f32,
     pub safe_spawn_radius: f32,
 }
 

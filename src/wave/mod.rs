@@ -1,10 +1,12 @@
 use bevy::prelude::*;
 
+pub mod config;
 mod phase;
 mod spawn;
 mod state;
 mod summoning;
 
+pub use config::WavesConfig;
 pub use phase::{CombatPhase, WavePhase};
 pub use spawn::EnemySpawnPool;
 pub use state::{InvulnerableStack, WaveEnemy};

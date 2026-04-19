@@ -13,7 +13,7 @@ use crate::run::CombatScoped;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{enemy_ability_shape_color, enemy_shape_color, spawn_enemy_core, EnemyBody};
+use super::spawn::{enemy_ability_shape_color, enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers};
 
 const JUMPER_SHOT_DAMAGE_PCT: f32 = 1.0;
 
@@ -91,6 +91,7 @@ pub fn spawn_jumper(
     pos: Vec2,
     s: &JumperStats,
     calculators: &StatCalculators,
+    wave_mods: WaveModifiers,
 ) -> Entity {
     let id = spawn_enemy_core(
         commands,
@@ -104,6 +105,7 @@ pub fn spawn_jumper(
         s.size,
         EnemyBody::Dynamic { mass: s.mass },
         "enemy_death_large",
+        wave_mods,
     );
 
     commands.entity(id).insert(JumperAi {

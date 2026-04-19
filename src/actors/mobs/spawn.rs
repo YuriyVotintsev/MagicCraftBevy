@@ -17,14 +17,28 @@ use super::{ghost, jumper, slime, spinner, tower};
 #[derive(
     Copy, Clone, Debug, Hash, Eq, PartialEq,
     strum::EnumIter, strum::IntoStaticStr,
+    Deserialize,
 )]
 #[strum(serialize_all = "snake_case")]
+#[serde(rename_all = "snake_case")]
 pub enum MobKind {
     Ghost,
     Tower,
     SlimeSmall,
     Spinner,
     Jumper,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct WaveModifiers {
+    pub hp_mult: f32,
+    pub damage_mult: f32,
+}
+
+impl Default for WaveModifiers {
+    fn default() -> Self {
+        Self { hp_mult: 1.0, damage_mult: 1.0 }
+    }
 }
 
 impl MobKind {
@@ -62,13 +76,14 @@ pub fn spawn_mob(
     pos: Vec2,
     mobs: &MobsBalance,
     calculators: &StatCalculators,
+    wave_mods: WaveModifiers,
 ) -> Entity {
     match kind {
-        MobKind::Ghost => ghost::spawn_ghost(commands, pos, &mobs.ghost, calculators),
-        MobKind::Tower => tower::spawn_tower(commands, pos, &mobs.tower, calculators),
-        MobKind::SlimeSmall => slime::spawn_slime_small(commands, pos, &mobs.slime_small, calculators),
-        MobKind::Spinner => spinner::spawn_spinner(commands, pos, &mobs.spinner, calculators),
-        MobKind::Jumper => jumper::spawn_jumper(commands, pos, &mobs.jumper, calculators),
+        MobKind::Ghost => ghost::spawn_ghost(commands, pos, &mobs.ghost, calculators, wave_mods),
+        MobKind::Tower => tower::spawn_tower(commands, pos, &mobs.tower, calculators, wave_mods),
+        MobKind::SlimeSmall => slime::spawn_slime_small(commands, pos, &mobs.slime_small, calculators, wave_mods),
+        MobKind::Spinner => spinner::spawn_spinner(commands, pos, &mobs.spinner, calculators, wave_mods),
+        MobKind::Jumper => jumper::spawn_jumper(commands, pos, &mobs.jumper, calculators, wave_mods),
     }
 }
 
@@ -97,8 +112,12 @@ pub(crate) fn spawn_enemy_core(
     size: f32,
     body: EnemyBody,
     death_particles: &'static str,
+    wave_mods: WaveModifiers,
 ) -> Entity {
-    let (modifiers, dirty, computed) = build_stats(calculators, base_stats);
+    let mut all_mods: Vec<(Stat, ModifierKind, f32)> = base_stats.to_vec();
+    all_mods.push((Stat::MaxLife, ModifierKind::More, wave_mods.hp_mult - 1.0));
+    all_mods.push((Stat::PhysicalDamage, ModifierKind::More, wave_mods.damage_mult - 1.0));
+    let (modifiers, dirty, computed) = build_stats(calculators, &all_mods);
     let hp = computed.final_of(Stat::MaxLife);
     let ground = crate::coord::ground_pos(pos);
 

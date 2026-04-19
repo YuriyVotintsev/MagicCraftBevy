@@ -14,7 +14,7 @@ use crate::particles;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody};
+use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers};
 
 const SPIKE_COUNT: usize = 6;
 const SPIKE_OFFSET: f32 = 0.55;
@@ -92,6 +92,7 @@ pub fn spawn_spinner(
     pos: Vec2,
     s: &SpinnerStats,
     calculators: &StatCalculators,
+    wave_mods: WaveModifiers,
 ) -> Entity {
     let id = spawn_enemy_core(
         commands,
@@ -104,6 +105,7 @@ pub fn spawn_spinner(
         s.size,
         EnemyBody::Dynamic { mass: s.mass },
         "enemy_death_large",
+        wave_mods,
     );
 
     commands.entity(id).insert(Spinner {

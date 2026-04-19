@@ -30,20 +30,23 @@ const CELL_RING_INNER: f32 = 65.0;
 const CELL_RING_OUTER: f32 = 70.0;
 const JOKER_RING_INNER: f32 = 54.0;
 const JOKER_RING_OUTER: f32 = 64.0;
-const HIGHLIGHT_RING_INNER: f32 = BALL_RADIUS + 4.0;
-const HIGHLIGHT_RING_OUTER: f32 = BALL_RADIUS + 12.0;
+const HIGHLIGHT_TORUS_INNER: f32 = BALL_RADIUS - 2.0;
+const HIGHLIGHT_TORUS_OUTER: f32 = BALL_RADIUS + 14.0;
 const PATTERN_RING_INNER: f32 = CELL_RING_OUTER + 2.0;
 const PATTERN_RING_OUTER: f32 = CELL_RING_OUTER + 10.0;
-const SHOP_BALL_X: f32 = 640.0;
-const SHOP_BALL_Z_GAP: f32 = 140.0;
+const SHOP_BALL_X: f32 = 900.0;
+const SHOP_BALL_Z_GAP: f32 = 420.0;
 const PRICE_LABEL_Y_OFFSET: f32 = BALL_RADIUS + 28.0;
 
-const ARROW_THICKNESS: f32 = 6.0;
-const ARROW_END_INSET: f32 = BALL_RADIUS + 6.0;
+const PARTICLE_RADIUS: f32 = 2.5;
+const PARTICLE_SPEED: f32 = 250.0;
+const PARTICLE_SPAWN_INTERVAL: f32 = 0.02;
+const PARTICLE_END_INSET: f32 = BALL_RADIUS + 4.0;
+const PARTICLE_JITTER_LATERAL: f32 = 18.0;
+const PARTICLE_JITTER_VERTICAL: f32 = 14.0;
 
 const GROUND_Y: f32 = 0.02;
 const HIGHLIGHT_Y: f32 = 0.04;
-const ARROW_Y: f32 = 0.05;
 
 const JOKER_HEX_COORDS: [(i32, i32); JOKER_SLOTS] = [
     (4, -2),
@@ -59,10 +62,23 @@ struct SceneMeshes {
     ball: Handle<Mesh>,
     cell_ring: Handle<Mesh>,
     joker_ring: Handle<Mesh>,
-    highlight_ring: Handle<Mesh>,
+    highlight_torus: Handle<Mesh>,
     pattern_ring: Handle<Mesh>,
     shadow: Handle<Mesh>,
-    arrow_shaft: Handle<Mesh>,
+    particle: Handle<Mesh>,
+}
+
+#[derive(Resource, Default)]
+struct ArrowParticleTimer {
+    accumulator: f32,
+}
+
+#[derive(Component)]
+struct ArrowParticle {
+    from: Vec3,
+    to: Vec3,
+    elapsed: f32,
+    duration: f32,
 }
 
 #[derive(Resource, Default)]
@@ -91,7 +107,8 @@ pub struct ShopPriceLabel {
 }
 
 pub fn register_systems(app: &mut App) {
-    app.add_systems(Startup, setup_scene_assets)
+    app.init_resource::<ArrowParticleTimer>()
+        .add_systems(Startup, setup_scene_assets)
         .add_systems(
             OnEnter(WavePhase::Shop),
             (reset_reroll_cost, fill_shop_offer_system, spawn_shop_scene).chain(),
@@ -106,6 +123,8 @@ pub fn register_systems(app: &mut App) {
                 sync_cell_lock_visuals.in_set(ShopSet::Display),
                 update_highlights.in_set(ShopSet::Display),
                 apply_highlights.in_set(ShopSet::Display),
+                spawn_arrow_particles.in_set(ShopSet::Display),
+                update_arrow_particles,
                 update_shop_price_labels.in_set(ShopSet::Display),
             )
                 .run_if(in_state(WavePhase::Shop)),
@@ -127,10 +146,10 @@ fn setup_scene_assets(
         ball: meshes.add(Sphere::new(BALL_RADIUS)),
         cell_ring: meshes.add(Annulus::new(CELL_RING_INNER, CELL_RING_OUTER)),
         joker_ring: meshes.add(Annulus::new(JOKER_RING_INNER, JOKER_RING_OUTER)),
-        highlight_ring: meshes.add(Annulus::new(HIGHLIGHT_RING_INNER, HIGHLIGHT_RING_OUTER)),
+        highlight_torus: meshes.add(Torus::new(HIGHLIGHT_TORUS_INNER, HIGHLIGHT_TORUS_OUTER)),
         pattern_ring: meshes.add(Annulus::new(PATTERN_RING_INNER, PATTERN_RING_OUTER)),
         shadow: meshes.add(Circle::new(BALL_RADIUS * 0.95)),
-        arrow_shaft: meshes.add(Cuboid::new(1.0, 0.001, 1.0)),
+        particle: meshes.add(Sphere::new(PARTICLE_RADIUS)),
     });
     let shadow_mat = StandardMaterial {
         base_color: Color::srgba(0.0, 0.0, 0.0, 0.35),
@@ -736,6 +755,7 @@ fn apply_highlights(
     meshes: Res<SceneMeshes>,
     ground: Res<GroundMaterials>,
     decals: Query<Entity, With<HighlightDecal>>,
+    runes: Query<(Entity, &RuneView), Without<Dragging>>,
 ) {
     for entity in &decals {
         commands.entity(entity).despawn();
@@ -753,74 +773,142 @@ fn apply_highlights(
         ));
     }
 
-    for coord in highlights.write_targets.iter() {
-        let pos = cell_world_pos(*coord);
-        commands.spawn((
-            Name::new("WriteTargetRing"),
-            HighlightDecal,
-            Mesh3d(meshes.highlight_ring.clone()),
-            MeshMaterial3d(ground.write_target.clone()),
-            cell_transform(pos, HIGHLIGHT_Y),
-            DespawnOnExit(WavePhase::Shop),
-        ));
-    }
-    for coord in highlights.write_sources.iter() {
-        let pos = cell_world_pos(*coord);
-        commands.spawn((
-            Name::new("WriteSourceRing"),
-            HighlightDecal,
-            Mesh3d(meshes.highlight_ring.clone()),
-            MeshMaterial3d(ground.write_source.clone()),
-            cell_transform(pos, HIGHLIGHT_Y),
-            DespawnOnExit(WavePhase::Shop),
-        ));
+    let mut ball_for_coord: HashMap<HexCoord, Entity> = HashMap::new();
+    for (entity, view) in &runes {
+        if let RuneSource::Grid(c) = view.source {
+            ball_for_coord.insert(c, entity);
+        }
     }
 
-    let Some(center) = highlights.center_pos else { return };
-    for target in highlights.write_targets.iter() {
-        let target_pos = cell_world_pos(*target);
-        spawn_arrow(&mut commands, &meshes, &ground.write_target, center, target_pos);
+    for coord in highlights.write_targets.iter() {
+        if let Some(parent) = ball_for_coord.get(coord) {
+            spawn_torus_on(&mut commands, *parent, &meshes, &ground.write_target);
+        }
     }
-    for source in highlights.write_sources.iter() {
-        let source_pos = cell_world_pos(*source);
-        spawn_arrow(&mut commands, &meshes, &ground.write_source, source_pos, center);
+    for coord in highlights.write_sources.iter() {
+        if let Some(parent) = ball_for_coord.get(coord) {
+            spawn_torus_on(&mut commands, *parent, &meshes, &ground.write_source);
+        }
     }
 }
 
-fn spawn_arrow(
+fn spawn_torus_on(
+    commands: &mut Commands,
+    parent: Entity,
+    meshes: &SceneMeshes,
+    material: &Handle<StandardMaterial>,
+) {
+    commands.entity(parent).with_children(|p| {
+        p.spawn((
+            Name::new("HighlightTorus"),
+            HighlightDecal,
+            Mesh3d(meshes.highlight_torus.clone()),
+            MeshMaterial3d(material.clone()),
+            Transform::IDENTITY,
+        ));
+    });
+}
+
+fn spawn_arrow_particles(
+    time: Res<Time>,
+    mut timer: ResMut<ArrowParticleTimer>,
+    mut commands: Commands,
+    highlights: Res<GridHighlights>,
+    meshes: Res<SceneMeshes>,
+    ground: Res<GroundMaterials>,
+) {
+    let Some(center) = highlights.center_pos else {
+        timer.accumulator = 0.0;
+        return;
+    };
+    timer.accumulator += time.delta_secs();
+    if timer.accumulator < PARTICLE_SPAWN_INTERVAL {
+        return;
+    }
+    timer.accumulator -= PARTICLE_SPAWN_INTERVAL;
+
+    for target in highlights.write_targets.iter() {
+        let target_pos = cell_world_pos(*target);
+        spawn_arrow_particle(
+            &mut commands,
+            &meshes,
+            &ground.write_target,
+            center,
+            target_pos,
+        );
+    }
+    for source in highlights.write_sources.iter() {
+        let source_pos = cell_world_pos(*source);
+        spawn_arrow_particle(
+            &mut commands,
+            &meshes,
+            &ground.write_source,
+            source_pos,
+            center,
+        );
+    }
+}
+
+fn spawn_arrow_particle(
     commands: &mut Commands,
     meshes: &SceneMeshes,
     material: &Handle<StandardMaterial>,
     tail: Vec3,
     head: Vec3,
 ) {
+    use rand::Rng;
+
     let dx = head.x - tail.x;
     let dz = head.z - tail.z;
     let total_len = (dx * dx + dz * dz).sqrt();
-    let usable = total_len - ARROW_END_INSET * 2.0;
+    let usable = total_len - PARTICLE_END_INSET * 2.0;
     if usable <= 0.0 {
         return;
     }
     let nx = dx / total_len;
     let nz = dz / total_len;
-    let start_x = tail.x + nx * ARROW_END_INSET;
-    let start_z = tail.z + nz * ARROW_END_INSET;
-    let end_x = head.x - nx * ARROW_END_INSET;
-    let end_z = head.z - nz * ARROW_END_INSET;
-    let mid_x = (start_x + end_x) * 0.5;
-    let mid_z = (start_z + end_z) * 0.5;
-    let angle = -dz.atan2(dx);
+    let perp_x = -nz;
+    let perp_z = nx;
+    let mut rng = rand::rng();
+    let lateral: f32 = rng.random_range(-PARTICLE_JITTER_LATERAL..=PARTICLE_JITTER_LATERAL);
+    let vertical: f32 = rng.random_range(-PARTICLE_JITTER_VERTICAL..=PARTICLE_JITTER_VERTICAL);
+    let from = Vec3::new(
+        tail.x + nx * PARTICLE_END_INSET + perp_x * lateral,
+        BALL_ELEVATION + vertical,
+        tail.z + nz * PARTICLE_END_INSET + perp_z * lateral,
+    );
+    let to = Vec3::new(
+        head.x - nx * PARTICLE_END_INSET + perp_x * lateral,
+        BALL_ELEVATION + vertical,
+        head.z - nz * PARTICLE_END_INSET + perp_z * lateral,
+    );
+    let duration = usable / PARTICLE_SPEED;
 
     commands.spawn((
-        Name::new("HighlightArrow"),
-        HighlightDecal,
-        Mesh3d(meshes.arrow_shaft.clone()),
+        Name::new("ArrowParticle"),
+        ArrowParticle { from, to, elapsed: 0.0, duration },
+        Mesh3d(meshes.particle.clone()),
         MeshMaterial3d(material.clone()),
-        Transform::from_translation(Vec3::new(mid_x, ARROW_Y, mid_z))
-            .with_rotation(Quat::from_rotation_y(angle))
-            .with_scale(Vec3::new(usable, 1.0, ARROW_THICKNESS)),
+        Transform::from_translation(from),
         DespawnOnExit(WavePhase::Shop),
     ));
+}
+
+fn update_arrow_particles(
+    mut commands: Commands,
+    time: Res<Time>,
+    mut particles: Query<(Entity, &mut ArrowParticle, &mut Transform)>,
+) {
+    let dt = time.delta_secs();
+    for (entity, mut p, mut t) in &mut particles {
+        p.elapsed += dt;
+        if p.elapsed >= p.duration {
+            commands.entity(entity).despawn();
+            continue;
+        }
+        let alpha = p.elapsed / p.duration;
+        t.translation = p.from.lerp(p.to, alpha);
+    }
 }
 
 fn restore_dragged_on_exit(

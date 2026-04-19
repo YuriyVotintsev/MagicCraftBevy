@@ -10,7 +10,7 @@ use super::super::player::Player;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, ModifierKind, Stat, StatCalculators};
 
-use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody};
+use super::spawn::{enemy_shape_color, spawn_enemy_core, EnemyBody, WaveModifiers};
 
 #[derive(Clone, Deserialize, Debug)]
 pub struct GhostStats {
@@ -56,6 +56,7 @@ pub fn spawn_ghost(
     pos: Vec2,
     s: &GhostStats,
     calculators: &StatCalculators,
+    wave_mods: WaveModifiers,
 ) -> Entity {
     let id = spawn_enemy_core(
         commands,
@@ -69,6 +70,7 @@ pub fn spawn_ghost(
         s.size,
         EnemyBody::Dynamic { mass: s.mass },
         "enemy_death",
+        wave_mods,
     );
 
     commands.entity(id).insert((

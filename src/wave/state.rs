@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 
 use crate::actors::{death_system, DeathEvent};
-use crate::balance::GameBalance;
 use crate::schedule::PostGameSet;
 use crate::GameState;
 
@@ -13,17 +12,6 @@ pub struct WaveState {
     pub killed_count: u32,
     pub summoning_count: u32,
     pub max_concurrent: u32,
-}
-
-impl WaveState {
-    pub fn new(balance: &crate::balance::WaveBalance) -> Self {
-        Self {
-            spawned_count: 0,
-            killed_count: 0,
-            summoning_count: 0,
-            max_concurrent: balance.start_enemies,
-        }
-    }
 }
 
 #[derive(Component)]
@@ -48,9 +36,8 @@ pub fn register(app: &mut App) {
 fn reset_wave_state(
     mut wave_state: ResMut<WaveState>,
     mut virtual_time: ResMut<Time<Virtual>>,
-    balance: Res<GameBalance>,
 ) {
-    *wave_state = WaveState::new(&balance.wave);
+    *wave_state = WaveState::default();
     virtual_time.unpause();
 }
 

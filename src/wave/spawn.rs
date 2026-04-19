@@ -8,6 +8,7 @@ use crate::balance::GameBalance;
 use crate::dissolve_material::DissolveMaterial;
 use crate::run::{CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
+use super::config::WavesConfig;
 use super::phase::WavePhase;
 use super::state::{WaveEnemy, WaveState};
 use super::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
@@ -36,7 +37,7 @@ pub fn register(app: &mut App) {
     app.init_resource::<EnemySpawnPool>()
         .add_systems(
             Update,
-            (update_target_count, spawn_enemies, tag_wave_enemies)
+            (apply_wave_config, spawn_enemies, tag_wave_enemies)
                 .chain()
                 .in_set(GameSet::Spawning)
                 .run_if(in_state(WavePhase::Combat))
@@ -44,15 +45,26 @@ pub fn register(app: &mut App) {
         );
 }
 
-fn update_target_count(
+fn apply_wave_config(
     run_state: Res<RunState>,
     mut wave_state: ResMut<WaveState>,
-    balance: Res<GameBalance>,
+    mut pool: ResMut<EnemySpawnPool>,
+    waves: Res<WavesConfig>,
+    mut last_applied: Local<Option<u32>>,
 ) {
-    let wb = &balance.wave;
-    let t = (run_state.elapsed / wb.ramp_duration_secs).clamp(0.0, 1.0);
-    let target = wb.start_enemies as f32 + t * (wb.max_enemies - wb.start_enemies) as f32;
-    wave_state.max_concurrent = target.round() as u32;
+    if *last_applied == Some(run_state.wave) {
+        return;
+    }
+    *last_applied = Some(run_state.wave);
+
+    let def = waves.for_wave(run_state.wave);
+    wave_state.max_concurrent = def.max_concurrent;
+
+    let mut rng = rand::rng();
+    let active = waves.resolve_pool(run_state.wave, &mut rng);
+    pool.enabled = MobKind::iter()
+        .map(|k| (k, active.contains(&k)))
+        .collect();
 }
 
 fn spawn_enemies(

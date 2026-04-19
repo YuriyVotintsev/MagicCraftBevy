@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 
-use crate::actors::{spawn_mob, Fade, MobKind, MobsBalance};
+use crate::actors::{spawn_mob, Fade, MobKind, MobsBalance, WaveModifiers};
 use crate::actors::Health;
 use crate::dissolve_material::DissolveMaterial;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
-use crate::run::{CombatScoped, PlayerDying};
+use crate::run::{CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
 use crate::stats::StatCalculators;
+use super::config::WavesConfig;
 use super::phase::WavePhase;
 use super::state::{WaveEnemy, WaveState};
 use crate::Faction;
@@ -121,8 +122,15 @@ fn animate_summoning(
     mut emitter_query: Query<&mut ParticleEmitter>,
     mobs_balance: Res<MobsBalance>,
     calculators: Res<StatCalculators>,
+    waves: Res<WavesConfig>,
+    run_state: Res<RunState>,
 ) {
     let dt = time.delta_secs();
+    let wave_def = waves.for_wave(run_state.wave);
+    let wave_mods = WaveModifiers {
+        hp_mult: wave_def.hp_multiplier,
+        damage_mult: wave_def.damage_multiplier,
+    };
 
     for (entity, mut circle, mut transform) in &mut query {
         circle.elapsed += dt;
@@ -158,6 +166,7 @@ fn animate_summoning(
                         pos,
                         &mobs_balance,
                         &calculators,
+                        wave_mods,
                     );
                     commands.entity(mob).insert((
                         WaveEnemy,

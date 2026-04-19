@@ -10,6 +10,7 @@ use crate::actors::MobsBalance;
 use crate::balance::GameBalance;
 use crate::particles::ParticleConfigRaw;
 use crate::rune::RuneCosts;
+use crate::wave::WavesConfig;
 
 pub trait RonAsset: Asset + for<'de> Deserialize<'de> {
     const EXTENSION: &'static str;
@@ -60,4 +61,8 @@ impl RonAsset for ParticleConfigRaw {
 
 impl RonAsset for RuneCosts {
     const EXTENSION: &'static str = "runes.ron";
+}
+
+impl RonAsset for WavesConfig {
+    const EXTENSION: &'static str = "waves.ron";
 }
