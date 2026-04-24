@@ -14,6 +14,10 @@ pub(super) enum MenuButton {
 
 pub(super) fn spawn_main_menu(mut commands: Commands) {
     let text = palette::color("ui_text");
+    #[cfg(feature = "dev")]
+    let (build_label, build_color) = ("DEV BUILD", palette::color("ui_text_positive"));
+    #[cfg(not(feature = "dev"))]
+    let (build_label, build_color) = ("RELEASE", palette::color("ui_text_subtle"));
     commands.spawn((
         Name::new("MainMenuRoot"),
         DespawnOnExit(GameState::MainMenu),
@@ -74,7 +78,18 @@ pub(super) fn spawn_main_menu(mut commands: Commands) {
                         )]
                     ),
                 ]
-            )
+            ),
+            (
+                Node {
+                    position_type: PositionType::Absolute,
+                    top: Val::Px(16.0),
+                    right: Val::Px(16.0),
+                    ..default()
+                },
+                Text::new(build_label),
+                TextFont { font_size: 24.0, ..default() },
+                TextColor(build_color),
+            ),
         ],
     ));
 }

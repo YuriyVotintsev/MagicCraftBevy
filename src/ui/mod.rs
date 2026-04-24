@@ -1,3 +1,4 @@
+#[cfg(feature = "dev")]
 mod dev_menu;
 mod game_over;
 mod hud;
@@ -70,35 +71,44 @@ impl Plugin for UiPlugin {
             .add_systems(
                 Update,
                 pause_menu::pause_button_system.run_if(in_state(CombatPhase::Paused)),
-            )
-            .init_resource::<dev_menu::ShopDevMenuOpen>()
-            .add_systems(OnEnter(CombatPhase::DevMenu), dev_menu::spawn_dev_menu)
-            .add_systems(OnExit(WavePhase::Shop), dev_menu::reset_shop_dev_menu)
-            .add_systems(
-                Update,
-                dev_menu::toggle_dev_menu.run_if(in_state(WavePhase::Combat)),
-            )
-            .add_systems(
-                Update,
-                (dev_menu::toggle_shop_dev_menu, dev_menu::react_to_shop_dev_menu)
-                    .chain()
-                    .run_if(in_state(WavePhase::Shop)),
-            )
-            .add_systems(
-                Update,
-                (
-                    dev_menu::camera_angle_slider_interaction,
-                    dev_menu::camera_zoom_slider_interaction,
-                    dev_menu::cheat_money,
-                    dev_menu::cheat_health,
-                    dev_menu::cheat_damage,
-                    dev_menu::cheat_win_wave,
-                    dev_menu::toggle_enemy_type,
-                    dev_menu::enable_all_enemies,
-                    dev_menu::disable_all_enemies,
-                )
-                    .run_if(dev_menu::dev_menu_active),
             );
+        #[cfg(feature = "dev")]
+        {
+            app.init_resource::<dev_menu::ShopDevMenuOpen>()
+                .init_resource::<dev_menu::DevTriggerState>()
+                .add_systems(OnEnter(CombatPhase::DevMenu), dev_menu::spawn_dev_menu)
+                .add_systems(OnEnter(GameState::Playing), dev_menu::spawn_dev_trigger)
+                .add_systems(OnExit(WavePhase::Shop), dev_menu::reset_shop_dev_menu)
+                .add_systems(
+                    Update,
+                    dev_menu::toggle_dev_menu.run_if(in_state(WavePhase::Combat)),
+                )
+                .add_systems(
+                    Update,
+                    dev_menu::dev_trigger_double_tap.run_if(in_state(GameState::Playing)),
+                )
+                .add_systems(
+                    Update,
+                    (dev_menu::toggle_shop_dev_menu, dev_menu::react_to_shop_dev_menu)
+                        .chain()
+                        .run_if(in_state(WavePhase::Shop)),
+                )
+                .add_systems(
+                    Update,
+                    (
+                        dev_menu::camera_angle_slider_interaction,
+                        dev_menu::camera_zoom_slider_interaction,
+                        dev_menu::cheat_money,
+                        dev_menu::cheat_health,
+                        dev_menu::cheat_damage,
+                        dev_menu::cheat_win_wave,
+                        dev_menu::toggle_enemy_type,
+                        dev_menu::enable_all_enemies,
+                        dev_menu::disable_all_enemies,
+                    )
+                        .run_if(dev_menu::dev_menu_active),
+                );
+        }
     }
 }
 

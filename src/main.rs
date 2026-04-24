@@ -187,6 +187,10 @@ fn main() {
                 ),
                 ..default()
             });
+            plugins = plugins.set(AssetPlugin {
+                meta_check: bevy::asset::AssetMetaCheck::Never,
+                ..default()
+            });
         }
         app.add_plugins(plugins);
     }

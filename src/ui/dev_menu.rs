@@ -1,9 +1,11 @@
 use bevy::prelude::*;
+use bevy::time::Real;
 use bevy::ui::UiGlobalTransform;
 
 use crate::actors::Health;
 use crate::actors::Player;
 use crate::arena::{CameraAngle, CameraZoom};
+use crate::game_state::GameState;
 use crate::palette;
 use crate::run::PlayerMoney;
 use crate::stats::{DirtyStats, ModifierKind, Modifiers, Stat};
@@ -599,6 +601,85 @@ pub(super) fn camera_zoom_slider_interaction(
         }
         for mut text in &mut text_query {
             *text = Text::new(format!("{:.0}", value));
+        }
+    }
+}
+
+#[derive(Component)]
+pub(super) struct DevTrigger;
+
+#[derive(Resource, Default)]
+pub(super) struct DevTriggerState {
+    last_tap_secs: f32,
+}
+
+const DEV_TRIGGER_DOUBLE_TAP_WINDOW: f32 = 0.5;
+
+pub(super) fn spawn_dev_trigger(mut commands: Commands) {
+    commands.spawn((
+        Name::new("DevTrigger"),
+        DevTrigger,
+        Button,
+        DespawnOnExit(GameState::Playing),
+        GlobalZIndex(50),
+        Node {
+            position_type: PositionType::Absolute,
+            left: Val::Px(0.0),
+            bottom: Val::Px(0.0),
+            width: Val::Px(90.0),
+            height: Val::Px(90.0),
+            ..default()
+        },
+        BackgroundColor(Color::NONE),
+    ));
+}
+
+pub(super) fn dev_trigger_double_tap(
+    query: Query<&Interaction, (Changed<Interaction>, With<DevTrigger>)>,
+    mut state: ResMut<DevTriggerState>,
+    time: Res<Time<Real>>,
+    wave_phase: Option<Res<State<WavePhase>>>,
+    combat_phase: Option<Res<State<CombatPhase>>>,
+    next_combat: Option<ResMut<NextState<CombatPhase>>>,
+    shop_open: Option<ResMut<ShopDevMenuOpen>>,
+    mut virtual_time: ResMut<Time<Virtual>>,
+) {
+    let Some(&interaction) = query.iter().next() else {
+        return;
+    };
+    if interaction != Interaction::Pressed {
+        return;
+    }
+    let now = time.elapsed_secs();
+    if now - state.last_tap_secs > DEV_TRIGGER_DOUBLE_TAP_WINDOW {
+        state.last_tap_secs = now;
+        return;
+    }
+    state.last_tap_secs = 0.0;
+
+    let Some(wave_phase) = wave_phase else {
+        return;
+    };
+    match wave_phase.get() {
+        WavePhase::Combat => {
+            let (Some(combat), Some(mut next)) = (combat_phase, next_combat) else {
+                return;
+            };
+            match combat.get() {
+                CombatPhase::Running | CombatPhase::Paused => {
+                    virtual_time.pause();
+                    next.set(CombatPhase::DevMenu);
+                }
+                CombatPhase::DevMenu => {
+                    virtual_time.unpause();
+                    next.set(CombatPhase::Running);
+                }
+            }
+        }
+        WavePhase::Shop => {
+            if let Some(mut shop_open) = shop_open {
+                shop_open.0 = !shop_open.0;
+            }
         }
     }
 }
