@@ -616,6 +616,7 @@ pub(super) struct DevTriggerState {
 const DEV_TRIGGER_DOUBLE_TAP_WINDOW: f32 = 0.5;
 
 pub(super) fn spawn_dev_trigger(mut commands: Commands) {
+    let size = 140.0;
     commands.spawn((
         Name::new("DevTrigger"),
         DevTrigger,
@@ -624,10 +625,14 @@ pub(super) fn spawn_dev_trigger(mut commands: Commands) {
         GlobalZIndex(50),
         Node {
             position_type: PositionType::Absolute,
-            left: Val::Px(0.0),
-            bottom: Val::Px(0.0),
-            width: Val::Px(90.0),
-            height: Val::Px(90.0),
+            top: Val::Px(0.0),
+            left: Val::Percent(50.0),
+            width: Val::Px(size),
+            height: Val::Px(size),
+            margin: UiRect {
+                left: Val::Px(-size / 2.0),
+                ..UiRect::ZERO
+            },
             ..default()
         },
         BackgroundColor(Color::NONE),

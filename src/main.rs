@@ -7,6 +7,7 @@ mod faction;
 mod game_state;
 mod health_material;
 mod hit_flash;
+mod input;
 mod loading;
 mod coord;
 pub mod palette;
@@ -45,6 +46,7 @@ use dissolve_material::DissolveMaterialPlugin;
 use health_material::HealthMaterialPlugin;
 use rune_ball_material::RuneBallMaterialPlugin;
 use hit_flash::HitFlashPlugin;
+use input::PlayerInputPlugin;
 use loading::LoadingPlugin;
 use schedule::{GameSet, PostGameSet, ShopSet};
 use stats::StatsPlugin;
@@ -244,6 +246,7 @@ fn main() {
             UiPlugin,
             WavePlugin,
         ))
+        .add_plugins(PlayerInputPlugin)
         .add_plugins(particles::ParticlesPlugin)
         .add_plugins(composite_scale::CompositeScalePlugin);
 

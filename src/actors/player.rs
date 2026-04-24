@@ -2,10 +2,9 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::components::{
-    Caster, Collider, DynamicBody, Health, InputTrigger, JumpWalkAnimation, KeyboardMovement,
-    MouseButtonKind, OnCollisionDamage, OnCollisionParticles, PlayerAbilityCooldowns, PlayerInput,
+    Caster, Collider, DynamicBody, Health, JumpWalkAnimation, KeyboardMovement,
+    OnCollisionDamage, OnCollisionParticles, PlayerAbilityCooldowns, PlayerInput,
     Projectile, Shadow, ColliderShape, Size, Shape, ShapeColor, ShapeKind,
-    TargetingMode,
 };
 use crate::palette;
 use crate::run::CombatScoped;
@@ -92,13 +91,10 @@ pub fn spawn_player(
         DynamicBody { mass: 3.0 },
         Health { current: hp },
         KeyboardMovement {},
-        PlayerAbilityCooldowns::default(),
+        PlayerInput,
         CombatScoped,
     )).id();
-    commands.entity(entity).insert(PlayerInput {
-        trigger: InputTrigger::MouseHold(MouseButtonKind::Left),
-        targeting: TargetingMode::Cursor,
-    });
+    commands.entity(entity).insert(PlayerAbilityCooldowns::default());
 
     commands.entity(entity).with_children(|p| {
         p.spawn(Shadow);

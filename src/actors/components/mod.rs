@@ -13,8 +13,7 @@ pub use combat::{
 pub use lifetime::Lifetime;
 pub use physics::{Collider, ColliderShape, DynamicBody, GameLayer, Size, StaticBody};
 pub use player::{
-    InputTrigger, KeyboardMovement, MouseButtonKind, MovementLocked, PlayerAbilityCooldowns,
-    PlayerInput, TargetingMode,
+    KeyboardMovement, MovementLocked, PlayerAbilityCooldowns, PlayerInput,
 };
 pub use visual::{
     BobbingAnimation, CapsuleShape, CircleShape, Fade, FadeCollisionToggle,

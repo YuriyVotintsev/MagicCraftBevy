@@ -4,7 +4,7 @@ mod keyboard_movement;
 mod player_input;
 
 pub use keyboard_movement::{KeyboardMovement, MovementLocked};
-pub use player_input::{InputTrigger, MouseButtonKind, PlayerAbilityCooldowns, PlayerInput, TargetingMode};
+pub use player_input::{PlayerAbilityCooldowns, PlayerInput};
 
 pub struct PlayerComponentsPlugin;
 
