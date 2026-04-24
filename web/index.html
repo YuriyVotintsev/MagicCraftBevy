@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Magic Craft</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: #111;
+      overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: none;
+    }
+    canvas#bevy-canvas {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      outline: none;
+      background: #000;
+    }
+    #status {
+      position: fixed;
+      inset: auto 0 8px 0;
+      text-align: center;
+      color: #888;
+      font: 12px/1.4 system-ui, sans-serif;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="bevy-canvas"></canvas>
+  <div id="status">loading…</div>
+  <script src="./eruda.js"></script>
+  <script>eruda.init();</script>
+  <script type="module">
+    import('./pkg/magic_craft_bevy.js')
+      .then(({ default: init }) => init())
+      .then(() => {
+        const s = document.getElementById('status');
+        if (s) s.remove();
+      })
+      .catch((err) => {
+        console.error('failed to start:', err);
+        const s = document.getElementById('status');
+        if (s) s.textContent = 'failed to start — open Eruda console for details';
+      });
+  </script>
+</body>
+</html>

@@ -30,11 +30,11 @@ impl PaletteData {
     }
 }
 
+const PALETTE_RON: &str = include_str!("../assets/palette.ron");
+
 pub fn init() {
-    let content = std::fs::read_to_string("assets/palette.ron")
-        .expect("Failed to read assets/palette.ron");
     let data: PaletteData =
-        ron::from_str(&content).expect("Failed to parse assets/palette.ron");
+        ron::from_str(PALETTE_RON).expect("Failed to parse assets/palette.ron");
     PALETTE.set(data).ok();
 }
 

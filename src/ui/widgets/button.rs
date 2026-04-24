@@ -24,7 +24,21 @@ impl WidgetButton {
     }
 
     fn just_released(&self, current: Interaction) -> bool {
-        self.last_interaction == Interaction::Pressed && current == Interaction::Hovered
+        // On touch devices there is no hover state: the pointer goes
+        // straight from `Pressed` back to `None` on finger release, so we
+        // accept that as a click too. On native desktop we keep the stricter
+        // check so that sliding the cursor off mid-press still cancels.
+        if self.last_interaction != Interaction::Pressed {
+            return false;
+        }
+        #[cfg(target_arch = "wasm32")]
+        {
+            matches!(current, Interaction::Hovered | Interaction::None)
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            current == Interaction::Hovered
+        }
     }
 }
 

@@ -33,7 +33,7 @@ pub fn register(app: &mut App) {
         );
 }
 
-fn reset_wave_state(
+pub fn reset_wave_state(
     mut wave_state: ResMut<WaveState>,
     mut virtual_time: ResMut<Time<Virtual>>,
 ) {

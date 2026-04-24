@@ -10,7 +10,7 @@ dev = []
 
 [dependencies]
 anyhow = "1.0"
-bevy = { version = "0.18", features = ["debug"] }
+bevy = { version = "0.18", features = ["debug", "webgl2"] }
 avian3d = "0.5"
 rand = "0.9"
 ron = "0.12.0"
@@ -20,6 +20,12 @@ bevy_tweening = "0.15"
 delaunator = "0.2"
 smallvec = "1.15.1"
 calamine = "0.26"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+console_error_panic_hook = "0.1"
+# Enable the JS-backed RNG source on wasm32-unknown-unknown (paired with
+# rustflags in .cargo/config.toml).
+getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [profile.dev]
 opt-level = 1

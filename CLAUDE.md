@@ -21,6 +21,35 @@ HEADLESS=1 SKIP_MENU=1 cargo run --features dev -- --timeout 10      # Headless 
 - `SKIP_MENU=1` jumps straight from `Loading` to `Playing`, bypassing the main menu.
 - Both env vars require `--features dev`.
 
+### Web / WebGL2 build (phone browser testing)
+
+```bash
+# One-time setup
+rustup target add wasm32-unknown-unknown
+# The CLI version must match the wasm-bindgen crate in Cargo.lock exactly.
+cargo install -f wasm-bindgen-cli --version "$(awk '
+  $1=="name" && $3=="\"wasm-bindgen\"" { want=1; next }
+  want && $1=="version" { gsub(/"/,"",$3); print $3; exit }
+' Cargo.lock)"
+
+# Build + serve (defaults to dev profile)
+scripts/build_web.sh                   # PROFILE=release for smaller wasm
+scripts/serve_web.sh                   # serves web/ on 0.0.0.0:8000
+
+# Open on phone browser: http://<host-LAN-IP>:8000
+```
+
+Native build (`cargo run`) is untouched — the wasm target is enabled purely
+via `cfg(target_arch = "wasm32")` gates. The wasm path:
+- Always embeds `assets/balance.xlsx` via `include_bytes!` (no filesystem reads).
+- Loads particle configs by explicit filename list (Bevy's `load_folder` does
+  not work on the web asset source); see `PARTICLE_NAMES` in
+  `src/loading/systems.rs` — add new `.particle.ron` files there.
+- Mounts to `<canvas id="bevy-canvas">` defined in `web/index.html`, sizing to
+  viewport via `fit_canvas_to_parent`.
+- Skips the headless `ScheduleRunnerPlugin` path entirely.
+- Input is desktop-only for now; touch adaptation is a separate task.
+
 ## Architecture
 
 ### Plugins (registered in `main.rs`)

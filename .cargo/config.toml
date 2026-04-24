@@ -1,0 +1,7 @@
+# Per-target settings. Only this wasm target block is custom; native builds
+# use the default configuration and are unaffected.
+
+[target.wasm32-unknown-unknown]
+rustflags = ['--cfg=getrandom_backend="wasm_js"']
+# Note: adding `-C strip=debuginfo` here cuts the wasm ~5× but triggers a
+# full rebuild. Add it only before a final / release build.

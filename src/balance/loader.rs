@@ -6,21 +6,21 @@ use calamine::{Reader, Xlsx};
 use super::parser::{parse_balance, BalanceError};
 use super::types::Balance;
 
-#[cfg(not(feature = "dev"))]
+#[cfg(any(not(feature = "dev"), target_arch = "wasm32"))]
 const BALANCE_XLSX: &[u8] = include_bytes!("../../assets/balance.xlsx");
 
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
 const XLSX_PATH: &str = "assets/balance.xlsx";
 
 pub fn load_balance() -> Result<Balance, BalanceError> {
-    #[cfg(feature = "dev")]
+    #[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
     {
         use calamine::open_workbook;
         let mut wb: Xlsx<_> =
             open_workbook(XLSX_PATH).map_err(|e| format!("opening {XLSX_PATH}: {e}"))?;
         load_from_workbook(&mut wb)
     }
-    #[cfg(not(feature = "dev"))]
+    #[cfg(any(not(feature = "dev"), target_arch = "wasm32"))]
     {
         let cursor = std::io::Cursor::new(BALANCE_XLSX);
         let mut wb = Xlsx::new(cursor).map_err(|e| format!("reading embedded xlsx: {e}"))?;
@@ -64,7 +64,7 @@ fn install_balance(commands: &mut Commands, balance: Balance) {
     commands.insert_resource(balance);
 }
 
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
 pub fn reload_balance(input: Res<ButtonInput<KeyCode>>, mut commands: Commands) {
     if !input.just_pressed(KeyCode::F5) {
         return;

@@ -9,7 +9,7 @@ use crate::dissolve_material::DissolveMaterial;
 use crate::run::{CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
 use super::phase::WavePhase;
-use super::state::{WaveEnemy, WaveState};
+use super::state::{reset_wave_state, WaveEnemy, WaveState};
 use super::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
 use crate::Faction;
 
@@ -36,7 +36,9 @@ pub fn register(app: &mut App) {
     app.init_resource::<EnemySpawnPool>()
         .add_systems(
             OnEnter(WavePhase::Combat),
-            apply_wave_config.after(crate::run::init_run),
+            apply_wave_config
+                .after(crate::run::init_run)
+                .after(reset_wave_state),
         )
         .add_systems(
             Update,

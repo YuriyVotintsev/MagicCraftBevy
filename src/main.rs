@@ -58,20 +58,20 @@ use wave::{CombatPhase, WavePhase, WavePlugin};
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use bevy::window::WindowResolution;
 
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
 use bevy::window::ExitCondition;
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
 use bevy::app::ScheduleRunnerPlugin;
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
 use std::time::Duration;
 
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
 #[derive(Resource)]
 struct HeadlessTimeout {
     timer: Timer,
 }
 
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
 fn parse_timeout_arg() -> f32 {
     let args: Vec<String> = std::env::args().collect();
 
@@ -94,7 +94,7 @@ fn parse_timeout_arg() -> f32 {
     std::process::exit(1);
 }
 
-#[cfg(feature = "dev")]
+#[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
 fn headless_timeout_system(
     time: Res<Time>,
     mut timeout: ResMut<HeadlessTimeout>,
@@ -106,6 +106,7 @@ fn headless_timeout_system(
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn windowed_plugin() -> WindowPlugin {
     WindowPlugin {
         primary_window: Some(Window {
@@ -119,16 +120,33 @@ fn windowed_plugin() -> WindowPlugin {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+fn windowed_plugin() -> WindowPlugin {
+    WindowPlugin {
+        primary_window: Some(Window {
+            canvas: Some("#bevy-canvas".to_string()),
+            fit_canvas_to_parent: true,
+            prevent_default_event_handling: false,
+            title: "Magic Craft".to_string(),
+            ..default()
+        }),
+        ..default()
+    }
+}
+
 fn main() {
+    #[cfg(target_arch = "wasm32")]
+    console_error_panic_hook::set_once();
+
     let mut app = App::new();
 
-    #[cfg(feature = "dev")]
+    #[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
     let headless = std::env::var("HEADLESS").is_ok();
-    #[cfg(not(feature = "dev"))]
+    #[cfg(any(not(feature = "dev"), target_arch = "wasm32"))]
     let headless = false;
 
     if headless {
-        #[cfg(feature = "dev")]
+        #[cfg(all(feature = "dev", not(target_arch = "wasm32")))]
         {
             let timeout_secs = parse_timeout_arg();
             info!("Running in headless mode with {}s timeout", timeout_secs);
@@ -152,7 +170,25 @@ fn main() {
             .add_systems(Update, headless_timeout_system);
         }
     } else {
-        app.add_plugins(DefaultPlugins.set(windowed_plugin()));
+        #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
+        let mut plugins = DefaultPlugins.set(windowed_plugin());
+        // On WebGL2 a handful of Bevy sub-plugins (SSAO, atmosphere, OIT
+        // resolve) log a warning every startup because their required GPU
+        // features don't exist in the browser. They're nested inside
+        // `PbrPlugin`/`CorePipelinePlugin` so `.disable::<T>()` can't reach
+        // them — raise their log level via `LogPlugin::filter` instead.
+        #[cfg(target_arch = "wasm32")]
+        {
+            plugins = plugins.set(bevy::log::LogPlugin {
+                filter: format!(
+                    "{}bevy_pbr::ssao=error,bevy_pbr::atmosphere=error,\
+                     bevy_core_pipeline::oit::resolve=error",
+                    bevy::log::DEFAULT_FILTER,
+                ),
+                ..default()
+            });
+        }
+        app.add_plugins(plugins);
     }
 
     app.init_state::<GameState>()
