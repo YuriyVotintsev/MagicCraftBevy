@@ -23,7 +23,7 @@ use super::hex::HexCoord;
 use super::shop_gen::roll_shop_offer;
 
 pub const CELL_SIDE_WORLD: f32 = 100.0;
-pub const BALL_RADIUS: f32 = 60.0;
+pub const BALL_RADIUS: f32 = 45.0;
 pub const BALL_ELEVATION: f32 = BALL_RADIUS;
 pub const DRAG_LIFT: f32 = BALL_RADIUS * 1.0;
 const ICON_HALF_ANGLE_DEG: f32 = 35.0;
