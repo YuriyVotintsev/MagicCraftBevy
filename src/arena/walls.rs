@@ -2,7 +2,10 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use crate::actors::GameLayer;
+use crate::game_state::GameState;
 use crate::run::{CombatScoped, SkipDeathShrink};
+
+use super::size::CurrentArenaSize;
 
 pub(super) const WALL_HEIGHT: f32 = 200.0;
 pub(super) const WALL_THICKNESS: f32 = 20.0;
@@ -11,7 +14,29 @@ const WALL_SEGMENTS: u32 = 64;
 #[derive(Component)]
 pub struct Wall;
 
-pub fn register(_app: &mut App) {}
+pub fn register(app: &mut App) {
+    app.add_systems(Update, sync_walls.run_if(in_state(GameState::Playing)));
+}
+
+fn sync_walls(
+    mut commands: Commands,
+    arena_size: Option<Res<CurrentArenaSize>>,
+    walls: Query<Entity, With<Wall>>,
+) {
+    let Some(arena_size) = arena_size else { return };
+    if arena_size.radius <= 0.0 {
+        return;
+    }
+    let walls_empty = walls.iter().next().is_none();
+    if walls_empty {
+        spawn_walls(&mut commands, arena_size.radius);
+    } else if arena_size.is_changed() {
+        for e in &walls {
+            commands.entity(e).despawn();
+        }
+        spawn_walls(&mut commands, arena_size.radius);
+    }
+}
 
 pub(super) fn spawn_walls(commands: &mut Commands, radius: f32) {
     let wall_layers = CollisionLayers::new(GameLayer::Wall, LayerMask::ALL);

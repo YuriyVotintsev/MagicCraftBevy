@@ -9,7 +9,7 @@ use crate::dissolve_material::DissolveMaterial;
 use crate::run::{BreatherTimer, CombatScoped, PlayerDying, RunState, StartWaveEvent};
 use crate::schedule::GameSet;
 use super::phase::CombatPhase;
-use super::state::{WaveEnemy, WaveState};
+use super::state::{reset_wave_state, WaveEnemy, WaveState};
 use super::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
 use crate::Faction;
 use crate::GameState;
@@ -37,7 +37,9 @@ pub fn register(app: &mut App) {
     app.init_resource::<EnemySpawnPool>()
         .add_systems(
             Update,
-            apply_wave_config.run_if(in_state(GameState::Playing)),
+            apply_wave_config
+                .after(reset_wave_state)
+                .run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
@@ -61,8 +63,12 @@ fn apply_wave_config(
         return;
     }
     let def = waves.for_wave(run_state.wave);
-    wave_state.max_concurrent = def.max_concurrent;
-    info!("Starting wave #{}", run_state.wave);
+    wave_state.spawn_interval = def.spawn_interval;
+    wave_state.spawn_accumulator = def.spawn_interval;
+    info!(
+        "Starting wave #{} (spawn every {:.2}s)",
+        run_state.wave, def.spawn_interval
+    );
 
     let mut rng = rand::rng();
     let active = waves.resolve_pool(run_state.wave, &mut rng);
@@ -73,6 +79,7 @@ fn apply_wave_config(
 
 fn spawn_enemies(
     mut commands: Commands,
+    time: Res<Time>,
     mut wave_state: ResMut<WaveState>,
     player_query: Query<&Transform, With<crate::actors::Player>>,
     mobs_balance: Res<MobsBalance>,
@@ -83,9 +90,17 @@ fn spawn_enemies(
     spawn_pool: Res<EnemySpawnPool>,
     arena_size: Res<CurrentArenaSize>,
 ) {
-    let active_enemies = wave_state.spawned_count - wave_state.killed_count;
-    let deficit = wave_state.max_concurrent.saturating_sub(active_enemies);
-    if deficit == 0 {
+    let interval = wave_state.spawn_interval;
+    if interval <= 0.0 {
+        return;
+    }
+    wave_state.spawn_accumulator += time.delta_secs();
+    let mut to_spawn = 0u32;
+    while wave_state.spawn_accumulator >= interval {
+        wave_state.spawn_accumulator -= interval;
+        to_spawn += 1;
+    }
+    if to_spawn == 0 {
         return;
     }
 
@@ -99,7 +114,7 @@ fn spawn_enemies(
     let inner_radius = (arena_size.radius - margin).max(0.0);
     let mut rng = rand::rng();
 
-    for _ in 0..deficit {
+    for _ in 0..to_spawn {
         let (x, y) = {
             let mut attempts = 0;
             loop {

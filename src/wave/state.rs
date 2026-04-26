@@ -10,7 +10,8 @@ pub struct WaveState {
     pub spawned_count: u32,
     pub killed_count: u32,
     pub summoning_count: u32,
-    pub max_concurrent: u32,
+    pub spawn_interval: f32,
+    pub spawn_accumulator: f32,
 }
 
 #[derive(Component)]

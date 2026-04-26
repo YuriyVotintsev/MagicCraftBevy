@@ -40,7 +40,7 @@ impl MobsBalance {
 #[derive(Debug, Clone)]
 pub struct WaveDef {
     pub enemy_variety: u32,
-    pub max_concurrent: u32,
+    pub spawn_interval: f32,
     pub hp_multiplier: f32,
     pub damage_multiplier: f32,
 }

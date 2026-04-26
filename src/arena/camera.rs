@@ -24,7 +24,7 @@ pub struct CameraZoom {
 
 impl Default for CameraZoom {
     fn default() -> Self {
-        Self { height: 1080.0 }
+        Self { height: 720.0 }
     }
 }
 

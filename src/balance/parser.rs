@@ -87,7 +87,7 @@ pub fn parse_waves(range: &Range<Data>) -> Result<WavesConfig, BalanceError> {
     let c_wave = required_col(&headers, "wave")?;
     let c_unlocks = required_col(&headers, "unlocks")?;
     let c_variety = required_col(&headers, "enemy_variety")?;
-    let c_concurrent = required_col(&headers, "max_concurrent")?;
+    let c_interval = required_col(&headers, "spawn_interval")?;
     let c_hp = required_col(&headers, "hp_multiplier")?;
     let c_dmg = required_col(&headers, "damage_multiplier")?;
 
@@ -108,9 +108,9 @@ pub fn parse_waves(range: &Range<Data>) -> Result<WavesConfig, BalanceError> {
         let variety = cell_u32(row.get(c_variety))
             .map_err(|e| format!("row {row_idx} enemy_variety: {e}"))?
             .ok_or_else(|| format!("row {row_idx}: enemy_variety required"))?;
-        let concurrent = cell_u32(row.get(c_concurrent))
-            .map_err(|e| format!("row {row_idx} max_concurrent: {e}"))?
-            .ok_or_else(|| format!("row {row_idx}: max_concurrent required"))?;
+        let interval = cell_f32(row.get(c_interval))
+            .map_err(|e| format!("row {row_idx} spawn_interval: {e}"))?
+            .ok_or_else(|| format!("row {row_idx}: spawn_interval required"))?;
         let hp_m = cell_f32(row.get(c_hp))
             .map_err(|e| format!("row {row_idx} hp_multiplier: {e}"))?
             .ok_or_else(|| format!("row {row_idx}: hp_multiplier required"))?;
@@ -121,8 +121,8 @@ pub fn parse_waves(range: &Range<Data>) -> Result<WavesConfig, BalanceError> {
         if variety == 0 {
             return Err(format!("wave {wave}: enemy_variety must be > 0"));
         }
-        if concurrent == 0 {
-            return Err(format!("wave {wave}: max_concurrent must be > 0"));
+        if interval <= 0.0 {
+            return Err(format!("wave {wave}: spawn_interval must be > 0"));
         }
         if hp_m <= 0.0 {
             return Err(format!("wave {wave}: hp_multiplier must be > 0"));
@@ -135,7 +135,7 @@ pub fn parse_waves(range: &Range<Data>) -> Result<WavesConfig, BalanceError> {
             wave,
             WaveDef {
                 enemy_variety: variety,
-                max_concurrent: concurrent,
+                spawn_interval: interval,
                 hp_multiplier: hp_m,
                 damage_multiplier: dmg_m,
             },
@@ -347,7 +347,7 @@ mod tests {
         assert!(!bal.waves.waves.is_empty());
         let first = &bal.waves.waves[0];
         assert!(first.enemy_variety > 0);
-        assert!(first.max_concurrent > 0);
+        assert!(first.spawn_interval > 0.0);
         assert!(first.hp_multiplier > 0.0);
         assert!(first.damage_multiplier > 0.0);
 
