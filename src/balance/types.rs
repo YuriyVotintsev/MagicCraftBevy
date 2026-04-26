@@ -5,7 +5,6 @@ use rand::seq::SliceRandom;
 use rand::Rng;
 
 use crate::actors::MobKind;
-use crate::rune::{RuneKind, Tier};
 
 #[derive(Debug, Clone)]
 pub struct MobCommonStats {
@@ -88,52 +87,14 @@ impl WavesConfig {
 }
 
 #[derive(Debug, Clone, Resource)]
-pub struct RuneCosts {
-    pub spike: u32,
-    pub heart_stone: u32,
-    pub resonator: u32,
-}
-
-impl RuneCosts {
-    pub fn cost_for(&self, kind: RuneKind) -> u32 {
-        match kind {
-            RuneKind::Spike => self.spike,
-            RuneKind::HeartStone => self.heart_stone,
-            RuneKind::Resonator => self.resonator,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Resource)]
 pub struct Globals {
     pub safe_spawn_radius: f32,
     pub arena_radius: f32,
-    pub coins_per_kill: u32,
-    pub coin_attraction_duration: f32,
-    pub rune_joker_probability: f32,
-    pub rune_tier_weight_common: u32,
-    pub rune_tier_weight_rare: u32,
-    pub rune_reroll_base_cost: u32,
-    pub rune_reroll_cost_step: u32,
-}
-
-impl Globals {
-    pub fn rune_tier_weight(&self, tier: Tier) -> u32 {
-        match tier {
-            Tier::Common => self.rune_tier_weight_common,
-            Tier::Rare => self.rune_tier_weight_rare,
-        }
-    }
-
-    pub fn rune_tier_weight_total(&self) -> u32 {
-        self.rune_tier_weight_common + self.rune_tier_weight_rare
-    }
 }
 
 #[derive(Debug, Clone, Resource)]
 pub struct Balance {
     pub mobs: MobsBalance,
     pub waves: WavesConfig,
-    pub rune_costs: RuneCosts,
     pub globals: Globals,
 }

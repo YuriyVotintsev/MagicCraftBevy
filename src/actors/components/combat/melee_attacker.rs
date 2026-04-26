@@ -60,6 +60,7 @@ fn melee_attacker_system(
             target,
             amount: damage,
             source: Some(caster),
+            on_hit: Default::default(),
         });
         commands.entity(caster).insert(ShotFired);
     }

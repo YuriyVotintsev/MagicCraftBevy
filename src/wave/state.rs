@@ -1,10 +1,9 @@
 use bevy::prelude::*;
 
 use crate::actors::{death_system, DeathEvent};
+use crate::run::StartWaveEvent;
 use crate::schedule::PostGameSet;
 use crate::GameState;
-
-use super::phase::WavePhase;
 
 #[derive(Resource, Default)]
 pub struct WaveState {
@@ -23,7 +22,7 @@ pub struct InvulnerableStack(pub u32);
 
 pub fn register(app: &mut App) {
     app.init_resource::<WaveState>()
-        .add_systems(OnEnter(WavePhase::Combat), reset_wave_state)
+        .add_systems(Update, reset_wave_state.run_if(in_state(GameState::Playing)))
         .add_systems(
             PostUpdate,
             track_wave_kills
@@ -34,9 +33,13 @@ pub fn register(app: &mut App) {
 }
 
 pub fn reset_wave_state(
+    mut events: MessageReader<StartWaveEvent>,
     mut wave_state: ResMut<WaveState>,
     mut virtual_time: ResMut<Time<Virtual>>,
 ) {
+    if events.read().last().is_none() {
+        return;
+    }
     *wave_state = WaveState::default();
     virtual_time.unpause();
 }
@@ -52,4 +55,3 @@ fn track_wave_kills(
         }
     }
 }
-

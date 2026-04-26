@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::balance::Globals;
-use crate::wave::WavePhase;
+use crate::game_state::GameState;
 
 use super::floor::spawn_floor;
 use super::size::CurrentArenaSize;
@@ -9,7 +9,7 @@ use super::walls::spawn_walls;
 
 pub fn register(app: &mut App) {
     app.init_resource::<CurrentArenaSize>()
-        .add_systems(OnEnter(WavePhase::Combat), spawn_arena);
+        .add_systems(OnEnter(GameState::Playing), spawn_arena);
 }
 
 fn spawn_arena(

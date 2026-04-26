@@ -30,6 +30,7 @@ fn process_damage_payloads(
             target: payload.target,
             amount: payload.amount,
             source: Some(caster.0),
+            on_hit: Default::default(),
         });
         commands.entity(entity).despawn();
     }

@@ -1,4 +1,5 @@
 mod actors;
+mod artifact;
 mod balance;
 mod composite_scale;
 mod arena;
@@ -13,8 +14,6 @@ mod coord;
 pub mod palette;
 mod particles;
 mod run;
-mod rune;
-mod rune_ball_material;
 mod schedule;
 mod stats;
 mod transition;
@@ -41,21 +40,20 @@ use bevy::prelude::*;
 
 use actors::ActorsPlugin;
 use arena::ArenaPlugin;
+use artifact::ArtifactPlugin;
 use balance::BalancePlugin;
 use dissolve_material::DissolveMaterialPlugin;
 use health_material::HealthMaterialPlugin;
-use rune_ball_material::RuneBallMaterialPlugin;
 use hit_flash::HitFlashPlugin;
 use input::PlayerInputPlugin;
 use loading::LoadingPlugin;
-use schedule::{GameSet, PostGameSet, ShopSet};
+use schedule::{GameSet, MovementSet, PostGameSet};
 use stats::StatsPlugin;
 use transition::TransitionPlugin;
 use ui::UiPlugin;
 use bevy_tweening::TweeningPlugin;
 use run::RunPlugin;
-use rune::RunePlugin;
-use wave::{CombatPhase, WavePhase, WavePlugin};
+use wave::{CombatPhase, WavePlugin};
 
 use arena::{WINDOW_HEIGHT, WINDOW_WIDTH};
 use bevy::window::WindowResolution;
@@ -198,7 +196,6 @@ fn main() {
     }
 
     app.init_state::<GameState>()
-        .add_sub_state::<WavePhase>()
         .add_sub_state::<CombatPhase>()
         .configure_sets(
             Update,
@@ -218,9 +215,10 @@ fn main() {
         )
         .configure_sets(
             Update,
-            (ShopSet::Input, ShopSet::Process, ShopSet::Display)
-                .chain()
-                .run_if(in_state(WavePhase::Shop)),
+            MovementSet
+                .run_if(in_state(GameState::Playing))
+                .run_if(not(in_state(CombatPhase::Paused)))
+                .run_if(not(in_state(CombatPhase::DevMenu))),
         )
         .configure_sets(PostUpdate, PostGameSet.run_if(in_state(CombatPhase::Running)))
         .add_plugins((
@@ -236,10 +234,9 @@ fn main() {
             StatsPlugin,
             ActorsPlugin,
             RunPlugin,
-            RunePlugin,
+            ArtifactPlugin,
             DissolveMaterialPlugin,
             HealthMaterialPlugin,
-            RuneBallMaterialPlugin,
             HitFlashPlugin,
             TweeningPlugin,
             TransitionPlugin,

@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
-mod combat;
+pub mod combat;
 mod lifetime;
-mod physics;
-mod player;
-mod visual;
+pub mod physics;
+pub mod player;
+pub mod visual;
 
 pub use combat::{
     death_system, Caster, DeathEvent, Health, MeleeAttacker, OnCollisionDamage, PendingDamage,

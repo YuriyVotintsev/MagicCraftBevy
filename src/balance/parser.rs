@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use calamine::{Data, Range};
 
 use crate::actors::MobKind;
-use crate::rune::RuneKind;
 
 use super::types::{
-    Balance, Globals, MobCommonStats, MobsBalance, RuneCosts, WaveDef, WavesConfig,
+    Balance, Globals, MobCommonStats, MobsBalance, WaveDef, WavesConfig,
 };
 
 pub type BalanceError = String;
@@ -14,14 +13,12 @@ pub type BalanceError = String;
 pub fn parse_balance(
     mobs: &Range<Data>,
     waves: &Range<Data>,
-    runes: &Range<Data>,
     globals: &Range<Data>,
 ) -> Result<Balance, BalanceError> {
     let mobs = parse_mobs(mobs).map_err(|e| format!("sheet Mobs: {e}"))?;
     let waves = parse_waves(waves).map_err(|e| format!("sheet Waves: {e}"))?;
-    let rune_costs = parse_runes(runes).map_err(|e| format!("sheet Runes: {e}"))?;
     let globals = parse_globals(globals).map_err(|e| format!("sheet Globals: {e}"))?;
-    Ok(Balance { mobs, waves, rune_costs, globals })
+    Ok(Balance { mobs, waves, globals })
 }
 
 pub fn parse_mobs(range: &Range<Data>) -> Result<MobsBalance, BalanceError> {
@@ -184,39 +181,6 @@ pub fn parse_waves(range: &Range<Data>) -> Result<WavesConfig, BalanceError> {
     Ok(WavesConfig { mob_unlocks, waves })
 }
 
-pub fn parse_runes(range: &Range<Data>) -> Result<RuneCosts, BalanceError> {
-    let headers = parse_headers(range)?;
-    let c_id = required_col(&headers, "id")?;
-    let c_cost = required_col(&headers, "cost")?;
-
-    let mut map: HashMap<RuneKind, u32> = HashMap::new();
-    for (row_idx, row) in data_rows(range) {
-        let id = cell_str(row.get(c_id))
-            .ok_or_else(|| format!("row {row_idx}: empty id"))?;
-        let kind = parse_rune_id(&id)
-            .map_err(|e| format!("row {row_idx}: {e}"))?;
-        if map.contains_key(&kind) {
-            return Err(format!("row {row_idx}: duplicate rune id {id}"));
-        }
-        let cost = cell_u32(row.get(c_cost))
-            .map_err(|e| format!("row {row_idx} cost: {e}"))?
-            .ok_or_else(|| format!("row {row_idx}: cost required"))?;
-        map.insert(kind, cost);
-    }
-
-    for kind in RuneKind::ALL {
-        if !map.contains_key(kind) {
-            return Err(format!("rune {} missing", rune_id_str(*kind)));
-        }
-    }
-
-    Ok(RuneCosts {
-        spike: map[&RuneKind::Spike],
-        heart_stone: map[&RuneKind::HeartStone],
-        resonator: map[&RuneKind::Resonator],
-    })
-}
-
 pub fn parse_globals(range: &Range<Data>) -> Result<Globals, BalanceError> {
     let headers = parse_headers(range)?;
     let c_key = required_col(&headers, "key")?;
@@ -239,23 +203,10 @@ pub fn parse_globals(range: &Range<Data>) -> Result<Globals, BalanceError> {
             .parse::<f32>()
             .map_err(|_| format!("key {k}: not a float"))
     };
-    let get_u32 = |k: &str| -> Result<u32, BalanceError> {
-        map.get(k)
-            .ok_or_else(|| format!("missing key {k}"))?
-            .parse::<u32>()
-            .map_err(|_| format!("key {k}: not an unsigned int"))
-    };
 
     Ok(Globals {
         safe_spawn_radius: get_f32("safe_spawn_radius")?,
         arena_radius: get_f32("arena_radius")?,
-        coins_per_kill: get_u32("coins_per_kill")?,
-        coin_attraction_duration: get_f32("coin_attraction_duration")?,
-        rune_joker_probability: get_f32("rune_joker_probability")?,
-        rune_tier_weight_common: get_u32("rune_tier_weight_common")?,
-        rune_tier_weight_rare: get_u32("rune_tier_weight_rare")?,
-        rune_reroll_base_cost: get_u32("rune_reroll_base_cost")?,
-        rune_reroll_cost_step: get_u32("rune_reroll_cost_step")?,
     })
 }
 
@@ -362,23 +313,6 @@ fn parse_mob_id(s: &str) -> Result<MobKind, BalanceError> {
         .ok_or_else(|| format!("unknown mob id: {s}"))
 }
 
-fn parse_rune_id(s: &str) -> Result<RuneKind, BalanceError> {
-    match s {
-        "spike" => Ok(RuneKind::Spike),
-        "heart_stone" => Ok(RuneKind::HeartStone),
-        "resonator" => Ok(RuneKind::Resonator),
-        other => Err(format!("unknown rune id: {other}")),
-    }
-}
-
-fn rune_id_str(kind: RuneKind) -> &'static str {
-    match kind {
-        RuneKind::Spike => "spike",
-        RuneKind::HeartStone => "heart_stone",
-        RuneKind::Resonator => "resonator",
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -388,24 +322,21 @@ mod tests {
         calamine::Range<Data>,
         calamine::Range<Data>,
         calamine::Range<Data>,
-        calamine::Range<Data>,
     ) {
         let path = "assets/balance.xlsx";
         let mut wb: Xlsx<_> = open_workbook(path).expect("open xlsx");
         (
             wb.worksheet_range("Mobs").expect("Mobs sheet"),
             wb.worksheet_range("Waves").expect("Waves sheet"),
-            wb.worksheet_range("Runes").expect("Runes sheet"),
             wb.worksheet_range("Globals").expect("Globals sheet"),
         )
     }
 
     #[test]
     fn happy_path_parses_real_xlsx() {
-        let (mobs, waves, runes, globals) = load_real_workbook();
-        let bal = parse_balance(&mobs, &waves, &runes, &globals).expect("parse ok");
+        let (mobs, waves, globals) = load_real_workbook();
+        let bal = parse_balance(&mobs, &waves, &globals).expect("parse ok");
 
-        // Mobs: all mobs covered; tower is static, others have a speed value.
         assert!(bal.mobs.ghost.hp > 0.0);
         assert!(bal.mobs.ghost.speed.is_some());
         assert!(bal.mobs.tower.speed.is_none());
@@ -413,7 +344,6 @@ mod tests {
         assert!(bal.mobs.jumper.speed.is_some());
         assert!(bal.mobs.slime_small.speed.is_some());
 
-        // Waves: ≥1 entry, first wave has sensible values.
         assert!(!bal.waves.waves.is_empty());
         let first = &bal.waves.waves[0];
         assert!(first.enemy_variety > 0);
@@ -421,15 +351,8 @@ mod tests {
         assert!(first.hp_multiplier > 0.0);
         assert!(first.damage_multiplier > 0.0);
 
-        // Globals: all required keys present and positive.
         assert!(bal.globals.safe_spawn_radius > 0.0);
         assert!(bal.globals.arena_radius > 0.0);
-        assert!(bal.globals.rune_tier_weight_total() > 0);
-
-        // Rune costs: non-zero for all rune kinds.
-        assert!(bal.rune_costs.spike > 0);
-        assert!(bal.rune_costs.heart_stone > 0);
-        assert!(bal.rune_costs.resonator > 0);
     }
 
     #[test]
@@ -446,10 +369,5 @@ mod tests {
         assert!(parse_mob_id("no_such_mob").is_err());
     }
 
-    #[test]
-    fn parse_rune_id_unknown_errors() {
-        assert!(parse_rune_id("spike").is_ok());
-        assert!(parse_rune_id("no_such_rune").is_err());
-    }
 }
 

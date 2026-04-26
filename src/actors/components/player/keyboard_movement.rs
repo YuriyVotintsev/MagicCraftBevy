@@ -5,7 +5,7 @@ use super::super::visual::SelfMoving;
 use crate::input::PlayerIntent;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat};
-use crate::wave::WavePhase;
+use crate::wave::CombatPhase;
 
 #[derive(Component)]
 pub struct MovementLocked;
@@ -18,7 +18,7 @@ pub fn register_systems(app: &mut App) {
         Update,
         intent_movement_system
             .in_set(GameSet::Input)
-            .run_if(in_state(WavePhase::Combat)),
+            .run_if(in_state(CombatPhase::Running)),
     );
 }
 

@@ -2,7 +2,6 @@ use bevy::prelude::*;
 
 mod camera;
 mod floor;
-mod shop_arena;
 mod size;
 mod spawn;
 mod walls;
@@ -21,6 +20,5 @@ impl Plugin for ArenaPlugin {
         walls::register(app);
         floor::register(app);
         spawn::register(app);
-        shop_arena::register(app);
     }
 }

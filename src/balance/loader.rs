@@ -35,13 +35,10 @@ fn load_from_workbook<R: Read + Seek>(wb: &mut Xlsx<R>) -> Result<Balance, Balan
     let waves = wb
         .worksheet_range("Waves")
         .map_err(|e| format!("sheet Waves: {e}"))?;
-    let runes = wb
-        .worksheet_range("Runes")
-        .map_err(|e| format!("sheet Runes: {e}"))?;
     let globals = wb
         .worksheet_range("Globals")
         .map_err(|e| format!("sheet Globals: {e}"))?;
-    parse_balance(&mobs, &waves, &runes, &globals)
+    parse_balance(&mobs, &waves, &globals)
 }
 
 pub fn setup_balance(mut commands: Commands) {
@@ -59,7 +56,6 @@ pub fn setup_balance(mut commands: Commands) {
 fn install_balance(commands: &mut Commands, balance: Balance) {
     commands.insert_resource(balance.mobs.clone());
     commands.insert_resource(balance.waves.clone());
-    commands.insert_resource(balance.rune_costs.clone());
     commands.insert_resource(balance.globals.clone());
     commands.insert_resource(balance);
 }

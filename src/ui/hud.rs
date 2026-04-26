@@ -1,9 +1,8 @@
 use bevy::prelude::*;
 
-use crate::actors::Health;
-use crate::actors::Player;
+use crate::actors::{Health, Player};
 use crate::palette;
-use crate::run::{PlayerMoney, RunState};
+use crate::run::{wave_duration, BreatherTimer, RunState};
 use crate::stats::{ComputedStats, Stat};
 use crate::GameState;
 
@@ -16,7 +15,7 @@ pub struct HudRoot;
 pub struct WaveText;
 
 #[derive(Component)]
-pub struct MoneyText;
+pub struct CountdownText;
 
 #[derive(Component)]
 pub struct LifeText;
@@ -35,7 +34,8 @@ pub fn spawn_hud(mut commands: Commands, run_state: Res<RunState>) {
                 left: Val::Px(20.0),
                 top: Val::Px(20.0),
                 flex_direction: FlexDirection::Column,
-                padding: UiRect::all(Val::Px(10.0)),
+                padding: UiRect::all(Val::Px(12.0)),
+                row_gap: Val::Px(6.0),
                 ..default()
             },
             None,
@@ -44,49 +44,25 @@ pub fn spawn_hud(mut commands: Commands, run_state: Res<RunState>) {
             (
                 WaveText,
                 Text::new(format!("Wave {}", run_state.wave)),
-                TextFont {
-                    font_size: 22.0,
-                    ..default()
-                },
-                TextColor(palette::color("ui_text")),
-                Node {
-                    margin: UiRect::bottom(Val::Px(6.0)),
-                    ..default()
-                }
-            ),
-            (
-                MoneyText,
-                Text::new("Coins: 0"),
-                TextFont {
-                    font_size: 20.0,
-                    ..default()
-                },
-                TextColor(palette::color("ui_text_money")),
-                Node {
-                    margin: UiRect::bottom(Val::Px(5.0)),
-                    ..default()
-                }
+                TextFont { font_size: 24.0, ..default() },
+                TextColor(palette::color("ui_text_title")),
             ),
             (
                 LifeText,
                 Text::new("Life: 0/0"),
-                TextFont {
-                    font_size: 18.0,
-                    ..default()
-                },
+                TextFont { font_size: 18.0, ..default() },
                 TextColor(palette::color("ui_text")),
-                Node {
-                    margin: UiRect::bottom(Val::Px(3.0)),
-                    ..default()
-                }
             ),
             (
                 Node {
-                    width: Val::Px(200.0),
-                    height: Val::Px(16.0),
+                    width: Val::Px(320.0),
+                    height: Val::Px(24.0),
+                    border: UiRect::all(Val::Px(3.0)),
+                    border_radius: BorderRadius::all(Val::Px(6.0)),
                     ..default()
                 },
                 BackgroundColor(palette::color("ui_lifebar_bg")),
+                BorderColor::all(palette::color("ui_panel_border")),
                 children![(
                     LifeBar,
                     Node {
@@ -99,32 +75,52 @@ pub fn spawn_hud(mut commands: Commands, run_state: Res<RunState>) {
             ),
         ],
     ));
+
+    commands.spawn((
+        Name::new("CountdownText"),
+        CountdownText,
+        DespawnOnExit(GameState::Playing),
+        Text::new(""),
+        TextFont { font_size: 56.0, ..default() },
+        TextColor(palette::color("ui_text_title")),
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(20.0),
+            left: Val::Percent(50.0),
+            margin: UiRect::left(Val::Px(-40.0)),
+            ..default()
+        },
+    ));
 }
 
 pub fn update_hud(
-    money: Res<PlayerMoney>,
     run_state: Res<RunState>,
+    breather: Option<Res<BreatherTimer>>,
     player_query: Query<(&Health, &ComputedStats), With<Player>>,
-    mut wave_text: Query<&mut Text, (With<WaveText>, Without<MoneyText>, Without<LifeText>)>,
-    mut money_text: Query<&mut Text, (With<MoneyText>, Without<LifeText>, Without<WaveText>)>,
-    mut life_text: Query<&mut Text, (With<LifeText>, Without<MoneyText>, Without<WaveText>)>,
+    mut wave_text: Query<&mut Text, (With<WaveText>, Without<LifeText>, Without<CountdownText>)>,
+    mut life_text: Query<&mut Text, (With<LifeText>, Without<WaveText>, Without<CountdownText>)>,
+    mut countdown_text: Query<&mut Text, (With<CountdownText>, Without<WaveText>, Without<LifeText>)>,
     mut life_bar: Query<&mut Node, With<LifeBar>>,
 ) {
     if let Ok(mut text) = wave_text.single_mut() {
         **text = format!("Wave {}", run_state.wave);
     }
 
-    if let Ok(mut text) = money_text.single_mut() {
-        **text = format!("Coins: {}", money.get());
+    if let Ok(mut text) = countdown_text.single_mut() {
+        let remaining = if let Some(b) = breather.as_ref() {
+            b.0.remaining_secs()
+        } else {
+            let total = wave_duration(run_state.wave);
+            (total - run_state.elapsed).max(0.0)
+        };
+        **text = format!("{}", remaining.ceil() as u32);
     }
 
     if let Ok((health, stats)) = player_query.single() {
         let max_life = stats.final_of(Stat::MaxLife);
-
         if let Ok(mut text) = life_text.single_mut() {
             **text = format!("Life: {}/{}", health.current as i32, max_life as i32);
         }
-
         if let Ok(mut node) = life_bar.single_mut() {
             let progress = if max_life > 0.0 {
                 (health.current / max_life * 100.0).clamp(0.0, 100.0)

@@ -321,7 +321,7 @@ fn update_arc_tower_shot(
             let hits = spatial.shape_intersections(&shape, target_ground, Quat::IDENTITY, &filter);
             for hit in hits {
                 if faction_query.get(hit).map(|f| *f != arc.caster_faction).unwrap_or(false) {
-                    pending.write(PendingDamage { target: hit, amount: arc.damage, source: Some(arc.caster) });
+                    pending.write(PendingDamage { target: hit, amount: arc.damage, source: Some(arc.caster), on_hit: Default::default() });
                 }
             }
 

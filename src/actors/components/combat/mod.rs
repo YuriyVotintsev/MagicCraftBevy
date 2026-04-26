@@ -17,7 +17,9 @@ pub use death::{death_system, Dead, DeathEvent, SkipCleanup};
 pub use health::Health;
 pub use melee_attacker::MeleeAttacker;
 pub use on_collision_damage::OnCollisionDamage;
-pub use projectile::{projectile_collision_physics, Projectile};
+pub use projectile::{
+    projectile_collision_physics, Homing, PierceCount, Projectile, Ricochet, Splash,
+};
 pub use shot_fired::ShotFired;
 
 pub struct CombatPlugin;

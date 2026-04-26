@@ -5,10 +5,10 @@ mod spawn;
 mod state;
 mod summoning;
 
-pub use phase::{CombatPhase, WavePhase};
+pub use phase::CombatPhase;
 pub use spawn::EnemySpawnPool;
 pub use state::{InvulnerableStack, WaveEnemy};
-pub use summoning::RiseFromGround;
+pub use summoning::{RiseFromGround, SummoningCircle};
 
 pub struct WavePlugin;
 

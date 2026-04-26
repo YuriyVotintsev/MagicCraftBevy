@@ -2,17 +2,15 @@ use bevy::prelude::*;
 
 use crate::game_state::GameState;
 use crate::palette;
+use crate::run::RunState;
 use crate::transition::{Transition, TransitionAction};
 
 use super::widgets::{button_node, ReleasedButtons};
 
 #[derive(Component)]
-pub enum GameOverButton {
-    NewRun,
-    MainMenu,
-}
+pub struct GameOverButton;
 
-pub fn spawn_game_over_screen(mut commands: Commands) {
+pub fn spawn_game_over_screen(mut commands: Commands, run_state: Res<RunState>) {
     let text = palette::color("ui_text");
     commands.spawn((
         Name::new("GameOverRoot"),
@@ -29,25 +27,16 @@ pub fn spawn_game_over_screen(mut commands: Commands) {
         BackgroundColor(palette::color("ui_screen_bg")),
         children![
             (
-                Text::new("Game Over"),
-                TextFont { font_size: 72.0, ..default() },
-                TextColor(palette::color("ui_text_gameover")),
+                Text::new(format!("Wave reached: {}", run_state.wave)),
+                TextFont { font_size: 64.0, ..default() },
+                TextColor(palette::color("ui_text_title")),
                 Node {
                     margin: UiRect::bottom(Val::Px(50.0)),
                     ..default()
                 },
             ),
             (
-                GameOverButton::NewRun,
-                button_node(menu_button_node(), None),
-                children![(
-                    Text::new("New Run"),
-                    TextFont { font_size: 32.0, ..default() },
-                    TextColor(text),
-                )],
-            ),
-            (
-                GameOverButton::MainMenu,
+                GameOverButton,
                 button_node(menu_button_node(), None),
                 children![(
                     Text::new("Main Menu"),
@@ -74,11 +63,7 @@ pub fn game_over_button_system(
     buttons: ReleasedButtons<GameOverButton>,
     mut transition: ResMut<Transition>,
 ) {
-    buttons.for_each(|button| {
-        let target = match button {
-            GameOverButton::NewRun => GameState::Playing,
-            GameOverButton::MainMenu => GameState::MainMenu,
-        };
-        transition.request(TransitionAction::Game(target));
+    buttons.for_each(|_| {
+        transition.request(TransitionAction::Game(GameState::MainMenu));
     });
 }

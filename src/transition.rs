@@ -3,7 +3,6 @@ use bevy::render::render_resource::{AsBindGroup, ShaderType};
 use bevy::shader::ShaderRef;
 
 use crate::palette;
-use crate::wave::WavePhase;
 use crate::GameState;
 
 pub const CLOSE_DURATION: f32 = 0.35;
@@ -34,7 +33,6 @@ impl UiMaterial for IrisMaterial {
 #[derive(Clone, Debug)]
 pub enum TransitionAction {
     Game(GameState),
-    Wave(WavePhase),
 }
 
 #[derive(Resource, Default, Debug)]
@@ -52,12 +50,13 @@ pub enum Transition {
 
 impl Transition {
     pub fn request(&mut self, action: TransitionAction) {
-        if matches!(self, Transition::Idle) {
-            *self = Transition::Closing {
-                action,
-                elapsed: 0.0,
-            };
+        if !matches!(self, Transition::Idle) {
+            return;
         }
+        *self = Transition::Closing {
+            action,
+            elapsed: 0.0,
+        };
     }
 }
 
@@ -110,7 +109,6 @@ fn update_transition(
     time: Res<Time<Real>>,
     mut transition: ResMut<Transition>,
     mut game_state: ResMut<NextState<GameState>>,
-    mut wave_phase: ResMut<NextState<WavePhase>>,
     overlay: Query<&TransitionOverlay>,
     mut materials: ResMut<Assets<IrisMaterial>>,
 ) {
@@ -127,7 +125,6 @@ fn update_transition(
             if t >= 1.0 {
                 match action.clone() {
                     TransitionAction::Game(s) => game_state.set(s),
-                    TransitionAction::Wave(p) => wave_phase.set(p),
                 }
                 *transition = Transition::Opening { elapsed: 0.0 };
             }

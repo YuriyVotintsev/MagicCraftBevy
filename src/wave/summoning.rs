@@ -8,7 +8,7 @@ use crate::particles::{self, ParticleEmitter, SpawnShape};
 use crate::run::{CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
 use crate::stats::StatCalculators;
-use super::phase::WavePhase;
+use super::phase::CombatPhase;
 use super::state::{WaveEnemy, WaveState};
 use crate::Faction;
 
@@ -62,19 +62,19 @@ pub fn register(app: &mut App) {
             Update,
             animate_summoning
                 .in_set(GameSet::Spawning)
-                .run_if(in_state(WavePhase::Combat))
+                .run_if(in_state(CombatPhase::Running))
                 .run_if(not(resource_exists::<PlayerDying>)),
         )
         .add_systems(
             PostUpdate,
             sync_circle_fade_to_emitter
-                .run_if(in_state(WavePhase::Combat)),
+                .run_if(in_state(CombatPhase::Running)),
         )
         .add_systems(
             Last,
             (init_rise, animate_rise)
                 .chain()
-                .run_if(in_state(WavePhase::Combat)),
+                .run_if(in_state(CombatPhase::Running)),
         )
         .add_systems(
             Update,

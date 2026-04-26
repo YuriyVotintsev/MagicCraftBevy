@@ -295,7 +295,7 @@ fn apply_area_damage(
 
     let count = hits.len();
     for target in hits {
-        pending.write(PendingDamage { target, amount: damage, source: Some(entity) });
+        pending.write(PendingDamage { target, amount: damage, source: Some(entity), on_hit: Default::default() });
     }
     count
 }

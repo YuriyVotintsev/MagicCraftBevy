@@ -4,7 +4,7 @@ use super::super::super::player::{fire_fireball, FIREBALL_COOLDOWN};
 use crate::input::PlayerIntent;
 use crate::schedule::GameSet;
 use crate::stats::{ComputedStats, Stat};
-use crate::wave::WavePhase;
+use crate::wave::CombatPhase;
 use crate::Faction;
 
 #[derive(Component)]
@@ -21,7 +21,7 @@ pub fn register_systems(app: &mut App) {
         (tick_cooldowns, intent_fire_system)
             .chain()
             .in_set(GameSet::Input)
-            .run_if(in_state(WavePhase::Combat)),
+            .run_if(in_state(CombatPhase::Running)),
     );
 }
 

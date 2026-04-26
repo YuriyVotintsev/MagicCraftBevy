@@ -4,7 +4,7 @@ pub mod loader;
 pub mod parser;
 pub mod types;
 
-pub use types::{Globals, MobCommonStats, MobsBalance, RuneCosts, WavesConfig};
+pub use types::{Globals, MobCommonStats, MobsBalance, WavesConfig};
 
 pub struct BalancePlugin;
 

@@ -7,14 +7,14 @@ use bevy::prelude::*;
 use super::PlayerIntent;
 use crate::actors::Player;
 use crate::schedule::GameSet;
-use crate::wave::WavePhase;
+use crate::wave::CombatPhase;
 
 pub fn build(app: &mut App) {
     app.add_systems(
         Update,
         gather
             .before(GameSet::Input)
-            .run_if(in_state(WavePhase::Combat)),
+            .run_if(in_state(CombatPhase::Running)),
     );
 }
 

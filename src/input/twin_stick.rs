@@ -14,8 +14,9 @@
 use bevy::prelude::*;
 
 use super::PlayerIntent;
+use crate::game_state::GameState;
 use crate::schedule::GameSet;
-use crate::wave::WavePhase;
+use crate::wave::CombatPhase;
 
 const STICK_RADIUS_PX: f32 = 80.0;
 const KNOB_SIZE_PX: f32 = 60.0;
@@ -52,14 +53,14 @@ struct StickKnob {
 }
 
 pub fn build(app: &mut App) {
-    app.add_systems(OnEnter(WavePhase::Combat), spawn_sticks)
-        .add_systems(OnExit(WavePhase::Combat), reset_intent)
+    app.add_systems(OnEnter(GameState::Playing), spawn_sticks)
+        .add_systems(OnExit(GameState::Playing), reset_intent)
         .add_systems(
             Update,
             (update_sticks, write_intent, update_visuals)
                 .chain()
                 .before(GameSet::Input)
-                .run_if(in_state(WavePhase::Combat)),
+                .run_if(in_state(CombatPhase::Running)),
         );
 }
 
@@ -93,7 +94,7 @@ fn spawn_stick(commands: &mut Commands, id: StickId, left_side: bool) {
     let stick = commands
         .spawn((
             Name::new(format!("TouchStick::{:?}", id)),
-            DespawnOnExit(WavePhase::Combat),
+            DespawnOnExit(GameState::Playing),
             TouchStick {
                 id,
                 pointer: None,

@@ -9,7 +9,6 @@ use crate::composite_scale::{ScaleLayerId, ScaleLayerRegistry, ScaleModifiers};
 use crate::game_state::GameState;
 use crate::schedule::{GameSet, PostGameSet};
 use crate::transition::{Transition, TransitionAction};
-use crate::wave::WavePhase;
 
 use super::combat_scope::{CombatScoped, SkipDeathShrink};
 
@@ -34,9 +33,9 @@ pub struct PlayerDying {
 struct DeathScaleLayer(ScaleLayerId);
 
 #[derive(Component)]
-struct ShrinkToZero {
-    elapsed: f32,
-    duration: f32,
+pub struct ShrinkToZero {
+    pub elapsed: f32,
+    pub duration: f32,
 }
 
 pub fn register(app: &mut App) {
@@ -47,17 +46,14 @@ pub fn register(app: &mut App) {
                 .after(death_system)
                 .in_set(PostGameSet),
         )
+        .add_systems(Update, animate_shrink_to_zero.in_set(GameSet::Cleanup))
         .add_systems(
             Update,
-            (
-                mark_new_shrink_targets,
-                animate_shrink_to_zero,
-                player_death_sequence,
-            )
+            (mark_new_shrink_targets, player_death_sequence)
                 .in_set(GameSet::Cleanup)
                 .run_if(resource_exists::<PlayerDying>),
         )
-        .add_systems(OnExit(WavePhase::Combat), cleanup_player_dying);
+        .add_systems(OnExit(GameState::Playing), cleanup_player_dying);
 }
 
 fn register_death_layer(mut registry: ResMut<ScaleLayerRegistry>, mut commands: Commands) {

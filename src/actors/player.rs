@@ -2,43 +2,18 @@ use avian3d::prelude::*;
 use bevy::prelude::*;
 
 use super::components::{
-    Caster, Collider, DynamicBody, Health, JumpWalkAnimation, KeyboardMovement,
-    OnCollisionDamage, OnCollisionParticles, PlayerAbilityCooldowns, PlayerInput,
-    Projectile, Shadow, ColliderShape, Size, Shape, ShapeColor, ShapeKind,
+    Caster, Collider, ColliderShape, DynamicBody, Health, JumpWalkAnimation, KeyboardMovement,
+    OnCollisionDamage, OnCollisionParticles, PlayerAbilityCooldowns, PlayerInput, Projectile,
+    Shadow, Shape, ShapeColor, ShapeKind, Size,
 };
+use crate::artifact::{
+    apply_inventory_to_player, ArtifactInventory, OnHitEffectStack,
+};
+use crate::game_state::GameState;
 use crate::palette;
-use crate::run::CombatScoped;
-use crate::rune::{add_grid_modifiers, RuneGrid};
-use crate::stats::{ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators};
-use crate::wave::WavePhase;
+use crate::run::RunScoped;
+use crate::stats::{ComputedStats, DirtyStats, Stat, StatCalculators};
 use crate::Faction;
-
-pub const PLAYER_BASE_STATS: &[(Stat, ModifierKind, f32)] = &[
-    (Stat::MaxLife, ModifierKind::Flat, 20.0),
-    (Stat::MovementSpeed, ModifierKind::Flat, 550.0),
-    (Stat::PhysicalDamage, ModifierKind::Flat, 1.0),
-    (Stat::CritChance, ModifierKind::Flat, 0.05),
-    (Stat::CritMultiplier, ModifierKind::Flat, 1.5),
-    (Stat::AttackSpeed, ModifierKind::Flat, 1.0),
-    (Stat::PickupRadius, ModifierKind::Flat, 200.0),
-];
-
-pub fn compute_player_stats(
-    grid: &RuneGrid,
-    calculators: &StatCalculators,
-) -> (Modifiers, ComputedStats) {
-    let mut modifiers = Modifiers::new();
-    for &(stat, kind, value) in PLAYER_BASE_STATS {
-        modifiers.add(stat, kind, value);
-    }
-    add_grid_modifiers(grid, &mut modifiers);
-
-    let mut dirty = DirtyStats::default();
-    let mut computed = ComputedStats::default();
-    dirty.mark_all(Stat::iter());
-    calculators.recalculate(&modifiers, &mut computed, &mut dirty);
-    (modifiers, computed)
-}
 
 pub const FIREBALL_DAMAGE_PCT: f32 = 1.0;
 pub const FIREBALL_BASE_SPEED: f32 = 800.0;
@@ -53,7 +28,7 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(WavePhase::Combat), spawn_player);
+        app.add_systems(OnEnter(GameState::Playing), spawn_player);
     }
 }
 
@@ -72,38 +47,46 @@ fn player_ability_shape_color() -> ShapeColor {
 pub fn spawn_player(
     mut commands: Commands,
     calculators: Res<StatCalculators>,
-    grid: Res<RuneGrid>,
+    inventory: Res<ArtifactInventory>,
 ) {
-    let (modifiers, computed) = compute_player_stats(&grid, &calculators);
-    let mut dirty = DirtyStats::default();
-    dirty.mark_all(Stat::iter());
-    let hp = computed.final_of(Stat::MaxLife);
-
     let entity = commands.spawn((
         Name::new("Player"),
         Player,
         Transform::from_translation(Vec3::ZERO),
         Visibility::default(),
         Faction::Player,
-        modifiers, dirty, computed,
         Size { value: 120.0 },
         Collider { shape: ColliderShape::Rectangle, sensor: false },
         DynamicBody { mass: 3.0 },
-        Health { current: hp },
         KeyboardMovement {},
         PlayerInput,
-        CombatScoped,
+        RunScoped,
+        PlayerAbilityCooldowns::default(),
     )).id();
-    commands.entity(entity).insert(PlayerAbilityCooldowns::default());
+
+    let (modifiers, computed) =
+        apply_inventory_to_player(&mut commands, entity, &inventory, &calculators);
+    let hp = computed.final_of(Stat::MaxLife);
+    let mut dirty = DirtyStats::default();
+    dirty.mark_all(Stat::iter());
+    commands.entity(entity).insert((modifiers, dirty, computed, Health { current: hp }));
 
     commands.entity(entity).with_children(|p| {
         p.spawn(Shadow);
         p.spawn((
             Shape {
-                color: player_shape_color(), kind: ShapeKind::Circle,
-                position: Vec2::ZERO, elevation: 0.5, half_length: 0.5,
+                color: player_shape_color(),
+                kind: ShapeKind::Circle,
+                position: Vec2::ZERO,
+                elevation: 0.5,
+                half_length: 0.5,
             },
-            JumpWalkAnimation { bounce_height: 0.6, bounce_duration: 0.45, land_squish: 0.3, land_duration: 0.125 },
+            JumpWalkAnimation {
+                bounce_height: 0.6,
+                bounce_duration: 0.45,
+                land_squish: 0.3,
+                land_duration: 0.125,
+            },
         ));
     });
 }
@@ -135,6 +118,20 @@ pub fn fire_fireball(
     let count = projectile_count(caster_stats, 1).max(1);
     let speed = calc_projectile_speed(caster_stats, FIREBALL_BASE_SPEED);
     let damage = calc_physical_damage(caster_stats, FIREBALL_DAMAGE_PCT);
+    let pierce = caster_stats
+        .map(|s| s.final_of(Stat::Pierce).max(0.0) as u32)
+        .unwrap_or(0);
+    let ricochet = caster_stats
+        .map(|s| s.final_of(Stat::Ricochet).max(0.0) as u32)
+        .unwrap_or(0);
+    let homing = caster_stats
+        .map(|s| s.final_of(Stat::HomingStrength))
+        .unwrap_or(0.0);
+    let splash_radius = caster_stats
+        .map(|s| s.final_of(Stat::SplashRadius))
+        .unwrap_or(0.0);
+    let on_hit = OnHitEffectStack::from_stats(caster_stats);
+
     let base_dir = direction.normalize_or_zero();
     let perpendicular = Vec2::new(-base_dir.y, base_dir.x);
 
@@ -157,14 +154,37 @@ pub fn fire_fireball(
             LinearVelocity(crate::coord::ground_vel(velocity)),
             OnCollisionDamage { amount: damage },
             OnCollisionParticles { config: "hit_burst" },
-            CombatScoped,
+            crate::run::CombatScoped,
         )).id();
+
+        let mut ec = commands.entity(proj);
+        if pierce > 0 {
+            ec.insert(crate::actors::components::combat::PierceCount(pierce));
+        }
+        if ricochet > 0 {
+            ec.insert(crate::actors::components::combat::Ricochet { remaining: ricochet });
+        }
+        if homing > 0.0 {
+            ec.insert(crate::actors::components::combat::Homing(homing));
+        }
+        if splash_radius > 0.0 {
+            ec.insert(crate::actors::components::combat::Splash {
+                radius: splash_radius,
+                frac_damage: 0.5,
+            });
+        }
+        if !on_hit.is_empty() {
+            ec.insert(on_hit);
+        }
 
         commands.entity(proj).with_children(|p| {
             p.spawn(Shadow);
             p.spawn(Shape {
-                color: player_ability_shape_color(), kind: ShapeKind::Circle,
-                position: Vec2::ZERO, elevation: 2.0, half_length: 0.5,
+                color: player_ability_shape_color(),
+                kind: ShapeKind::Circle,
+                position: Vec2::ZERO,
+                elevation: 2.0,
+                half_length: 0.5,
             });
         });
     }

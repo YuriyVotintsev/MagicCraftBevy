@@ -1,9 +1,10 @@
 use avian3d::prelude::*;
 use bevy::prelude::*;
 
-use super::PendingDamage;
 use super::Caster;
+use super::PendingDamage;
 use crate::arena::Wall;
+use crate::artifact::OnHitEffectStack;
 use crate::faction::Faction;
 use crate::schedule::GameSet;
 
@@ -24,7 +25,7 @@ pub fn register_systems(app: &mut App) {
 fn on_collision_damage_system(
     mut events: MessageReader<CollisionStart>,
     mut pending: MessageWriter<PendingDamage>,
-    damage_query: Query<(&OnCollisionDamage, &Faction, &Caster)>,
+    damage_query: Query<(&OnCollisionDamage, &Faction, &Caster, Option<&OnHitEffectStack>)>,
     target_query: Query<&Faction>,
     wall_query: Query<(), With<Wall>>,
     mut processed: Local<bevy::platform::collections::HashSet<(Entity, Entity)>>,
@@ -43,7 +44,7 @@ fn on_collision_damage_system(
         if wall_query.contains(other_entity) { continue }
         if damage_query.contains(other_entity) { continue }
 
-        let Ok((dmg, proj_faction, caster)) = damage_query.get(proj_entity) else { continue };
+        let Ok((dmg, proj_faction, caster, on_hit)) = damage_query.get(proj_entity) else { continue };
         let Ok(target_faction) = target_query.get(other_entity) else { continue };
         if proj_faction == target_faction { continue }
 
@@ -51,6 +52,7 @@ fn on_collision_damage_system(
             target: other_entity,
             amount: dmg.amount,
             source: Some(caster.0),
+            on_hit: on_hit.copied().unwrap_or_default(),
         });
     }
 }

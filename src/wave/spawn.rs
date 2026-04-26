@@ -6,12 +6,13 @@ use crate::actors::MobKind;
 use crate::arena::CurrentArenaSize;
 use crate::balance::{Globals, MobsBalance, WavesConfig};
 use crate::dissolve_material::DissolveMaterial;
-use crate::run::{CombatScoped, PlayerDying, RunState};
+use crate::run::{BreatherTimer, CombatScoped, PlayerDying, RunState, StartWaveEvent};
 use crate::schedule::GameSet;
-use super::phase::WavePhase;
-use super::state::{reset_wave_state, WaveEnemy, WaveState};
+use super::phase::CombatPhase;
+use super::state::{WaveEnemy, WaveState};
 use super::summoning::{SummoningCircle, SummoningCircleMaterial, SummoningCircleMesh};
 use crate::Faction;
+use crate::GameState;
 
 #[derive(Resource)]
 pub struct EnemySpawnPool {
@@ -35,29 +36,33 @@ impl EnemySpawnPool {
 pub fn register(app: &mut App) {
     app.init_resource::<EnemySpawnPool>()
         .add_systems(
-            OnEnter(WavePhase::Combat),
-            apply_wave_config
-                .after(crate::run::init_run)
-                .after(reset_wave_state),
+            Update,
+            apply_wave_config.run_if(in_state(GameState::Playing)),
         )
         .add_systems(
             Update,
             (spawn_enemies, tag_wave_enemies)
                 .chain()
                 .in_set(GameSet::Spawning)
-                .run_if(in_state(WavePhase::Combat))
-                .run_if(not(resource_exists::<PlayerDying>)),
+                .run_if(in_state(CombatPhase::Running))
+                .run_if(not(resource_exists::<PlayerDying>))
+                .run_if(not(resource_exists::<BreatherTimer>)),
         );
 }
 
 fn apply_wave_config(
+    mut events: MessageReader<StartWaveEvent>,
     run_state: Res<RunState>,
     mut wave_state: ResMut<WaveState>,
     mut pool: ResMut<EnemySpawnPool>,
     waves: Res<WavesConfig>,
 ) {
+    if events.read().last().is_none() {
+        return;
+    }
     let def = waves.for_wave(run_state.wave);
     wave_state.max_concurrent = def.max_concurrent;
+    info!("Starting wave #{}", run_state.wave);
 
     let mut rng = rand::rng();
     let active = waves.resolve_pool(run_state.wave, &mut rng);

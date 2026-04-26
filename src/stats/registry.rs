@@ -21,6 +21,21 @@ pub enum Stat {
     AreaOfEffect,
     Duration,
     PickupRadius,
+    DodgeChance,
+    Lifesteal,
+    Thorns,
+    KnockbackForce,
+    Pierce,
+    Ricochet,
+    HomingStrength,
+    SplashRadius,
+    BurnDPS,
+    BurnDuration,
+    FreezeChance,
+    FreezeDuration,
+    ChainCount,
+    ShieldMaxBlock,
+    ShieldRecharge,
 }
 
 impl Stat {
@@ -40,7 +55,9 @@ impl Stat {
 
     pub fn formula(self) -> Formula {
         match self {
-            Stat::CritChance => Formula::Custom(clamped_chance),
+            Stat::CritChance | Stat::DodgeChance | Stat::FreezeChance => {
+                Formula::Custom(clamped_chance)
+            }
             _ => Formula::FlatIncMore,
         }
     }

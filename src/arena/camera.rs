@@ -3,7 +3,6 @@ use bevy::camera::ScalingMode;
 use bevy::core_pipeline::tonemapping::Tonemapping;
 
 use crate::GameState;
-use crate::wave::WavePhase;
 
 const CAM_DISTANCE: f32 = 1000.0;
 
@@ -35,12 +34,7 @@ pub fn register(app: &mut App) {
         .add_systems(Startup, setup_camera)
         .add_systems(
             PostUpdate,
-            (
-                camera_follow.run_if(in_state(WavePhase::Combat)),
-                camera_park_shop.run_if(in_state(WavePhase::Shop)),
-                update_zoom_live,
-            )
-                .run_if(in_state(GameState::Playing)),
+            (camera_follow, update_zoom_live).run_if(in_state(GameState::Playing)),
         );
 }
 
@@ -110,16 +104,6 @@ fn camera_follow(
 
     let look_at = Vec3::new(cx, 0.0, cz);
     point_camera(&mut camera_transform, look_at, &camera_angle);
-}
-
-fn camera_park_shop(
-    mut camera_query: Query<&mut Transform, With<Camera3d>>,
-    camera_angle: Res<CameraAngle>,
-) {
-    let Ok(mut camera_transform) = camera_query.single_mut() else {
-        return;
-    };
-    point_camera(&mut camera_transform, Vec3::ZERO, &camera_angle);
 }
 
 fn point_camera(transform: &mut Transform, look_at: Vec3, camera_angle: &CameraAngle) {
