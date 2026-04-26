@@ -5,7 +5,7 @@ use crate::actors::Health;
 use crate::balance::{MobsBalance, WavesConfig};
 use crate::dissolve_material::DissolveMaterial;
 use crate::particles::{self, ParticleEmitter, SpawnShape};
-use crate::run::{CombatScoped, PlayerDying, RunState};
+use crate::run::{BreatherTimer, CombatScoped, PlayerDying, RunState};
 use crate::schedule::GameSet;
 use crate::stats::StatCalculators;
 use super::phase::CombatPhase;
@@ -124,6 +124,7 @@ fn animate_summoning(
     calculators: Res<StatCalculators>,
     waves: Res<WavesConfig>,
     run_state: Res<RunState>,
+    breather: Option<Res<BreatherTimer>>,
 ) {
     let dt = time.delta_secs();
     let wave_def = waves.for_wave(run_state.wave);
@@ -131,6 +132,7 @@ fn animate_summoning(
         hp_mult: wave_def.hp_multiplier,
         damage_mult: wave_def.damage_multiplier,
     };
+    let suppress_spawn = breather.is_some();
 
     for (entity, mut circle, mut transform) in &mut query {
         circle.elapsed += dt;
@@ -160,22 +162,25 @@ fn animate_summoning(
                         particles::stop_particles(&mut commands, emitter_entity);
                     }
 
-                    let mob = spawn_mob(
-                        &mut commands,
-                        circle.kind,
-                        pos,
-                        &mobs_balance,
-                        &calculators,
-                        wave_mods,
-                    );
-                    commands.entity(mob).insert((
-                        WaveEnemy,
-                        CombatScoped,
-                    ));
-
                     wave_state.summoning_count = wave_state.summoning_count.saturating_sub(1);
 
-                    circle.phase = SummonPhase::EnemyRise;
+                    if suppress_spawn {
+                        circle.phase = SummonPhase::CircleShrink;
+                    } else {
+                        let mob = spawn_mob(
+                            &mut commands,
+                            circle.kind,
+                            pos,
+                            &mobs_balance,
+                            &calculators,
+                            wave_mods,
+                        );
+                        commands.entity(mob).insert((
+                            WaveEnemy,
+                            CombatScoped,
+                        ));
+                        circle.phase = SummonPhase::EnemyRise;
+                    }
                     circle.elapsed = 0.0;
                 }
             }

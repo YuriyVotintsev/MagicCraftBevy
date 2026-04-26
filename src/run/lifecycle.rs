@@ -59,7 +59,6 @@ fn check_combat_timeout(
     mut commands: Commands,
     run_state: Res<RunState>,
     enemies: Query<(Entity, &Transform, Has<ScaleModifiers>), With<WaveEnemy>>,
-    summoning_circles: Query<Entity, With<crate::wave::SummoningCircle>>,
 ) {
     if run_state.elapsed < wave_duration(run_state.wave) {
         return;
@@ -78,11 +77,6 @@ fn check_combat_timeout(
             "enemy_death",
             crate::coord::to_2d(t.translation),
         );
-    }
-    for circle in &summoning_circles {
-        if let Ok(mut ec) = commands.get_entity(circle) {
-            ec.despawn();
-        }
     }
     commands.insert_resource(BreatherTimer(Timer::from_seconds(
         BREATHER_DURATION,

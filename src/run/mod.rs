@@ -3,6 +3,7 @@ use bevy::prelude::*;
 mod combat_scope;
 mod death;
 mod lifecycle;
+mod pill;
 mod run_scope;
 
 pub use combat_scope::{CombatScoped, SkipDeathShrink};
@@ -18,5 +19,6 @@ impl Plugin for RunPlugin {
         run_scope::register(app);
         lifecycle::register(app);
         death::register(app);
+        pill::register(app);
     }
 }

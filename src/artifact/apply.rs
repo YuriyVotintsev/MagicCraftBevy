@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 
+use crate::actors::components::Health;
 use crate::actors::Player;
 use crate::stats::{
     ComputedStats, DirtyStats, ModifierKind, Modifiers, Stat, StatCalculators,
@@ -117,15 +118,16 @@ fn rebuild_player_state(
     mut ev: MessageReader<RebuildPlayerStateEvent>,
     inventory: Res<ArtifactInventory>,
     calculators: Res<StatCalculators>,
-    player_q: Query<Entity, With<Player>>,
+    mut player_q: Query<(Entity, &ComputedStats, Option<&mut Health>), With<Player>>,
     helper_q: Query<Entity, With<ExoticHelper>>,
 ) {
     if ev.read().last().is_none() {
         return;
     }
-    let Ok(player) = player_q.single() else {
+    let Ok((player, old_computed, mut maybe_health)) = player_q.single_mut() else {
         return;
     };
+    let old_max_life = old_computed.final_of(Stat::MaxLife);
     for e in &helper_q {
         if let Ok(mut ec) = commands.get_entity(e) {
             ec.despawn();
@@ -133,6 +135,13 @@ fn rebuild_player_state(
     }
     let (mods, computed) =
         apply_inventory_to_player(&mut commands, player, &inventory, &calculators);
+    let new_max_life = computed.final_of(Stat::MaxLife);
+    let max_life_gain = (new_max_life - old_max_life).max(0.0);
+    if max_life_gain > 0.0 {
+        if let Some(health) = maybe_health.as_mut() {
+            health.current = (health.current + max_life_gain).min(new_max_life);
+        }
+    }
     let mut dirty = DirtyStats::default();
     dirty.mark_all(Stat::iter());
     commands
