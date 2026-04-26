@@ -95,8 +95,9 @@ fn spawn_card(commands: &mut Commands, reroll: &RerollState) {
                 position_type: PositionType::Absolute,
                 width: Val::Percent(100.0),
                 height: Val::Percent(100.0),
-                align_items: AlignItems::Center,
+                align_items: AlignItems::FlexEnd,
                 justify_content: JustifyContent::Center,
+                padding: UiRect::bottom(Val::Px(20.0)),
                 ..default()
             },
             Pickable::IGNORE,
