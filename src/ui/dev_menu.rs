@@ -405,7 +405,7 @@ fn build_dev_menu_panel(
         let entity = commands
             .spawn(cheat_button(
                 kind.def().name,
-                palette::color(kind.def().tier.palette_key()),
+                palette::color("ui_artifact"),
                 ForceDropButton(kind),
             ))
             .id();

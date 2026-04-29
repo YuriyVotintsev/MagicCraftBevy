@@ -142,7 +142,7 @@ pub(super) fn spawn_pause_menu(mut commands: Commands, inventory: Res<ArtifactIn
         for kind in &inventory.collected {
             let def = kind.def();
             let disabled = inventory.disabled.contains(kind);
-            let border = palette::color(def.tier.palette_key());
+            let border = palette::color("ui_artifact");
             let label_color = if disabled {
                 palette::color("ui_text_disabled")
             } else {

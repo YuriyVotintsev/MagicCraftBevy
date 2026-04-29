@@ -18,9 +18,8 @@ pub struct BreatherTimer(pub Timer);
 #[derive(Message)]
 pub struct StartWaveEvent;
 
-pub fn wave_duration(wave: u32) -> f32 {
-    let bumped = wave.saturating_sub(1) as f32;
-    (20.0 + 5.0 * bumped).min(60.0)
+pub fn wave_duration(_wave: u32) -> f32 {
+    30.0
 }
 
 pub const BREATHER_DURATION: f32 = 7.0;

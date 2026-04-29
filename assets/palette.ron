@@ -130,10 +130,7 @@
         "ui_lifebar":         "lime",
         "ui_lifebar_bg":      "void",
 
-        // UI artifact tiers
-        "ui_artifact_common":     "teal",
-        "ui_artifact_rare":       "indigo",
-        "ui_artifact_epic":       "purple",
-        "ui_artifact_legendary":  "gold",
+        // UI artifact
+        "ui_artifact":            "purple",
     },
 )

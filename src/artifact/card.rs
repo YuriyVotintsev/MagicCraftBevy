@@ -78,8 +78,8 @@ fn despawn_card_when_breather_ends(
 
 fn spawn_card(commands: &mut Commands, reroll: &RerollState) {
     let kind = reroll.current;
-    let tier_color = kind
-        .map(|k| palette::color(k.def().tier.palette_key()))
+    let card_color = kind
+        .map(|_| palette::color("ui_artifact"))
         .unwrap_or_else(|| palette::color("ui_text_disabled"));
 
     let root = commands
@@ -119,7 +119,7 @@ fn spawn_card(commands: &mut Commands, reroll: &RerollState) {
                     border: UiRect::all(Val::Px(CARD_BORDER_PX)),
                     ..default()
                 },
-                Some(tier_color),
+                Some(card_color),
             ),
         ))
         .id();
@@ -134,7 +134,7 @@ fn spawn_card(commands: &mut Commands, reroll: &RerollState) {
             border_radius: BorderRadius::all(Val::Px(36.0)),
             ..default()
         },
-        BackgroundColor(tier_color),
+        BackgroundColor(card_color),
         BorderColor::all(palette::color("ui_panel_border")),
     ));
 
@@ -214,7 +214,7 @@ fn refresh_card_visuals(
                 (
                     d.name.to_string(),
                     d.description.to_string(),
-                    palette::color(d.tier.palette_key()),
+                    palette::color("ui_artifact"),
                 )
             }
             None => (
